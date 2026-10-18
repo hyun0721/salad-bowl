@@ -1,0 +1,59 @@
+/* Salad Bowl design tokens — copied from the Claude Design System "Salad Bowl" (tokens.json). */
+:root {
+  color-scheme: light;
+  --surface-100: #f4f4f0;
+  --surface-000: #ffffff;
+  --ink: #1e2420;
+  --ink-muted: #555b56;
+  --line: #dcdcd5;
+  --brand: #2f6b4f;
+  --brand-tint: #e6efe9;
+  --on-brand: #ffffff;
+  --pending: #8a5420;
+  --pending-tint: #fff8ef;
+  --danger: #9a3523;
+
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 14px;
+
+  --font-sans: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --surface-100: #151815;
+    --surface-000: #1e221f;
+    --ink: #eceeeb;
+    --ink-muted: #a9afaa;
+    --line: #353b36;
+    --brand: #6fbf94;
+    --brand-tint: #22352a;
+    --on-brand: #0f1a13;
+    --pending: #e3a560;
+    --pending-tint: #3a2c1c;
+    --danger: #f08c78;
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --surface-100: #151815;
+  --surface-000: #1e221f;
+  --ink: #eceeeb;
+  --ink-muted: #a9afaa;
+  --line: #353b36;
+  --brand: #6fbf94;
+  --brand-tint: #22352a;
+  --on-brand: #0f1a13;
+  --pending: #e3a560;
+  --pending-tint: #3a2c1c;
+  --danger: #f08c78;
+}
