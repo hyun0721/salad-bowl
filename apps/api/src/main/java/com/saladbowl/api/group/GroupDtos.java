@@ -1,6 +1,7 @@
 package com.saladbowl.api.group;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 import java.util.List;
@@ -17,5 +18,11 @@ public final class GroupDtos {
     }
 
     public record GroupDetail(long groupId, String name, GroupRole myRole, List<MemberRow> members) {
+    }
+
+    public record ShareRequest(@NotNull Boolean enabled) {
+    }
+
+    public record ShareResponse(boolean shareEnabled) {
     }
 }

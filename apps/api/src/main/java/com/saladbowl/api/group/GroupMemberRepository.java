@@ -24,4 +24,20 @@ public interface GroupMemberRepository extends JpaRepository<GroupMember, Long> 
             order by m.joinedAt asc, m.id asc
             """)
     List<MemberRow> findMemberRows(@Param("groupId") Long groupId);
+
+    @Query("""
+            select m.userId from GroupMember m
+            where m.groupId = :groupId and m.shareEnabled = true
+            order by m.joinedAt asc, m.id asc
+            """)
+    List<Long> findSharedUserIds(@Param("groupId") Long groupId);
+
+    @Query("""
+            select case when count(a) > 0 then true else false end
+            from GroupMember a, GroupMember o
+            where a.groupId = o.groupId
+              and a.userId = :actorId and a.role = com.saladbowl.api.group.GroupRole.ADMIN
+              and o.userId = :ownerId and o.shareEnabled = true
+            """)
+    boolean existsAdminOverSharedMember(@Param("actorId") Long actorId, @Param("ownerId") Long ownerId);
 }

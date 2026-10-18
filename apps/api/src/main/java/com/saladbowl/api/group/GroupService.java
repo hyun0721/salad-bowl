@@ -4,6 +4,7 @@ import com.saladbowl.api.common.ApiException;
 import com.saladbowl.api.common.ErrorCode;
 import com.saladbowl.api.group.GroupDtos.GroupDetail;
 import com.saladbowl.api.group.GroupDtos.GroupSummary;
+import com.saladbowl.api.group.GroupDtos.ShareResponse;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -72,6 +73,13 @@ public class GroupService {
             throw new ApiException(ErrorCode.ADMIN_CANNOT_LEAVE, "group admin cannot leave the group");
         }
         members.delete(me);
+    }
+
+    @Transactional
+    public ShareResponse setShare(long groupId, long userId, boolean enabled) {
+        GroupMember me = access.requireMember(groupId, userId);
+        me.setShareEnabled(enabled);
+        return new ShareResponse(me.isShareEnabled());
     }
 
     private UserGroup findGroup(long groupId) {
