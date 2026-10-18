@@ -76,6 +76,37 @@ describe('apiFetch', () => {
     off()
   })
 
+  it('keeps the session when refresh fails transiently', async () => {
+    setAccessToken('old')
+    const lost = vi.fn()
+    const off = onAuthLost(lost)
+    server.use(
+      http.get('*/api/me', () => HttpResponse.json({ code: 'UNAUTHORIZED', message: 'x' }, { status: 401 })),
+      http.post('*/api/auth/refresh', () => new HttpResponse('bad gateway', { status: 503 })),
+    )
+
+    await expect(apiFetch('/me')).rejects.toMatchObject({ status: 503 })
+    expect(getAccessToken()).toBe('old')
+    expect(lost).not.toHaveBeenCalled()
+    off()
+  })
+
+  it('notifies auth loss once for concurrent requests', async () => {
+    setAccessToken('old')
+    const lost = vi.fn()
+    const off = onAuthLost(lost)
+    server.use(
+      http.get('*/api/me', () => HttpResponse.json({ code: 'UNAUTHORIZED', message: 'x' }, { status: 401 })),
+      http.post('*/api/auth/refresh', () =>
+        HttpResponse.json({ code: 'INVALID_TOKEN', message: 'x' }, { status: 401 })),
+    )
+
+    await Promise.allSettled([apiFetch('/me'), apiFetch('/me')])
+
+    expect(lost).toHaveBeenCalledTimes(1)
+    off()
+  })
+
   it('reports slow requests after 3 seconds', async () => {
     const states: boolean[] = []
     const off = onSlowRequests((slow) => states.push(slow))

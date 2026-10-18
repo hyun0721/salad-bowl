@@ -33,19 +33,28 @@ export function apiUrl(path: string): string {
 
 type ApiInit = RequestInit & { json?: unknown; auth?: boolean }
 
-/** refresh 쿠키로 새 access 토큰을 받는다. 동시에 불려도 요청은 하나만 보낸다. */
+/**
+ * refresh 쿠키로 새 access 토큰을 받는다. 동시에 불려도 요청은 하나만 보낸다.
+ * - 서버가 거절(401·403)하면 토큰을 지우고 null을 돌려준다. 로그인 중이었다면 onAuthLost를 한 번 알린다.
+ * - 일시적인 실패(5xx, 네트워크 오류, 잘못된 응답)는 ApiError로 reject한다. 이때 토큰은 그대로 둔다.
+ */
 export function refreshAccessToken(): Promise<string | null> {
   if (!refreshing) {
     refreshing = rawFetch('/auth/refresh', { method: 'POST' })
       .then(async (res) => {
-        if (!res.ok) return null
-        const body = (await res.json()) as { accessToken: string }
+        if (res.status === 401 || res.status === 403) {
+          const hadSession = accessToken !== null
+          setAccessToken(null)
+          if (hadSession) authLostListeners.forEach((listener) => listener())
+          return null
+        }
+        if (!res.ok) throw await toError(res)
+        const body = (await res.json()) as { accessToken?: unknown }
+        if (typeof body.accessToken !== 'string') {
+          throw new ApiError(res.status, 'REQUEST_FAILED', '요청을 처리하지 못했습니다.')
+        }
+        setAccessToken(body.accessToken)
         return body.accessToken
-      })
-      .catch(() => null)
-      .then((token) => {
-        setAccessToken(token)
-        return token
       })
       .finally(() => {
         refreshing = null
@@ -65,11 +74,9 @@ export async function apiFetch<T>(path: string, init: ApiInit = {}): Promise<T> 
 
   let res = await send()
   if (res.status === 401 && auth) {
+    // 일시적인 refresh 실패는 여기서 그대로 throw된다(세션 유지).
     const token = await refreshAccessToken()
-    if (!token) {
-      authLostListeners.forEach((listener) => listener())
-      throw await toError(res)
-    }
+    if (!token) throw await toError(res)
     res = await send()
   }
   if (!res.ok) throw await toError(res)
