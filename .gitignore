@@ -1,0 +1,19 @@
+# OS / IDE
+.DS_Store
+.idea/
+.vscode/
+*.iml
+
+# Java / Gradle
+apps/api/build/
+apps/api/.gradle/
+apps/api/out/
+
+# Node
+node_modules/
+apps/web/dist/
+
+# Env
+.env
+.env.*
+!.env.example
