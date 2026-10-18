@@ -731,10 +731,18 @@ public class BanksaladParser {
 }
 ```
 
+**Task 리뷰 반영 (사용자 승인):**
+- `parseRow`는 행을 파싱하는 동안 나는 모든 `RuntimeException`을 `"row N: ..."` 메시지의 `INVALID_FILE_FORMAT`으로 바꾼다. `ApiException`은 그대로 다시 던진다. 비정상 날짜 일련번호(음수, 아주 큰 값) 때문에 `DateUtil.getLocalDateTime`이 null이나 `DateTimeException`을 내면 500이 되던 문제를 막는다. null 결과는 `"date is out of range"`로 보고한다.
+- 시간을 반올림한 결과가 86400초(24:00:00)가 되면 다음 날 00:00:00으로 넘긴다. 같은 날 00:00:00으로 되돌리지 않는다.
+- 테스트 2개를 추가한다.
+  - `outOfRangeDateReportsRowNumber`: 날짜 셀이 음수 일련번호(-5)면 `"row 2:"`로 시작하는 `INVALID_FILE_FORMAT`이다.
+  - `timeRoundingPastMidnightCarriesToNextDay`: 시간 비율 `86399.6 / 86400`이면 다음 날 00:00:00이다.
+- 두 테스트를 위해 `BanksaladWorkbook`에 날짜·시간 셀에 원시 숫자를 넣는 `rawRow(double dateSerial, double timeFraction, ...)`를 추가한다.
+
 - [ ] **Step 8: 테스트 통과 확인**
 
 Run: `cd apps/api && ./gradlew test --tests '*BanksaladParserTest'`
-Expected: 7 tests PASS
+Expected: 9 tests PASS
 
 - [ ] **Step 9: 전체 테스트 실행 후 Commit**
 
