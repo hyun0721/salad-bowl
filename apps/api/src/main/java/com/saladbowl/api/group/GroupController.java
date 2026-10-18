@@ -66,6 +66,18 @@ public class GroupController {
         return ResponseEntity.noContent().build();
     }
 
+    @GetMapping("/{groupId}/bans")
+    public List<BanRow> listBans(@CurrentUser Long userId, @PathVariable long groupId) {
+        return groupService.listBans(groupId, userId);
+    }
+
+    @DeleteMapping("/{groupId}/bans/{bannedUserId}")
+    public ResponseEntity<Void> unban(@CurrentUser Long userId, @PathVariable long groupId,
+                                      @PathVariable long bannedUserId) {
+        groupService.unban(groupId, userId, bannedUserId);
+        return ResponseEntity.noContent().build();
+    }
+
     @PutMapping("/{groupId}/share")
     public ShareResponse setShare(@CurrentUser Long userId, @PathVariable long groupId,
                                   @Valid @RequestBody ShareRequest request) {

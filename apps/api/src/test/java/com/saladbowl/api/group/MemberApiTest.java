@@ -83,12 +83,115 @@ class MemberApiTest extends IntegrationTest {
     }
 
     @Test
-    void removedMemberCanRejoinWithInvite() throws Exception {
-        mvc.perform(delete("/groups/" + groupId + "/members/" + member.id()).header("Authorization", admin.bearer()))
-                .andExpect(status().isNoContent());
-        String token = TestGroups.issueInvite(mvc, admin, groupId);
+    void removedMemberCannotRejoinWithOldToken() throws Exception {
+        String oldToken = TestGroups.issueInvite(mvc, admin, groupId);
+        removeMember();
 
+        mvc.perform(get("/invites/" + oldToken).header("Authorization", member.bearer()))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("REMOVED_FROM_GROUP"));
+        mvc.perform(post("/invites/" + oldToken + "/accept").header("Authorization", member.bearer()))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("REMOVED_FROM_GROUP"));
+    }
+
+    @Test
+    void removedMemberCannotRejoinWithFreshToken() throws Exception {
+        removeMember();
+        String freshToken = TestGroups.issueInvite(mvc, admin, groupId);
+
+        mvc.perform(get("/invites/" + freshToken).header("Authorization", member.bearer()))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("REMOVED_FROM_GROUP"));
+        mvc.perform(post("/invites/" + freshToken + "/accept").header("Authorization", member.bearer()))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("REMOVED_FROM_GROUP"));
+    }
+
+    @Test
+    void otherUsersCanStillAcceptTheOldToken() throws Exception {
+        String oldToken = TestGroups.issueInvite(mvc, admin, groupId);
+        removeMember();
+        AuthedUser other = TestAuth.signupAndLogin(mvc, "other@test.com", "다른사람");
+
+        mvc.perform(post("/invites/" + oldToken + "/accept").header("Authorization", other.bearer()))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void adminListsBannedMembersWithNickname() throws Exception {
+        removeMember();
+
+        mvc.perform(get("/groups/" + groupId + "/bans").header("Authorization", admin.bearer()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].userId").value(member.id()))
+                .andExpect(jsonPath("$[0].nickname").value("멤버"))
+                .andExpect(jsonPath("$[0].bannedAt").exists());
+    }
+
+    @Test
+    void memberCannotListBans() throws Exception {
+        mvc.perform(get("/groups/" + groupId + "/bans").header("Authorization", member.bearer()))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+    }
+
+    @Test
+    void outsiderCannotListBans() throws Exception {
+        AuthedUser outsider = TestAuth.signupAndLogin(mvc, "out@test.com", "외부인");
+
+        mvc.perform(get("/groups/" + groupId + "/bans").header("Authorization", outsider.bearer()))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void unbannedUserCanAcceptInviteAgain() throws Exception {
+        removeMember();
+
+        mvc.perform(delete("/groups/" + groupId + "/bans/" + member.id()).header("Authorization", admin.bearer()))
+                .andExpect(status().isNoContent());
+        mvc.perform(get("/groups/" + groupId + "/bans").header("Authorization", admin.bearer()))
+                .andExpect(jsonPath("$", hasSize(0)));
+
+        String token = TestGroups.issueInvite(mvc, admin, groupId);
         mvc.perform(post("/invites/" + token + "/accept").header("Authorization", member.bearer()))
                 .andExpect(status().isOk());
+        mvc.perform(get("/groups/" + groupId).header("Authorization", member.bearer()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.myRole").value("MEMBER"));
+    }
+
+    @Test
+    void unbanWithoutBanReturns404() throws Exception {
+        mvc.perform(delete("/groups/" + groupId + "/bans/" + member.id()).header("Authorization", admin.bearer()))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void memberCannotUnban() throws Exception {
+        removeMember();
+        AuthedUser other = TestAuth.signupAndLogin(mvc, "other@test.com", "다른사람");
+        TestGroups.join(mvc, admin, other, groupId);
+
+        mvc.perform(delete("/groups/" + groupId + "/bans/" + member.id()).header("Authorization", other.bearer()))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void memberWhoLeftVoluntarilyCanRejoin() throws Exception {
+        mvc.perform(delete("/groups/" + groupId + "/members/me").header("Authorization", member.bearer()))
+                .andExpect(status().isNoContent());
+        mvc.perform(get("/groups/" + groupId + "/bans").header("Authorization", admin.bearer()))
+                .andExpect(jsonPath("$", hasSize(0)));
+
+        String token = TestGroups.issueInvite(mvc, admin, groupId);
+        mvc.perform(post("/invites/" + token + "/accept").header("Authorization", member.bearer()))
+                .andExpect(status().isOk());
+    }
+
+    private void removeMember() throws Exception {
+        mvc.perform(delete("/groups/" + groupId + "/members/" + member.id()).header("Authorization", admin.bearer()))
+                .andExpect(status().isNoContent());
     }
 }

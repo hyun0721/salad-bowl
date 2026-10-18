@@ -15,11 +15,14 @@ public class GroupService {
 
     private final UserGroupRepository groups;
     private final GroupMemberRepository members;
+    private final GroupBanRepository bans;
     private final GroupAccess access;
 
-    public GroupService(UserGroupRepository groups, GroupMemberRepository members, GroupAccess access) {
+    public GroupService(UserGroupRepository groups, GroupMemberRepository members, GroupBanRepository bans,
+                        GroupAccess access) {
         this.groups = groups;
         this.members = members;
+        this.bans = bans;
         this.access = access;
     }
 
@@ -64,6 +67,24 @@ public class GroupService {
             throw new ApiException(ErrorCode.CANNOT_REMOVE_ADMIN, "group admin cannot be removed");
         }
         members.delete(target);
+        // 추방된 회원은 이미 가진 초대 토큰으로도 돌아오지 못하도록 기록한다.
+        if (!bans.existsByGroupIdAndUserId(groupId, targetUserId)) {
+            bans.save(new GroupBan(groupId, targetUserId, adminId));
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public List<BanRow> listBans(long groupId, long adminId) {
+        access.requireAdmin(groupId, adminId);
+        return bans.findBanRows(groupId);
+    }
+
+    @Transactional
+    public void unban(long groupId, long adminId, long bannedUserId) {
+        access.requireAdmin(groupId, adminId);
+        GroupBan ban = bans.findByGroupIdAndUserId(groupId, bannedUserId)
+                .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND, "ban not found"));
+        bans.delete(ban);
     }
 
     @Transactional
