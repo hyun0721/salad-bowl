@@ -20,7 +20,6 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -81,7 +80,7 @@ public class BanksaladParser {
     private static ParsedRow parseRow(Row row) {
         int rowNumber = row.getRowNum() + 1;
         try {
-            LocalDateTime occurredAt = LocalDateTime.of(date(row.getCell(0)), time(row.getCell(1)));
+            LocalDateTime occurredAt = occurredAt(row.getCell(0), row.getCell(1));
             String typeLabel = text(row.getCell(2));
             TransactionType type = TransactionType.fromLabel(typeLabel)
                     .orElseThrow(() -> new IllegalArgumentException("unknown type '" + typeLabel + "'"));
@@ -98,14 +97,27 @@ public class BanksaladParser {
                     text(row.getCell(8)),
                     memo.isEmpty() ? null : memo);
             return new ParsedRow(rowNumber, data);
-        } catch (IllegalArgumentException | IllegalStateException | DateTimeParseException e) {
+        } catch (ApiException e) {
+            throw e;
+        } catch (RuntimeException e) {
             throw invalid("row " + rowNumber + ": " + e.getMessage());
         }
     }
 
+    /** 시간을 초 단위로 반올림한 결과가 24:00:00이면 다음 날 00:00:00으로 넘긴다. */
+    private static LocalDateTime occurredAt(Cell dateCell, Cell timeCell) {
+        LocalDate date = date(dateCell);
+        long seconds = seconds(timeCell);
+        return date.atStartOfDay().plusSeconds(seconds);
+    }
+
     private static LocalDate date(Cell cell) {
         if (cell != null && cell.getCellType() == CellType.NUMERIC) {
-            return DateUtil.getLocalDateTime(cell.getNumericCellValue()).toLocalDate();
+            LocalDateTime value = DateUtil.getLocalDateTime(cell.getNumericCellValue());
+            if (value == null) {
+                throw new IllegalArgumentException("date is out of range");
+            }
+            return value.toLocalDate();
         }
         String value = text(cell);
         if (value.isEmpty()) {
@@ -114,18 +126,17 @@ public class BanksaladParser {
         return LocalDate.parse(value);
     }
 
-    private static LocalTime time(Cell cell) {
+    private static long seconds(Cell cell) {
         if (cell != null && cell.getCellType() == CellType.NUMERIC) {
             double value = cell.getNumericCellValue();
             double fraction = value - Math.floor(value);
-            long seconds = Math.round(fraction * SECONDS_PER_DAY) % SECONDS_PER_DAY;
-            return LocalTime.ofSecondOfDay(seconds);
+            return Math.round(fraction * SECONDS_PER_DAY);
         }
         String value = text(cell);
         if (value.isEmpty()) {
             throw new IllegalArgumentException("time is empty");
         }
-        return LocalTime.parse(value);
+        return LocalTime.parse(value).toSecondOfDay();
     }
 
     private static BigDecimal amount(Cell cell) {

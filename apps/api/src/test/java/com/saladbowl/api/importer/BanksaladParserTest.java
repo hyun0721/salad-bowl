@@ -5,11 +5,13 @@ import com.saladbowl.api.common.ErrorCode;
 import com.saladbowl.api.support.BanksaladWorkbook;
 import com.saladbowl.api.transaction.TransactionData;
 import com.saladbowl.api.transaction.TransactionType;
+import org.apache.poi.ss.usermodel.DateUtil;
 import org.junit.jupiter.api.Test;
 
 import java.io.ByteArrayInputStream;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -101,5 +103,25 @@ class BanksaladParserTest {
                 .isInstanceOf(ApiException.class)
                 .extracting(e -> ((ApiException) e).code())
                 .isEqualTo(ErrorCode.INVALID_FILE_FORMAT);
+    }
+
+    @Test
+    void outOfRangeDateReportsRowNumber() {
+        assertThatThrownBy(() -> parse(BanksaladWorkbook.create()
+                .rawRow(-5, 0.5, "지출", "식비", "점심", "김밥", -4000, "현금", null)))
+                .isInstanceOf(ApiException.class)
+                .hasMessageStartingWith("row 2:")
+                .extracting(e -> ((ApiException) e).code())
+                .isEqualTo(ErrorCode.INVALID_FILE_FORMAT);
+    }
+
+    @Test
+    void timeRoundingPastMidnightCarriesToNextDay() {
+        double dateSerial = DateUtil.getExcelDate(LocalDate.of(2026, 9, 1).atStartOfDay());
+
+        List<ParsedRow> rows = parse(BanksaladWorkbook.create()
+                .rawRow(dateSerial, 86399.6 / 86400, "지출", "식비", "야식", "라면", -3000, "현금", null));
+
+        assertThat(rows.get(0).data().occurredAt()).isEqualTo(LocalDateTime.of(2026, 9, 2, 0, 0, 0));
     }
 }

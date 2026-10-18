@@ -22,7 +22,7 @@ public final class BanksaladWorkbook {
     public static final List<String> HEADERS =
             List.of("날짜", "시간", "타입", "대분류", "소분류", "내용", "금액", "화폐", "결제수단", "메모");
 
-    private record RowSpec(String date, String time, String type, String major, String minor,
+    private record RowSpec(double dateSerial, double timeFraction, String type, String major, String minor,
                            String description, long amount, String paymentMethod, String memo) {
     }
 
@@ -40,7 +40,15 @@ public final class BanksaladWorkbook {
     /** date: yyyy-MM-dd, time: HH:mm:ss, memo: null이면 셀을 만들지 않는다. */
     public BanksaladWorkbook row(String date, String time, String type, String major, String minor,
                                  String description, long amount, String paymentMethod, String memo) {
-        rows.add(new RowSpec(date, time, type, major, minor, description, amount, paymentMethod, memo));
+        double dateSerial = DateUtil.getExcelDate(LocalDate.parse(date).atStartOfDay());
+        double timeFraction = LocalTime.parse(time).toSecondOfDay() / 86400.0;
+        return rawRow(dateSerial, timeFraction, type, major, minor, description, amount, paymentMethod, memo);
+    }
+
+    /** 날짜·시간 셀에 원시 숫자(일련번호, 하루의 비율)를 그대로 넣는다. 비정상 값 테스트용. */
+    public BanksaladWorkbook rawRow(double dateSerial, double timeFraction, String type, String major, String minor,
+                                    String description, long amount, String paymentMethod, String memo) {
+        rows.add(new RowSpec(dateSerial, timeFraction, type, major, minor, description, amount, paymentMethod, memo));
         return this;
     }
 
@@ -86,10 +94,10 @@ public final class BanksaladWorkbook {
                     continue;
                 }
                 Cell date = row.createCell(0);
-                date.setCellValue(DateUtil.getExcelDate(LocalDate.parse(spec.date()).atStartOfDay()));
+                date.setCellValue(spec.dateSerial());
                 date.setCellStyle(dateStyle);
                 Cell time = row.createCell(1);
-                time.setCellValue(LocalTime.parse(spec.time()).toSecondOfDay() / 86400.0);
+                time.setCellValue(spec.timeFraction());
                 time.setCellStyle(timeStyle);
                 row.createCell(2).setCellValue(spec.type());
                 row.createCell(3).setCellValue(spec.major());
