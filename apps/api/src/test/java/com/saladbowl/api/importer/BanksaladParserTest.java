@@ -124,4 +124,57 @@ class BanksaladParserTest {
 
         assertThat(rows.get(0).data().occurredAt()).isEqualTo(LocalDateTime.of(2026, 9, 2, 0, 0, 0));
     }
+
+    @Test
+    void overLongDescriptionReportsRowNumber() {
+        assertThatThrownBy(() -> parse(BanksaladWorkbook.create()
+                .row("2026-09-01", "09:00:00", "지출", "식비", "점심", "가".repeat(501), -4000, "현금", null)))
+                .isInstanceOf(ApiException.class)
+                .hasMessageStartingWith("row 2:")
+                .extracting(e -> ((ApiException) e).code())
+                .isEqualTo(ErrorCode.INVALID_FILE_FORMAT);
+    }
+
+    @Test
+    void descriptionAtTheLimitIsAccepted() {
+        List<ParsedRow> rows = parse(BanksaladWorkbook.create()
+                .row("2026-09-01", "09:00:00", "지출", "식비", "점심", "가".repeat(500), -4000, "현금", null));
+
+        assertThat(rows.get(0).data().description()).hasSize(500);
+    }
+
+    @Test
+    void tooLargeAmountReportsRowNumber() {
+        assertThatThrownBy(() -> parse(BanksaladWorkbook.create()
+                .row("2026-09-01", "09:00:00", "지출", "식비", "점심", "김밥", 100_000_000_000_000L, "현금", null)))
+                .isInstanceOf(ApiException.class)
+                .hasMessageStartingWith("row 2:")
+                .extracting(e -> ((ApiException) e).code())
+                .isEqualTo(ErrorCode.INVALID_FILE_FORMAT);
+    }
+
+    @Test
+    void largestAllowedAmountIsAccepted() {
+        List<ParsedRow> rows = parse(BanksaladWorkbook.create()
+                .row("2026-09-01", "09:00:00", "수입", "급여", "월급", "회사", 9_999_999_999_999L, "국민은행", null));
+
+        assertThat(rows.get(0).data().amount()).isEqualByComparingTo(new BigDecimal("9999999999999"));
+    }
+
+    @Test
+    void otherOverLongFieldsReportRowNumber() {
+        String longText = "a".repeat(1001);
+        assertThatThrownBy(() -> parse(BanksaladWorkbook.create()
+                .row("2026-09-01", "09:00:00", "지출", "a".repeat(101), "점심", "김밥", -4000, "현금", null)))
+                .hasMessageStartingWith("row 2:");
+        assertThatThrownBy(() -> parse(BanksaladWorkbook.create()
+                .row("2026-09-01", "09:00:00", "지출", "식비", "a".repeat(101), "김밥", -4000, "현금", null)))
+                .hasMessageStartingWith("row 2:");
+        assertThatThrownBy(() -> parse(BanksaladWorkbook.create()
+                .row("2026-09-01", "09:00:00", "지출", "식비", "점심", "김밥", -4000, "a".repeat(101), null)))
+                .hasMessageStartingWith("row 2:");
+        assertThatThrownBy(() -> parse(BanksaladWorkbook.create()
+                .row("2026-09-01", "09:00:00", "지출", "식비", "점심", "김밥", -4000, "현금", longText)))
+                .hasMessageStartingWith("row 2:");
+    }
 }

@@ -36,6 +36,15 @@ public class BanksaladParser {
 
     private static final int SECONDS_PER_DAY = 86_400;
 
+    // V4__create_transactions.sql 컬럼 크기와 같아야 한다.
+    static final int MAX_CATEGORY_LENGTH = 100;
+    static final int MAX_DESCRIPTION_LENGTH = 500;
+    static final int MAX_PAYMENT_METHOD_LENGTH = 100;
+    static final int MAX_CURRENCY_LENGTH = 10;
+    static final int MAX_MEMO_LENGTH = 1000;
+    /** NUMERIC(15, 2): 소수점 앞 13자리. */
+    static final int MAX_AMOUNT_PRECISION = 15;
+
     public List<ParsedRow> parse(InputStream in) {
         try (Workbook workbook = open(in)) {
             Sheet sheet = workbook.getSheet(SHEET_NAME);
@@ -84,17 +93,22 @@ public class BanksaladParser {
             String typeLabel = text(row.getCell(2));
             TransactionType type = TransactionType.fromLabel(typeLabel)
                     .orElseThrow(() -> new IllegalArgumentException("unknown type '" + typeLabel + "'"));
-            String currency = text(row.getCell(7));
-            String memo = text(row.getCell(9));
+            String categoryMajor = limited("categoryMajor", text(row.getCell(3)), MAX_CATEGORY_LENGTH);
+            String categoryMinor = limited("categoryMinor", text(row.getCell(4)), MAX_CATEGORY_LENGTH);
+            String description = limited("description", text(row.getCell(5)), MAX_DESCRIPTION_LENGTH);
+            BigDecimal amount = amount(row.getCell(6));
+            String currency = limited("currency", text(row.getCell(7)), MAX_CURRENCY_LENGTH);
+            String paymentMethod = limited("paymentMethod", text(row.getCell(8)), MAX_PAYMENT_METHOD_LENGTH);
+            String memo = limited("memo", text(row.getCell(9)), MAX_MEMO_LENGTH);
             TransactionData data = new TransactionData(
                     occurredAt,
                     type,
-                    text(row.getCell(3)),
-                    text(row.getCell(4)),
-                    text(row.getCell(5)),
-                    amount(row.getCell(6)),
+                    categoryMajor,
+                    categoryMinor,
+                    description,
+                    amount,
                     currency.isEmpty() ? "KRW" : currency,
-                    text(row.getCell(8)),
+                    paymentMethod,
                     memo.isEmpty() ? null : memo);
             return new ParsedRow(rowNumber, data);
         } catch (ApiException e) {
@@ -102,6 +116,14 @@ public class BanksaladParser {
         } catch (RuntimeException e) {
             throw invalid("row " + rowNumber + ": " + e.getMessage());
         }
+    }
+
+    /** Postgres VARCHAR(n)처럼 코드 포인트 수로 길이를 센다. */
+    private static String limited(String field, String value, int max) {
+        if (value.codePointCount(0, value.length()) > max) {
+            throw new IllegalArgumentException(field + " longer than " + max + " characters");
+        }
+        return value;
     }
 
     /** 시간을 초 단위로 반올림한 결과가 24:00:00이면 다음 날 00:00:00으로 넘긴다. */
@@ -150,7 +172,11 @@ public class BanksaladParser {
             }
             value = new BigDecimal(text);
         }
-        return value.setScale(2, RoundingMode.HALF_UP);
+        BigDecimal scaled = value.setScale(2, RoundingMode.HALF_UP);
+        if (scaled.precision() > MAX_AMOUNT_PRECISION) {
+            throw new IllegalArgumentException("amount out of range");
+        }
+        return scaled;
     }
 
     private static String text(Cell cell) {
