@@ -95,6 +95,23 @@ class ImportServiceTest extends IntegrationTest {
     }
 
     @Test
+    void hiddenFlagSurvivesReimport() {
+        importBytes(ownerId, september().toBytes());
+        LedgerTransaction kimbap = findByDescription("김밥");
+        kimbap.setHidden(true);
+        transactions.save(kimbap);
+
+        ImportResult again = importBytes(ownerId, BanksaladWorkbook.create()
+                .row("2026-09-01", "12:00:00", "지출", "외식", "분식", "김밥", -4000, "현금", null)
+                .toBytes());
+
+        assertThat(again.updatedRows()).isEqualTo(1);
+        LedgerTransaction reloaded = findByDescription("김밥");
+        assertThat(reloaded.displayCategory()).isEqualTo(new Category("외식", "분식"));
+        assertThat(reloaded.isHidden()).isTrue();
+    }
+
+    @Test
     void rowsMissingFromTheNewFileAreKept() {
         importBytes(ownerId, september().toBytes());
 
