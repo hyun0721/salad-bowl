@@ -7,6 +7,7 @@ import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 public final class TransactionDtos {
 
@@ -42,5 +43,17 @@ public final class TransactionDtos {
             @NotNull @Digits(integer = 13, fraction = 2) BigDecimal amount,
             @Size(max = 100) String paymentMethod,
             @Size(max = 1000) String memo) {
+    }
+
+    /** null은 변경 없음, 공백 문자열은 override 삭제. hidden은 소유자만 보낼 수 있다. */
+    public record UpdateTransactionRequest(
+            @Size(max = 100) String categoryMajor,
+            @Size(max = 100) String categoryMinor,
+            @Size(max = 1000) String memo,
+            Boolean hidden) {
+    }
+
+    public record AuditView(long actorId, String actorNickname, String field, String before, String after,
+                            OffsetDateTime changedAt) {
     }
 }
