@@ -1,0 +1,20 @@
+import { ApiError } from '../api/errors'
+
+const MESSAGES: Record<string, string> = {
+  INVALID_CREDENTIALS: '이메일 또는 비밀번호가 맞지 않습니다.',
+  EMAIL_ALREADY_EXISTS: '이미 가입된 이메일입니다.',
+  VALIDATION_FAILED: '입력한 값을 다시 확인해 주세요.',
+  NETWORK_ERROR: '서버에 연결하지 못했습니다. 잠시 후 다시 시도해 주세요.',
+  UNAUTHORIZED: '다시 로그인해 주세요.',
+  FORBIDDEN: '이 작업을 할 권한이 없습니다.',
+  NOT_FOUND: '찾을 수 없습니다.',
+  INTERNAL_ERROR: '서버에서 문제가 생겼습니다. 잠시 후 다시 시도해 주세요.',
+}
+
+/** API 오류 코드를 화면 문구로 바꾼다. 화면별 문구가 따로 있으면 overrides로 덮어쓴다. */
+export function errorMessage(error: unknown, overrides: Record<string, string> = {}): string {
+  if (error instanceof ApiError) {
+    return overrides[error.code] ?? MESSAGES[error.code] ?? '요청을 처리하지 못했습니다.'
+  }
+  return '요청을 처리하지 못했습니다.'
+}
