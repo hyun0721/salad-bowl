@@ -23,4 +23,18 @@ public final class TestGroups {
                 .andReturn().getResponse().getContentAsString();
         return ((Number) JsonPath.read(body, "$.groupId")).longValue();
     }
+
+    public static String issueInvite(MockMvc mvc, TestAuth.AuthedUser admin, long groupId) throws Exception {
+        String body = mvc.perform(post("/groups/" + groupId + "/invites").header("Authorization", admin.bearer()))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        return JsonPath.read(body, "$.token");
+    }
+
+    public static void join(MockMvc mvc, TestAuth.AuthedUser admin, TestAuth.AuthedUser member, long groupId)
+            throws Exception {
+        String token = issueInvite(mvc, admin, groupId);
+        mvc.perform(post("/invites/" + token + "/accept").header("Authorization", member.bearer()))
+                .andExpect(status().isOk());
+    }
 }
