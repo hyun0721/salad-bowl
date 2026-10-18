@@ -54,6 +54,26 @@ public class GroupService {
         return detail(groupId, userId);
     }
 
+    @Transactional
+    public void removeMember(long groupId, long adminId, long targetUserId) {
+        access.requireAdmin(groupId, adminId);
+        GroupMember target = members.findByGroupIdAndUserId(groupId, targetUserId)
+                .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND, "member not found"));
+        if (target.isAdmin()) {
+            throw new ApiException(ErrorCode.CANNOT_REMOVE_ADMIN, "group admin cannot be removed");
+        }
+        members.delete(target);
+    }
+
+    @Transactional
+    public void leave(long groupId, long userId) {
+        GroupMember me = access.requireMember(groupId, userId);
+        if (me.isAdmin()) {
+            throw new ApiException(ErrorCode.ADMIN_CANNOT_LEAVE, "group admin cannot leave the group");
+        }
+        members.delete(me);
+    }
+
     private UserGroup findGroup(long groupId) {
         return groups.findById(groupId)
                 .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND, "group not found"));

@@ -16,6 +16,8 @@ public enum ErrorCode {
     INVITE_EXPIRED(HttpStatus.GONE),
     ALREADY_MEMBER(HttpStatus.CONFLICT),
     GROUP_FULL(HttpStatus.CONFLICT),
+    CANNOT_REMOVE_ADMIN(HttpStatus.CONFLICT),
+    ADMIN_CANNOT_LEAVE(HttpStatus.CONFLICT),
     CONFLICT(HttpStatus.CONFLICT),
     /** 개별 코드가 없는 4xx용. enum의 status는 대표값이고, 실제 응답 status는 원래 예외의 것을 쓴다. */
     REQUEST_FAILED(HttpStatus.BAD_REQUEST),

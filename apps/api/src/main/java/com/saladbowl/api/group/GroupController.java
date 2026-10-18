@@ -7,6 +7,7 @@ import com.saladbowl.api.group.GroupDtos.GroupSummary;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -47,5 +48,18 @@ public class GroupController {
     public GroupDetail rename(@CurrentUser Long userId, @PathVariable long groupId,
                               @Valid @RequestBody GroupNameRequest request) {
         return groupService.rename(groupId, userId, request.name());
+    }
+
+    @DeleteMapping("/{groupId}/members/me")
+    public ResponseEntity<Void> leave(@CurrentUser Long userId, @PathVariable long groupId) {
+        groupService.leave(groupId, userId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/{groupId}/members/{memberUserId}")
+    public ResponseEntity<Void> removeMember(@CurrentUser Long userId, @PathVariable long groupId,
+                                             @PathVariable long memberUserId) {
+        groupService.removeMember(groupId, userId, memberUserId);
+        return ResponseEntity.noContent().build();
     }
 }
