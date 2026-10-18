@@ -6,7 +6,7 @@
 
 **Architecture:** `apps/api`는 기능 단위 패키지(`auth`, `user`, `common`)로 나눈 Spring Boot 3 앱이다. 스키마는 Flyway로 관리한다. 인증은 stateless JWT(access 15분, refresh 14일)이며, refresh 토큰은 HttpOnly 쿠키로 전달한다. 통합 테스트는 Testcontainers Postgres로 돌린다.
 
-**Tech Stack:** Java 21, Spring Boot 3.5.6, Gradle(Groovy DSL), Spring Security, Spring Data JPA, Flyway, PostgreSQL 16, jjwt 0.12.6, JUnit 5, Testcontainers, GitHub Actions
+**Tech Stack:** Java 21, Spring Boot 4.1.1, Gradle(Groovy DSL, Initializr 기본 wrapper), Spring Security, Spring Data JPA, Flyway, PostgreSQL 16, jjwt 0.12.6, JUnit 5, Testcontainers, GitHub Actions
 
 ## 전체 로드맵 (이 문서는 Plan 01)
 
@@ -20,7 +20,8 @@
 
 ## Global Constraints
 
-- Java 21, Spring Boot 3.5.6, Gradle Groovy DSL, base package `com.saladbowl.api`
+- Java 21, Spring Boot 4.1.1, Gradle Groovy DSL, base package `com.saladbowl.api`
+- **Boot 4 적용 규칙**: 이 계획의 코드 예시는 Boot 3 기준으로 작성되었다. 구현 시 Boot 4 기준으로 맞춘다. 대상은 모듈화된 starter(예: `spring-boot-starter-flyway`, `spring-boot-starter-webmvc-test`), 이동한 테스트 어노테이션 패키지, Jackson 3(`tools.jackson.*`), Testcontainers 2 artifact·패키지명이다. 동작과 테스트 케이스는 그대로 유지하고, 바꾼 import와 의존성은 리포트에 남긴다.
 - DB는 PostgreSQL. JPA와 표준 SQL 위주로 작성하고 스키마는 Flyway로만 변경한다(`ddl-auto: validate`).
 - 비밀번호는 BCrypt로 저장한다.
 - 공통 에러 응답 형식: `{ "code": "...", "message": "..." }`
@@ -132,7 +133,7 @@ git commit -m "chore: add mono-repo skeleton and local postgres"
 mkdir -p apps && cd apps
 curl -fsSL https://start.spring.io/starter.zip \
   -d type=gradle-project -d language=java -d javaVersion=21 \
-  -d bootVersion=3.5.6 -d groupId=com.saladbowl -d artifactId=api \
+  -d groupId=com.saladbowl -d artifactId=api \
   -d name=api -d packageName=com.saladbowl.api \
   -d dependencies=web,security,data-jpa,validation,flyway,postgresql,actuator,testcontainers \
   -o api.zip
@@ -141,7 +142,7 @@ rm api/src/main/resources/application.properties
 cd ..
 ```
 
-`bootVersion=3.5.6`이 거부되면 start.spring.io가 제시하는 3.5.x 최신 안정 버전으로 바꾸고, Global Constraints의 버전도 함께 고친다.
+bootVersion을 지정하지 않으면 start.spring.io 기본값(2026-10 기준 4.1.1)으로 생성된다. 기본값이 4.1.1이 아니면 `build.gradle`의 plugin 버전을 4.1.1로 맞춘다.
 
 - [ ] **Step 2: `build.gradle`의 `dependencies`에 jjwt 추가**
 
