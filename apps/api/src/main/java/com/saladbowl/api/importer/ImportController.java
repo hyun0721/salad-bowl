@@ -40,7 +40,7 @@ public class ImportController {
         if (!fileName.toLowerCase(Locale.ROOT).endsWith(".xlsx")) {
             throw new ApiException(ErrorCode.INVALID_FILE_FORMAT, "only .xlsx files are supported");
         }
-        String storedName = fileName.length() > MAX_FILE_NAME ? fileName.substring(0, MAX_FILE_NAME) : fileName;
+        String storedName = storedFileName(fileName);
         try (InputStream in = file.getInputStream()) {
             ImportResult result = importService.importFile(userId, storedName, in);
             return ResponseEntity.status(HttpStatus.CREATED).body(result);
@@ -50,5 +50,14 @@ public class ImportController {
     @GetMapping("/imports")
     public List<ImportBatchView> history(@CurrentUser Long userId) {
         return importService.recent(userId);
+    }
+
+    /** 클라이언트가 보낸 경로는 버리고 마지막 조각만 남긴다. 길면 code point 단위로 자른다. */
+    static String storedFileName(String original) {
+        String last = original.substring(Math.max(original.lastIndexOf('/'), original.lastIndexOf('\\')) + 1);
+        if (last.codePointCount(0, last.length()) <= MAX_FILE_NAME) {
+            return last;
+        }
+        return last.substring(0, last.offsetByCodePoints(0, MAX_FILE_NAME));
     }
 }

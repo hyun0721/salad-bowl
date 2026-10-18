@@ -2,6 +2,7 @@ package com.saladbowl.api.transaction;
 
 import com.saladbowl.api.auth.CurrentUser;
 import com.saladbowl.api.transaction.TransactionDtos.AuditView;
+import com.saladbowl.api.transaction.TransactionDtos.CoverageMonth;
 import com.saladbowl.api.transaction.TransactionDtos.ManualTransactionRequest;
 import com.saladbowl.api.transaction.TransactionDtos.TransactionView;
 import com.saladbowl.api.transaction.TransactionDtos.UpdateTransactionRequest;
@@ -32,6 +33,11 @@ public class TransactionController {
     @GetMapping("/me/transactions")
     public List<TransactionView> mine(@CurrentUser Long userId, @RequestParam YearMonth month) {
         return transactionService.myTransactions(userId, month);
+    }
+
+    @GetMapping("/me/coverage")
+    public List<CoverageMonth> coverage(@CurrentUser Long userId, @RequestParam int year) {
+        return transactionService.coverage(userId, year);
     }
 
     @PostMapping("/me/transactions")

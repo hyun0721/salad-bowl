@@ -35,6 +35,9 @@ class ImportApiTest extends IntegrationTest {
     @Autowired
     MultipartProperties multipartProperties;
 
+    @Autowired
+    ImportBatchRepository batches;
+
     AuthedUser owner;
 
     @BeforeEach
@@ -130,5 +133,16 @@ class ImportApiTest extends IntegrationTest {
     @Test
     void uploadLimitIsFiveMegabytes() {
         assertThat(multipartProperties.getMaxFileSize()).isEqualTo(DataSize.ofMegabytes(5));
+    }
+
+    @Test
+    void storedFileNameKeepsOnlyTheLastPathSegment() throws Exception {
+        mvc.perform(multipart("/imports").file(ledger("C:\\Users\\me\\2026-09.xlsx")).header("Authorization", owner.bearer()))
+                .andExpect(status().isCreated());
+        mvc.perform(multipart("/imports").file(ledger("../../etc/2026-08.xlsx")).header("Authorization", owner.bearer()))
+                .andExpect(status().isCreated());
+
+        assertThat(batches.findAll()).extracting(ImportBatch::getFileName)
+                .containsExactlyInAnyOrder("2026-09.xlsx", "2026-08.xlsx");
     }
 }
