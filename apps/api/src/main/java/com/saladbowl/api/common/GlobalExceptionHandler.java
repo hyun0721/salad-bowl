@@ -105,7 +105,7 @@ public class GlobalExceptionHandler {
             case 405 -> ErrorCode.METHOD_NOT_ALLOWED.name();
             case 409 -> ErrorCode.CONFLICT.name();
             case 415 -> ErrorCode.UNSUPPORTED_MEDIA_TYPE.name();
-            default -> status.is5xxServerError() ? ErrorCode.INTERNAL_ERROR.name() : "REQUEST_FAILED";
+            default -> status.is5xxServerError() ? ErrorCode.INTERNAL_ERROR.name() : ErrorCode.REQUEST_FAILED.name();
         };
         String detail = framework.getBody().getDetail();
         String message = status.is5xxServerError() || detail == null ? "request failed" : detail;

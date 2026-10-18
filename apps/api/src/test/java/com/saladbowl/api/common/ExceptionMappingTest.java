@@ -44,6 +44,11 @@ class ExceptionMappingTest extends IntegrationTest {
             throw new DataIntegrityViolationException("duplicate key");
         }
 
+        @GetMapping("/test-errors/too-many")
+        String tooMany() {
+            throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "slow down");
+        }
+
         @GetMapping("/test-errors/boom")
         String boom() {
             throw new IllegalStateException("secret internal detail");
@@ -79,6 +84,13 @@ class ExceptionMappingTest extends IntegrationTest {
         mvc.perform(get("/test-errors/integrity").with(user("tester")))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("CONFLICT"));
+    }
+
+    @Test
+    void unmappedFourXxKeepsStatusWithRequestFailedCode() throws Exception {
+        mvc.perform(get("/test-errors/too-many").with(user("tester")))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.code").value("REQUEST_FAILED"));
     }
 
     @Test
