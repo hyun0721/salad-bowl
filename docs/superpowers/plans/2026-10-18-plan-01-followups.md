@@ -2,7 +2,7 @@
 
 Plan 01 리뷰(Task별 리뷰와 최종 리뷰)에서 나왔지만 이후 계획으로 넘긴 항목이다. 각 계획을 작성할 때 해당 항목을 Task로 포함한다.
 
-## Plan 02 (그룹)
+## Plan 02 (그룹) — Plan 02 Task 1에 반영
 - `GlobalExceptionHandler`의 catch-all(`Exception` → 500)이 Spring의 4xx 예외(`MissingServletRequestParameterException`, `ServletRequestBindingException`, `HttpMediaTypeNotAcceptableException`, `ResponseStatusException`, `AccessDeniedException`)까지 500으로 바꾼다. `@PathVariable`·`@RequestParam`·권한 검사를 추가하기 전에 `ResponseEntityExceptionHandler` 확장 등으로 4xx를 보존한다.
 - unique 제약 위반(`DataIntegrityViolationException`)을 409로 매핑한다. 회원가입 중복 이메일 경쟁 조건도 여기에 포함된다.
 

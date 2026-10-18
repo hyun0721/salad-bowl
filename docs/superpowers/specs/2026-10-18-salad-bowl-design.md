@@ -51,8 +51,8 @@
 
 ```
 User ─┬─< GroupMember >── Group (최대 6명)
-      │   (role: ADMIN | MEMBER)   └─< Invite (token, expires_at)
-      ├─< GroupShare (group, user, enabled)
+      │   (role: ADMIN | MEMBER,  └─< Invite (token, expires_at; 만료 전 다회 사용)
+      │    share_enabled)          ← 그룹별 공개 설정(GroupShare)을 멤버십 컬럼으로 둔다
       ├─< ImportBatch (파일명, 업로드 시각, 신규/갱신/중복 건수)
       └─< Transaction (owner = User)
 AuditLog (actor, transaction, 변경 필드, before/after, 시각)
