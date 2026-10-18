@@ -72,6 +72,18 @@ class AuthApiTest extends IntegrationTest {
     }
 
     @Test
+    void tooLongEmailReturns400() throws Exception {
+        String email = "a".repeat(250) + "@test.com";
+
+        mvc.perform(post("/auth/signup").contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"email":"%s","password":"password123","nickname":"x"}
+                                """.formatted(email)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+    }
+
+    @Test
     void wrongPasswordReturns401() throws Exception {
         signup("b@test.com");
 

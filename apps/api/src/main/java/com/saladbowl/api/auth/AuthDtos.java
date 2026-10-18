@@ -10,7 +10,7 @@ public final class AuthDtos {
     }
 
     public record SignupRequest(
-            @NotBlank @Email String email,
+            @NotBlank @Email @Size(max = 255) String email,
             @NotBlank @Size(min = 8, max = 64) String password,
             @NotBlank @Size(max = 50) String nickname) {
     }
@@ -18,7 +18,7 @@ public final class AuthDtos {
     public record SignupResponse(long userId) {
     }
 
-    public record LoginRequest(@NotBlank @Email String email, @NotBlank String password) {
+    public record LoginRequest(@NotBlank @Email @Size(max = 255) String email, @NotBlank String password) {
     }
 
     public record TokenResponse(String accessToken) {
