@@ -26,8 +26,8 @@ import java.util.List;
 public class SecurityConfig {
 
     @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
+    public PasswordEncoder passwordEncoder(@Value("${app.security.bcrypt-strength:10}") int strength) {
+        return new BCryptPasswordEncoder(strength);
     }
 
     @Bean

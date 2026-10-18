@@ -40,4 +40,13 @@ public interface GroupMemberRepository extends JpaRepository<GroupMember, Long> 
               and o.userId = :ownerId and o.shareEnabled = true
             """)
     boolean existsAdminOverSharedMember(@Param("actorId") Long actorId, @Param("ownerId") Long ownerId);
+
+    @Query("""
+            select case when count(v) > 0 then true else false end
+            from GroupMember v, GroupMember o
+            where v.groupId = o.groupId
+              and v.userId = :viewerId
+              and o.userId = :ownerId and o.shareEnabled = true
+            """)
+    boolean existsSharedWith(@Param("viewerId") Long viewerId, @Param("ownerId") Long ownerId);
 }
