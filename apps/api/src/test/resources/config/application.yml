@@ -1,0 +1,3 @@
+app:
+  security:
+    bcrypt-strength: 4
