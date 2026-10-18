@@ -11,6 +11,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.server.ResponseStatusException;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
@@ -47,6 +48,11 @@ class ExceptionMappingTest extends IntegrationTest {
         @GetMapping("/test-errors/too-many")
         String tooMany() {
             throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "slow down");
+        }
+
+        @GetMapping("/test-errors/too-large")
+        String tooLarge() {
+            throw new MaxUploadSizeExceededException(5L * 1024 * 1024);
         }
 
         @GetMapping("/test-errors/boom")
@@ -99,5 +105,12 @@ class ExceptionMappingTest extends IntegrationTest {
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.code").value("INTERNAL_ERROR"))
                 .andExpect(jsonPath("$.message").value("internal server error"));
+    }
+
+    @Test
+    void uploadOverLimitReturns413() throws Exception {
+        mvc.perform(get("/test-errors/too-large").with(user("tester")))
+                .andExpect(status().isPayloadTooLarge())
+                .andExpect(jsonPath("$.code").value("FILE_TOO_LARGE"));
     }
 }

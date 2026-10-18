@@ -20,6 +20,7 @@ public enum ErrorCode {
     ADMIN_CANNOT_LEAVE(HttpStatus.CONFLICT),
     REMOVED_FROM_GROUP(HttpStatus.FORBIDDEN),
     INVALID_FILE_FORMAT(HttpStatus.BAD_REQUEST),
+    FILE_TOO_LARGE(HttpStatus.PAYLOAD_TOO_LARGE),
     CONFLICT(HttpStatus.CONFLICT),
     /** 개별 코드가 없는 4xx용. enum의 status는 대표값이고, 실제 응답 status는 원래 예외의 것을 쓴다. */
     REQUEST_FAILED(HttpStatus.BAD_REQUEST),
