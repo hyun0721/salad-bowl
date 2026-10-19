@@ -42,3 +42,10 @@ export function formatMonthLabel(month: string): string {
 export function currentYearMonth(today: Date = new Date()): string {
   return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`
 }
+
+/** `YYYY-MM`을 delta개월 옮긴다. */
+export function shiftMonth(month: string, delta: number): string {
+  const [year, m] = month.split('-').map(Number)
+  const index = year * 12 + (m - 1) + delta
+  return `${String(Math.floor(index / 12)).padStart(4, '0')}-${String((index % 12) + 1).padStart(2, '0')}`
+}
