@@ -1,8 +1,10 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { onAuthLost, refreshAccessToken, setAccessToken } from '../api/client'
+import { ApiError } from '../api/errors'
 import { authApi, type Me } from './authApi'
+import { SignupLoginError } from './authErrors'
 
-type Status = 'loading' | 'signedOut' | 'signedIn'
+type Status = 'loading' | 'signedOut' | 'signedIn' | 'unavailable'
 
 type AuthValue = {
   status: Status
@@ -10,6 +12,8 @@ type AuthValue = {
   login: (email: string, password: string) => Promise<void>
   signup: (email: string, password: string, nickname: string) => Promise<void>
   logout: () => Promise<void>
+  /** 'unavailable'에서 세션 복원을 다시 시도한다. */
+  retryRestore: () => void
 }
 
 const AuthContext = createContext<AuthValue | null>(null)
@@ -29,9 +33,15 @@ async function restoreSession(): Promise<string | null> {
   }
 }
 
+/** 4xx는 세션이 없다는 뜻이다. 그 밖(5xx, 네트워크, JSON이 아닌 응답)은 서버 문제라 로그인 화면 대신 다시 시도를 보여준다. */
+function isPermanent(error: unknown): boolean {
+  return error instanceof ApiError && error.status >= 400 && error.status < 500
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<Status>('loading')
   const [me, setMe] = useState<Me | null>(null)
+  const [attempt, setAttempt] = useState(0)
 
   const signOutLocally = useCallback(() => {
     setAccessToken(null)
@@ -48,15 +58,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setMe(profile)
         setStatus(profile ? 'signedIn' : 'signedOut')
       })
-      .catch(() => {
-        if (!cancelled) signOutLocally()
+      .catch((error: unknown) => {
+        if (cancelled) return
+        if (isPermanent(error)) signOutLocally()
+        else setStatus('unavailable')
       })
-    const off = onAuthLost(signOutLocally)
     return () => {
       cancelled = true
-      off()
     }
-  }, [signOutLocally])
+  }, [attempt, signOutLocally])
+
+  useEffect(() => onAuthLost(signOutLocally), [signOutLocally])
+
+  const retryRestore = useCallback(() => {
+    setStatus('loading')
+    setAttempt((n) => n + 1)
+  }, [])
 
   const login = useCallback(async (email: string, password: string) => {
     const { accessToken } = await authApi.login(email, password)
@@ -67,7 +84,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signup = useCallback(async (email: string, password: string, nickname: string) => {
     await authApi.signup(email, password, nickname)
-    await login(email, password)
+    try {
+      await login(email, password)
+    } catch (error) {
+      throw new SignupLoginError(error)
+    }
   }, [login])
 
   const logout = useCallback(async () => {
@@ -77,7 +98,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signOutLocally()
   }, [signOutLocally])
 
-  const value = useMemo(() => ({ status, me, login, signup, logout }), [status, me, login, signup, logout])
+  const value = useMemo(() => ({ status, me, login, signup, logout, retryRestore }),
+    [status, me, login, signup, logout, retryRestore])
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 

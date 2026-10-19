@@ -2,6 +2,8 @@ import type { ReactNode } from 'react'
 import { Navigate, useSearchParams } from 'react-router'
 import { useAuth } from '../auth/AuthProvider'
 import { safeNext } from '../common/safeNext'
+import styles from './Gate.module.css'
+import ServerUnavailable from './ServerUnavailable'
 import SlowServerNotice from './SlowServerNotice'
 
 // 로그인 화면용 가드. 세션 복원이 끝나기 전에는 로그인 폼을 보여주지 않는다(복원 응답이
@@ -16,9 +18,9 @@ export default function PublicOnly({ children }: { children: ReactNode }) {
   return (
     <>
       <SlowServerNotice />
-      {status === 'loading'
-        ? <p role="status" style={{ padding: 'var(--space-8)' }}>불러오는 중입니다.</p>
-        : children}
+      {status === 'loading' && <p className={styles.loading}>불러오는 중입니다.</p>}
+      {status === 'unavailable' && <ServerUnavailable />}
+      {status === 'signedOut' && children}
     </>
   )
 }
