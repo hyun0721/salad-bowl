@@ -1,9 +1,11 @@
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '../auth/AuthProvider'
 import ui from '../common/ui.module.css'
+import BanList from './BanList'
 import { LeaveGroup, RenameForm, ShareToggle } from './GroupSettings'
 import { groupsApi } from './groupsApi'
 import styles from './GroupsPage.module.css'
+import InviteSection from './InviteSection'
 import MemberList from './MemberList'
 
 export default function GroupDetailSection({ groupId }: { groupId: number }) {
@@ -32,7 +34,9 @@ export default function GroupDetailSection({ groupId }: { groupId: number }) {
       <h2 id="group-detail-title">{group.name}</h2>
       {isAdmin && <RenameForm groupId={groupId} name={group.name} />}
       {mine && <ShareToggle groupId={groupId} enabled={mine.shareEnabled} />}
-      <MemberList group={group} />
+      <MemberList group={group} canRemove={isAdmin} />
+      {isAdmin && <InviteSection groupId={groupId} memberCount={group.members.length} />}
+      {isAdmin && <BanList groupId={groupId} />}
       {!isAdmin && <LeaveGroup groupId={groupId} name={group.name} />}
     </section>
   )

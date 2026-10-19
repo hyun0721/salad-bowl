@@ -37,5 +37,20 @@ export function useGroupMutations() {
       await refreshList()
     },
   })
-  return { create, rename, setShare, leave }
+  const removeMember = useMutation({
+    mutationFn: ({ groupId, userId }: { groupId: number; userId: number }) => groupsApi.removeMember(groupId, userId),
+    onSuccess: (_result, { groupId }) => Promise.all([
+      refreshList(),
+      queryClient.invalidateQueries({ queryKey: ['groups', groupId] }),
+      queryClient.invalidateQueries({ queryKey: ['bans', groupId] }),
+      queryClient.invalidateQueries({ queryKey: ['summary', groupId] }),
+      queryClient.invalidateQueries({ queryKey: ['transactions', 'group', groupId] }),
+    ]),
+  })
+  const unban = useMutation({
+    mutationFn: ({ groupId, userId }: { groupId: number; userId: number }) => groupsApi.unban(groupId, userId),
+    onSuccess: (_result, { groupId }) => queryClient.invalidateQueries({ queryKey: ['bans', groupId] }),
+  })
+  const createInvite = useMutation({ mutationFn: (groupId: number) => groupsApi.createInvite(groupId) })
+  return { create, rename, setShare, leave, removeMember, unban, createInvite }
 }
