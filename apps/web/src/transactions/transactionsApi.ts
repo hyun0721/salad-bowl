@@ -24,4 +24,9 @@ export type TransactionView = {
 
 export const transactionsApi = {
   mine: (month: string) => apiFetch<TransactionView[]>(`/me/transactions?month=${encodeURIComponent(month)}`),
+  group: (groupId: number, month: string, memberId: number | null) => {
+    const params = new URLSearchParams({ month })
+    if (memberId !== null) params.set('memberId', String(memberId))
+    return apiFetch<TransactionView[]>(`/groups/${groupId}/transactions?${params}`)
+  },
 }
