@@ -25,11 +25,19 @@ function renderApp(path: string) {
   return client
 }
 
+// 홈 화면이 부르는 API. 홈을 렌더하는 테스트가 직접 핸들러를 쓸 때도 같이 넣는다.
+const homeHandlers = [
+  http.get('*/api/me/coverage', () => HttpResponse.json([])),
+  http.get('*/api/me/transactions', () => HttpResponse.json([])),
+  http.get('*/api/imports', () => HttpResponse.json([])),
+]
+
 function signedIn(groups: unknown[]) {
   server.use(
     http.post('*/api/auth/refresh', () => HttpResponse.json({ accessToken: 'a1' })),
     http.get('*/api/me', () => HttpResponse.json(me)),
     http.get('*/api/groups', () => HttpResponse.json(groups)),
+    ...homeHandlers,
   )
 }
 
@@ -145,6 +153,7 @@ describe('AppRoutes', () => {
       }),
       http.get('*/api/me', () => HttpResponse.json(me)),
       http.get('*/api/groups', () => HttpResponse.json([])),
+      ...homeHandlers,
     )
 
     renderApp('/')
@@ -163,6 +172,7 @@ describe('AppRoutes', () => {
         if (fail) return HttpResponse.json({ code: 'X', message: 'x' }, { status: 500 })
         return HttpResponse.json([{ groupId: 10, name: '우리집', myRole: 'ADMIN', memberCount: 3 }])
       }),
+      ...homeHandlers,
     )
     renderApp('/')
     const user = userEvent.setup()
@@ -183,6 +193,7 @@ describe('AppRoutes', () => {
         await delay(300)
         return HttpResponse.json([])
       }),
+      ...homeHandlers,
     )
 
     renderApp('/')
