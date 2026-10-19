@@ -1,0 +1,24 @@
+.scope { display: flex; border: 1px solid var(--line); border-radius: var(--radius-sm); overflow: hidden; }
+.scopeButton { min-height: 40px; padding: 0 var(--space-4); border: 0; background: var(--surface-000); color: var(--ink); cursor: pointer; }
+.scopeButton[aria-pressed="true"] { background: var(--brand); color: var(--on-brand); font-weight: 700; }
+.scopeButton:disabled { opacity: 0.6; cursor: default; }
+.inlineField { display: flex; align-items: center; gap: var(--space-2); }
+.inlineField > span { font-size: 13px; color: var(--ink-muted); }
+.search { flex: 1 1 200px; }
+.search > input { flex: 1; }
+.layout { display: flex; flex-wrap: wrap; gap: var(--space-6); align-items: flex-start; }
+.listCard { flex: 999 1 560px; padding: 0; overflow-x: auto; gap: 0; }
+.listCard > :is(p, div[class]) { margin: var(--space-4); }
+.table { min-width: 720px; }
+.head, .rowButton { display: grid; gap: var(--space-3); padding: var(--space-3) var(--space-4); align-items: center; }
+.withOwner { grid-template-columns: 110px 100px minmax(0, 1fr) minmax(0, 1.4fr) 110px 120px; }
+.withoutOwner { grid-template-columns: 110px minmax(0, 1fr) minmax(0, 1.4fr) 110px 120px; }
+.head { font-size: 13px; color: var(--ink-muted); border-bottom: 1px solid var(--line); }
+.rowButton { width: 100%; border: 0; border-bottom: 1px solid var(--line); background: var(--surface-000); color: var(--ink); text-align: left; cursor: pointer; min-height: 48px; }
+.rowButton:focus-visible { outline-offset: -2px; }
+.rowButton:hover { background: var(--surface-100); }
+.rowButton[aria-pressed="true"] { background: var(--brand-tint); }
+.when, .amount { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.amount { text-align: right; }
+.visuallyHidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.panel { flex: 1 1 320px; max-width: 400px; }

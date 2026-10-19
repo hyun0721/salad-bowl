@@ -75,4 +75,16 @@ class CoverageApiTest extends IntegrationTest {
         mvc.perform(get("/me/coverage").param("year", "abc").header("Authorization", me.bearer()))
                 .andExpect(status().isBadRequest());
     }
+
+    @Test
+    void yearOutsideSupportedRangeIsRejected() throws Exception {
+        AuthedUser me = TestAuth.signupAndLogin(mvc, "me@test.com", "나");
+
+        mvc.perform(get("/me/coverage").param("year", "0").header("Authorization", me.bearer()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+        mvc.perform(get("/me/coverage").param("year", "1000000000").header("Authorization", me.bearer()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+    }
 }

@@ -157,6 +157,23 @@ class TransactionQueryApiTest extends IntegrationTest {
     }
 
     @Test
+    void manualTransactionAcceptsMinutePrecisionOccurredAt() throws Exception {
+        // 웹의 datetime-local 입력은 초 없이 `YYYY-MM-DDTHH:mm`을 보낸다.
+        mvc.perform(post("/me/transactions").header("Authorization", member.bearer())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"occurredAt":"2026-09-05T13:30","type":"EXPENSE","categoryMajor":"식비",
+                                 "description":"분 단위 시각","amount":-6500}
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.occurredAt").value("2026-09-05T13:30:00"));
+
+        mvc.perform(get("/me/transactions").param("month", "2026-09").header("Authorization", member.bearer()))
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].occurredAt").value("2026-09-05T13:30:00"));
+    }
+
+    @Test
     void manualTransactionIsValidated() throws Exception {
         mvc.perform(post("/me/transactions").header("Authorization", member.bearer())
                         .contentType(MediaType.APPLICATION_JSON)
