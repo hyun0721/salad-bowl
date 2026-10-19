@@ -709,9 +709,10 @@ git commit -m "chore(web): scaffold React app with design tokens and web CI"
   - `apiFetch<T>(path: string, init?: RequestInit & { json?: unknown; auth?: boolean }): Promise<T>`
     - `path`는 `/me` 같은 API 경로다. 기본 `auth: true`면 `Authorization: Bearer <token>`을 붙인다.
     - `json`을 주면 `Content-Type: application/json`으로 보낸다. 204면 `undefined`를 돌려준다.
-    - 401(그리고 `auth: true`)이면 refresh를 한 번 시도하고 재요청한다. refresh가 실패하면 토큰을 지우고 `ApiError(401)`을 던진다.
+    - 401(그리고 `auth: true`)이면 refresh를 한 번 시도하고 재요청한다. refresh가 거절(401·403)되면 원래 `ApiError(401)`을 던진다. refresh가 일시적으로 실패하면(5xx, 네트워크) 그 오류를 던지고 토큰은 그대로 둔다.
   - `setAccessToken(token: string | null)`, `getAccessToken(): string | null`
-  - `refreshAccessToken(): Promise<string | null>`: 동시에 여러 번 불러도 refresh 요청은 하나만 보낸다.
+  - `refreshAccessToken(): Promise<string | null>`: 동시에 여러 번 불러도 refresh 요청은 하나만 보낸다. 거절(401·403)이면 토큰을 지우고 `null`, 일시적 실패면 `ApiError`로 reject한다(토큰 유지).
+  - `onAuthLost`는 로그인 중이던 세션이 거절될 때 refresh 한 번에 한 번만 알린다.
   - `onAuthLost(listener: () => void): () => void`: refresh가 실패해 로그아웃 상태가 됐을 때 알린다.
   - `onSlowRequests(listener: (slow: boolean) => void): () => void`: 요청 하나가 3초 넘게 걸리는 동안 true, 진행 중인 느린 요청이 모두 끝나면 false
   - `apiUrl(path: string): string`: `VITE_API_BASE_URL`(기본 `/api`) + path를 절대 URL로 바꾼다(테스트 환경의 fetch를 위해 `window.location.origin` 기준).
@@ -822,6 +823,37 @@ describe('apiFetch', () => {
     off()
   })
 
+  it('keeps the session when refresh fails transiently', async () => {
+    setAccessToken('old')
+    const lost = vi.fn()
+    const off = onAuthLost(lost)
+    server.use(
+      http.get('*/api/me', () => HttpResponse.json({ code: 'UNAUTHORIZED', message: 'x' }, { status: 401 })),
+      http.post('*/api/auth/refresh', () => new HttpResponse('bad gateway', { status: 503 })),
+    )
+
+    await expect(apiFetch('/me')).rejects.toMatchObject({ status: 503 })
+    expect(getAccessToken()).toBe('old')
+    expect(lost).not.toHaveBeenCalled()
+    off()
+  })
+
+  it('notifies auth loss once for concurrent requests', async () => {
+    setAccessToken('old')
+    const lost = vi.fn()
+    const off = onAuthLost(lost)
+    server.use(
+      http.get('*/api/me', () => HttpResponse.json({ code: 'UNAUTHORIZED', message: 'x' }, { status: 401 })),
+      http.post('*/api/auth/refresh', () =>
+        HttpResponse.json({ code: 'INVALID_TOKEN', message: 'x' }, { status: 401 })),
+    )
+
+    await Promise.allSettled([apiFetch('/me'), apiFetch('/me')])
+
+    expect(lost).toHaveBeenCalledTimes(1)
+    off()
+  })
+
   it('reports slow requests after 3 seconds', async () => {
     const states: boolean[] = []
     const off = onSlowRequests((slow) => states.push(slow))
@@ -898,19 +930,28 @@ export function apiUrl(path: string): string {
 
 type ApiInit = RequestInit & { json?: unknown; auth?: boolean }
 
-/** refresh 쿠키로 새 access 토큰을 받는다. 동시에 불려도 요청은 하나만 보낸다. */
+/**
+ * refresh 쿠키로 새 access 토큰을 받는다. 동시에 불려도 요청은 하나만 보낸다.
+ * - 서버가 거절(401·403)하면 토큰을 지우고 null을 돌려준다. 로그인 중이었다면 onAuthLost를 한 번 알린다.
+ * - 일시적인 실패(5xx, 네트워크 오류, 잘못된 응답)는 ApiError로 reject한다. 이때 토큰은 그대로 둔다.
+ */
 export function refreshAccessToken(): Promise<string | null> {
   if (!refreshing) {
     refreshing = rawFetch('/auth/refresh', { method: 'POST' })
       .then(async (res) => {
-        if (!res.ok) return null
-        const body = (await res.json()) as { accessToken: string }
+        if (res.status === 401 || res.status === 403) {
+          const hadSession = accessToken !== null
+          setAccessToken(null)
+          if (hadSession) authLostListeners.forEach((listener) => listener())
+          return null
+        }
+        if (!res.ok) throw await toError(res)
+        const body = (await res.json()) as { accessToken?: unknown }
+        if (typeof body.accessToken !== 'string') {
+          throw new ApiError(res.status, 'REQUEST_FAILED', '요청을 처리하지 못했습니다.')
+        }
+        setAccessToken(body.accessToken)
         return body.accessToken
-      })
-      .catch(() => null)
-      .then((token) => {
-        setAccessToken(token)
-        return token
       })
       .finally(() => {
         refreshing = null
@@ -930,11 +971,9 @@ export async function apiFetch<T>(path: string, init: ApiInit = {}): Promise<T> 
 
   let res = await send()
   if (res.status === 401 && auth) {
+    // 일시적인 refresh 실패는 여기서 그대로 throw된다(세션 유지).
     const token = await refreshAccessToken()
-    if (!token) {
-      authLostListeners.forEach((listener) => listener())
-      throw await toError(res)
-    }
+    if (!token) throw await toError(res)
     res = await send()
   }
   if (!res.ok) throw await toError(res)
@@ -979,7 +1018,7 @@ async function toError(res: Response): Promise<ApiError> {
 - [ ] **Step 6: 테스트 통과 확인**
 
 Run: `cd apps/web && npm test -- src/api`
-Expected: 6 tests PASS
+Expected: 8 tests PASS
 
 - [ ] **Step 7: 전체 확인 후 Commit**
 
@@ -1006,7 +1045,7 @@ git commit -m "feat(web): add API client with token refresh and slow-request sig
 - Consumes: `apiFetch`, `setAccessToken`, `refreshAccessToken`, `onAuthLost`, `ApiError`(Task 4). API: `POST /auth/signup {email,password,nickname}` → `201 {userId}`, `POST /auth/login {email,password}` → `{accessToken}`, `POST /auth/logout` → 204, `GET /me` → `{userId,email,nickname}`
 - Produces:
   - `type Me = { userId: number; email: string; nickname: string }`
-  - `AuthProvider`: 처음 마운트할 때 `refreshAccessToken()`을 호출하고, 성공하면 `GET /me`를 가져온다.
+  - `AuthProvider`: 처음 마운트할 때 refresh로 세션을 복원하고, 성공하면 `GET /me`를 가져온다. 일시적 실패는 1초 간격으로 2번 더 시도한다.
   - `useAuth(): { status: 'loading' | 'signedOut' | 'signedIn'; me: Me | null; login(email, password): Promise<void>; signup(email, password, nickname): Promise<void>; logout(): Promise<void> }`
     - `signup`은 가입한 뒤 바로 로그인한다.
   - `LoginPage`: 로그인/회원가입 탭. 성공하면 `?next=` 경로(없으면 `/`)로 이동한다.
@@ -1042,6 +1081,24 @@ describe('AuthProvider', () => {
 
     expect(screen.getByText('loading:-')).toBeInTheDocument()
     await waitFor(() => expect(screen.getByText('signedIn:나')).toBeInTheDocument())
+  })
+
+  it('retries a transient refresh failure on startup', async () => {
+    let calls = 0
+    server.use(
+      http.post('*/api/auth/refresh', () => {
+        calls++
+        return calls === 1
+          ? new HttpResponse('waking up', { status: 503 })
+          : HttpResponse.json({ accessToken: 'a1' })
+      }),
+      http.get('*/api/me', () => HttpResponse.json({ userId: 1, email: 'me@test.com', nickname: '나' })),
+    )
+
+    render(<AuthProvider><Status /></AuthProvider>)
+
+    await waitFor(() => expect(screen.getByText('signedIn:나')).toBeInTheDocument(), { timeout: 3000 })
+    expect(calls).toBe(2)
   })
 
   it('is signed out when there is no refresh cookie', async () => {
@@ -1223,6 +1280,21 @@ type AuthValue = {
 
 const AuthContext = createContext<AuthValue | null>(null)
 
+const RESTORE_RETRIES = 2
+const RESTORE_RETRY_MS = 1000
+
+/** 시작할 때 세션 복원. 서버가 깨어나는 중(일시적 실패)이면 잠깐 기다렸다 다시 시도한다. */
+async function restoreSession(): Promise<string | null> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await refreshAccessToken()
+    } catch (error) {
+      if (attempt >= RESTORE_RETRIES) throw error
+      await new Promise((resolve) => setTimeout(resolve, RESTORE_RETRY_MS))
+    }
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<Status>('loading')
   const [me, setMe] = useState<Me | null>(null)
@@ -1235,7 +1307,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let cancelled = false
-    refreshAccessToken()
+    restoreSession()
       .then((token) => (token ? authApi.me() : null))
       .then((profile) => {
         if (cancelled) return
@@ -1389,7 +1461,7 @@ export default function LoginPage() {
 - [ ] **Step 7: 테스트 통과 확인**
 
 Run: `cd apps/web && npm test -- src/auth`
-Expected: AuthProvider 2개, LoginPage 4개 PASS
+Expected: AuthProvider 3개, LoginPage 4개 PASS
 
 - [ ] **Step 8: 전체 확인 후 Commit**
 
@@ -1839,7 +1911,7 @@ export default function App() {
 - [ ] **Step 7: 테스트 통과 확인**
 
 Run: `cd apps/web && npm test`
-Expected: 모두 PASS(App 1, client 6, auth 6, AppRoutes 6)
+Expected: 모두 PASS(App 1, client 8, auth 7, AppRoutes 6)
 
 - [ ] **Step 8: 타입체크·빌드 후 Commit**
 
@@ -1850,6 +1922,17 @@ Expected: 오류 없음
 git add apps/web/src
 git commit -m "feat(web): add routes, auth guard, sidebar layout, group selector and cold-start notice"
 ```
+
+**Task 리뷰 반영 (사용자 승인):**
+- **로그인 가드**: `/login`은 `PublicOnly`로 감싼다. 세션 복원 중에는 대기 상태를 보여주고, 로그인한 사용자는 안전한 `next`(없으면 `/`)로 보낸다. 세션 복원과 로그인이 경합하는 문제를 막는다.
+- **콜드스타트 안내**: `SlowServerNotice`를 레이아웃뿐 아니라 `RequireAuth`·`PublicOnly`의 로딩 상태, 로그인 화면, 초대 화면에도 보여준다. 가장 느린 요청은 첫 세션 복원이다.
+  - 안내 영역(`role="status"`)은 항상 마운트해 두고 내용만 바꾼다(스크린리더가 읽도록).
+  - 마운트할 때 이미 느린 요청이 있으면 바로 보여준다(`isSlow()` 스냅샷).
+- **그룹 상태**: `useGroups`가 `isError`와 `retry`를 제공한다. 상단 바는 세 상태를 구분한다.
+  - 불러오는 중: "그룹 불러오는 중"
+  - 실패: "그룹을 불러오지 못했습니다" + [다시 시도]
+  - 비어 있음: "그룹 없음 · 만들기 또는 초대받기"
+- **캐시 비우기**: 로그아웃이나 세션 만료(`onAuthLost`) 때 TanStack Query 캐시를 비운다(`queryClient.clear()`). 다른 사용자의 데이터가 잠깐 보이지 않게 하기 위해서다.
 
 - [ ] **Step 9: 로컬 실행 확인 (수동)**
 

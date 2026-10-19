@@ -56,4 +56,8 @@ public final class TransactionDtos {
     public record AuditView(long actorId, String actorNickname, String field, String before, String after,
                             OffsetDateTime changedAt) {
     }
+
+    /** month는 yyyy-MM. import 거래가 있는 달만 돌려준다. */
+    public record CoverageMonth(String month, long importedCount) {
+    }
 }

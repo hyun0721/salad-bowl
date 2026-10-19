@@ -4,6 +4,7 @@ import com.saladbowl.api.common.ApiException;
 import com.saladbowl.api.common.ErrorCode;
 import com.saladbowl.api.group.GroupAccess;
 import com.saladbowl.api.transaction.TransactionDtos.AuditView;
+import com.saladbowl.api.transaction.TransactionDtos.CoverageMonth;
 import com.saladbowl.api.transaction.TransactionDtos.ManualTransactionRequest;
 import com.saladbowl.api.transaction.TransactionDtos.TransactionView;
 import com.saladbowl.api.transaction.TransactionDtos.UpdateTransactionRequest;
@@ -52,6 +53,17 @@ public class TransactionService {
     public List<TransactionView> myTransactions(long userId, YearMonth month) {
         Range range = monthRange(month);
         return views.toViews(transactions.findOwnedBetween(userId, range.from(), range.to()), owner -> true);
+    }
+
+    @Transactional(readOnly = true)
+    public List<CoverageMonth> coverage(long userId, int year) {
+        LocalDateTime from = LocalDateTime.of(year, 1, 1, 0, 0);
+        LocalDateTime to = from.plusYears(1);
+        return transactions.countImportedByMonth(userId, from, to).stream()
+                .map(row -> new CoverageMonth(
+                        YearMonth.of(year, ((Number) row[0]).intValue()).toString(),
+                        ((Number) row[1]).longValue()))
+                .toList();
     }
 
     @Transactional(readOnly = true)

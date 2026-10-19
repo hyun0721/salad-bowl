@@ -16,6 +16,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.Duration;
+
 @RestController
 @RequestMapping("/auth")
 public class AuthController {
@@ -24,10 +26,12 @@ public class AuthController {
 
     private final AuthService authService;
     private final JwtProvider jwt;
+    private final RefreshCookieProperties cookieProperties;
 
-    public AuthController(AuthService authService, JwtProvider jwt) {
+    public AuthController(AuthService authService, JwtProvider jwt, RefreshCookieProperties cookieProperties) {
         this.authService = authService;
         this.jwt = jwt;
+        this.cookieProperties = cookieProperties;
     }
 
     @PostMapping("/signup")
@@ -46,17 +50,26 @@ public class AuthController {
         return withTokens(authService.refresh(refreshToken));
     }
 
-    private ResponseEntity<TokenResponse> withTokens(IssuedTokens tokens) {
-        // FE(Cloudflare Pages)와 API(Render)가 다른 도메인이라 SameSite=None + Secure가 필요하다.
-        ResponseCookie cookie = ResponseCookie.from(REFRESH_COOKIE, tokens.refreshToken())
-                .httpOnly(true)
-                .secure(true)
-                .sameSite("None")
-                .path("/auth")
-                .maxAge(jwt.refreshTtl())
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout() {
+        return ResponseEntity.noContent()
+                .header(HttpHeaders.SET_COOKIE, refreshCookie("", Duration.ZERO).toString())
                 .build();
+    }
+
+    private ResponseEntity<TokenResponse> withTokens(IssuedTokens tokens) {
         return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                .header(HttpHeaders.SET_COOKIE, refreshCookie(tokens.refreshToken(), jwt.refreshTtl()).toString())
                 .body(new TokenResponse(tokens.accessToken()));
+    }
+
+    private ResponseCookie refreshCookie(String value, Duration maxAge) {
+        return ResponseCookie.from(REFRESH_COOKIE, value)
+                .httpOnly(true)
+                .secure(cookieProperties.secure())
+                .sameSite(cookieProperties.sameSite())
+                .path(cookieProperties.path())
+                .maxAge(maxAge)
+                .build();
     }
 }
