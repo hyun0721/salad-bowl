@@ -138,6 +138,19 @@ class TransactionQueryApiTest extends IntegrationTest {
     }
 
     @Test
+    void monthOutsideSupportedRangeIsRejected() throws Exception {
+        for (String month : new String[] {"0000-01", "+999999999-12"}) {
+            mvc.perform(get("/me/transactions").param("month", month).header("Authorization", member.bearer()))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+        }
+        mvc.perform(get("/groups/" + groupId + "/summary").param("month", "0000-01")
+                        .header("Authorization", member.bearer()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+    }
+
+    @Test
     void manualTransactionIsCreated() throws Exception {
         mvc.perform(post("/me/transactions").header("Authorization", member.bearer())
                         .contentType(MediaType.APPLICATION_JSON)
