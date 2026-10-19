@@ -44,6 +44,35 @@ describe('forward', () => {
     expect(init.body).toBeUndefined()
   })
 
+  it('does not forward the browser Origin header upstream', async () => {
+    const fetchMock = vi.fn(async (..._args: FetchCall) => new Response('{}'))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await forward(new Request('https://salad.pages.dev/api/auth/login', {
+      method: 'POST',
+      headers: { origin: 'https://salad.pages.dev', 'content-type': 'application/json' },
+      body: '{}',
+    }), 'https://api.example.com')
+
+    const headers = new Headers(fetchMock.mock.calls[0][1].headers)
+    expect(headers.has('origin')).toBe(false)
+    expect(headers.get('content-type')).toBe('application/json')
+  })
+
+  it.each([
+    ['https://salad.pages.dev/api', 'https://api.example.com/'],
+    ['https://salad.pages.dev/api/', 'https://api.example.com/'],
+    ['https://salad.pages.dev/api/x?y=1', 'https://api.example.com/x?y=1'],
+    ['https://salad.pages.dev/apix', 'https://api.example.com/apix'],
+  ])('maps %s to %s', async (from, to) => {
+    const fetchMock = vi.fn(async (..._args: FetchCall) => new Response('{}'))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await forward(new Request(from), 'https://api.example.com')
+
+    expect(fetchMock.mock.calls[0][0]).toBe(to)
+  })
+
   it('answers 502 SERVER_UNAVAILABLE when the API cannot be reached', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => { throw new TypeError('connection refused') }))
 

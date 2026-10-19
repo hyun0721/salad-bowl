@@ -104,7 +104,7 @@ export default function LoginPage() {
           <button type="submit" className={styles.submit} disabled={busy}>
             {mode === 'login' ? '로그인' : '가입하고 시작하기'}
           </button>
-          {notice && <p role="status" className={styles.notice}>{notice}</p>}
+          <p role="status" className={notice ? styles.notice : styles.noticeEmpty}>{notice}</p>
           {error && <p role="alert" className={styles.error}>{error}</p>}
         </form>
         <p className={styles.hint}>초대 링크로 들어왔다면 로그인 후 초대 화면으로 돌아갑니다.</p>

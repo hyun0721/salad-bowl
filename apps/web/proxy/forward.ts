@@ -10,6 +10,8 @@ export async function forward(request: Request, apiOrigin: string): Promise<Resp
 
   const headers = new Headers(request.headers)
   headers.delete('host')
+  // 브라우저는 같은 출처 POST에도 Origin을 보낸다. 그대로 넘기면 API 서버가 교차 출처 요청으로 보고 CORS 403을 낸다.
+  headers.delete('origin')
   const hasBody = request.method !== 'GET' && request.method !== 'HEAD'
 
   try {

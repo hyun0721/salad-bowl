@@ -15,3 +15,4 @@
 .error { margin: 0; color: var(--danger); font-size: 14px; }
 .hint { margin: 0; font-size: 13px; color: var(--ink-muted); }
 .notice { margin: 0; color: var(--brand); font-size: 14px; }
+.noticeEmpty { position: absolute; margin: 0; } /* 빈 상태에서는 flex gap을 차지하지 않는다 */

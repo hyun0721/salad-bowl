@@ -36,7 +36,7 @@ export default function InviteSection({ groupId, memberCount }: { groupId: numbe
       </div>
       {invite && link && (
         <div className={ui.row}>
-          <label className={ui.field}>
+          <label className={`${ui.field} ${styles.linkField}`}>
             <span>초대 주소</span>
             <input className={`${ui.input} ${styles.linkInput}`} readOnly value={link}
               onFocus={(e) => e.currentTarget.select()} />

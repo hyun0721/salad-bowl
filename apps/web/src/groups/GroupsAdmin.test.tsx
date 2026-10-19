@@ -39,6 +39,19 @@ describe('group admin tools', () => {
       expect(within(screen.getByRole('region', { name: /^멤버/ })).queryByText('짝꿍')).not.toBeInTheDocument())
   })
 
+  it('moves focus to cancel when the remove confirmation opens and back to the trigger on cancel', async () => {
+    server.use(
+      http.get('*/api/groups/10', () => HttpResponse.json(homeDetail)),
+      http.get('*/api/groups/10/bans', () => HttpResponse.json([])),
+    )
+    const { user } = renderPage(<GroupsPage />, { groups: [home] })
+
+    await user.click(await screen.findByRole('button', { name: '짝꿍 내보내기' }))
+    expect(screen.getByRole('button', { name: '취소' })).toHaveFocus()
+    await user.click(screen.getByRole('button', { name: '취소' }))
+    expect(screen.getByRole('button', { name: '짝꿍 내보내기' })).toHaveFocus()
+  })
+
   it('creates an invite link and copies it', async () => {
     server.use(
       http.get('*/api/groups/10', () => HttpResponse.json(homeDetail)),

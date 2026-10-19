@@ -19,7 +19,7 @@ export default function InvitePage() {
     mutationFn: () => inviteApi.accept(token),
     onSuccess: async ({ groupId }) => {
       rememberSelectedGroup(groupId)
-      await queryClient.invalidateQueries({ queryKey: ['groups'], exact: true })
+      await queryClient.invalidateQueries({ queryKey: ['groups'], exact: true, refetchType: 'all' })
       navigate('/dashboard', { replace: true })
     },
   })

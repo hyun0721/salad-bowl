@@ -129,4 +129,14 @@ describe('GroupsPage', () => {
 
     await waitFor(() => expect(left).toBe(true))
   })
+
+  it('moves focus to cancel when the leave confirmation opens and back to the trigger on cancel', async () => {
+    detailHandlers()
+    const { user } = renderPage(<GroupsPage />, { groups: [friends] })
+
+    await user.click(await screen.findByRole('button', { name: '그룹 나가기' }))
+    expect(screen.getByRole('button', { name: '취소' })).toHaveFocus()
+    await user.click(screen.getByRole('button', { name: '취소' }))
+    expect(screen.getByRole('button', { name: '그룹 나가기' })).toHaveFocus()
+  })
 })
