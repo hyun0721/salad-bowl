@@ -8,6 +8,12 @@ const MESSAGES: Record<string, string> = {
   UNAUTHORIZED: '다시 로그인해 주세요.',
   FORBIDDEN: '이 작업을 할 권한이 없습니다.',
   NOT_FOUND: '찾을 수 없습니다.',
+  INVALID_TOKEN: '다시 로그인해 주세요.',
+  CONFLICT: '다른 요청과 겹쳤습니다. 잠시 후 다시 시도해 주세요.',
+  REQUEST_FAILED: '요청을 처리하지 못했습니다.',
+  INVALID_FILE_FORMAT: '뱅크샐러드에서 내려받은 .xlsx 파일인지 확인해 주세요.',
+  FILE_TOO_LARGE: '파일은 5MB 이하만 올릴 수 있습니다.',
+  CANNOT_DELETE_IMPORTED: '엑셀로 가져온 거래는 삭제할 수 없습니다. 숨기기를 사용해 주세요.',
   INTERNAL_ERROR: '서버에서 문제가 생겼습니다. 잠시 후 다시 시도해 주세요.',
 }
 
