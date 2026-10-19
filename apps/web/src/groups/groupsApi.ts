@@ -7,4 +7,10 @@ export type GroupDetail = { groupId: number; name: string; myRole: 'ADMIN' | 'ME
 export const groupsApi = {
   list: () => apiFetch<GroupSummary[]>('/groups'),
   detail: (groupId: number) => apiFetch<GroupDetail>(`/groups/${groupId}`),
+  create: (name: string) => apiFetch<GroupSummary>('/groups', { method: 'POST', json: { name } }),
+  rename: (groupId: number, name: string) =>
+    apiFetch<GroupDetail>(`/groups/${groupId}`, { method: 'PATCH', json: { name } }),
+  setShare: (groupId: number, enabled: boolean) =>
+    apiFetch<{ shareEnabled: boolean }>(`/groups/${groupId}/share`, { method: 'PUT', json: { enabled } }),
+  leave: (groupId: number) => apiFetch<void>(`/groups/${groupId}/members/me`, { method: 'DELETE' }),
 }
