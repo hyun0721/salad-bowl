@@ -27,6 +27,11 @@ export function onSlowRequests(listener: (slow: boolean) => void): () => void {
   return () => slowListeners.delete(listener)
 }
 
+/** 지금 3초 넘게 걸리는 요청이 있는지. 늦게 마운트된 안내가 바로 보이도록 스냅샷으로 쓴다. */
+export function isSlow(): boolean {
+  return slowCount > 0
+}
+
 export function apiUrl(path: string): string {
   return new URL(BASE + path, window.location.origin).toString()
 }

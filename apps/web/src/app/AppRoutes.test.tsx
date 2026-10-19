@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { http, HttpResponse } from 'msw'
+import { delay, http, HttpResponse } from 'msw'
 import { MemoryRouter } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { setAccessToken } from '../api/client'
@@ -22,6 +22,7 @@ function renderApp(path: string) {
       </AuthProvider>
     </QueryClientProvider>,
   )
+  return client
 }
 
 function signedIn(groups: unknown[]) {
@@ -111,5 +112,88 @@ describe('AppRoutes', () => {
     renderApp('/login')
 
     expect(await screen.findByRole('heading', { name: '내 가계부' })).toBeInTheDocument()
+  })
+
+  it('shows the cold-start notice while the session is being restored', async () => {
+    server.use(
+      http.post('*/api/auth/refresh', async () => {
+        await delay(3300)
+        return HttpResponse.json({ accessToken: 'a1' })
+      }),
+      http.get('*/api/me', () => HttpResponse.json(me)),
+      http.get('*/api/groups', () => HttpResponse.json([])),
+    )
+
+    renderApp('/')
+
+    expect(await screen.findByText(/서버를 깨우는 중입니다/, {}, { timeout: 5000 })).toBeInTheDocument()
+    // 요청이 끝날 때까지 기다려 느린 요청 상태가 다른 테스트로 새지 않게 한다.
+    expect(await screen.findByRole('heading', { name: '내 가계부' }, { timeout: 5000 })).toBeInTheDocument()
+  }, 15000)
+
+  it('tells loading, failed and empty groups apart and can retry', async () => {
+    let fail = true
+    server.use(
+      http.post('*/api/auth/refresh', () => HttpResponse.json({ accessToken: 'a1' })),
+      http.get('*/api/me', () => HttpResponse.json(me)),
+      http.get('*/api/groups', async () => {
+        if (fail) return HttpResponse.json({ code: 'X', message: 'x' }, { status: 500 })
+        return HttpResponse.json([{ groupId: 10, name: '우리집', myRole: 'ADMIN', memberCount: 3 }])
+      }),
+    )
+    renderApp('/')
+    const user = userEvent.setup()
+
+    expect(await screen.findByText('그룹을 불러오지 못했습니다')).toBeInTheDocument()
+    expect(screen.queryByText(/그룹 없음/)).not.toBeInTheDocument()
+    fail = false
+    await user.click(screen.getByRole('button', { name: '다시 시도' }))
+
+    expect(await screen.findByRole('combobox', { name: '그룹' })).toHaveValue('10')
+  })
+
+  it('shows a loading label while groups are loading', async () => {
+    server.use(
+      http.post('*/api/auth/refresh', () => HttpResponse.json({ accessToken: 'a1' })),
+      http.get('*/api/me', () => HttpResponse.json(me)),
+      http.get('*/api/groups', async () => {
+        await delay(300)
+        return HttpResponse.json([])
+      }),
+    )
+
+    renderApp('/')
+
+    expect(await screen.findByText('그룹 불러오는 중')).toBeInTheDocument()
+    expect(screen.queryByText(/그룹 없음/)).not.toBeInTheDocument()
+    expect(await screen.findByRole('link', { name: /그룹 없음/ })).toBeInTheDocument()
+  })
+
+  it('clears cached data on logout so the next user never sees it', async () => {
+    signedIn([{ groupId: 10, name: 'A의 그룹', myRole: 'ADMIN', memberCount: 1 }])
+    server.use(http.post('*/api/auth/logout', () => new HttpResponse(null, { status: 204 })))
+    const client = renderApp('/')
+    const user = userEvent.setup()
+    expect(await screen.findByRole('option', { name: 'A의 그룹' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '로그아웃' }))
+    await screen.findByRole('button', { name: '로그인' })
+    expect(client.getQueryData(['groups'])).toBeUndefined()
+
+    server.use(
+      http.post('*/api/auth/login', () => HttpResponse.json({ accessToken: 'b1' })),
+      http.get('*/api/me', () => HttpResponse.json({ userId: 2, email: 'b@test.com', nickname: '비' })),
+      http.get('*/api/groups', async () => {
+        await delay(500)
+        return HttpResponse.json([{ groupId: 30, name: 'B의 그룹', myRole: 'ADMIN', memberCount: 1 }])
+      }),
+    )
+    await user.type(screen.getByLabelText('이메일'), 'b@test.com')
+    await user.type(screen.getByLabelText('비밀번호'), 'password1')
+    await user.click(screen.getByRole('button', { name: '로그인' }))
+
+    expect(await screen.findByText('그룹 불러오는 중')).toBeInTheDocument()
+    expect(screen.queryByText('A의 그룹')).not.toBeInTheDocument()
+    expect(await screen.findByRole('option', { name: 'B의 그룹' })).toBeInTheDocument()
   })
 })

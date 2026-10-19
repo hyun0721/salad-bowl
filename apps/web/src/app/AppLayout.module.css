@@ -17,3 +17,4 @@
   .logo { width: 100%; padding-bottom: var(--space-2); }
   .header, .content { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
 }
+.groupState { display: flex; align-items: center; gap: var(--space-3); color: var(--ink-muted); }

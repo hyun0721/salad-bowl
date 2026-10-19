@@ -26,6 +26,8 @@ type GroupsValue = {
   selectedGroupId: number | null
   selectGroup: (id: number) => void
   isLoading: boolean
+  isError: boolean
+  retry: () => void
 }
 
 const GroupContext = createContext<GroupsValue | null>(null)
@@ -42,9 +44,14 @@ export function GroupProvider({ children }: { children: ReactNode }) {
     writeStored(id)
   }, [])
 
+  const { refetch } = query
+  const retry = useCallback(() => {
+    void refetch()
+  }, [refetch])
+
   const value = useMemo(
-    () => ({ groups, selectedGroupId, selectGroup, isLoading: query.isLoading }),
-    [groups, selectedGroupId, selectGroup, query.isLoading],
+    () => ({ groups, selectedGroupId, selectGroup, isLoading: query.isLoading, isError: query.isError, retry }),
+    [groups, selectedGroupId, selectGroup, query.isLoading, query.isError, retry],
   )
   return <GroupContext.Provider value={value}>{children}</GroupContext.Provider>
 }

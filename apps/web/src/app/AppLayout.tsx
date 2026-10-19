@@ -14,7 +14,7 @@ const MENU = [
 
 export default function AppLayout() {
   const { me, logout } = useAuth()
-  const { groups, selectedGroupId, selectGroup } = useGroups()
+  const { groups, selectedGroupId, selectGroup, isLoading, isError, retry } = useGroups()
   const navigate = useNavigate()
 
   async function onLogout() {
@@ -35,7 +35,14 @@ export default function AppLayout() {
       </nav>
       <div className={styles.main}>
         <header className={styles.header}>
-          {groups.length > 0 ? (
+          {isLoading ? (
+            <span className={styles.groupState}>그룹 불러오는 중</span>
+          ) : isError ? (
+            <span className={styles.groupState}>
+              그룹을 불러오지 못했습니다{' '}
+              <button type="button" className={styles.logout} onClick={retry}>다시 시도</button>
+            </span>
+          ) : groups.length > 0 ? (
             <label className={styles.group}>
               <span>그룹</span>
               <select aria-label="그룹" value={selectedGroupId ?? ''}
