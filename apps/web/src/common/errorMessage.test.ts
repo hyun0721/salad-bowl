@@ -10,6 +10,12 @@ describe('errorMessage', () => {
     expect(errorMessage(new ApiError(409, 'CONFLICT', 'x'))).toBe('다른 요청과 겹쳤습니다. 잠시 후 다시 시도해 주세요.')
   })
 
+  it('maps group and invite codes', () => {
+    expect(errorMessage(new ApiError(410, 'INVITE_EXPIRED', 'x'))).toBe('초대 링크가 만료되었습니다. 관리자에게 새 링크를 요청해 주세요.')
+    expect(errorMessage(new ApiError(409, 'GROUP_FULL', 'x'))).toBe('그룹 정원(6명)이 찼습니다.')
+    expect(errorMessage(new ApiError(502, 'SERVER_UNAVAILABLE', 'x'))).toBe('서버를 사용할 수 없습니다. 잠시 후 다시 시도해 주세요.')
+  })
+
   it('prefers overrides and falls back for unknown codes', () => {
     expect(errorMessage(new ApiError(404, 'NOT_FOUND', 'x'), { NOT_FOUND: '거래를 찾을 수 없습니다.' })).toBe('거래를 찾을 수 없습니다.')
     expect(errorMessage(new ApiError(418, 'TEAPOT', 'x'))).toBe('요청을 처리하지 못했습니다.')

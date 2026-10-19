@@ -1,7 +1,7 @@
 import { http, HttpResponse, delay } from 'msw'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { server } from '../test/server'
-import { apiFetch, getAccessToken, onAuthLost, onSlowRequests, setAccessToken } from './client'
+import { apiFetch, getAccessToken, onAuthLost, onSlowRequests, refreshAccessToken, setAccessToken } from './client'
 import { ApiError } from './errors'
 
 afterEach(() => {
@@ -10,6 +10,36 @@ afterEach(() => {
 })
 
 describe('apiFetch', () => {
+  it('reports an HTML 5xx from the proxy as SERVER_UNAVAILABLE', async () => {
+    server.use(http.get('*/api/me', () =>
+      new HttpResponse('<html>502 Bad Gateway</html>', { status: 502, headers: { 'content-type': 'text/html' } })))
+
+    await expect(apiFetch('/me')).rejects.toMatchObject({ status: 502, code: 'SERVER_UNAVAILABLE' })
+  })
+
+  it('keeps the JSON error code of a 5xx from the API', async () => {
+    server.use(http.get('*/api/me', () =>
+      HttpResponse.json({ code: 'INTERNAL_ERROR', message: 'boom' }, { status: 500 })))
+
+    await expect(apiFetch('/me')).rejects.toMatchObject({ status: 500, code: 'INTERNAL_ERROR' })
+  })
+
+  it('turns a non-JSON success (SPA fallback) into an ApiError', async () => {
+    server.use(http.get('*/api/me', () =>
+      new HttpResponse('<!doctype html><html></html>', { status: 200, headers: { 'content-type': 'text/html' } })))
+
+    await expect(apiFetch('/me')).rejects.toMatchObject({ status: 200, code: 'REQUEST_FAILED' })
+  })
+
+  it('rejects a non-JSON refresh success as a transient error and keeps the token', async () => {
+    setAccessToken('old')
+    server.use(http.post('*/api/auth/refresh', () =>
+      new HttpResponse('<!doctype html>', { status: 200, headers: { 'content-type': 'text/html' } })))
+
+    await expect(refreshAccessToken()).rejects.toMatchObject({ code: 'REQUEST_FAILED' })
+    expect(getAccessToken()).toBe('old')
+  })
+
   it('sends the bearer token and parses JSON', async () => {
     setAccessToken('t1')
     server.use(http.get('*/api/me', ({ request }) =>
