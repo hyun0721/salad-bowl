@@ -57,6 +57,9 @@ public class TransactionService {
 
     @Transactional(readOnly = true)
     public List<CoverageMonth> coverage(long userId, int year) {
+        if (year < 1 || year > 9999) {
+            throw new ApiException(ErrorCode.VALIDATION_FAILED, "year must be between 1 and 9999");
+        }
         LocalDateTime from = LocalDateTime.of(year, 1, 1, 0, 0);
         LocalDateTime to = from.plusYears(1);
         return transactions.countImportedByMonth(userId, from, to).stream()
