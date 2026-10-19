@@ -87,12 +87,13 @@ describe('AppRoutes', () => {
 
   it('navigates between menu pages', async () => {
     signedIn([])
+    server.use(http.get('*/api/imports', () => HttpResponse.json([])))
     renderApp('/')
     const user = userEvent.setup()
 
     await user.click(await screen.findByRole('link', { name: '업로드' }))
 
-    expect(await screen.findByRole('heading', { level: 1, name: '업로드' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { level: 1, name: '뱅크샐러드 엑셀 업로드' })).toBeInTheDocument()
   })
 
   it('logs out and returns to login', async () => {

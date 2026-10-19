@@ -1,6 +1,7 @@
 import { Route, Routes } from 'react-router'
 import LoginPage from '../auth/LoginPage'
 import { GroupProvider } from '../groups/GroupProvider'
+import UploadPage from '../imports/UploadPage'
 import PagePlaceholder from '../pages/PagePlaceholder'
 import AppLayout from './AppLayout'
 import ClearCacheOnSignOut from './ClearCacheOnSignOut'
@@ -18,7 +19,7 @@ export default function AppRoutes() {
           <Route index element={<PagePlaceholder title="내 가계부" />} />
           <Route path="dashboard" element={<PagePlaceholder title="그룹 대시보드" />} />
           <Route path="transactions" element={<PagePlaceholder title="거래 목록" />} />
-          <Route path="upload" element={<PagePlaceholder title="업로드" />} />
+          <Route path="upload" element={<UploadPage />} />
           <Route path="groups" element={<PagePlaceholder title="그룹 관리" />} />
         </Route>
         <Route path="*" element={<PagePlaceholder title="페이지를 찾을 수 없습니다" />} />
