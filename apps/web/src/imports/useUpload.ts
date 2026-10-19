@@ -5,6 +5,7 @@ import { importsApi } from './importsApi'
 export function useUpload() {
   const client = useQueryClient()
   return useMutation({
+    mutationKey: ['upload'],
     mutationFn: importsApi.upload,
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: ['coverage'] })

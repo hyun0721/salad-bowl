@@ -1,5 +1,5 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, within } from '@testing-library/react'
+import { onlineManager, QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { delay, http, HttpResponse } from 'msw'
 import { MemoryRouter } from 'react-router'
@@ -283,5 +283,30 @@ describe('AppRoutes', () => {
       .toBeInTheDocument()
     expect(screen.getByRole('button', { name: '다시 시도' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '로그인' })).not.toBeInTheDocument()
+  })
+
+  it('moves focus to the new page heading after navigating', async () => {
+    signedIn([])
+    renderApp('/')
+    const user = userEvent.setup()
+
+    await screen.findByRole('heading', { level: 1, name: '내 가계부' })
+    await user.click(screen.getByRole('link', { name: '거래 목록' }))
+
+    const heading = await screen.findByRole('heading', { level: 1, name: '거래 목록' })
+    await waitFor(() => expect(heading).toHaveFocus())
+  })
+
+  it('shows groups as loading, not missing, while offline', async () => {
+    signedIn([])
+    onlineManager.setOnline(false)
+    try {
+      renderApp('/')
+
+      expect(await screen.findByText('그룹 불러오는 중')).toBeInTheDocument()
+      expect(screen.queryByRole('link', { name: /그룹 없음/ })).not.toBeInTheDocument()
+    } finally {
+      onlineManager.setOnline(true)
+    }
   })
 })

@@ -12,6 +12,7 @@
   --pending: #8a5420;
   --pending-tint: #fff8ef;
   --danger: #9a3523;
+  --overlay: rgb(20 24 21 / 0.45);
 
   --space-2: 8px;
   --space-3: 12px;
@@ -40,6 +41,7 @@
     --pending: #e3a560;
     --pending-tint: #3a2c1c;
     --danger: #f08c78;
+    --overlay: rgb(0 0 0 / 0.6);
   }
 }
 
@@ -56,4 +58,5 @@
   --pending: #e3a560;
   --pending-tint: #3a2c1c;
   --danger: #f08c78;
+  --overlay: rgb(0 0 0 / 0.6);
 }

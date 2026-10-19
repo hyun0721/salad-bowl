@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { useIsMutating, useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Link } from 'react-router'
 import Modal from '../common/Modal'
@@ -22,6 +22,7 @@ export default function HomePage({ today: todayProp }: Props) {
   const [year, setYear] = useState(today.getFullYear())
   const [uploadMonth, setUploadMonth] = useState<string | null>(null)
   const month = currentYearMonth(today)
+  const uploading = useIsMutating({ mutationKey: ['upload'] }) > 0
 
   const coverage = useQuery({ queryKey: ['coverage', year], queryFn: () => coverageApi.get(year) })
   const mine = useQuery({ queryKey: ['transactions', 'mine', month], queryFn: () => transactionsApi.mine(month) })
@@ -100,7 +101,7 @@ export default function HomePage({ today: todayProp }: Props) {
       </div>
 
       {uploadMonth && (
-        <Modal title={`${formatMonthLabel(uploadMonth)} 데이터 업로드`} onClose={() => setUploadMonth(null)}>
+        <Modal title={`${formatMonthLabel(uploadMonth)} 데이터 업로드`} onClose={() => setUploadMonth(null)} closeDisabled={uploading}>
           <p className={ui.status}>뱅크샐러드에서 내려받은 엑셀(.xlsx)을 올려주세요. 여러 달이 들어 있어도 거래 일자에 맞게 반영됩니다.</p>
           <UploadForm />
         </Modal>
