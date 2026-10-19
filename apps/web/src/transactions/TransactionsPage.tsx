@@ -112,18 +112,26 @@ export default function TransactionsPage({ today }: Props) {
               <button type="button" className={ui.button} onClick={() => void list.refetch()}>다시 시도</button>
             </div>
           )}
-          {list.data && items.length === 0 && <p className={ui.status}>이 달에 거래가 없습니다.</p>}
+          {list.data && items.length === 0 && (
+            <p className={ui.status}>{list.data.length > 0 ? '검색 결과가 없습니다.' : '이 달에 거래가 없습니다.'}</p>
+          )}
           {items.length > 0 && (
             <TransactionList items={items} showOwner={inGroup} selectedId={selectedId}
               onSelect={(id) => { setSelectedId(id); setAdding(false) }} />
           )}
         </section>
         {(adding || selected) && (
-          <aside aria-label="거래 상세" className={`${ui.card} ${styles.panel}`}>
+          <aside aria-label={adding ? '거래 추가' : '거래 상세'} className={`${ui.card} ${styles.panel}`}>
             {adding ? (
               <ManualTransactionForm
                 onCancel={() => setAdding(false)}
-                onDone={(created) => { setAdding(false); setScope('mine'); setSelectedId(created.id) }} />
+                onDone={(created) => {
+                  // 다른 달에 추가한 거래도 목록과 상세 패널에 보이도록 그 달로 옮긴다.
+                  setAdding(false)
+                  setScope('mine')
+                  setMonth(created.occurredAt.slice(0, 7))
+                  setSelectedId(created.id)
+                }} />
             ) : selected && (
               <TransactionPanel key={selected.id} tx={selected} onClose={() => setSelectedId(null)} />
             )}

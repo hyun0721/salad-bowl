@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { errorMessage } from '../common/errorMessage'
 import ui from '../common/ui.module.css'
 import styles from './TransactionPanel.module.css'
@@ -24,6 +24,12 @@ export default function ManualTransactionForm({ onDone, onCancel }: Props) {
   const [amount, setAmount] = useState('')
   const [payment, setPayment] = useState('')
   const [memo, setMemo] = useState('')
+  const headingRef = useRef<HTMLHeadingElement>(null)
+
+  // 폼은 목록 아래로 밀려 화면 밖에 열릴 수 있어, 열릴 때 제목으로 포커스를 옮긴다.
+  useEffect(() => {
+    headingRef.current?.focus()
+  }, [])
 
   function onSubmit(event: FormEvent) {
     event.preventDefault()
@@ -42,7 +48,7 @@ export default function ManualTransactionForm({ onDone, onCancel }: Props) {
   return (
     <form className={ui.stack} onSubmit={onSubmit}>
       <div className={styles.header}>
-        <h2>거래 추가 (수동)</h2>
+        <h2 ref={headingRef} tabIndex={-1}>거래 추가 (수동)</h2>
         <button type="button" className={ui.button} onClick={onCancel}>닫기</button>
       </div>
       <label className={ui.field}>

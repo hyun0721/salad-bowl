@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import ui from '../common/ui.module.css'
-import { formatDateTime } from '../common/format'
+import { formatInstant } from '../common/format'
 import { usePageTitle } from '../common/usePageTitle'
 import { importsApi } from './importsApi'
 import UploadForm from './UploadForm'
@@ -36,7 +36,7 @@ export default function UploadPage() {
             {history.data.map((batch) => (
               <li key={batch.batchId} className={ui.row}>
                 <strong>{batch.fileName}</strong>
-                <span className={ui.muted}>{formatDateTime(batch.importedAt)}</span>
+                <span className={ui.muted}>{formatInstant(batch.importedAt)}</span>
                 <span className={ui.muted}>신규 {batch.createdRows} · 갱신 {batch.updatedRows} · 변경 없음 {batch.unchangedRows}</span>
               </li>
             ))}

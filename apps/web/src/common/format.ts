@@ -16,6 +16,23 @@ export function formatDateTime(iso: string): string {
   return `${iso.slice(5, 10)} ${iso.slice(11, 16)}`
 }
 
+const seoulParts = new Intl.DateTimeFormat('ko-KR', {
+  timeZone: 'Asia/Seoul',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23',
+})
+
+/** 시각(오프셋 포함 ISO, 예: `...Z`, `...+09:00`) → 서울 시간 `MM-DD HH:mm`. */
+export function formatInstant(iso: string): string {
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return iso
+  const parts = Object.fromEntries(seoulParts.formatToParts(date).map((p) => [p.type, p.value]))
+  return `${parts.month}-${parts.day} ${parts.hour}:${parts.minute}`
+}
+
 /** `YYYY-MM` → `YYYY년 M월`. */
 export function formatMonthLabel(month: string): string {
   const [year, m] = month.split('-')

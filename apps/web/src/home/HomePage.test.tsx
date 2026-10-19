@@ -83,7 +83,7 @@ describe('HomePage', () => {
         ])
       }),
       http.get('*/api/imports', () => HttpResponse.json([
-        { batchId: 3, fileName: '2026-10.xlsx', totalRows: 2, createdRows: 2, updatedRows: 0, unchangedRows: 0, importedAt: '2026-10-19T09:00:00+09:00' },
+        { batchId: 3, fileName: '2026-10.xlsx', totalRows: 2, createdRows: 2, updatedRows: 0, unchangedRows: 0, importedAt: '2026-10-19T03:12:45Z' },
       ])),
     )
 
@@ -94,6 +94,7 @@ describe('HomePage', () => {
     expect(within(summary).getByText('₩ 12,000')).toBeInTheDocument()
     const recent = screen.getByRole('region', { name: '최근 업로드' })
     expect(await within(recent).findByText('2026-10.xlsx')).toBeInTheDocument()
+    expect(within(recent).getByText(/10-19 12:12/)).toBeInTheDocument()
   })
 
   it('shows an alert with its own retry button when the summary or recent uploads fail', async () => {

@@ -15,6 +15,7 @@
 .withoutOwner { grid-template-columns: 110px minmax(0, 1fr) minmax(0, 1.4fr) 110px 120px; }
 .head { font-size: 13px; color: var(--ink-muted); border-bottom: 1px solid var(--line); }
 .rowButton { width: 100%; border: 0; border-bottom: 1px solid var(--line); background: var(--surface-000); color: var(--ink); text-align: left; cursor: pointer; min-height: 48px; }
+.rowButton:focus-visible { outline-offset: -2px; }
 .rowButton:hover { background: var(--surface-100); }
 .rowButton[aria-pressed="true"] { background: var(--brand-tint); }
 .when, .amount { font-variant-numeric: tabular-nums; white-space: nowrap; }

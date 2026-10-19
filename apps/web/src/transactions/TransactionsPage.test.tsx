@@ -172,4 +172,62 @@ describe('TransactionsPage', () => {
     expect(await screen.findByText('이 달에 거래가 없습니다.')).toBeInTheDocument()
     expect(screen.queryByRole('complementary', { name: '거래 상세' })).not.toBeInTheDocument()
   })
+
+  it('moves focus to the panel heading and to the add form heading, not on re-render', async () => {
+    mineHandler([{ ...base }])
+    server.use(http.get('*/api/transactions/:id/audits', () => HttpResponse.json([])))
+    const { user } = renderPage(<TransactionsPage today={today} />, { groups })
+
+    await user.click(await screen.findByRole('button', { name: /김밥/ }))
+    const heading = screen.getByRole('heading', { name: '김밥' })
+    expect(heading).toHaveFocus()
+
+    // 다른 곳으로 포커스를 옮긴 뒤 저장 없이 다시 렌더돼도 포커스를 빼앗지 않는다.
+    await user.type(screen.getByLabelText('메모'), 'x')
+    expect(screen.getByLabelText('메모')).toHaveFocus()
+
+    await user.click(screen.getByRole('button', { name: '+ 거래 추가' }))
+    expect(screen.getByRole('heading', { name: '거래 추가 (수동)' })).toHaveFocus()
+    expect(screen.getByRole('complementary', { name: '거래 추가' })).toBeInTheDocument()
+  })
+
+  it('says there are no search results when filtering empties a non-empty month', async () => {
+    mineHandler([{ ...base }])
+    const { user } = renderPage(<TransactionsPage today={today} />, { groups })
+
+    await screen.findByText('김밥')
+    await user.type(screen.getByLabelText('검색'), '없는말')
+
+    expect(screen.getByText('검색 결과가 없습니다.')).toBeInTheDocument()
+    expect(screen.queryByText('이 달에 거래가 없습니다.')).not.toBeInTheDocument()
+  })
+
+  it('jumps to the month of a manually added transaction and opens its panel', async () => {
+    const created: TransactionView = {
+      ...base, id: 20, occurredAt: '2026-09-05T13:30:00', description: '9월 간식', source: 'MANUAL', amount: -3000,
+    }
+    let added = false
+    server.use(
+      http.get('*/api/me/transactions', ({ request }) => HttpResponse.json(
+        added && new URL(request.url).searchParams.get('month') === '2026-09' ? [created] : [])),
+      http.post('*/api/me/transactions', () => {
+        added = true
+        return HttpResponse.json(created, { status: 201 })
+      }),
+      http.get('*/api/transactions/:id/audits', () => HttpResponse.json([])),
+    )
+    const { user } = renderPage(<TransactionsPage today={today} />, { groups })
+
+    await screen.findByText('이 달에 거래가 없습니다.')
+    await user.click(screen.getByRole('button', { name: '+ 거래 추가' }))
+    fireEvent.change(screen.getByLabelText('일시'), { target: { value: '2026-09-05T13:30' } })
+    await user.type(screen.getByLabelText('대분류'), '식비')
+    await user.type(screen.getByLabelText('내용'), '9월 간식')
+    await user.type(screen.getByLabelText('금액 (원)'), '3000')
+    await user.click(screen.getByRole('button', { name: '추가' }))
+
+    const detail = await screen.findByRole('complementary', { name: '거래 상세' })
+    expect(within(detail).getByRole('heading', { name: '9월 간식' })).toBeInTheDocument()
+    expect(screen.getByLabelText('월')).toHaveValue('2026-09')
+  })
 })

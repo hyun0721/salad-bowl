@@ -1,8 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
-import { useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useAuth } from '../auth/AuthProvider'
 import { errorMessage } from '../common/errorMessage'
-import { formatDateTime, formatSignedWon } from '../common/format'
+import { formatDateTime, formatInstant, formatSignedWon } from '../common/format'
 import ui from '../common/ui.module.css'
 import styles from './TransactionPanel.module.css'
 import { transactionsApi, type AuditView, type TransactionPatch, type TransactionView } from './transactionsApi'
@@ -22,7 +22,7 @@ function auditValue(field: string, value: string | null): string {
 
 function auditLine(a: AuditView): string {
   const label = FIELD_LABELS[a.field] ?? a.field
-  return `${formatDateTime(a.changedAt)} · ${a.actorNickname} · ${label}: ${auditValue(a.field, a.before)} → ${auditValue(a.field, a.after)}`
+  return `${formatInstant(a.changedAt)} · ${a.actorNickname} · ${label}: ${auditValue(a.field, a.before)} → ${auditValue(a.field, a.after)}`
 }
 
 type Props = { tx: TransactionView; onClose: () => void }
@@ -36,6 +36,12 @@ export default function TransactionPanel({ tx, onClose }: Props) {
   const [memo, setMemo] = useState(tx.memo ?? '')
   const [hidden, setHidden] = useState(tx.hidden)
   const [confirming, setConfirming] = useState(false)
+  const headingRef = useRef<HTMLHeadingElement>(null)
+
+  // 패널은 목록 아래로 밀려 화면 밖에 열릴 수 있어, 열릴 때 제목으로 포커스를 옮긴다. 다시 렌더할 때는 옮기지 않는다.
+  useEffect(() => {
+    headingRef.current?.focus()
+  }, [])
 
   const isOwner = me?.userId === tx.ownerId
   const canDelete = isOwner && tx.source === 'MANUAL'
@@ -48,7 +54,15 @@ export default function TransactionPanel({ tx, onClose }: Props) {
     if (memo !== (tx.memo ?? '')) patch.memo = memo
     if (isOwner && hidden !== tx.hidden) patch.hidden = hidden
     if (Object.keys(patch).length === 0) return
-    update.mutate({ id: tx.id, patch })
+    update.mutate({ id: tx.id, patch }, {
+      // 비워서 저장하면 서버가 원본 값을 돌려준다. 입력칸도 그 값으로 맞춘다.
+      onSuccess: (updated) => {
+        setMajor(updated.categoryMajor)
+        setMinor(updated.categoryMinor)
+        setMemo(updated.memo ?? '')
+        setHidden(updated.hidden)
+      },
+    })
   }
 
   function onDelete() {
@@ -60,12 +74,13 @@ export default function TransactionPanel({ tx, onClose }: Props) {
   return (
     <div className={ui.stack}>
       <div className={styles.header}>
-        <h2>{tx.description}</h2>
+        <h2 ref={headingRef} tabIndex={-1}>{tx.description}</h2>
         <button type="button" className={ui.button} onClick={onClose}>닫기</button>
       </div>
       <p className={styles.amount}>{formatSignedWon(tx.amount)}</p>
       <p className={ui.muted}>
-        {formatDateTime(tx.occurredAt)} · {tx.paymentMethod} · {tx.ownerNickname} · {tx.source === 'MANUAL' ? '수동' : '엑셀'}
+        {[formatDateTime(tx.occurredAt), tx.paymentMethod, tx.ownerNickname, tx.source === 'MANUAL' ? '수동' : '엑셀']
+          .filter(Boolean).join(' · ')}
       </p>
 
       {tx.editable ? (

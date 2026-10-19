@@ -122,4 +122,37 @@ describe('TransactionPanel', () => {
     const history = screen.getByRole('region', { name: '수정 이력' })
     expect(await within(history).findByRole('listitem')).toHaveTextContent('나 · 메모: (원본) → 메모')
   })
+
+  it('shows the restored original value after clearing an override and saving', async () => {
+    auditsHandler()
+    server.use(http.patch('*/api/transactions/7', () => HttpResponse.json(mine)))
+    const { user } = renderPage(<TransactionPanel tx={{ ...mine, categoryMajor: '외식', edited: true }} onClose={vi.fn()} />)
+
+    const major = await screen.findByLabelText('대분류')
+    await user.clear(major)
+    await user.click(screen.getByRole('button', { name: '저장' }))
+
+    await screen.findByRole('status')
+    expect(screen.getByLabelText('대분류')).toHaveValue('식비')
+  })
+
+  it('shows audit times in Seoul time for UTC and offset timestamps', async () => {
+    auditsHandler([
+      { actorId: 1, actorNickname: '나', field: 'memo', before: null, after: 'a', changedAt: '2026-10-18T15:30:00Z' },
+      { actorId: 1, actorNickname: '나', field: 'memo', before: 'a', after: 'b', changedAt: '2026-10-19T10:00:00+09:00' },
+    ])
+
+    renderPage(<TransactionPanel tx={mine} onClose={vi.fn()} />)
+
+    const items = await within(await screen.findByRole('region', { name: '수정 이력' })).findAllByRole('listitem')
+    expect(items[0]).toHaveTextContent('10-19 00:30 · 나')
+    expect(items[1]).toHaveTextContent('10-19 10:00 · 나')
+  })
+
+  it('leaves out an empty payment method from the meta line', async () => {
+    auditsHandler()
+    renderPage(<TransactionPanel tx={{ ...mine, paymentMethod: '' }} onClose={vi.fn()} />)
+
+    expect(await screen.findByText('10-05 12:30 · 나 · 엑셀')).toBeInTheDocument()
+  })
 })

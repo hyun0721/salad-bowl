@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { Link } from 'react-router'
 import Modal from '../common/Modal'
 import ui from '../common/ui.module.css'
-import { currentYearMonth, formatDateTime, formatMonthLabel, formatWon } from '../common/format'
+import { currentYearMonth, formatInstant, formatMonthLabel, formatWon } from '../common/format'
 import { usePageTitle } from '../common/usePageTitle'
 import { importsApi } from '../imports/importsApi'
 import UploadForm from '../imports/UploadForm'
@@ -90,7 +90,7 @@ export default function HomePage({ today: todayProp }: Props) {
               {imports.data.slice(0, 3).map((batch) => (
                 <li key={batch.batchId} className={ui.row}>
                   <span>{batch.fileName}</span>
-                  <span className={ui.muted}>{formatDateTime(batch.importedAt)} · 신규 {batch.createdRows}</span>
+                  <span className={ui.muted}>{formatInstant(batch.importedAt)} · 신규 {batch.createdRows}</span>
                 </li>
               ))}
             </ul>
