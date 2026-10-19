@@ -1923,6 +1923,17 @@ git add apps/web/src
 git commit -m "feat(web): add routes, auth guard, sidebar layout, group selector and cold-start notice"
 ```
 
+**Task 리뷰 반영 (사용자 승인):**
+- **로그인 가드**: `/login`은 `PublicOnly`로 감싼다. 세션 복원 중에는 대기 상태를 보여주고, 로그인한 사용자는 안전한 `next`(없으면 `/`)로 보낸다. 세션 복원과 로그인이 경합하는 문제를 막는다.
+- **콜드스타트 안내**: `SlowServerNotice`를 레이아웃뿐 아니라 `RequireAuth`·`PublicOnly`의 로딩 상태, 로그인 화면, 초대 화면에도 보여준다. 가장 느린 요청은 첫 세션 복원이다.
+  - 안내 영역(`role="status"`)은 항상 마운트해 두고 내용만 바꾼다(스크린리더가 읽도록).
+  - 마운트할 때 이미 느린 요청이 있으면 바로 보여준다(`isSlow()` 스냅샷).
+- **그룹 상태**: `useGroups`가 `isError`와 `retry`를 제공한다. 상단 바는 세 상태를 구분한다.
+  - 불러오는 중: "그룹 불러오는 중"
+  - 실패: "그룹을 불러오지 못했습니다" + [다시 시도]
+  - 비어 있음: "그룹 없음 · 만들기 또는 초대받기"
+- **캐시 비우기**: 로그아웃이나 세션 만료(`onAuthLost`) 때 TanStack Query 캐시를 비운다(`queryClient.clear()`). 다른 사용자의 데이터가 잠깐 보이지 않게 하기 위해서다.
+
 - [ ] **Step 9: 로컬 실행 확인 (수동)**
 
 API와 웹앱을 함께 띄워 가입, 로그인, 새로 고침 후 세션 유지, 로그아웃을 확인한다. 로컬은 http라서 Secure 쿠키를 끈다.
