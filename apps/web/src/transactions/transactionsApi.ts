@@ -22,6 +22,28 @@ export type TransactionView = {
   editable: boolean
 }
 
+export type TransactionPatch = { categoryMajor?: string; categoryMinor?: string; memo?: string; hidden?: boolean }
+
+export type ManualTransactionInput = {
+  occurredAt: string
+  type: TransactionType
+  categoryMajor: string
+  categoryMinor?: string
+  description: string
+  amount: number
+  paymentMethod?: string
+  memo?: string
+}
+
+export type AuditView = {
+  actorId: number
+  actorNickname: string
+  field: string
+  before: string | null
+  after: string | null
+  changedAt: string
+}
+
 export const transactionsApi = {
   mine: (month: string) => apiFetch<TransactionView[]>(`/me/transactions?month=${encodeURIComponent(month)}`),
   group: (groupId: number, month: string, memberId: number | null) => {
@@ -29,4 +51,10 @@ export const transactionsApi = {
     if (memberId !== null) params.set('memberId', String(memberId))
     return apiFetch<TransactionView[]>(`/groups/${groupId}/transactions?${params}`)
   },
+  update: (id: number, patch: TransactionPatch) =>
+    apiFetch<TransactionView>(`/transactions/${id}`, { method: 'PATCH', json: patch }),
+  remove: (id: number) => apiFetch<void>(`/transactions/${id}`, { method: 'DELETE' }),
+  audits: (id: number) => apiFetch<AuditView[]>(`/transactions/${id}/audits`),
+  addManual: (input: ManualTransactionInput) =>
+    apiFetch<TransactionView>('/me/transactions', { method: 'POST', json: input }),
 }

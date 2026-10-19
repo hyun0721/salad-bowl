@@ -142,4 +142,34 @@ describe('TransactionsPage', () => {
 
     expect(await screen.findByRole('combobox', { name: '멤버' })).toBeInTheDocument()
   })
+
+  it('opens the detail panel for a row and the add form from the button', async () => {
+    mineHandler([{ ...base }])
+    server.use(http.get('*/api/transactions/:id/audits', () => HttpResponse.json([])))
+    const { user } = renderPage(<TransactionsPage today={today} />, { groups })
+
+    await user.click(await screen.findByRole('button', { name: /김밥/ }))
+    const detail = screen.getByRole('complementary', { name: '거래 상세' })
+    expect(within(detail).getByRole('heading', { name: '김밥' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '+ 거래 추가' }))
+    expect(within(detail).getByRole('heading', { name: '거래 추가 (수동)' })).toBeInTheDocument()
+  })
+
+  it('closes the panel when the selected transaction is no longer in the visible list', async () => {
+    server.use(
+      http.get('*/api/me/transactions', ({ request }) => HttpResponse.json(
+        new URL(request.url).searchParams.get('month') === '2026-10' ? [{ ...base }] : [])),
+      http.get('*/api/transactions/:id/audits', () => HttpResponse.json([])),
+    )
+    const { user } = renderPage(<TransactionsPage today={today} />, { groups })
+
+    await user.click(await screen.findByRole('button', { name: /김밥/ }))
+    expect(screen.getByRole('complementary', { name: '거래 상세' })).toBeInTheDocument()
+
+    fireEvent.change(screen.getByLabelText('월'), { target: { value: '2026-09' } })
+
+    expect(await screen.findByText('이 달에 거래가 없습니다.')).toBeInTheDocument()
+    expect(screen.queryByRole('complementary', { name: '거래 상세' })).not.toBeInTheDocument()
+  })
 })

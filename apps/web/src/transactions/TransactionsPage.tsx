@@ -5,7 +5,9 @@ import { currentYearMonth } from '../common/format'
 import { usePageTitle } from '../common/usePageTitle'
 import { useGroups } from '../groups/GroupProvider'
 import { groupsApi } from '../groups/groupsApi'
+import ManualTransactionForm from './ManualTransactionForm'
 import TransactionList from './TransactionList'
+import TransactionPanel from './TransactionPanel'
 import styles from './TransactionsPage.module.css'
 import { transactionsApi } from './transactionsApi'
 
@@ -21,6 +23,7 @@ export default function TransactionsPage({ today }: Props) {
   const [member, setMember] = useState<{ groupId: number; userId: number } | null>(null)
   const [search, setSearch] = useState('')
   const [selectedId, setSelectedId] = useState<number | null>(null)
+  const [adding, setAdding] = useState(false)
 
   const groupId = scope === 'group' ? selectedGroupId : null
   const inGroup = groupId !== null
@@ -48,6 +51,9 @@ export default function TransactionsPage({ today }: Props) {
       .some((text) => text.toLowerCase().includes(keyword)))
   }, [list.data, search])
 
+  // 선택한 거래는 현재 목록에서 찾는다. 월·멤버·그룹이 바뀌어 목록에 없으면 패널을 보이지 않는다.
+  const selected = list.data?.find((tx) => tx.id === selectedId) ?? null
+
   function changeScope(next: Scope) {
     setScope(next)
     setMember(null)
@@ -58,6 +64,8 @@ export default function TransactionsPage({ today }: Props) {
     <>
       <div className={ui.pageHeader}>
         <h1>거래 목록</h1>
+        <button type="button" className={`${ui.button} ${ui.primary}`}
+          onClick={() => { setAdding(true); setSelectedId(null) }}>+ 거래 추가</button>
       </div>
       <div className={ui.row}>
         <div role="group" aria-label="범위" className={styles.scope}>
@@ -107,9 +115,20 @@ export default function TransactionsPage({ today }: Props) {
           {list.data && items.length === 0 && <p className={ui.status}>이 달에 거래가 없습니다.</p>}
           {items.length > 0 && (
             <TransactionList items={items} showOwner={inGroup} selectedId={selectedId}
-              onSelect={setSelectedId} />
+              onSelect={(id) => { setSelectedId(id); setAdding(false) }} />
           )}
         </section>
+        {(adding || selected) && (
+          <aside aria-label="거래 상세" className={`${ui.card} ${styles.panel}`}>
+            {adding ? (
+              <ManualTransactionForm
+                onCancel={() => setAdding(false)}
+                onDone={(created) => { setAdding(false); setScope('mine'); setSelectedId(created.id) }} />
+            ) : selected && (
+              <TransactionPanel key={selected.id} tx={selected} onClose={() => setSelectedId(null)} />
+            )}
+          </aside>
+        )}
       </div>
     </>
   )

@@ -20,3 +20,4 @@
 .when, .amount { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .amount { text-align: right; }
 .visuallyHidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.panel { flex: 1 1 320px; max-width: 400px; }
