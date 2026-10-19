@@ -95,4 +95,33 @@ describe('HomePage', () => {
     const recent = screen.getByRole('region', { name: '최근 업로드' })
     expect(await within(recent).findByText('2026-10.xlsx')).toBeInTheDocument()
   })
+
+  it('shows an alert with its own retry button when the summary or recent uploads fail', async () => {
+    let fail = true
+    server.use(
+      http.get('*/api/me/coverage', () => HttpResponse.json([])),
+      http.get('*/api/me/transactions', () => fail
+        ? HttpResponse.json({ code: 'X', message: 'x' }, { status: 500 })
+        : HttpResponse.json([])),
+      http.get('*/api/imports', () => fail
+        ? HttpResponse.json({ code: 'X', message: 'x' }, { status: 500 })
+        : HttpResponse.json([])),
+    )
+    const { user } = renderPage(<HomePage today={today} />)
+
+    const summary = await screen.findByRole('region', { name: '이번 달 내 요약 (2026년 10월)' })
+    const recent = screen.getByRole('region', { name: '최근 업로드' })
+    expect(await within(summary).findByRole('alert')).toHaveTextContent('이번 달 거래를 불러오지 못했습니다.')
+    expect(await within(recent).findByRole('alert')).toHaveTextContent('업로드 이력을 불러오지 못했습니다.')
+    expect(within(recent).queryByText('아직 올린 파일이 없습니다.')).not.toBeInTheDocument()
+
+    fail = false
+    await user.click(within(recent).getByRole('button', { name: '업로드 이력 다시 시도' }))
+    expect(await within(recent).findByText('아직 올린 파일이 없습니다.')).toBeInTheDocument()
+    expect(within(summary).getByRole('alert')).toBeInTheDocument()
+
+    await user.click(within(summary).getByRole('button', { name: '요약 다시 시도' }))
+    expect(await within(summary).findByText('수입')).toBeInTheDocument()
+    expect(within(summary).queryByRole('alert')).not.toBeInTheDocument()
+  })
 })
