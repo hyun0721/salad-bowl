@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 import { errorMessage } from '../common/errorMessage'
+import { safeNext } from '../common/safeNext'
 import { useAuth } from './AuthProvider'
 import styles from './LoginPage.module.css'
 
@@ -17,8 +18,7 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
-  const next = params.get('next')
-  const target = next && next.startsWith('/') && !next.startsWith('//') ? next : '/'
+  const target = safeNext(params.get('next'))
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault()

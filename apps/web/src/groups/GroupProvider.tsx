@@ -49,9 +49,12 @@ export function GroupProvider({ children }: { children: ReactNode }) {
     void refetch()
   }, [refetch])
 
+  // isLoading은 오프라인·일시정지 상태의 첫 조회에서 false라서 데이터가 없는데도 '그룹 없음'으로
+  // 보이게 된다. 데이터가 아직 없는 동안 true인 isPending을 쓴다.
+  const isLoading = query.isPending
   const value = useMemo(
-    () => ({ groups, selectedGroupId, selectGroup, isLoading: query.isLoading, isError: query.isError, retry }),
-    [groups, selectedGroupId, selectGroup, query.isLoading, query.isError, retry],
+    () => ({ groups, selectedGroupId, selectGroup, isLoading, isError: query.isError, retry }),
+    [groups, selectedGroupId, selectGroup, isLoading, query.isError, retry],
   )
   return <GroupContext.Provider value={value}>{children}</GroupContext.Provider>
 }

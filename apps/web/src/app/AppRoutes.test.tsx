@@ -114,6 +114,28 @@ describe('AppRoutes', () => {
     expect(await screen.findByRole('heading', { name: '내 가계부' })).toBeInTheDocument()
   })
 
+  it('does not crash on a crafted next value and lands on home', async () => {
+    signedIn([])
+
+    renderApp('/login?next=%2F%5Cevil.example')
+
+    expect(await screen.findByRole('heading', { name: '내 가계부' })).toBeInTheDocument()
+  })
+
+  it('keeps the user signed in and shows an alert when logout fails', async () => {
+    signedIn([])
+    server.use(http.post('*/api/auth/logout', () =>
+      HttpResponse.json({ code: 'X', message: 'x' }, { status: 500 })))
+    renderApp('/')
+    const user = userEvent.setup()
+
+    await user.click(await screen.findByRole('button', { name: '로그아웃' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('로그아웃하지 못했습니다. 잠시 후 다시 시도해 주세요.')
+    expect(screen.getByText('나')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '로그인' })).not.toBeInTheDocument()
+  })
+
   it('shows the cold-start notice while the session is being restored', async () => {
     server.use(
       http.post('*/api/auth/refresh', async () => {

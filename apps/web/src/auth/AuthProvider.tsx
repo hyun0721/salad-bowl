@@ -71,11 +71,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [login])
 
   const logout = useCallback(async () => {
-    try {
-      await authApi.logout()
-    } finally {
-      signOutLocally()
-    }
+    // 서버 로그아웃이 성공했을 때만 로컬에서 로그아웃한다. 실패하면 HttpOnly 쿠키가 남아
+    // 새로고침 시 세션이 복원되므로, 로그인 상태를 유지한 채 호출한 쪽에 오류를 알린다.
+    await authApi.logout()
+    signOutLocally()
   }, [signOutLocally])
 
   const value = useMemo(() => ({ status, me, login, signup, logout }), [status, me, login, signup, logout])

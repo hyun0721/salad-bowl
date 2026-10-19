@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { Navigate, useSearchParams } from 'react-router'
 import { useAuth } from '../auth/AuthProvider'
+import { safeNext } from '../common/safeNext'
 import SlowServerNotice from './SlowServerNotice'
 
 // 로그인 화면용 가드. 세션 복원이 끝나기 전에는 로그인 폼을 보여주지 않는다(복원 응답이
@@ -10,9 +11,7 @@ export default function PublicOnly({ children }: { children: ReactNode }) {
   const { status } = useAuth()
   const [params] = useSearchParams()
   if (status === 'signedIn') {
-    const next = params.get('next')
-    const target = next && next.startsWith('/') && !next.startsWith('//') ? next : '/'
-    return <Navigate to={target} replace />
+    return <Navigate to={safeNext(params.get('next'))} replace />
   }
   return (
     <>

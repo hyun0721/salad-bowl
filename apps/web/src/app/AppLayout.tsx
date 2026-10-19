@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { NavLink, Outlet, Link, useNavigate } from 'react-router'
 import { useAuth } from '../auth/AuthProvider'
 import { useGroups } from '../groups/GroupProvider'
@@ -17,9 +18,16 @@ export default function AppLayout() {
   const { groups, selectedGroupId, selectGroup, isLoading, isError, retry } = useGroups()
   const navigate = useNavigate()
 
+  const [logoutError, setLogoutError] = useState(false)
+
   async function onLogout() {
-    await logout()
-    navigate('/login', { replace: true })
+    setLogoutError(false)
+    try {
+      await logout()
+      navigate('/login', { replace: true })
+    } catch {
+      setLogoutError(true)
+    }
   }
 
   return (
@@ -58,6 +66,9 @@ export default function AppLayout() {
             <button type="button" className={styles.logout} onClick={onLogout}>로그아웃</button>
           </div>
         </header>
+        {logoutError && (
+          <p role="alert" className={styles.logoutError}>로그아웃하지 못했습니다. 잠시 후 다시 시도해 주세요.</p>
+        )}
         <SlowServerNotice />
         <main className={styles.content}>
           <Outlet />
