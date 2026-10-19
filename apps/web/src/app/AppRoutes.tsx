@@ -5,6 +5,7 @@ import { GroupProvider } from '../groups/GroupProvider'
 import GroupsPage from '../groups/GroupsPage'
 import HomePage from '../home/HomePage'
 import UploadPage from '../imports/UploadPage'
+import InvitePage from '../invite/InvitePage'
 import PagePlaceholder from '../pages/PagePlaceholder'
 import TransactionsPage from '../transactions/TransactionsPage'
 import AppLayout from './AppLayout'
@@ -18,7 +19,7 @@ export default function AppRoutes() {
       <ClearCacheOnSignOut />
       <Routes>
         <Route path="/login" element={<PublicOnly><LoginPage /></PublicOnly>} />
-        <Route path="/invite/:token" element={<RequireAuth><PagePlaceholder title="그룹 초대" /></RequireAuth>} />
+        <Route path="/invite/:token" element={<RequireAuth><InvitePage /></RequireAuth>} />
         <Route element={<RequireAuth><GroupProvider><AppLayout /></GroupProvider></RequireAuth>}>
           <Route index element={<HomePage />} />
           <Route path="dashboard" element={<DashboardPage />} />

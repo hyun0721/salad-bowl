@@ -13,7 +13,9 @@ function readStored(): number | null {
   }
 }
 
-function writeStored(id: number) {
+/** 다음에 고를 그룹을 기억한다. 초대 수락처럼 GroupProvider 밖에서 그룹을 정할 때도 쓴다. */
+// oxlint-disable-next-line react/only-export-components
+export function rememberSelectedGroup(id: number) {
   try {
     window.localStorage.setItem(STORAGE_KEY, String(id))
   } catch {
@@ -41,7 +43,7 @@ export function GroupProvider({ children }: { children: ReactNode }) {
 
   const selectGroup = useCallback((id: number) => {
     setChosen(id)
-    writeStored(id)
+    rememberSelectedGroup(id)
   }, [])
 
   const { refetch } = query
