@@ -16,7 +16,7 @@ export default function UploadPage() {
         <h2 id="upload-title">파일 올리기</h2>
         <ol className={ui.stack}>
           <li>뱅크샐러드 앱에서 기간을 3개월 이하로 골라 가계부 엑셀을 내려받습니다.</li>
-          <li>파일을 그대로 올립니다. 여러 달이 들어 있어도 됩니다.</li>
+          <li>파일을 그대로 올립니다. 3개월 안이라면 여러 달이 들어 있어도 됩니다.</li>
           <li>이미 있는 거래는 건너뛰고, 내가 고친 카테고리·메모는 유지됩니다.</li>
         </ol>
         <UploadForm />

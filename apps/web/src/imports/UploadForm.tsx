@@ -44,7 +44,7 @@ export default function UploadForm({ onDone }: Props) {
         onDrop={onDrop}
       >
         <span className={styles.dropTitle}>파일을 끌어다 놓거나 눌러서 선택</span>
-        <span className={ui.muted}>.xlsx · 한 번에 최대 3개월치(512KB) · 원본 파일과 개인정보 시트는 저장하지 않습니다</span>
+        <span className={ui.muted}>.xlsx · 한 번에 최대 3개월치 · 512KB 이하 · 원본 파일과 개인정보 시트는 저장하지 않습니다</span>
         <input type="file" accept=".xlsx" className={styles.input}
           onChange={(e) => choose(e.target.files?.[0])} />
         {file && <span className={styles.fileName}>{file.name}</span>}

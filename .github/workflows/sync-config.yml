@@ -23,6 +23,7 @@ concurrency:
 
 jobs:
   sync:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment: production
@@ -47,6 +48,10 @@ jobs:
           done
           if [ "${#JWT_SECRET}" -lt 32 ]; then echo "::error::JWT_SECRET must be at least 32 characters"; missing=1; fi
           case "$API_ORIGIN" in https://*) ;; *) echo "::error::API_ORIGIN must start with https://"; missing=1 ;; esac
+          case "$DB_URL" in
+            jdbc:postgresql://*sslmode=require*) ;;
+            *) echo "::error::DB_URL must be jdbc:postgresql://…?sslmode=require"; missing=1 ;;
+          esac
           exit $missing
 
       - name: Render environment variables

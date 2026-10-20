@@ -1,8 +1,12 @@
 # 배포 절차서
 
+## 0. 배포 설정 머지
+
+이 배포 설정이 들어간 PR을 CI 통과 후 `main`에 머지한다. Render Blueprint는 `main`의 `render.yaml`을, Pages 프로덕션 브랜치는 `main`의 `_routes.json`·`_headers`를 사용한다. `sync-config`의 Run workflow 버튼과 `keepalive` 예약 실행은 기본 브랜치의 워크플로를 사용하므로 기본 브랜치도 `main`인지 확인한다.
+
 ## 1. 구성과 무료 티어 조건
 
-브라우저 → Cloudflare Pages(정적 파일 + `/api` Function) → Render(Spring Boot) → Supabase Postgres(세션 풀러) 순서로 요청을 처리한다. 다음은 Plan 05에서 2026-10에 확인한 조건을 기준으로 작성한다. 무료 티어 조건은 바뀔 수 있으므로 서비스를 만들 때 다시 확인한다.
+브라우저 → Cloudflare Pages(정적 파일 + `/api` Function) → Render(Spring Boot) → Supabase Postgres(세션 풀러) 순서로 요청을 처리한다. 다음은 2026-10에 확인한 조건을 기준으로 작성한다. 무료 티어 조건은 바뀔 수 있으므로 서비스를 만들 때 다시 확인한다.
 
 | 서비스 | 무료 티어 기준 |
 |---|---|
@@ -10,7 +14,7 @@
 | Supabase | DB 500MB를 제공하며 7일 비활성 시 일시정지한다. 직접 연결은 IPv6 전용이므로 IPv4 연결에는 세션 풀러를 사용한다. |
 | Cloudflare Pages | Functions는 하루 10만 요청으로 제한하며 정적 요청은 무제한으로 제공한다. |
 
-`keepalive`는 10분마다 Pages를 통해 API health를 요청한다. 서비스 1개를 계속 켜 두면 31일 기준 약 744시간을 사용한다. 무료 서비스를 하나 더 상시 가동하면 월 750시간으로는 부족하므로 함께 계산한다. GitHub 예약 실행은 늦어질 수 있으므로 sleep을 완전히 막는다고 가정하지 않는다. CPU 0.1에서 기동은 약 3~4분이며, Task 4에서 약 3분 40초로 측정했다는 기록을 기준으로 대기한다.
+`keepalive`는 10분마다 Pages를 통해 API health를 요청한다. 서비스 1개를 계속 켜 두면 31일 기준 약 744시간을 사용한다. 무료 서비스를 하나 더 상시 가동하면 월 750시간으로는 부족하므로 함께 계산한다. GitHub 예약 실행은 늦어질 수 있으므로 sleep을 완전히 막는다고 가정하지 않는다. CPU 0.1에서 기동은 약 3~4분이며, 2026-10 측정에서는 약 3분 40초가 걸렸으므로 이를 기준으로 대기한다.
 
 운영 메모리는 `apps/api/Dockerfile`의 `JAVA_TOOL_OPTIONS=-XX:MaxRAMPercentage=50 -XX:+UseSerialGC -XX:TieredStopAtLevel=1 -Xss512k`와 `MALLOC_ARENA_MAX=2`로 제한한다. 512MiB 컨테이너의 힙은 약 256MiB로 사용하며 나머지는 네이티브 메모리 등에 배정한다. `application-prod.yml`은 Tomcat 스레드 최대 20개·최소 대기 2개, Hikari 최대 연결 5개로 설정한다. import는 서버 전체에서 동시에 1건만 처리한다.
 
@@ -51,7 +55,7 @@
 | Build output directory | `dist` |
 | Build watch paths → Include | `apps/web/*` |
 
-3. 첫 배포를 실행하고 주소 `https://<project>.pages.dev`, 프로젝트 이름, 계정 ID를 확인한다. 계정 ID는 대시보드 오른쪽 또는 URL에서 확인한다.
+3. 첫 배포는 `API_ORIGIN`·`NODE_VERSION`이 아직 없는 상태에서 실행한다. 빌드는 `apps/web/.nvmrc`의 Node 22를 사용하며, `sync-config` 실행과 배포 Retry 전까지 `/api`는 503 `SERVER_UNAVAILABLE`을 반환한다. 배포 후 주소 `https://<project>.pages.dev`, 프로젝트 이름, 계정 ID를 확인한다. 계정 ID는 대시보드 오른쪽 또는 URL에서 확인한다.
 4. My Profile → API Tokens에서 토큰을 만든다. 권한은 **Account · Cloudflare Pages · Edit**로 지정하고 이 계정만 대상으로 제한한다.
 
 `VITE_API_BASE_URL`은 설정하지 않는다. 웹은 기본값 `/api`를 사용한다. `apps/web/functions/api/[[path]].ts`는 `API_ORIGIN`을 읽고 `/api` 접두어를 제거해 Render로 전달한다. `apps/web/public/_routes.json`은 `/api`와 `/api/*`에만 Function을 적용해 정적 요청이 Functions 한도를 사용하지 않도록 한다.
@@ -75,11 +79,11 @@
 | Variable | `CLOUDFLARE_PAGES_PROJECT` | `<Pages 프로젝트 이름>` |
 | Variable | `API_ORIGIN` | `https://<render-host>` |
 
-혼자 사용하는 저장소라면 Environment `production`에 Required reviewers 등의 보호 규칙을 생략할 수 있다. 보호 규칙을 두면 `sync-config` 실행마다 승인을 진행한다.
+Environment `production` → **Deployment branches and tags**를 **Selected branches: `main`**으로 제한하는 것을 필수로 설정한다. Required reviewers는 두지 않아도 되지만 배포 브랜치는 반드시 `main`으로 제한한다. 쓰기 권한이 있으면 다른 브랜치에서 워크플로를 고쳐 비밀값을 읽을 수 있고, `RENDER_API_KEY`는 Render 계정 전체 권한을 가지므로 이 제한이 필요하다. `sync-config` job도 `main`에서만 실행되도록 두 번째로 확인한다.
 
 Settings → Secrets and variables → Actions → **Variables(저장소)**에 `API_HEALTH_URL`을 `https://<project>.pages.dev/api/actuator/health`로 등록한다. 예약 실행이 Environment 승인에 막히지 않도록 저장소 변수로 관리한다.
 
-1. Actions → `sync-config` → Run workflow에서 `dry_run=true`로 실행해 필수 값 존재 여부, JWT 길이, `API_ORIGIN`의 HTTPS 형식을 확인한다. 이 실행은 플랫폼 API 연결 성공까지 검증하지 않는다.
+1. Actions → `sync-config` → Run workflow에서 브랜치 `main`을 선택하고 `dry_run=true`로 실행해 필수 값 존재 여부, `DB_URL`의 `jdbc:postgresql://` 시작 및 `sslmode=require` 포함 여부, JWT 길이, `API_ORIGIN`의 HTTPS 형식을 확인한다. 이 실행은 플랫폼 API 연결 성공까지 검증하지 않는다.
 2. `dry_run=false`, `deploy=true`(기본값)로 다시 실행한다. Render에 DB·JWT 값 4개를 키별로 반영하고 재배포를 요청한다. Pages의 production과 preview 모두에 `API_ORIGIN`, `NODE_VERSION=22`를 반영한다.
 3. Pages의 최신 배포를 Retry해 새 환경변수를 적용한다.
 4. `https://<render-host>/actuator/health`의 본문이 `{"status":"UP"}`인지 확인한다. 첫 기동에는 약 3~4분을 기다린다.
@@ -103,7 +107,28 @@ scripts/smoke.sh 'https://<project>.pages.dev'
 cd apps/api && ./gradlew largeWorkbook -Pout=/tmp/salad-large.xlsx
 ```
 
-생성한 파일이 512KB 미만·3개월치인지 확인하고 사용자가 운영 화면에서 테스트 계정으로 업로드한다. 결과의 신규 건수가 표시되는지, Render Metrics의 메모리가 512MB 아래인지, Logs에 OOM이 없는지 확인한다. Task 4에서는 한도 근처 import가 81초·최대 392MiB로 기록되었으므로 완료까지 충분히 기다린다. 확인 뒤 가짜 데이터는 테스트 계정째 정리한다. 현재 앱에는 계정 삭제 기능이 없으므로 운영자가 DB의 참조 관계를 확인해 정리 절차를 준비한 뒤 테스트를 진행한다. 실제 뱅크샐러드 파일이나 개인 데이터는 테스트에 사용하지 않는다.
+확인용 계정을 따로 만들고, 생성한 파일이 512KB 미만·3개월치인지 확인한 뒤 사용자가 운영 화면에서 업로드한다. 결과의 신규 건수가 표시되는지, Render 대시보드 Metrics의 메모리가 512MB 아래인지, Logs에 OOM이 없는지 확인한다. 확인하는 동안 **Events·Logs에서 health check 실패나 재시작이 있는지도 확인한다**. 2026-10 측정: 한도 근처 import 81초·최대 392MiB. 완료까지 충분히 기다린다.
+
+화면에 “서버를 사용할 수 없습니다”가 표시되어도 업로드 이력에 들어갔는지 먼저 확인한다. 같은 파일을 다시 올려도 거래가 중복으로 들어가지 않는다. 재시작이 보이면 업로드 한도를 **256KB**로 낮추고 `apps/api`에서 `./gradlew memoryTest`를 다시 실행해 확인해야 한다. 이때 `apps/api/src/main/resources/application.yml`의 업로드 한도, 웹 `apps/web/src/imports/importsApi.ts`의 `MAX_UPLOAD_BYTES`, `apps/api/src/test/java/com/saladbowl/api/importer/BanksaladParserMemoryTest.java`의 검증 범위를 함께 바꾼다. 실제 3개월치 파일은 약 65KB이므로 이 한도 근처 검증은 일상 사용과는 다르다. 실제 뱅크샐러드 파일이나 개인 데이터는 테스트에 사용하지 않는다.
+
+### 확인용 데이터 정리
+
+확인용 계정과 그룹은 실제 사용 계정·그룹과 분리한다. 브라우저 확인까지 마친 뒤 Supabase SQL Editor에서 다음 순서로 정리한다.
+
+1. `<확인용 이메일>`을 확인용 계정의 이메일로 바꿔 ID를 조회한다.
+
+   ```sql
+   select id from users where email = '<확인용 이메일>';
+   ```
+
+2. 아래 `<id>`를 조회한 숫자 ID로 바꿔 그룹을 먼저 삭제하고 회원을 삭제한다. 확인용 계정이 여러 개면 **모든 확인용 계정의 그룹 삭제를 먼저 끝낸 뒤** 각 회원을 삭제한다.
+
+   ```sql
+   delete from user_groups where created_by = <id>;
+   delete from users where id = <id>;
+   ```
+
+그룹 초대·멤버·차단은 그룹에서, 거래·업로드 기록은 회원에서 연쇄 삭제된다. 거래 변경 이력도 연쇄 삭제된다. 스키마상 `group_invites.created_by`와 `group_bans.banned_by`는 회원 삭제에 연쇄 삭제되지 않으므로, 해당 계정이 다른 확인용 계정의 그룹에서 만든 참조도 그룹 삭제로 먼저 정리한다.
 
 ### 브라우저 확인
 
