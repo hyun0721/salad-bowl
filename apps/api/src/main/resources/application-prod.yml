@@ -1,0 +1,26 @@
+# Render 운영 프로필(SPRING_PROFILES_ACTIVE=prod). 비밀값에는 기본값을 두지 않는다 — 빠지면 기동이 실패한다.
+server:
+  port: ${PORT:8080}
+
+spring:
+  datasource:
+    # Supabase 세션 풀러(IPv4). 예: jdbc:postgresql://<pooler-host>:5432/postgres?sslmode=require
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    hikari:
+      maximum-pool-size: 5
+      minimum-idle: 1
+      connection-timeout: 10000
+
+app:
+  jwt:
+    secret: ${JWT_SECRET}
+  auth:
+    refresh-cookie:
+      path: /api/auth
+      same-site: Lax
+      secure: true
+  cors:
+    # 브라우저는 Pages(같은 출처)만 부르고 프록시가 Origin을 지우므로 CORS 허용 출처가 필요 없다.
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:}
