@@ -7,6 +7,13 @@ on:
   pull_request:
     paths: ["apps/api/**", ".github/workflows/api-ci.yml"]
 
+permissions:
+  contents: read
+
+concurrency:
+  group: api-ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -20,4 +27,4 @@ jobs:
           distribution: temurin
           java-version: "21"
       - uses: gradle/actions/setup-gradle@v4
-      - run: chmod +x gradlew && ./gradlew test
+      - run: chmod +x gradlew && ./gradlew test memoryTest
