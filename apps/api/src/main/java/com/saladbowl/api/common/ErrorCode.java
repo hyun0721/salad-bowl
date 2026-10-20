@@ -23,6 +23,7 @@ public enum ErrorCode {
     FILE_TOO_LARGE(HttpStatus.PAYLOAD_TOO_LARGE),
     CANNOT_DELETE_IMPORTED(HttpStatus.CONFLICT),
     IMPORT_PERIOD_TOO_LONG(HttpStatus.BAD_REQUEST),
+    IMPORT_BUSY(HttpStatus.SERVICE_UNAVAILABLE),
     CONFLICT(HttpStatus.CONFLICT),
     /** 개별 코드가 없는 4xx용. enum의 status는 대표값이고, 실제 응답 status는 원래 예외의 것을 쓴다. */
     REQUEST_FAILED(HttpStatus.BAD_REQUEST),

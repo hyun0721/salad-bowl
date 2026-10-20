@@ -21,7 +21,11 @@ import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -210,6 +214,58 @@ class ImportServiceTest extends IntegrationTest {
         service.importFile(ownerId, "probe.xlsx", new ByteArrayInputStream(bytes));
 
         assertThat(transactionDuringParse).isFalse();
+    }
+
+    @Test
+    void onlyOneImportRunsAtATimeAndTheWaiterGetsImportBusy() throws Exception {
+        CountDownLatch insideParse = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+        BanksaladParser blocking = new BanksaladParser() {
+            @Override
+            public List<ParsedRow> parse(InputStream in) {
+                insideParse.countDown();
+                try {
+                    release.await(10, TimeUnit.SECONDS);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+                return super.parse(in);
+            }
+        };
+        ImportService service = new ImportService(blocking, mergeService, batches, transactionManager,
+                Duration.ofMillis(100));
+        byte[] bytes = september().toBytes();
+
+        CompletableFuture<ImportResult> first = CompletableFuture.supplyAsync(
+                () -> service.importFile(ownerId, "a.xlsx", new ByteArrayInputStream(bytes)));
+        assertThat(insideParse.await(10, TimeUnit.SECONDS)).isTrue();
+
+        assertThatThrownBy(() -> service.importFile(ownerId, "b.xlsx", new ByteArrayInputStream(bytes)))
+                .isInstanceOf(ApiException.class)
+                .satisfies(e -> assertThat(((ApiException) e).code()).isEqualTo(ErrorCode.IMPORT_BUSY));
+
+        release.countDown();
+        assertThat(first.get(10, TimeUnit.SECONDS).createdRows()).isEqualTo(3);
+    }
+
+    @Test
+    void theSlotIsReleasedAfterAFailingImport() {
+        ImportService service = new ImportService(new BanksaladParser(), mergeService, batches, transactionManager,
+                Duration.ofMillis(100));
+        byte[] tooLong = BanksaladWorkbook.create()
+                .row("2026-07-01", "09:00:00", "지출", "식비", "카페", "첫날", -1000, "테스트카드", null)
+                .row("2026-10-02", "09:00:00", "지출", "식비", "카페", "93일째", -1000, "테스트카드", null)
+                .toBytes();
+
+        assertThatThrownBy(() -> service.importFile(ownerId, "too-long.xlsx", new ByteArrayInputStream(tooLong)))
+                .satisfies(e -> assertThat(((ApiException) e).code()).isEqualTo(ErrorCode.IMPORT_PERIOD_TOO_LONG));
+        assertThatThrownBy(() -> service.importFile(ownerId, "garbage.xlsx",
+                new ByteArrayInputStream("garbage".getBytes(StandardCharsets.UTF_8))))
+                .isInstanceOf(ApiException.class);
+
+        ImportResult result = service.importFile(ownerId, "ok.xlsx", new ByteArrayInputStream(september().toBytes()));
+
+        assertThat(result.createdRows()).isEqualTo(3);
     }
 
     /** 위 테스트는 서비스를 직접 만들어 프록시를 거치지 않는다. 메서드에 @Transactional이 다시 붙으면 여기서 잡는다. */

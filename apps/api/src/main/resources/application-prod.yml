@@ -1,6 +1,11 @@
 # Render 운영 프로필(SPRING_PROFILES_ACTIVE=prod). 비밀값에는 기본값을 두지 않는다 — 빠지면 기동이 실패한다.
 server:
   port: ${PORT:8080}
+  tomcat:
+    # 작은 인스턴스(512MB)에 사용자도 적다. 스레드를 줄여 스택·네이티브 메모리를 아낀다.
+    threads:
+      max: 20
+      min-spare: 2
 
 spring:
   datasource:

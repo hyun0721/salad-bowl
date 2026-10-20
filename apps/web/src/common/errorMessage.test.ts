@@ -6,6 +6,7 @@ describe('errorMessage', () => {
   it('maps upload and transaction codes', () => {
     expect(errorMessage(new ApiError(413, 'FILE_TOO_LARGE', 'x'))).toBe('파일은 512KB 이하만 올릴 수 있습니다. 한 번에 최대 3개월치까지 올릴 수 있습니다.')
     expect(errorMessage(new ApiError(400, 'IMPORT_PERIOD_TOO_LONG', 'x'))).toBe('한 번에 최대 3개월치까지 올릴 수 있습니다. 뱅크샐러드에서 기간을 3개월 이하로 나눠 내려받아 주세요.')
+    expect(errorMessage(new ApiError(503, 'IMPORT_BUSY', 'x'))).toBe('다른 업로드를 처리하고 있습니다. 잠시 후 다시 시도해 주세요.')
     expect(errorMessage(new ApiError(400, 'INVALID_FILE_FORMAT', 'x'))).toBe('뱅크샐러드에서 내려받은 .xlsx 파일인지 확인해 주세요.')
     expect(errorMessage(new ApiError(409, 'CANNOT_DELETE_IMPORTED', 'x'))).toBe('엑셀로 가져온 거래는 삭제할 수 없습니다. 숨기기를 사용해 주세요.')
     expect(errorMessage(new ApiError(409, 'CONFLICT', 'x'))).toBe('다른 요청과 겹쳤습니다. 잠시 후 다시 시도해 주세요.')
