@@ -49,9 +49,9 @@ expect_static index / 'text/html'
 expect_static manifest /manifest.webmanifest 'application/manifest\+json|application/json'
 expect_static sw /sw.js 'application/javascript|text/javascript'
 expect_static registersw /registerSW.js 'application/javascript|text/javascript'
-grep -q '"Salad Bowl"' "$tmp/manifest.body" && pass "manifest name" || fail "manifest name"
-workbox=$(grep -Eo 'workbox-[A-Za-z0-9_-]+\.js' "$tmp/sw.body" | head -1)
-if [ -n "$workbox" ]; then expect_static workbox "/$workbox" 'application/javascript|text/javascript'; else fail "workbox file" "not referenced in sw.js"; fi
+grep -q '"Salad Bowl"' "$tmp/manifest.body" 2>/dev/null && pass "manifest name" || fail "manifest name"
+workbox=$(grep -Eo 'workbox-[A-Za-z0-9_-]+' "$tmp/sw.body" | head -1)
+if [ -n "$workbox" ]; then expect_static workbox "/$workbox.js" 'application/javascript|text/javascript'; else fail "workbox file" "not referenced in sw.js"; fi
 
 # 2) 헤더: 보안 헤더, 서비스 워커 파일은 캐시하지 않음
 header index x-content-type-options | grep -qi nosniff && pass "x-content-type-options" || fail "x-content-type-options"
