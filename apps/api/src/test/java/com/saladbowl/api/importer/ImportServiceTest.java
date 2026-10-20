@@ -23,8 +23,10 @@ import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -225,9 +227,12 @@ class ImportServiceTest extends IntegrationTest {
             public List<ParsedRow> parse(InputStream in) {
                 insideParse.countDown();
                 try {
-                    release.await(10, TimeUnit.SECONDS);
+                    if (!release.await(10, TimeUnit.SECONDS)) {
+                        throw new IllegalStateException("probe was not released in time");
+                    }
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
+                    throw new IllegalStateException("probe interrupted", e);
                 }
                 return super.parse(in);
             }
@@ -236,16 +241,24 @@ class ImportServiceTest extends IntegrationTest {
                 Duration.ofMillis(100));
         byte[] bytes = september().toBytes();
 
-        CompletableFuture<ImportResult> first = CompletableFuture.supplyAsync(
-                () -> service.importFile(ownerId, "a.xlsx", new ByteArrayInputStream(bytes)));
-        assertThat(insideParse.await(10, TimeUnit.SECONDS)).isTrue();
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        try {
+            Future<ImportResult> first = executor.submit(
+                    () -> service.importFile(ownerId, "a.xlsx", new ByteArrayInputStream(bytes)));
+            assertThat(insideParse.await(10, TimeUnit.SECONDS)).isTrue();
 
-        assertThatThrownBy(() -> service.importFile(ownerId, "b.xlsx", new ByteArrayInputStream(bytes)))
-                .isInstanceOf(ApiException.class)
-                .satisfies(e -> assertThat(((ApiException) e).code()).isEqualTo(ErrorCode.IMPORT_BUSY));
+            assertThatThrownBy(() -> service.importFile(ownerId, "b.xlsx", new ByteArrayInputStream(bytes)))
+                    .isInstanceOf(ApiException.class)
+                    .satisfies(e -> assertThat(((ApiException) e).code()).isEqualTo(ErrorCode.IMPORT_BUSY));
 
-        release.countDown();
-        assertThat(first.get(10, TimeUnit.SECONDS).createdRows()).isEqualTo(3);
+            release.countDown();
+            assertThat(first.get(10, TimeUnit.SECONDS).createdRows()).isEqualTo(3);
+        } finally {
+            // 어떤 단언이 실패해도 백그라운드 import가 다음 테스트의 DB 정리와 겹치지 않게 끝낸다.
+            release.countDown();
+            executor.shutdownNow();
+            assertThat(executor.awaitTermination(10, TimeUnit.SECONDS)).isTrue();
+        }
     }
 
     @Test
