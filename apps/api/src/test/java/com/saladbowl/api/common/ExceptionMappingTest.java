@@ -52,7 +52,7 @@ class ExceptionMappingTest extends IntegrationTest {
 
         @GetMapping("/test-errors/too-large")
         String tooLarge() {
-            throw new MaxUploadSizeExceededException(5L * 1024 * 1024);
+            throw new MaxUploadSizeExceededException(512L * 1024);
         }
 
         @GetMapping("/test-errors/boom")
@@ -111,6 +111,7 @@ class ExceptionMappingTest extends IntegrationTest {
     void uploadOverLimitReturns413() throws Exception {
         mvc.perform(get("/test-errors/too-large").with(user("tester")))
                 .andExpect(status().isPayloadTooLarge())
-                .andExpect(jsonPath("$.code").value("FILE_TOO_LARGE"));
+                .andExpect(jsonPath("$.code").value("FILE_TOO_LARGE"))
+                .andExpect(jsonPath("$.message").value("file must be 512KB or smaller"));
     }
 }

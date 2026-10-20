@@ -13,8 +13,9 @@ spring:
     enabled: true
   servlet:
     multipart:
-      max-file-size: 5MB
-      max-request-size: 6MB
+      # 한 번에 최대 3개월치(실제 약 65KB). XSSF 파싱 메모리(약 170MB/MB)를 512MB 인스턴스 안에 묶는다.
+      max-file-size: 512KB
+      max-request-size: 1MB
 
 app:
   jwt:

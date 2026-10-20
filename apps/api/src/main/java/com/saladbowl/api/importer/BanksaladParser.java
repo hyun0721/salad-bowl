@@ -62,7 +62,7 @@ public class BanksaladParser {
             }
             return rows;
         } catch (IOException e) {
-            throw invalid("cannot read file");
+            throw invalid("cannot read file", e);
         }
     }
 
@@ -70,7 +70,7 @@ public class BanksaladParser {
         try {
             return WorkbookFactory.create(in);
         } catch (IOException | RuntimeException e) {
-            throw invalid("not a valid .xlsx file");
+            throw invalid("not a valid .xlsx file", e);
         }
     }
 
@@ -203,5 +203,9 @@ public class BanksaladParser {
 
     private static ApiException invalid(String message) {
         return new ApiException(ErrorCode.INVALID_FILE_FORMAT, message);
+    }
+
+    private static ApiException invalid(String message, Throwable cause) {
+        return new ApiException(ErrorCode.INVALID_FILE_FORMAT, message, cause);
     }
 }

@@ -1,6 +1,7 @@
 package com.saladbowl.api.importer;
 
 import com.saladbowl.api.common.ApiException;
+import com.saladbowl.api.common.ErrorCode;
 import com.saladbowl.api.importer.ImportDtos.ImportResult;
 import com.saladbowl.api.support.BanksaladWorkbook;
 import com.saladbowl.api.support.IntegrationTest;
@@ -12,10 +13,16 @@ import com.saladbowl.api.user.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -33,6 +40,12 @@ class ImportServiceTest extends IntegrationTest {
 
     @Autowired
     ImportBatchRepository batches;
+
+    @Autowired
+    MergeService mergeService;
+
+    @Autowired
+    PlatformTransactionManager transactionManager;
 
     long ownerId;
 
@@ -150,6 +163,62 @@ class ImportServiceTest extends IntegrationTest {
 
         assertThat(batches.count()).isZero();
         assertThat(transactions.countByOwnerId(ownerId)).isZero();
+    }
+
+    @Test
+    void acceptsAFileSpanningAtMost92Days() {
+        byte[] bytes = BanksaladWorkbook.create()
+                .row("2026-07-01", "09:00:00", "지출", "식비", "카페", "첫날", -1000, "테스트카드", null)
+                .row("2026-10-01", "21:00:00", "지출", "식비", "카페", "마지막날", -1000, "테스트카드", null)
+                .toBytes();
+
+        ImportResult result = importService.importFile(ownerId, "q3.xlsx", new ByteArrayInputStream(bytes));
+
+        assertThat(result.totalRows()).isEqualTo(2);
+    }
+
+    @Test
+    void rejectsAFileSpanningMoreThan92DaysAndWritesNothing() {
+        byte[] bytes = BanksaladWorkbook.create()
+                .row("2026-07-01", "09:00:00", "지출", "식비", "카페", "첫날", -1000, "테스트카드", null)
+                .row("2026-10-02", "09:00:00", "지출", "식비", "카페", "93일째", -1000, "테스트카드", null)
+                .toBytes();
+
+        assertThatThrownBy(() -> importService.importFile(ownerId, "too-long.xlsx", new ByteArrayInputStream(bytes)))
+                .isInstanceOf(ApiException.class)
+                .satisfies(e -> assertThat(((ApiException) e).code()).isEqualTo(ErrorCode.IMPORT_PERIOD_TOO_LONG))
+                .hasMessageContaining("2026-07-01")
+                .hasMessageContaining("2026-10-02");
+        assertThat(importService.recent(ownerId)).isEmpty();
+    }
+
+    @Test
+    void parsesAndChecksThePeriodBeforeOpeningATransaction() {
+        AtomicBoolean transactionDuringParse = new AtomicBoolean(true);
+        BanksaladParser probe = new BanksaladParser() {
+            @Override
+            public List<ParsedRow> parse(InputStream in) {
+                transactionDuringParse.set(TransactionSynchronizationManager.isActualTransactionActive());
+                return super.parse(in);
+            }
+        };
+        ImportService service = new ImportService(probe, mergeService, batches, transactionManager);
+        byte[] bytes = BanksaladWorkbook.create()
+                .row("2026-09-01", "09:00:00", "지출", "식비", "카페", "테스트카페", -4500, "테스트카드", null)
+                .toBytes();
+
+        service.importFile(ownerId, "probe.xlsx", new ByteArrayInputStream(bytes));
+
+        assertThat(transactionDuringParse).isFalse();
+    }
+
+    /** 위 테스트는 서비스를 직접 만들어 프록시를 거치지 않는다. 메서드에 @Transactional이 다시 붙으면 여기서 잡는다. */
+    @Test
+    void importFileIsNotWrappedInADeclarativeTransaction() throws Exception {
+        Method method = ImportService.class.getMethod("importFile", long.class, String.class, InputStream.class);
+
+        assertThat(method.isAnnotationPresent(Transactional.class)).isFalse();
+        assertThat(ImportService.class.isAnnotationPresent(Transactional.class)).isFalse();
     }
 
     private LedgerTransaction findByDescription(String description) {
