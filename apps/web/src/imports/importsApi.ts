@@ -12,13 +12,13 @@ export type ImportResult = {
 
 export type ImportBatchView = ImportResult & { fileName: string; importedAt: string }
 
-export const MAX_UPLOAD_BYTES = 5 * 1024 * 1024
+export const MAX_UPLOAD_BYTES = 512 * 1024
 
 /** 서버에 보내기 전에 거를 수 있는 것만 거른다. 내용 검사는 서버가 한다. */
 export function validateUploadFile(file: File): string | null {
   if (!file.name.toLowerCase().endsWith('.xlsx')) return '.xlsx 파일만 올릴 수 있습니다.'
   if (file.size === 0) return '빈 파일입니다. 다른 파일을 선택해 주세요.'
-  if (file.size > MAX_UPLOAD_BYTES) return '파일은 5MB 이하만 올릴 수 있습니다.'
+  if (file.size > MAX_UPLOAD_BYTES) return '파일은 512KB 이하만 올릴 수 있습니다. 한 번에 최대 3개월치까지 올릴 수 있습니다.'
   return null
 }
 
