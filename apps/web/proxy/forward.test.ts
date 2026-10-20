@@ -8,6 +8,17 @@ type FetchCall = [string, RequestInit]
 afterEach(() => vi.unstubAllGlobals())
 
 describe('forward', () => {
+  it('answers 503 SERVER_UNAVAILABLE when API_ORIGIN is not a URL', async () => {
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+
+    const response = await forward(new Request('https://salad.pages.dev/api/me'), 'salad-bowl-api.onrender.com')
+
+    expect(response.status).toBe(503)
+    expect(await response.json()).toMatchObject({ code: 'SERVER_UNAVAILABLE' })
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
   it('strips /api and passes method, query, cookies and body through', async () => {
     const fetchMock = vi.fn(async (..._args: FetchCall) => new Response('{"ok":true}', {
       status: 201,

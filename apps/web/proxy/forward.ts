@@ -4,7 +4,13 @@
  */
 export async function forward(request: Request, apiOrigin: string): Promise<Response> {
   const incoming = new URL(request.url)
-  const target = new URL(apiOrigin)
+  // API_ORIGIN은 경로 없는 origin이어야 한다(예: https://salad-bowl-api.onrender.com). 경로가 있어도 무시된다.
+  let target: URL
+  try {
+    target = new URL(apiOrigin)
+  } catch {
+    return Response.json({ code: 'SERVER_UNAVAILABLE', message: 'API_ORIGIN is not a valid URL' }, { status: 503 })
+  }
   target.pathname = incoming.pathname.replace(/^\/api(?=\/|$)/, '') || '/'
   target.search = incoming.search
 
