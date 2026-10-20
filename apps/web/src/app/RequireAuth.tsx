@@ -1,16 +1,18 @@
 import type { ReactNode } from 'react'
 import { Navigate, useLocation } from 'react-router'
 import { useAuth } from '../auth/AuthProvider'
+import styles from './Gate.module.css'
+import ServerUnavailable from './ServerUnavailable'
 import SlowServerNotice from './SlowServerNotice'
 
 export default function RequireAuth({ children }: { children: ReactNode }) {
   const { status } = useAuth()
   const location = useLocation()
-  if (status === 'loading') {
+  if (status === 'loading' || status === 'unavailable') {
     return (
       <>
         <SlowServerNotice />
-        <p role="status" style={{ padding: 'var(--space-8)' }}>불러오는 중입니다.</p>
+        {status === 'loading' ? <p className={styles.loading}>불러오는 중입니다.</p> : <ServerUnavailable />}
       </>
     )
   }

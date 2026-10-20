@@ -46,6 +46,9 @@ public class TransactionService {
     }
 
     public static Range monthRange(YearMonth month) {
+        if (month.getYear() < 1 || month.getYear() > 9999) {
+            throw new ApiException(ErrorCode.VALIDATION_FAILED, "month must be between 0001-01 and 9999-12");
+        }
         return new Range(month.atDay(1).atStartOfDay(), month.plusMonths(1).atDay(1).atStartOfDay());
     }
 

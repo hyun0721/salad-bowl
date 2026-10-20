@@ -36,6 +36,8 @@ export function apiUrl(path: string): string {
   return new URL(BASE + path, window.location.origin).toString()
 }
 
+const FAILED_MESSAGE = '요청을 처리하지 못했습니다.'
+
 type ApiInit = RequestInit & { json?: unknown; auth?: boolean }
 
 /**
@@ -54,9 +56,9 @@ export function refreshAccessToken(): Promise<string | null> {
           return null
         }
         if (!res.ok) throw await toError(res)
-        const body = (await res.json()) as { accessToken?: unknown }
+        const body = await readJson<{ accessToken?: unknown }>(res)
         if (typeof body.accessToken !== 'string') {
-          throw new ApiError(res.status, 'REQUEST_FAILED', '요청을 처리하지 못했습니다.')
+          throw new ApiError(res.status, 'REQUEST_FAILED', FAILED_MESSAGE)
         }
         setAccessToken(body.accessToken)
         return body.accessToken
@@ -86,7 +88,7 @@ export async function apiFetch<T>(path: string, init: ApiInit = {}): Promise<T> 
   }
   if (!res.ok) throw await toError(res)
   if (res.status === 204) return undefined as T
-  return (await res.json()) as T
+  return readJson<T>(res)
 }
 
 /** 요청 하나. 3초가 지나도 끝나지 않으면 느린 요청으로 세고, 끝나면 뺀다. */
@@ -113,11 +115,26 @@ function markSlow(delta: number) {
   if (before !== after) slowListeners.forEach((listener) => listener(after))
 }
 
-async function toError(res: Response): Promise<ApiError> {
+/** 성공 응답의 JSON. JSON이 아니면(프록시 경로가 빗나가 SPA가 HTML을 돌려준 경우 등) ApiError로 바꾼다. */
+async function readJson<T>(res: Response): Promise<T> {
   try {
-    const body = (await res.json()) as { code?: string; message?: string }
-    return new ApiError(res.status, body.code ?? 'REQUEST_FAILED', body.message ?? '요청을 처리하지 못했습니다.')
+    return (await res.json()) as T
   } catch {
-    return new ApiError(res.status, 'REQUEST_FAILED', '요청을 처리하지 못했습니다.')
+    throw new ApiError(res.status, 'REQUEST_FAILED', FAILED_MESSAGE)
   }
+}
+
+async function toError(res: Response): Promise<ApiError> {
+  const isJson = res.headers.get('content-type')?.includes('json') ?? false
+  if (isJson) {
+    try {
+      const body = (await res.json()) as { code?: string; message?: string }
+      return new ApiError(res.status, body.code ?? 'REQUEST_FAILED', body.message ?? FAILED_MESSAGE)
+    } catch {
+      // 본문이 깨졌으면 아래 규칙으로 판단한다.
+    }
+  }
+  // Pages·Render가 돌려주는 HTML 502·503·524 등: API가 응답하지 못한 것이다.
+  if (res.status >= 500) return new ApiError(res.status, 'SERVER_UNAVAILABLE', '서버를 사용할 수 없습니다.')
+  return new ApiError(res.status, 'REQUEST_FAILED', FAILED_MESSAGE)
 }

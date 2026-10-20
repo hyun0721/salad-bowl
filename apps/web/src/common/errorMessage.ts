@@ -14,6 +14,14 @@ const MESSAGES: Record<string, string> = {
   INVALID_FILE_FORMAT: '뱅크샐러드에서 내려받은 .xlsx 파일인지 확인해 주세요.',
   FILE_TOO_LARGE: '파일은 5MB 이하만 올릴 수 있습니다.',
   CANNOT_DELETE_IMPORTED: '엑셀로 가져온 거래는 삭제할 수 없습니다. 숨기기를 사용해 주세요.',
+  SERVER_UNAVAILABLE: '서버를 사용할 수 없습니다. 잠시 후 다시 시도해 주세요.',
+  INVITE_NOT_FOUND: '초대 링크를 찾을 수 없습니다. 주소를 다시 확인해 주세요.',
+  INVITE_EXPIRED: '초대 링크가 만료되었습니다. 관리자에게 새 링크를 요청해 주세요.',
+  ALREADY_MEMBER: '이미 이 그룹의 멤버입니다.',
+  GROUP_FULL: '그룹 정원(6명)이 찼습니다.',
+  REMOVED_FROM_GROUP: '이 그룹에서 내보내져 다시 합류할 수 없습니다. 관리자에게 문의해 주세요.',
+  CANNOT_REMOVE_ADMIN: '관리자는 내보낼 수 없습니다.',
+  ADMIN_CANNOT_LEAVE: '관리자는 그룹을 나갈 수 없습니다.',
   INTERNAL_ERROR: '서버에서 문제가 생겼습니다. 잠시 후 다시 시도해 주세요.',
 }
 

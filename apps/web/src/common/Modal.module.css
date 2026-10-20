@@ -1,4 +1,4 @@
-.overlay { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; padding: var(--space-6) max(16px, env(safe-area-inset-left, 0px)); background: rgb(20 24 21 / 0.45); z-index: 10; }
+.overlay { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; padding: var(--space-6) max(16px, env(safe-area-inset-left, 0px)); background: var(--overlay); z-index: 10; }
 .dialog { width: 100%; max-width: 560px; max-height: 100%; overflow: auto; background: var(--surface-000); border-radius: var(--radius-lg); padding: var(--space-6); display: flex; flex-direction: column; gap: var(--space-4); }
 .dialog:focus { outline: none; }
 .header { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }

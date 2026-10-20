@@ -1,4 +1,4 @@
-import { fireEvent, screen, within } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
 import { server } from '../test/server'
@@ -228,6 +228,21 @@ describe('TransactionsPage', () => {
 
     const detail = await screen.findByRole('complementary', { name: '거래 상세' })
     expect(within(detail).getByRole('heading', { name: '9월 간식' })).toBeInTheDocument()
+    expect(screen.getByLabelText('월')).toHaveValue('2026-09')
+  })
+
+  it('moves to the previous month with the month buttons', async () => {
+    const months: string[] = []
+    server.use(http.get('*/api/me/transactions', ({ request }) => {
+      months.push(new URL(request.url).searchParams.get('month')!)
+      return HttpResponse.json([])
+    }))
+    const { user } = renderPage(<TransactionsPage today={today} />, { groups })
+
+    await screen.findByText('이 달에 거래가 없습니다.')
+    await user.click(screen.getByRole('button', { name: '이전 달' }))
+
+    await waitFor(() => expect(months).toContain('2026-09'))
     expect(screen.getByLabelText('월')).toHaveValue('2026-09')
   })
 })

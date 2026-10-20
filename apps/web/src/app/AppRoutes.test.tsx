@@ -1,5 +1,5 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, within } from '@testing-library/react'
+import { onlineManager, QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { delay, http, HttpResponse } from 'msw'
 import { MemoryRouter } from 'react-router'
@@ -229,5 +229,84 @@ describe('AppRoutes', () => {
     expect(await screen.findByText('그룹 불러오는 중')).toBeInTheDocument()
     expect(screen.queryByText('A의 그룹')).not.toBeInTheDocument()
     expect(await screen.findByRole('option', { name: 'B의 그룹' })).toBeInTheDocument()
+  })
+
+  it('returns to the invite page after logging in', async () => {
+    server.use(
+      http.post('*/api/auth/refresh', () => HttpResponse.json({ code: 'INVALID_TOKEN', message: 'x' }, { status: 401 })),
+      http.post('*/api/auth/login', () => HttpResponse.json({ accessToken: 'a1' })),
+      http.get('*/api/me', () => HttpResponse.json(me)),
+      http.get('*/api/invites/abc', () => HttpResponse.json(
+        { groupName: '우리집', memberCount: 2, maxMembers: 6, expiresAt: '2026-10-26T03:00:00Z', alreadyMember: false })),
+    )
+    renderApp('/invite/abc')
+    const user = userEvent.setup()
+
+    await user.type(await screen.findByLabelText('이메일'), 'me@test.com')
+    await user.type(screen.getByLabelText(/비밀번호/), 'password123')
+    await user.click(screen.getByRole('button', { name: '로그인' }))
+
+    expect(await screen.findByRole('heading', { level: 1, name: '그룹 초대' })).toBeInTheDocument()
+    expect(await screen.findByText('우리집')).toBeInTheDocument()
+  })
+
+  it('clears cached data when the session is lost while using the app', async () => {
+    let refreshes = 0
+    server.use(
+      http.post('*/api/auth/refresh', () => {
+        refreshes++
+        return refreshes === 1
+          ? HttpResponse.json({ accessToken: 'a1' })
+          : HttpResponse.json({ code: 'INVALID_TOKEN', message: 'x' }, { status: 401 })
+      }),
+      http.get('*/api/me', () => HttpResponse.json(me)),
+      http.get('*/api/groups', () => HttpResponse.json([{ groupId: 10, name: '우리집', myRole: 'ADMIN', memberCount: 1 }])),
+      ...homeHandlers,
+    )
+    const client = renderApp('/')
+    const user = userEvent.setup()
+    await screen.findByRole('combobox', { name: '그룹' })
+    server.use(http.get('*/api/imports', () =>
+      HttpResponse.json({ code: 'UNAUTHORIZED', message: 'x' }, { status: 401 })))
+
+    await user.click(screen.getByRole('link', { name: '업로드' }))
+
+    expect(await screen.findByRole('button', { name: '로그인' })).toBeInTheDocument()
+    expect(client.getQueryData(['groups'])).toBeUndefined()
+  })
+
+  it('shows a retry screen when the server cannot be reached on startup', async () => {
+    server.use(http.post('*/api/auth/refresh', () => new HttpResponse('down', { status: 503 })))
+    renderApp('/')
+
+    expect(await screen.findByText('서버에 연결하지 못했습니다. 잠시 후 다시 시도해 주세요.', {}, { timeout: 4000 }))
+      .toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '다시 시도' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '로그인' })).not.toBeInTheDocument()
+  })
+
+  it('moves focus to the new page heading after navigating', async () => {
+    signedIn([])
+    renderApp('/')
+    const user = userEvent.setup()
+
+    await screen.findByRole('heading', { level: 1, name: '내 가계부' })
+    await user.click(screen.getByRole('link', { name: '거래 목록' }))
+
+    const heading = await screen.findByRole('heading', { level: 1, name: '거래 목록' })
+    await waitFor(() => expect(heading).toHaveFocus())
+  })
+
+  it('shows groups as loading, not missing, while offline', async () => {
+    signedIn([])
+    onlineManager.setOnline(false)
+    try {
+      renderApp('/')
+
+      expect(await screen.findByText('그룹 불러오는 중')).toBeInTheDocument()
+      expect(screen.queryByRole('link', { name: /그룹 없음/ })).not.toBeInTheDocument()
+    } finally {
+      onlineManager.setOnline(true)
+    }
   })
 })

@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
+import MonthPicker from '../common/MonthPicker'
 import ui from '../common/ui.module.css'
 import { currentYearMonth } from '../common/format'
 import { usePageTitle } from '../common/usePageTitle'
@@ -35,7 +36,6 @@ export default function TransactionsPage({ today }: Props) {
     queryFn: () => (groupId === null
       ? transactionsApi.mine(month)
       : transactionsApi.group(groupId, month, memberId)),
-    enabled: /^\d{4}-\d{2}$/.test(month),
   })
   const detail = useQuery({
     queryKey: ['groups', groupId],
@@ -69,15 +69,12 @@ export default function TransactionsPage({ today }: Props) {
       </div>
       <div className={ui.row}>
         <div role="group" aria-label="범위" className={styles.scope}>
-          <button type="button" aria-pressed={scope === 'mine'} className={styles.scopeButton}
+          <button type="button" aria-pressed={!inGroup} className={styles.scopeButton}
             onClick={() => changeScope('mine')}>내 거래</button>
-          <button type="button" aria-pressed={scope === 'group'} className={styles.scopeButton}
+          <button type="button" aria-pressed={inGroup} className={styles.scopeButton}
             disabled={selectedGroupId === null} onClick={() => changeScope('group')}>그룹 거래</button>
         </div>
-        <label className={styles.inlineField}>
-          <span>월</span>
-          <input type="month" className={ui.input} value={month} onChange={(e) => setMonth(e.target.value)} />
-        </label>
+        <MonthPicker month={month} onChange={setMonth} />
         {inGroup && detail.data && (
           <label className={styles.inlineField}>
             <span>멤버</span>

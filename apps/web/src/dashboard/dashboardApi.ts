@@ -1,0 +1,17 @@
+import { apiFetch } from '../api/client'
+
+export type CategoryTotal = { category: string; expense: number }
+export type MemberTotal = { userId: number; nickname: string; income: number; expense: number }
+/** KRW만, 이체·숨긴 거래·공개를 끈 멤버 제외. 지출은 양수다. */
+export type MonthlySummary = {
+  month: string
+  income: number
+  expense: number
+  byCategory: CategoryTotal[]
+  byMember: MemberTotal[]
+}
+
+export const dashboardApi = {
+  summary: (groupId: number, month: string) =>
+    apiFetch<MonthlySummary>(`/groups/${groupId}/summary?month=${month}`),
+}

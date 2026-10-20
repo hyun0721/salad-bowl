@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { NavLink, Outlet, Link, useNavigate } from 'react-router'
+import { useEffect, useRef, useState } from 'react'
+import { NavLink, Outlet, Link, useLocation, useNavigate } from 'react-router'
 import { useAuth } from '../auth/AuthProvider'
 import { useGroups } from '../groups/GroupProvider'
 import SlowServerNotice from './SlowServerNotice'
@@ -17,6 +17,19 @@ export default function AppLayout() {
   const { me, logout } = useAuth()
   const { groups, selectedGroupId, selectGroup, isLoading, isError, retry } = useGroups()
   const navigate = useNavigate()
+  const location = useLocation()
+  const mainRef = useRef<HTMLElement>(null)
+  const lastPath = useRef(location.pathname)
+  useEffect(() => {
+    // 메뉴로 화면을 바꾸면 새 화면 제목으로 포커스를 옮긴다(스크린리더가 바뀐 화면을 읽도록). 처음 들어올 때는 옮기지 않는다.
+    if (lastPath.current === location.pathname) return
+    lastPath.current = location.pathname
+    const heading = mainRef.current?.querySelector('h1')
+    if (heading) {
+      heading.setAttribute('tabindex', '-1')
+      heading.focus()
+    }
+  }, [location.pathname])
 
   const [logoutError, setLogoutError] = useState(false)
 
@@ -59,7 +72,7 @@ export default function AppLayout() {
               </select>
             </label>
           ) : (
-            <Link to="/groups">그룹 없음 · 만들기 또는 초대받기</Link>
+            <Link to="/groups" className={styles.noGroup}>그룹 없음 · 만들기 또는 초대받기</Link>
           )}
           <div className={styles.user}>
             <span>{me?.nickname}</span>
@@ -70,7 +83,7 @@ export default function AppLayout() {
           <p role="alert" className={styles.logoutError}>로그아웃하지 못했습니다. 잠시 후 다시 시도해 주세요.</p>
         )}
         <SlowServerNotice />
-        <main className={styles.content}>
+        <main ref={mainRef} className={styles.content}>
           <Outlet />
         </main>
       </div>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { currentYearMonth, formatDateTime, formatInstant, formatMonthLabel, formatSignedWon, formatWon } from './format'
+import { currentYearMonth, formatDateTime, formatInstant, formatMonthLabel, formatSignedWon, formatWon, shiftMonth } from './format'
 
 describe('format', () => {
   it('formats won with and without sign', () => {
@@ -24,5 +24,11 @@ describe('format', () => {
     expect(formatInstant('2026-10-19T09:00:00+09:00')).toBe('10-19 09:00')
     expect(formatInstant('2026-12-31T23:59:00+09:00')).toBe('12-31 23:59')
     expect(formatInstant('2026-10-18T15:00:00Z')).toBe('10-19 00:00')
+  })
+
+  it('shifts a YYYY-MM month across years', () => {
+    expect(shiftMonth('2026-10', -1)).toBe('2026-09')
+    expect(shiftMonth('2026-01', -1)).toBe('2025-12')
+    expect(shiftMonth('2026-12', 1)).toBe('2027-01')
   })
 })

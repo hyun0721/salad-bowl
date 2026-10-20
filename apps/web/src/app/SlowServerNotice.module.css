@@ -1,0 +1,2 @@
+.notice { margin: 0; }
+.slow { padding: var(--space-3) var(--space-8); background: var(--pending-tint); color: var(--pending); }

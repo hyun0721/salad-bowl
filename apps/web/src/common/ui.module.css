@@ -15,3 +15,4 @@ textarea.input { padding: var(--space-2) var(--space-3); }
 .muted { color: var(--ink-muted); font-size: 13px; line-height: 18px; }
 .badge { display: inline-block; margin-left: 6px; font-size: 12px; line-height: 16px; color: var(--ink-muted); }
 .badgePending { color: var(--pending); }
+.linkButton { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
