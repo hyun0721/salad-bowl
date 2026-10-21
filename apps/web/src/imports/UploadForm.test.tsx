@@ -41,8 +41,29 @@ describe('UploadForm', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('.xlsx 파일만 올릴 수 있습니다.')
     expect(screen.getByRole('button', { name: '업로드' })).toBeDisabled()
 
-    await user.upload(input, xlsx('big.xlsx', 5 * 1024 * 1024 + 1))
-    expect(screen.getByRole('alert')).toHaveTextContent('파일은 5MB 이하만 올릴 수 있습니다.')
+    await user.upload(input, xlsx('big.xlsx', 512 * 1024 + 1))
+    expect(screen.getByRole('alert')).toHaveTextContent('파일은 512KB 이하만 올릴 수 있습니다. 한 번에 최대 3개월치까지 올릴 수 있습니다.')
+    expect(screen.getByRole('button', { name: '업로드' })).toBeDisabled()
+  })
+
+  it('accepts a file exactly at the size limit', async () => {
+    const { user } = renderPage(<UploadForm />)
+
+    await user.upload(await screen.findByLabelText(/파일을 끌어다 놓거나/), xlsx('limit.xlsx', 512 * 1024))
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '업로드' })).toBeEnabled()
+  })
+
+  it('explains the three-month limit when the server rejects a long period', async () => {
+    server.use(http.post('*/api/imports', () =>
+      HttpResponse.json({ code: 'IMPORT_PERIOD_TOO_LONG', message: 'transactions span 2026-01-01 to 2026-06-30' }, { status: 400 })))
+    const { user } = renderPage(<UploadForm />)
+
+    await user.upload(await screen.findByLabelText(/파일을 끌어다 놓거나/), xlsx('half-year.xlsx', 2048))
+    await user.click(screen.getByRole('button', { name: '업로드' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('한 번에 최대 3개월치까지 올릴 수 있습니다.')
   })
 
   it('shows the failing row from the server', async () => {

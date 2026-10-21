@@ -1,6 +1,7 @@
 package com.saladbowl.api.importer;
 
 import com.saladbowl.api.common.ApiException;
+import com.saladbowl.api.common.ErrorCode;
 import com.saladbowl.api.importer.ImportDtos.ImportResult;
 import com.saladbowl.api.support.BanksaladWorkbook;
 import com.saladbowl.api.support.IntegrationTest;
@@ -12,10 +13,22 @@ import com.saladbowl.api.user.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -33,6 +46,12 @@ class ImportServiceTest extends IntegrationTest {
 
     @Autowired
     ImportBatchRepository batches;
+
+    @Autowired
+    MergeService mergeService;
+
+    @Autowired
+    PlatformTransactionManager transactionManager;
 
     long ownerId;
 
@@ -150,6 +169,125 @@ class ImportServiceTest extends IntegrationTest {
 
         assertThat(batches.count()).isZero();
         assertThat(transactions.countByOwnerId(ownerId)).isZero();
+    }
+
+    @Test
+    void acceptsAFileSpanningAtMost92Days() {
+        byte[] bytes = BanksaladWorkbook.create()
+                .row("2026-07-01", "09:00:00", "지출", "식비", "카페", "첫날", -1000, "테스트카드", null)
+                .row("2026-10-01", "21:00:00", "지출", "식비", "카페", "마지막날", -1000, "테스트카드", null)
+                .toBytes();
+
+        ImportResult result = importService.importFile(ownerId, "q3.xlsx", new ByteArrayInputStream(bytes));
+
+        assertThat(result.totalRows()).isEqualTo(2);
+    }
+
+    @Test
+    void rejectsAFileSpanningMoreThan92DaysAndWritesNothing() {
+        byte[] bytes = BanksaladWorkbook.create()
+                .row("2026-07-01", "09:00:00", "지출", "식비", "카페", "첫날", -1000, "테스트카드", null)
+                .row("2026-10-02", "09:00:00", "지출", "식비", "카페", "93일째", -1000, "테스트카드", null)
+                .toBytes();
+
+        assertThatThrownBy(() -> importService.importFile(ownerId, "too-long.xlsx", new ByteArrayInputStream(bytes)))
+                .isInstanceOf(ApiException.class)
+                .satisfies(e -> assertThat(((ApiException) e).code()).isEqualTo(ErrorCode.IMPORT_PERIOD_TOO_LONG))
+                .hasMessageContaining("2026-07-01")
+                .hasMessageContaining("2026-10-02");
+        assertThat(importService.recent(ownerId)).isEmpty();
+    }
+
+    @Test
+    void parsesAndChecksThePeriodBeforeOpeningATransaction() {
+        AtomicBoolean transactionDuringParse = new AtomicBoolean(true);
+        BanksaladParser probe = new BanksaladParser() {
+            @Override
+            public List<ParsedRow> parse(InputStream in) {
+                transactionDuringParse.set(TransactionSynchronizationManager.isActualTransactionActive());
+                return super.parse(in);
+            }
+        };
+        ImportService service = new ImportService(probe, mergeService, batches, transactionManager);
+        byte[] bytes = BanksaladWorkbook.create()
+                .row("2026-09-01", "09:00:00", "지출", "식비", "카페", "테스트카페", -4500, "테스트카드", null)
+                .toBytes();
+
+        service.importFile(ownerId, "probe.xlsx", new ByteArrayInputStream(bytes));
+
+        assertThat(transactionDuringParse).isFalse();
+    }
+
+    @Test
+    void onlyOneImportRunsAtATimeAndTheWaiterGetsImportBusy() throws Exception {
+        CountDownLatch insideParse = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+        BanksaladParser blocking = new BanksaladParser() {
+            @Override
+            public List<ParsedRow> parse(InputStream in) {
+                insideParse.countDown();
+                try {
+                    if (!release.await(10, TimeUnit.SECONDS)) {
+                        throw new IllegalStateException("probe was not released in time");
+                    }
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new IllegalStateException("probe interrupted", e);
+                }
+                return super.parse(in);
+            }
+        };
+        ImportService service = new ImportService(blocking, mergeService, batches, transactionManager,
+                Duration.ofMillis(100));
+        byte[] bytes = september().toBytes();
+
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        try {
+            Future<ImportResult> first = executor.submit(
+                    () -> service.importFile(ownerId, "a.xlsx", new ByteArrayInputStream(bytes)));
+            assertThat(insideParse.await(10, TimeUnit.SECONDS)).isTrue();
+
+            assertThatThrownBy(() -> service.importFile(ownerId, "b.xlsx", new ByteArrayInputStream(bytes)))
+                    .isInstanceOf(ApiException.class)
+                    .satisfies(e -> assertThat(((ApiException) e).code()).isEqualTo(ErrorCode.IMPORT_BUSY));
+
+            release.countDown();
+            assertThat(first.get(10, TimeUnit.SECONDS).createdRows()).isEqualTo(3);
+        } finally {
+            // 어떤 단언이 실패해도 백그라운드 import가 다음 테스트의 DB 정리와 겹치지 않게 끝낸다.
+            release.countDown();
+            executor.shutdownNow();
+            assertThat(executor.awaitTermination(10, TimeUnit.SECONDS)).isTrue();
+        }
+    }
+
+    @Test
+    void theSlotIsReleasedAfterAFailingImport() {
+        ImportService service = new ImportService(new BanksaladParser(), mergeService, batches, transactionManager,
+                Duration.ofMillis(100));
+        byte[] tooLong = BanksaladWorkbook.create()
+                .row("2026-07-01", "09:00:00", "지출", "식비", "카페", "첫날", -1000, "테스트카드", null)
+                .row("2026-10-02", "09:00:00", "지출", "식비", "카페", "93일째", -1000, "테스트카드", null)
+                .toBytes();
+
+        assertThatThrownBy(() -> service.importFile(ownerId, "too-long.xlsx", new ByteArrayInputStream(tooLong)))
+                .satisfies(e -> assertThat(((ApiException) e).code()).isEqualTo(ErrorCode.IMPORT_PERIOD_TOO_LONG));
+        assertThatThrownBy(() -> service.importFile(ownerId, "garbage.xlsx",
+                new ByteArrayInputStream("garbage".getBytes(StandardCharsets.UTF_8))))
+                .isInstanceOf(ApiException.class);
+
+        ImportResult result = service.importFile(ownerId, "ok.xlsx", new ByteArrayInputStream(september().toBytes()));
+
+        assertThat(result.createdRows()).isEqualTo(3);
+    }
+
+    /** 위 테스트는 서비스를 직접 만들어 프록시를 거치지 않는다. 메서드에 @Transactional이 다시 붙으면 여기서 잡는다. */
+    @Test
+    void importFileIsNotWrappedInADeclarativeTransaction() throws Exception {
+        Method method = ImportService.class.getMethod("importFile", long.class, String.class, InputStream.class);
+
+        assertThat(method.isAnnotationPresent(Transactional.class)).isFalse();
+        assertThat(ImportService.class.isAnnotationPresent(Transactional.class)).isFalse();
     }
 
     private LedgerTransaction findByDescription(String description) {

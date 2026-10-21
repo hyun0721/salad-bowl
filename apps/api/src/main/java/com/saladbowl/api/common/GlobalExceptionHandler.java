@@ -83,7 +83,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     public ResponseEntity<ErrorResponse> handleUploadTooLarge(MaxUploadSizeExceededException e) {
-        return error(ErrorCode.FILE_TOO_LARGE, "file must be 5MB or smaller");
+        return error(ErrorCode.FILE_TOO_LARGE, "file must be 512KB or smaller");
     }
 
     @ExceptionHandler(Exception.class)

@@ -131,8 +131,9 @@ class ImportApiTest extends IntegrationTest {
     }
 
     @Test
-    void uploadLimitIsFiveMegabytes() {
-        assertThat(multipartProperties.getMaxFileSize()).isEqualTo(DataSize.ofMegabytes(5));
+    void uploadLimitIs512KilobytesPerFileAndOneMegabytePerRequest() {
+        assertThat(multipartProperties.getMaxFileSize()).isEqualTo(DataSize.ofKilobytes(512));
+        assertThat(multipartProperties.getMaxRequestSize()).isEqualTo(DataSize.ofMegabytes(1));
     }
 
     @Test

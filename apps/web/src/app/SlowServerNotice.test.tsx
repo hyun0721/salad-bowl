@@ -22,7 +22,7 @@ describe('SlowServerNotice', () => {
 
     render(<SlowServerNotice />)
 
-    expect(screen.getByRole('status')).toHaveTextContent('서버를 깨우는 중입니다. 처음 접속하면 30초쯤 걸릴 수 있습니다.')
+    expect(screen.getByRole('status')).toHaveTextContent('서버를 깨우는 중입니다. 오래 쓰지 않았다면 최대 4분쯤 걸릴 수 있습니다.')
     await pending
   }, 15000)
 })

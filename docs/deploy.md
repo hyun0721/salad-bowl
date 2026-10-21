@@ -1,0 +1,173 @@
+# 배포 절차서
+
+## 0. 배포 설정 머지
+
+이 배포 설정이 들어간 PR을 CI 통과 후 `main`에 머지한다. Render Blueprint는 `main`의 `render.yaml`을, Pages 프로덕션 브랜치는 `main`의 `_routes.json`·`_headers`를 사용한다. `sync-config`의 Run workflow 버튼과 `keepalive` 예약 실행은 기본 브랜치의 워크플로를 사용하므로 기본 브랜치도 `main`인지 확인한다.
+
+## 1. 구성과 무료 티어 조건
+
+브라우저 → Cloudflare Pages(정적 파일 + `/api` Function) → Render(Spring Boot) → Supabase Postgres(세션 풀러) 순서로 요청을 처리한다. 다음은 2026-10에 확인한 조건을 기준으로 작성한다. 무료 티어 조건은 바뀔 수 있으므로 서비스를 만들 때 다시 확인한다.
+
+| 서비스 | 무료 티어 기준 |
+|---|---|
+| Render | 메모리 512MB·CPU 0.1, 15분 유휴 시 sleep, 월 750시간으로 운영한다. |
+| Supabase | DB 500MB를 제공하며 7일 비활성 시 일시정지한다. 직접 연결은 IPv6 전용이므로 IPv4 연결에는 세션 풀러를 사용한다. |
+| Cloudflare Pages | Functions는 하루 10만 요청으로 제한하며 정적 요청은 무제한으로 제공한다. |
+
+`keepalive`는 10분마다 Pages를 통해 API health를 요청한다. 서비스 1개를 계속 켜 두면 31일 기준 약 744시간을 사용한다. 무료 서비스를 하나 더 상시 가동하면 월 750시간으로는 부족하므로 함께 계산한다. GitHub 예약 실행은 늦어질 수 있으므로 sleep을 완전히 막는다고 가정하지 않는다. CPU 0.1에서 기동은 약 3~4분이며, 2026-10 측정에서는 약 3분 40초가 걸렸으므로 이를 기준으로 대기한다.
+
+운영 메모리는 `apps/api/Dockerfile`의 `JAVA_TOOL_OPTIONS=-XX:MaxRAMPercentage=50 -XX:+UseSerialGC -XX:TieredStopAtLevel=1 -Xss512k`와 `MALLOC_ARENA_MAX=2`로 제한한다. 512MiB 컨테이너의 힙은 약 256MiB로 사용하며 나머지는 네이티브 메모리 등에 배정한다. `application-prod.yml`은 Tomcat 스레드 최대 20개·최소 대기 2개, Hikari 최대 연결 5개로 설정한다. import는 서버 전체에서 동시에 1건만 처리한다.
+
+### 용량 기준
+
+[설계 6.5절](superpowers/specs/2026-10-18-salad-bowl-design.md)의 추정치를 사용한다. 1인 3년 약 5~6MB, 6인 그룹 3년 약 35MB로 계산한다. 500MB에는 약 75~80명분의 3년치를 수용한다고 추정한다. 이용자가 약 50명을 넘으면 상위 플랜이나 다른 DB로 이전하는 방안을 검토한다.
+
+## 2. Supabase
+
+1. 계정을 만들고 새 프로젝트를 생성한다. 지역은 Singapore로 선택하고 DB 비밀번호는 비밀번호 관리자에 저장한다.
+2. Connect → **Session pooler**에서 host, port `5432`, user `postgres.<project-ref>`, database `postgres`를 확인한다.
+3. JDBC URL은 `jdbc:postgresql://<pooler-host>:5432/postgres?sslmode=require` 형식으로 준비한다. 직접 연결이나 트랜잭션 풀러와 혼동하지 않도록 확인한다.
+
+스키마는 API가 처음 기동할 때 Flyway가 생성한다.
+
+## 3. Render
+
+1. GitHub를 연결해 계정을 생성한다.
+2. New → Blueprint에서 이 저장소를 선택한다.
+3. `render.yaml`의 서비스 `salad-bowl-api`, 무료 플랜, Singapore 지역, 루트 `apps/api`, Dockerfile `./Dockerfile`, health 경로 `/actuator/health`를 확인하고 생성한다.
+4. 아직 환경변수가 없으므로 첫 배포는 실패하는 것이 정상임을 확인한다. 이후 `sync-config`로 값을 반영하고 다시 배포한다.
+5. 서비스 주소 `https://<render-host>`와 서비스 ID `srv-<service-id>`를 확인한다. 서비스 ID는 대시보드 URL 또는 Settings에서 확인한다.
+6. Account Settings → API Keys에서 API 키를 생성해 비밀번호 관리자에 보관한다.
+
+컨테이너는 JDK 21로 빌드하고 JRE 21에서 비루트 사용자로 실행한다. `SPRING_PROFILES_ACTIVE=prod`를 사용하며 포트는 `PORT` 환경변수를 읽고, 없으면 8080을 사용한다.
+
+## 4. Cloudflare Pages
+
+1. 계정을 만들고 Workers & Pages → Pages → Connect to Git에서 이 저장소를 선택한다.
+2. 다음 표대로 설정한다. 환경변수는 이 단계에서 직접 입력하지 않고 `sync-config`로 반영한다.
+
+| 항목 | 값 |
+|---|---|
+| Production branch | `main` |
+| Framework preset | 없음 |
+| Root directory | `apps/web` |
+| Build command | `npm run build` |
+| Build output directory | `dist` |
+| Build watch paths → Include | `apps/web/*` |
+
+3. 첫 배포는 `API_ORIGIN`·`NODE_VERSION`이 아직 없는 상태에서 실행한다. 빌드는 `apps/web/.nvmrc`의 Node 22를 사용하며, `sync-config` 실행과 배포 Retry 전까지 `/api`는 503 `SERVER_UNAVAILABLE`을 반환한다. 배포 후 주소 `https://<project>.pages.dev`, 프로젝트 이름, 계정 ID를 확인한다. 계정 ID는 대시보드 오른쪽 또는 URL에서 확인한다.
+4. My Profile → API Tokens에서 토큰을 만든다. 권한은 **Account · Cloudflare Pages · Edit**로 지정하고 이 계정만 대상으로 제한한다.
+
+`VITE_API_BASE_URL`은 설정하지 않는다. 웹은 기본값 `/api`를 사용한다. `apps/web/functions/api/[[path]].ts`는 `API_ORIGIN`을 읽고 `/api` 접두어를 제거해 Render로 전달한다. `apps/web/public/_routes.json`은 `/api`와 `/api/*`에만 Function을 적용해 정적 요청이 Functions 한도를 사용하지 않도록 한다.
+
+`apps/web/public/_headers`는 정적 응답에 기본 보안 헤더를 적용하고 `sw.js`, `registerSW.js`, `manifest.webmanifest`를 `no-cache`로 설정한다. Function 응답에는 `_headers`를 적용하지 않으며 API 응답은 Spring Security의 기본 헤더를 사용한다.
+
+## 5. GitHub 설정값(원본)
+
+저장소 Settings → Environments에서 `production`을 만들고 다음 값을 등록한다. 계정 생성과 실제 비밀값 입력은 사용자가 직접 수행한다. JWT 비밀키는 사용자의 터미널에서 `openssl rand -base64 32`로 생성한 32자 이상의 값을 사용한다. 값은 비밀번호 관리자에도 보관하며 로그나 저장소에 남기지 않는다.
+
+| 종류 | 이름 | 값 |
+|---|---|---|
+| Secret | `DB_URL` | `jdbc:postgresql://<pooler-host>:5432/postgres?sslmode=require` |
+| Secret | `DB_USERNAME` | `postgres.<project-ref>` |
+| Secret | `DB_PASSWORD` | `<Supabase DB 비밀번호>` |
+| Secret | `JWT_SECRET` | `<openssl rand -base64 32 결과>` |
+| Secret | `RENDER_API_KEY` | `<Render API 키>` |
+| Secret | `CLOUDFLARE_API_TOKEN` | `<Cloudflare API 토큰>` |
+| Variable | `RENDER_SERVICE_ID` | `srv-<service-id>` |
+| Variable | `CLOUDFLARE_ACCOUNT_ID` | `<계정 ID>` |
+| Variable | `CLOUDFLARE_PAGES_PROJECT` | `<Pages 프로젝트 이름>` |
+| Variable | `API_ORIGIN` | `https://<render-host>` |
+
+Environment `production` → **Deployment branches and tags**를 **Selected branches: `main`**으로 제한하는 것을 필수로 설정한다. Required reviewers는 두지 않아도 되지만 배포 브랜치는 반드시 `main`으로 제한한다. 쓰기 권한이 있으면 다른 브랜치에서 워크플로를 고쳐 비밀값을 읽을 수 있고, `RENDER_API_KEY`는 Render 계정 전체 권한을 가지므로 이 제한이 필요하다. `sync-config` job도 `main`에서만 실행되도록 두 번째로 확인한다.
+
+Settings → Secrets and variables → Actions → **Variables(저장소)**에 `API_HEALTH_URL`을 `https://<project>.pages.dev/api/actuator/health`로 등록한다. 예약 실행이 Environment 승인에 막히지 않도록 저장소 변수로 관리한다.
+
+1. Actions → `sync-config` → Run workflow에서 브랜치 `main`을 선택하고 `dry_run=true`로 실행해 필수 값 존재 여부, `DB_URL`의 `jdbc:postgresql://` 시작 및 `sslmode=require` 포함 여부, JWT 길이, `API_ORIGIN`의 HTTPS 형식을 확인한다. 이 실행은 플랫폼 API 연결 성공까지 검증하지 않는다.
+2. `dry_run=false`, `deploy=true`(기본값)로 다시 실행한다. Render에 DB·JWT 값 4개를 키별로 반영하고 재배포를 요청한다. Pages의 production과 preview 모두에 `API_ORIGIN`, `NODE_VERSION=22`를 반영한다.
+3. Pages의 최신 배포를 Retry해 새 환경변수를 적용한다.
+4. `https://<render-host>/actuator/health`의 본문이 `{"status":"UP"}`인지 확인한다. 첫 기동에는 약 3~4분을 기다린다.
+5. Actions → `keepalive`를 수동 실행하고 Pages를 거친 health 응답까지 확인한다.
+
+## 6. 배포 확인
+
+저장소 루트에서 다음 명령의 주소 자리표시를 실제 Pages 주소로 바꿔 실행한다.
+
+```bash
+scripts/smoke.sh 'https://<project>.pages.dev'
+```
+
+모든 항목이 PASS이고 `failures: 0`인지 확인한다. 스크립트는 정적 파일의 상태·형식, workbox, `X-Content-Type-Options: nosniff`, 서비스 워커 관련 파일의 `no-cache`, health의 UP, `/api`·`/api/`·`/api/me`의 401 JSON 응답을 확인한다. Origin을 붙인 refresh도 CORS 403이 아닌 401 JSON인지 확인한다. health는 콜드스타트를 고려해 최대 약 7분 동안 재시도한다. 계정은 생성하지 않는다.
+
+### 큰 파일 업로드 확인
+
+저장소 루트에서 다음 명령으로 코드 기반 가짜 데이터 파일을 생성한다.
+
+```bash
+cd apps/api && ./gradlew largeWorkbook -Pout=/tmp/salad-large.xlsx
+```
+
+확인용 계정을 따로 만들고, 생성한 파일이 512KB 미만·3개월치인지 확인한 뒤 사용자가 운영 화면에서 업로드한다. 결과의 신규 건수가 표시되는지, Render 대시보드 Metrics의 메모리가 512MB 아래인지, Logs에 OOM이 없는지 확인한다. 확인하는 동안 **Events·Logs에서 health check 실패나 재시작이 있는지도 확인한다**. 2026-10 측정: 한도 근처 import 81초·최대 392MiB. 완료까지 충분히 기다린다.
+
+화면에 “서버를 사용할 수 없습니다”가 표시되어도 업로드 이력에 들어갔는지 먼저 확인한다. 같은 파일을 다시 올려도 거래가 중복으로 들어가지 않는다. 재시작이 보이면 업로드 한도를 **256KB**로 낮추고 `apps/api`에서 `./gradlew memoryTest`를 다시 실행해 확인해야 한다. 이때 `apps/api/src/main/resources/application.yml`의 업로드 한도, 웹 `apps/web/src/imports/importsApi.ts`의 `MAX_UPLOAD_BYTES`, `apps/api/src/test/java/com/saladbowl/api/importer/BanksaladParserMemoryTest.java`의 검증 범위를 함께 바꾼다. 실제 3개월치 파일은 약 65KB이므로 이 한도 근처 검증은 일상 사용과는 다르다. 실제 뱅크샐러드 파일이나 개인 데이터는 테스트에 사용하지 않는다.
+
+### 확인용 데이터 정리
+
+확인용 계정과 그룹은 실제 사용 계정·그룹과 분리한다. 브라우저 확인까지 마친 뒤 Supabase SQL Editor에서 다음 순서로 정리한다.
+
+1. `<확인용 이메일>`을 확인용 계정의 이메일로 바꿔 ID를 조회한다.
+
+   ```sql
+   select id from users where email = '<확인용 이메일>';
+   ```
+
+2. 아래 `<id>`를 조회한 숫자 ID로 바꿔 그룹을 먼저 삭제하고 회원을 삭제한다. 확인용 계정이 여러 개면 **모든 확인용 계정의 그룹 삭제를 먼저 끝낸 뒤** 각 회원을 삭제한다.
+
+   ```sql
+   delete from user_groups where created_by = <id>;
+   delete from users where id = <id>;
+   ```
+
+그룹 초대·멤버·차단은 그룹에서, 거래·업로드 기록은 회원에서 연쇄 삭제된다. 거래 변경 이력도 연쇄 삭제된다. 스키마상 `group_invites.created_by`와 `group_bans.banned_by`는 회원 삭제에 연쇄 삭제되지 않으므로, 해당 계정이 다른 확인용 계정의 그룹에서 만든 참조도 그룹 삭제로 먼저 정리한다.
+
+### 브라우저 확인
+
+사용자가 다음 순서로 확인한다.
+
+1. 회원가입하고 새로고침해도 로그인이 유지되는지 확인한다.
+2. 로그아웃 후 다시 로그인한다.
+3. 코드로 생성한 작은 엑셀 파일을 업로드하고 홈 달력을 확인한다.
+4. 그룹을 만들고 초대 링크를 생성한다.
+5. 다른 테스트 계정으로 합류하고 대시보드를 확인한다.
+6. 모바일에서 홈 화면에 추가해 PWA 실행을 확인한다. 오프라인 기능은 제공하지 않는다.
+
+## 7. 이후 배포
+
+`main`에 머지하면 Pages는 `apps/web/**` 변경을, Render는 `apps/api/**` 변경을 대상으로 자동 배포한다. Pages 대시보드의 Build watch paths Include에는 앞서 안내한 `apps/web/*`를 설정한다. Render는 `render.yaml`의 `autoDeployTrigger: checksPass`로 api-ci 검사가 통과한 커밋만 배포한다.
+
+Pages는 검사를 기다리지 않으므로 **PR의 CI가 통과한 뒤에만 머지한다**. `.github/workflows/api-ci.yml`과 `.github/workflows/web-ci.yml`에는 paths 필터가 있으므로 api-ci·web-ci를 required check로 지정하지 않는다. api-ci는 `./gradlew test memoryTest`, web-ci는 lint·typecheck·test·build를 실행한다.
+
+Pages 빌드 대상 PR마다 미리보기 주소를 확인한다. 미리보기도 같은 Render API를 사용하므로 운영 데이터에 영향을 주는 작업을 주의해서 수행한다.
+
+## 8. 설정값 바꾸기·플랫폼 옮기기
+
+값을 바꿀 때는 GitHub Environment `production`을 수정하고 `sync-config`를 실행한다. 플랫폼 대시보드에서 직접 고친 동기화 대상 값은 다음 동기화에서 덮어쓰므로 원본에서 변경한다. `API_HEALTH_URL`은 예외로 저장소 변수를 수정한다. Pages 값은 최신 배포 Retry로 적용한다.
+
+`JWT_SECRET`을 바꾸면 모든 사용자가 다시 로그인해야 한다. 운영 쿠키는 `Path=/api/auth; SameSite=Lax; Secure`로 고정한다. `CORS_ALLOWED_ORIGINS`는 기본 빈 값이며 같은 출처 프록시를 사용하므로 별도로 설정하지 않는다.
+
+다른 플랫폼으로 옮길 때는 `.github/workflows/sync-config.yml`의 Render·Cloudflare 단계를 새 플랫폼 API 호출로 바꾼다. 앱 코드는 같은 환경변수 이름을 그대로 읽도록 유지한다. 새 서비스 주소와 health 주소도 원본 설정에서 변경한다.
+
+## 9. 되돌리기
+
+Pages는 Deployments에서 이전 배포로 Rollback한다. Render는 이전 커밋을 지정해 Manual Deploy한다. DB 마이그레이션(Flyway)은 앱 배포를 되돌려도 되돌리지 않으므로 스키마 변경 PR은 이전 앱과의 호환성을 따로 확인한다.
+
+## 10. 문제 해결
+
+| 증상 | 확인과 조치 |
+|---|---|
+| keepalive가 멈춤 | 공개 저장소는 60일 활동이 없으면 예약 워크플로가 꺼질 수 있으므로 Actions → keepalive → Enable workflow 후 수동 실행한다. `API_HEALTH_URL`이 없으면 경고만 남기고 성공 종료하므로 저장소 변수와 UP 응답도 확인한다. |
+| `/api/*`가 HTML을 반환함 | Function 경로, `_routes.json`, `API_ORIGIN`과 Pages 재배포 여부를 확인한다. 화면에는 “요청을 처리하지 못했습니다.”로 표시될 수 있으므로 응답 형식도 확인한다. |
+| health가 계속 실패함 | 약 3~4분의 기동 시간을 기다린 뒤 Render 로그에서 DB 연결, `sslmode=require`, 세션 풀러 사용자 이름을 확인한다. Spring이 빠진 환경변수를 `${DB_USERNAME}` 같은 문자열로 처리할 수 있어 “값 없음” 대신 DB 인증 오류 또는 “app.jwt.secret must be at least 32 bytes”로 나타날 수 있으므로 GitHub Environment 값과 sync-config 실행 여부를 확인한다. |
+| 업로드가 503 `IMPORT_BUSY`로 실패함 | 화면에 “다른 업로드를 처리하고 있습니다. 잠시 후 다시 시도해 주세요.”를 표시한다. import는 서버 전체에서 동시에 1건만 처리하고 20초 대기 후 거절한다. CPU 0.1에서 한도 근처 파일은 1분 이상 걸릴 수 있으므로 기존 작업 완료 후 재시도한다. |
+| 로그인 후 새로고침하면 로그아웃됨 | 쿠키 `Path=/api/auth`, `Secure`와 HTTPS Pages 주소로 접속했는지 확인한다. 로컬 HTTP에서는 `REFRESH_COOKIE_SECURE=false`로 API를 실행한다. |
+| Supabase가 일시정지됨 | Supabase 대시보드에서 Restore하고 keepalive의 실행 기록과 health 응답을 확인한다. |
