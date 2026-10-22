@@ -38,6 +38,8 @@ jobs:
       DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
       JWT_SECRET: ${{ secrets.JWT_SECRET }}
       API_ORIGIN: ${{ vars.API_ORIGIN }}
+      # 선택: 비어 있으면 구글 로그인이 꺼진다. 클라이언트 ID는 공개값이라 Variable로 둔다.
+      GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_CLIENT_ID }}
     steps:
       - name: Check that every value is set
         run: |
@@ -70,13 +72,15 @@ jobs:
             echo "Render: $key updated"
           }
           for key in DB_URL DB_USERNAME DB_PASSWORD JWT_SECRET; do put "$key"; done
+          if [ -n "$GOOGLE_CLIENT_ID" ]; then put GOOGLE_CLIENT_ID; fi
 
       - name: Cloudflare Pages environment variables
         if: ${{ !inputs.dry_run }}
         run: |
           set -euo pipefail
-          jq -n --arg origin "$API_ORIGIN" '
-            {API_ORIGIN: {type: "plain_text", value: $origin}, NODE_VERSION: {type: "plain_text", value: "22"}} as $vars
+          jq -n --arg origin "$API_ORIGIN" --arg google "$GOOGLE_CLIENT_ID" '
+            {API_ORIGIN: {type: "plain_text", value: $origin}, NODE_VERSION: {type: "plain_text", value: "22"}}
+            + (if $google != "" then {VITE_GOOGLE_CLIENT_ID: {type: "plain_text", value: $google}} else {} end) as $vars
             | {deployment_configs: {production: {env_vars: $vars}, preview: {env_vars: $vars}}}' > "$RUNNER_TEMP/pages.json"
           code=$(curl -sS --max-time 60 -o /dev/null -w '%{http_code}' -X PATCH \
             "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$CLOUDFLARE_PAGES_PROJECT" \

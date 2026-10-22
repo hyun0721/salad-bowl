@@ -65,6 +65,7 @@
 | Variable | `CLOUDFLARE_ACCOUNT_ID` | `<계정 ID>` |
 | Variable | `CLOUDFLARE_PAGES_PROJECT` | `<Pages 프로젝트 이름>` |
 | Variable | `API_ORIGIN` | `https://<render-host>` |
+| Variable (선택) | `GOOGLE_CLIENT_ID` | `<Google OAuth 클라이언트 ID>` — 비우면 구글 로그인이 꺼진다. 아래 구글 로그인 절 참고 |
 
 Environment `production` → **Deployment branches and tags**를 **Selected branches: `main`**으로 제한하는 것을 필수로 설정한다. Required reviewers는 두지 않아도 되지만 배포 브랜치는 반드시 `main`으로 제한한다. 쓰기 권한이 있으면 다른 브랜치에서 워크플로를 고쳐 비밀값을 읽을 수 있고, `RENDER_API_KEY`는 Render 계정 전체 권한을 가지므로 이 제한이 필요하다. `sync-config` job도 `main`에서만 실행되도록 두 번째로 확인한다.
 
@@ -158,3 +159,12 @@ Pages는 Deployments에서 이전 배포로 Rollback한다. Render는 이전 커
 | 업로드가 503 `IMPORT_BUSY`로 실패함 | 화면에 “다른 업로드를 처리하고 있습니다. 잠시 후 다시 시도해 주세요.”를 표시한다. import는 서버 전체에서 동시에 1건만 처리하고 20초 대기 후 거절한다. CPU 0.1에서 한도 근처 파일은 1분 이상 걸릴 수 있으므로 기존 작업 완료 후 재시도한다. |
 | 로그인 후 새로고침하면 로그아웃됨 | 쿠키 `Path=/api/auth`, `Secure`와 HTTPS Pages 주소로 접속했는지 확인한다. 로컬 HTTP에서는 `REFRESH_COOKIE_SECURE=false`로 API를 실행한다. |
 | Supabase가 일시정지됨 | Supabase 대시보드에서 Restore하고 keepalive의 실행 기록과 health 응답을 확인한다. |
+
+## 구글 로그인 설정
+
+1. Google Cloud Console → API 및 서비스 → 사용자 인증 정보에서 **OAuth 클라이언트 ID(웹 애플리케이션)**를 만든다.
+2. **승인된 JavaScript 원본**에 `https://<project>.pages.dev`(운영)와 `http://localhost:5173`(로컬)을 등록한다. 리디렉션 URI는 필요 없다(Google Identity Services의 ID 토큰 방식).
+3. 클라이언트 ID를 GitHub Environment `production`의 Variable `GOOGLE_CLIENT_ID`에 넣고 `sync-config`를 실행한다. API(`GOOGLE_CLIENT_ID`)와 웹 빌드(`VITE_GOOGLE_CLIENT_ID`)에 같은 값이 들어간다. Pages 환경변수는 다음 Pages 배포부터 적용된다.
+4. 로컬 개발은 `apps/web/.env.local`에 `VITE_GOOGLE_CLIENT_ID=...`, API 실행 환경에 `GOOGLE_CLIENT_ID=...`를 설정한다.
+
+동작 규칙: 구글이 이메일을 인증한(`email_verified`) 경우에만 같은 이메일의 기존 계정에 자동 연동한다. 구글로만 가입한 계정은 비밀번호가 없어 이메일·비밀번호 로그인은 할 수 없다.

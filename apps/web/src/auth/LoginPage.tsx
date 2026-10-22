@@ -2,6 +2,7 @@ import { useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 import { errorMessage } from '../common/errorMessage'
 import { safeNext } from '../common/safeNext'
+import GoogleSignInButton from './GoogleSignInButton'
 import { useAuth } from './AuthProvider'
 import { SignupLoginError } from './authErrors'
 import styles from './LoginPage.module.css'
@@ -11,7 +12,7 @@ const MODES: Mode[] = ['login', 'signup']
 const TAB_LABEL: Record<Mode, string> = { login: '로그인', signup: '회원가입' }
 
 export default function LoginPage() {
-  const { login, signup } = useAuth()
+  const { login, loginWithGoogle, signup } = useAuth()
   const navigate = useNavigate()
   const [params] = useSearchParams()
   const [mode, setMode] = useState<Mode>('login')
@@ -67,6 +68,20 @@ export default function LoginPage() {
     }
   }
 
+  async function onGoogleCredential(idToken: string) {
+    setBusy(true)
+    setError(null)
+    setNotice(null)
+    try {
+      await loginWithGoogle(idToken)
+      navigate(target, { replace: true })
+    } catch (e) {
+      setError(errorMessage(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
     <div className={styles.page}>
       <main className={styles.card}>
@@ -107,6 +122,8 @@ export default function LoginPage() {
           <p role="status" className={notice ? styles.notice : styles.noticeEmpty}>{notice}</p>
           {error && <p role="alert" className={styles.error}>{error}</p>}
         </form>
+        <GoogleSignInButton onCredential={onGoogleCredential}
+          onError={() => setError('Google 로그인을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.')} />
         <p className={styles.hint}>초대 링크로 들어왔다면 로그인 후 초대 화면으로 돌아갑니다.</p>
       </main>
     </div>

@@ -1,5 +1,6 @@
 package com.saladbowl.api.auth;
 
+import com.saladbowl.api.auth.AuthDtos.GoogleLoginRequest;
 import com.saladbowl.api.auth.AuthDtos.IssuedTokens;
 import com.saladbowl.api.auth.AuthDtos.LoginRequest;
 import com.saladbowl.api.auth.AuthDtos.SignupRequest;
@@ -42,6 +43,11 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<TokenResponse> login(@Valid @RequestBody LoginRequest request) {
         return withTokens(authService.login(request));
+    }
+
+    @PostMapping("/google")
+    public ResponseEntity<TokenResponse> google(@Valid @RequestBody GoogleLoginRequest request) {
+        return withTokens(authService.loginWithGoogle(request.idToken()));
     }
 
     @PostMapping("/refresh")
