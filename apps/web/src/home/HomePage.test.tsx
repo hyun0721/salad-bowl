@@ -34,6 +34,27 @@ describe('HomePage', () => {
     expect(document.title).toBe('내 가계부 · Salad Bowl')
   })
 
+  it('starts in January on last year, where last month is', async () => {
+    const years: (string | null)[] = []
+    server.use(
+      http.get('*/api/me/coverage', ({ request }) => {
+        years.push(new URL(request.url).searchParams.get('year'))
+        return HttpResponse.json([])
+      }),
+      http.get('*/api/me/transactions', ({ request }) => {
+        expect(new URL(request.url).searchParams.get('month')).toBe('2025-12')
+        return HttpResponse.json([])
+      }),
+      http.get('*/api/imports', () => HttpResponse.json([])),
+    )
+
+    renderPage(<HomePage today={new Date(2026, 0, 10)} />)
+
+    expect(await screen.findByRole('region', { name: '지난달 내 요약 (2025년 12월)' })).toBeInTheDocument()
+    expect(screen.getByText('2025년')).toBeInTheDocument()
+    await waitFor(() => expect(years).toEqual(['2025']))
+  })
+
   it('moves between years', async () => {
     handlers([{ month: '2026-09', importedCount: 168 }])
     const { user } = renderPage(<HomePage today={today} />)
@@ -72,11 +93,11 @@ describe('HomePage', () => {
     expect(await screen.findByText('등록됨 · 90건')).toBeInTheDocument()
   })
 
-  it('summarizes this month and lists recent uploads', async () => {
+  it('summarizes last month and lists recent uploads', async () => {
     server.use(
       http.get('*/api/me/coverage', () => HttpResponse.json([])),
       http.get('*/api/me/transactions', ({ request }) => {
-        expect(new URL(request.url).searchParams.get('month')).toBe('2026-10')
+        expect(new URL(request.url).searchParams.get('month')).toBe('2026-09')
         return HttpResponse.json([
           { id: 1, ownerId: 1, ownerNickname: '나', occurredAt: '2026-10-01T09:00:00', type: 'INCOME', categoryMajor: '급여', categoryMinor: '', description: '월급', amount: 3000000, currency: 'KRW', paymentMethod: '은행', memo: null, hidden: false, source: 'IMPORT', edited: false, editable: true },
           { id: 2, ownerId: 1, ownerNickname: '나', occurredAt: '2026-10-02T12:00:00', type: 'EXPENSE', categoryMajor: '식비', categoryMinor: '', description: '점심', amount: -12000, currency: 'KRW', paymentMethod: '카드', memo: null, hidden: false, source: 'IMPORT', edited: false, editable: true },
@@ -89,7 +110,7 @@ describe('HomePage', () => {
 
     renderPage(<HomePage today={today} />)
 
-    const summary = await screen.findByRole('region', { name: '이번 달 내 요약 (2026년 10월)' })
+    const summary = await screen.findByRole('region', { name: '지난달 내 요약 (2026년 9월)' })
     expect(await within(summary).findByText('₩ 3,000,000')).toBeInTheDocument()
     expect(within(summary).getByText('₩ 12,000')).toBeInTheDocument()
     const recent = screen.getByRole('region', { name: '최근 업로드' })
@@ -110,9 +131,9 @@ describe('HomePage', () => {
     )
     const { user } = renderPage(<HomePage today={today} />)
 
-    const summary = await screen.findByRole('region', { name: '이번 달 내 요약 (2026년 10월)' })
+    const summary = await screen.findByRole('region', { name: '지난달 내 요약 (2026년 9월)' })
     const recent = screen.getByRole('region', { name: '최근 업로드' })
-    expect(await within(summary).findByRole('alert')).toHaveTextContent('이번 달 거래를 불러오지 못했습니다.')
+    expect(await within(summary).findByRole('alert')).toHaveTextContent('지난달 거래를 불러오지 못했습니다.')
     expect(await within(recent).findByRole('alert')).toHaveTextContent('업로드 이력을 불러오지 못했습니다.')
     expect(within(recent).queryByText('아직 올린 파일이 없습니다.')).not.toBeInTheDocument()
 

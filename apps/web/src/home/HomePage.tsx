@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { Link } from 'react-router'
 import Modal from '../common/Modal'
 import ui from '../common/ui.module.css'
-import { currentYearMonth, formatInstant, formatMonthLabel, formatWon } from '../common/format'
+import { defaultYearMonth, formatInstant, formatMonthLabel, formatWon } from '../common/format'
 import { usePageTitle } from '../common/usePageTitle'
 import { importsApi } from '../imports/importsApi'
 import UploadForm from '../imports/UploadForm'
@@ -19,9 +19,10 @@ export default function HomePage({ today: todayProp }: Props) {
   usePageTitle('내 가계부')
   const [mountedAt] = useState(() => new Date())
   const today = todayProp ?? mountedAt
-  const [year, setYear] = useState(today.getFullYear())
+  const month = defaultYearMonth(today)
+  // 1월에는 지난달이 작년이므로, 달력도 지난달이 있는 연도부터 보여준다.
+  const [year, setYear] = useState(() => Number(month.slice(0, 4)))
   const [uploadMonth, setUploadMonth] = useState<string | null>(null)
-  const month = currentYearMonth(today)
   const uploading = useIsMutating({ mutationKey: ['upload'] }) > 0
 
   const coverage = useQuery({ queryKey: ['coverage', year], queryFn: () => coverageApi.get(year) })
@@ -59,11 +60,11 @@ export default function HomePage({ today: todayProp }: Props) {
 
       <div className={styles.twoColumns}>
         <section aria-labelledby="summary-title" className={ui.card}>
-          <h2 id="summary-title">이번 달 내 요약 ({formatMonthLabel(month)})</h2>
+          <h2 id="summary-title">지난달 내 요약 ({formatMonthLabel(month)})</h2>
           {mine.isPending && <p className={ui.status}>불러오는 중입니다.</p>}
           {mine.isError && (
             <div className={ui.row}>
-              <p role="alert" className={ui.alert}>이번 달 거래를 불러오지 못했습니다.</p>
+              <p role="alert" className={ui.alert}>지난달 거래를 불러오지 못했습니다.</p>
               <button type="button" className={ui.button} aria-label="요약 다시 시도" onClick={() => void mine.refetch()}>다시 시도</button>
             </div>
           )}

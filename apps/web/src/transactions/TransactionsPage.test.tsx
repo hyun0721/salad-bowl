@@ -6,7 +6,7 @@ import { renderPage } from '../test/renderPage'
 import TransactionsPage from './TransactionsPage'
 import type { TransactionView } from './transactionsApi'
 
-const today = new Date(2026, 9, 19) // 2026-10-19: 기본 월은 2026-10
+const today = new Date(2026, 10, 19) // 2026-11-19: 기본 월은 지난달 2026-10
 
 const base: TransactionView = {
   id: 1, ownerId: 1, ownerNickname: '나', occurredAt: '2026-10-05T12:30:00', type: 'EXPENSE',

@@ -9,6 +9,7 @@ export function useGroupMutations() {
   const refreshList = () => queryClient.invalidateQueries({ queryKey: ['groups'], exact: true })
 
   const create = useMutation({
+    mutationKey: ['groups', 'create'],
     mutationFn: (name: string) => groupsApi.create(name),
     onSuccess: async (group) => {
       selectGroup(group.groupId)

@@ -5,7 +5,7 @@ import { renderPage } from '../test/renderPage'
 import { server } from '../test/server'
 import DashboardPage from './DashboardPage'
 
-const today = new Date(2026, 9, 19) // 기본 월은 2026-10
+const today = new Date(2026, 10, 19) // 기본 월은 지난달 2026-10
 const group = { groupId: 10, name: '우리집', myRole: 'ADMIN', memberCount: 2 }
 const summary = {
   month: '2026-10',
