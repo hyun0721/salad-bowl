@@ -4,6 +4,7 @@ import com.saladbowl.api.auth.CurrentUser;
 import com.saladbowl.api.transaction.TransactionDtos.AuditView;
 import com.saladbowl.api.transaction.TransactionDtos.CoverageMonth;
 import com.saladbowl.api.transaction.TransactionDtos.ManualTransactionRequest;
+import com.saladbowl.api.transaction.TransactionDtos.MonthDeleteResult;
 import com.saladbowl.api.transaction.TransactionDtos.TransactionView;
 import com.saladbowl.api.transaction.TransactionDtos.UpdateTransactionRequest;
 import jakarta.validation.Valid;
@@ -44,6 +45,12 @@ public class TransactionController {
     public ResponseEntity<TransactionView> addManual(@CurrentUser Long userId,
                                                      @Valid @RequestBody ManualTransactionRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(transactionService.addManual(userId, request));
+    }
+
+    @DeleteMapping("/me/transactions")
+    public MonthDeleteResult deleteMonth(@CurrentUser Long userId, @RequestParam YearMonth month,
+                                         @RequestParam(defaultValue = "false") boolean includeManual) {
+        return transactionService.deleteMonth(userId, month, includeManual);
     }
 
     @GetMapping("/groups/{groupId}/transactions")

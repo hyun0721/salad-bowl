@@ -1,6 +1,7 @@
 package com.saladbowl.api.transaction;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -53,4 +54,16 @@ public interface LedgerTransactionRepository extends JpaRepository<LedgerTransac
     List<Object[]> countByMonth(@Param("ownerId") Long ownerId,
                                 @Param("from") LocalDateTime from,
                                 @Param("to") LocalDateTime to);
+
+    /** 내 거래 중 한 출처의 기간 거래를 지운다. 수정 이력은 DB FK(ON DELETE CASCADE)로 함께 지워진다. */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("""
+            delete from LedgerTransaction t
+            where t.ownerId = :ownerId and t.source = :source
+              and t.occurredAt >= :from and t.occurredAt < :to
+            """)
+    int deleteOwnedBetween(@Param("ownerId") Long ownerId,
+                           @Param("source") TransactionSource source,
+                           @Param("from") LocalDateTime from,
+                           @Param("to") LocalDateTime to);
 }
