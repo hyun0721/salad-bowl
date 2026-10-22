@@ -2,7 +2,7 @@
 .cell { width: 100%; min-height: 96px; padding: 14px; border-radius: var(--radius-md); display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start; text-align: left; }
 .month { font-weight: 700; }
 .state { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; }
-.registered { border: 1px solid var(--brand); background: var(--brand-tint); color: var(--ink); }
+.registered { border: 1px solid var(--brand); background: var(--brand-tint); color: var(--ink); cursor: pointer; }
 .registered .state { color: var(--brand); }
 .missing { border: 1px dashed var(--pending); background: var(--pending-tint); color: var(--ink); cursor: pointer; }
 .missing .state { color: var(--pending); }

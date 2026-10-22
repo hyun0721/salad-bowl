@@ -44,7 +44,13 @@ export type AuditView = {
   changedAt: string
 }
 
+export type MonthDeleteResult = { deletedImported: number; deletedManual: number }
+
 export const transactionsApi = {
+  deleteMonth: (month: string, includeManual: boolean) =>
+    apiFetch<MonthDeleteResult>(
+      `/me/transactions?${new URLSearchParams({ month, includeManual: String(includeManual) })}`,
+      { method: 'DELETE' }),
   mine: (month: string) => apiFetch<TransactionView[]>(`/me/transactions?month=${encodeURIComponent(month)}`),
   group: (groupId: number, month: string, memberId: number | null) => {
     const params = new URLSearchParams({ month })
