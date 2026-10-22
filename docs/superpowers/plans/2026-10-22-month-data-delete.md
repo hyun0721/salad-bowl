@@ -828,6 +828,46 @@ Co-Authored-By: Codex (gpt-6-astra) <noreply@openai.com>"
 
 ---
 
+### Task 4: 업로드와 월 삭제를 회원별로 직렬화 (API, Claude 구현자)
+
+> 반론 리뷰(I1) 뒤에 추가한 Task다(사용자 결정, 2026-10-22). 지금은 import만 프로세스 안 `Semaphore`로 하나씩 처리하고, `deleteMonth`는 잠금을 잡지 않는다. 다른 탭·기기에서 업로드와 월 삭제가 겹치면, 업로드가 기존 행을 읽은 뒤 삭제가 먼저 커밋되어 "변경없음"으로 센 거래가 성공 응답과 함께 사라지거나, "갱신" 대상 행이 사라져 업로드가 500으로 실패할 수 있다.
+
+**Files:**
+- Create: `apps/api/src/main/java/com/saladbowl/api/transaction/LedgerLock.java`
+- Modify: `apps/api/src/main/java/com/saladbowl/api/importer/ImportService.java` (`importFile`의 `transaction.execute` 첫 줄)
+- Modify: `apps/api/src/main/java/com/saladbowl/api/transaction/TransactionService.java` (`deleteMonth` 첫 줄)
+- Create: `apps/api/src/test/java/com/saladbowl/api/transaction/LedgerLockTest.java`
+- Modify: `docs/superpowers/specs/2026-10-22-month-data-delete-design.md` 4절
+
+**Interfaces:**
+- Produces: `@Component LedgerLock` with `void lockOwner(long ownerId)` — 현재 DB 트랜잭션이 끝날 때까지 그 회원의 가계부 쓰기 잠금을 잡는다. 트랜잭션 밖에서 부르면 `IllegalStateException`.
+
+**설계:**
+- Postgres 트랜잭션 범위 advisory lock: `select pg_advisory_xact_lock(:namespace, :ownerId)` (두 개의 `int` 인자 형식). `namespace`는 상수 `0x4C454447`(`'LEDG'`), `ownerId`는 `Math.toIntExact(ownerId)`. 커밋·롤백 때 자동으로 풀린다.
+- 실행은 `EntityManager.createNativeQuery(...).getSingleResult()`(결과는 void라 무시). 호출 전 `TransactionSynchronizationManager.isActualTransactionActive()`가 false면 `IllegalStateException("LedgerLock requires an active transaction")`.
+- `ImportService.importFile`: `transaction.execute(status -> { ledgerLock.lockOwner(ownerId); ... })` — 파싱·기간 검사는 지금처럼 트랜잭션 밖에서 먼저 끝낸다(잠금은 DB 쓰기 구간에만). 기존 `Semaphore`는 메모리 보호용이므로 그대로 둔다.
+- `TransactionService.deleteMonth`: `monthRange` 검사 다음, 첫 삭제 전에 `ledgerLock.lockOwner(userId)`.
+- 대기 시간 제한(`lock_timeout`)은 이번에 넣지 않는다(Plan 06 범위). import 쓰기 구간은 짧다.
+- 단일 거래 수정·수동 추가·단건 삭제는 이번 범위가 아니다(행 단위 쓰기라 겹쳐도 손실이 없다).
+
+- [ ] **Step 1: 실패하는 테스트 작성** — `LedgerLockTest extends IntegrationTest`. `ImportServiceTest`의 스레드·`CountDownLatch` 패턴을 따른다. `TransactionTemplate`(주입한 `PlatformTransactionManager`로 생성)으로 별도 스레드에서 트랜잭션을 열고 `lockOwner(owner)`를 잡은 채 래치로 붙잡아 둔다.
+  1. `deleteMonthWaitsForTheOwnersLedgerLock`: 잠금을 쥔 동안 다른 스레드에서 `transactionService.deleteMonth(owner, YearMonth.of(2026, 9), false)`를 부르면 500ms 안에 끝나지 않는다(`Future.get(500, MILLISECONDS)`가 `TimeoutException`). 잠금 트랜잭션을 끝내면 5초 안에 끝난다.
+  2. `importWaitsForTheOwnersLedgerLock`: 같은 방식으로 `importService.importFile(owner, "a.xlsx", BanksaladWorkbook ...)`(ImportServiceTest가 쓰는 픽스처 생성 방법 그대로)이 잠금을 기다린다.
+  3. `otherOwnersAreNotBlocked`: owner A 잠금을 쥔 동안 owner B의 `deleteMonth`는 5초 안에 끝난다.
+  4. `lockRequiresATransaction`: 트랜잭션 밖 `lockOwner`는 `IllegalStateException`.
+- [ ] **Step 2: 실패 확인** — Run: `cd apps/api && ./gradlew test --tests 'com.saladbowl.api.transaction.LedgerLockTest'` Expected: 컴파일 실패(`LedgerLock` 없음).
+- [ ] **Step 3: 구현** — 위 설계대로 `LedgerLock`을 만들고 두 곳에서 부른다.
+- [ ] **Step 4: 통과 확인** — Run: `cd apps/api && ./gradlew test` Expected: 전체 PASS. 잠금 테스트는 실행 시간이 각각 수 초 안이어야 한다.
+- [ ] **Step 5: 스펙 갱신** — 스펙 4절의 "업로드와 삭제가 동시에 일어나는 경우…" 항목을 다음으로 바꾼다: `업로드(DB 쓰기 구간)와 월 삭제는 회원별 DB 잠금(Postgres advisory lock)으로 차례로 실행된다. 화면에서도 같은 탭의 업로드 중에는 삭제를 막는다(2.2). 다른 탭·기기에서 겹치면 나중 요청이 앞 요청의 커밋을 기다린 뒤 실행된다.`
+- [ ] **Step 6: Commit**
+
+```bash
+git add apps/api/src/main/java/com/saladbowl/api/transaction/LedgerLock.java apps/api/src/main/java/com/saladbowl/api/importer/ImportService.java apps/api/src/main/java/com/saladbowl/api/transaction/TransactionService.java apps/api/src/test/java/com/saladbowl/api/transaction/LedgerLockTest.java docs/superpowers/specs/2026-10-22-month-data-delete-design.md
+git commit -m "fix(api): serialize uploads and month deletes per owner"
+```
+
+---
+
 ## 마무리
 
 - 브랜치 최종 리뷰: opus 최종 리뷰어와 `.claude/skills/codex-collab/codex-run.sh review main .superpowers/sdd/month-data-delete/codex-final-review.md high`를 동시에 돌리고 수정은 한 번에 맡긴다.
