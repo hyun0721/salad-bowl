@@ -71,7 +71,7 @@ export default function LoginPage() {
     <div className={styles.page}>
       <main className={styles.card}>
         <div className={styles.brand}>
-          <span className={styles.name}>Salad Bowl</span>
+          <span className={styles.name}><img src="/logo.svg" alt="" width="36" height="36" />Salad Bowl</span>
           <p className={styles.lead}>뱅크샐러드 가계부를 가족·친구와 함께 봅니다.</p>
         </div>
         <div role="tablist" aria-label="로그인 또는 회원가입" className={styles.tabs} onKeyDown={onTabKeyDown}>

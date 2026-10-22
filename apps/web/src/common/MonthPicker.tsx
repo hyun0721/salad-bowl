@@ -1,6 +1,6 @@
 import { useId, useState } from 'react'
 import { shiftMonth } from './format'
-import { ChevronLeft, ChevronRight } from './icons'
+import Icon from './Icon'
 import styles from './MonthPicker.module.css'
 import ui from './ui.module.css'
 
@@ -26,7 +26,7 @@ export default function MonthPicker({ month, onChange }: Props) {
   return (
     <div className={styles.picker}>
       <button type="button" className={`${ui.button} ${styles.step}`} aria-label="이전 달"
-        onClick={() => onChange(shiftMonth(month, -1))}><ChevronLeft /></button>
+        onClick={() => onChange(shiftMonth(month, -1))}><Icon name="chevron-left" size={18} /></button>
       <label className={styles.field}>
         <span>월</span>
         <input type="month" className={ui.input} value={draft} aria-invalid={!valid}
@@ -37,7 +37,7 @@ export default function MonthPicker({ month, onChange }: Props) {
           }} />
       </label>
       <button type="button" className={`${ui.button} ${styles.step}`} aria-label="다음 달"
-        onClick={() => onChange(shiftMonth(month, 1))}><ChevronRight /></button>
+        onClick={() => onChange(shiftMonth(month, 1))}><Icon name="chevron-right" size={18} /></button>
       {!valid && <p id={hintId} className={`${ui.muted} ${styles.hint}`}>2026-10처럼 연도와 월을 입력해 주세요.</p>}
     </div>
   )

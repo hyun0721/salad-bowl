@@ -14,7 +14,12 @@
 
 - **1차는 PC 우선**이다. 레이아웃은 좁은 화면에서 무너지지 않게(사이드바가 위로 쌓이고, 표는 가로 스크롤) 만들지만, 하단 탭 같은 모바일 전용 UX는 고도화 단계에서 한다.
 - **디자인 도구**: 와이어프레임과 디자인 시스템은 Claude Design으로 관리한다. Figma는 쓰지 않는다.
-- **아이콘**: 잔여 작업으로 넘긴다. 1차 구현은 필요한 곳에만 인라인 SVG(라인, `currentColor`)를 쓰고, 이모지는 쓰지 않는다.
+- **아이콘**: `apps/web/src/common/Icon.tsx`의 `<Icon name="..." />` 하나로 쓴다. 이모지는 쓰지 않는다.
+  - 규칙: 24px 그리드, 선 굵기 1.75px, 둥근 끝처리, 색은 `currentColor`. 기본 크기는 20px, 버튼 안에서는 18px, 강조 영역(업로드 끌어놓기)은 32px이다.
+  - 기본 아이콘은 Lucide(ISC)의 SVG 경로를 옮겨 쓴다. 새 아이콘이 필요하면 같은 버전(`lucide-static` 1.61.0)에서 경로만 복사한다. 패키지는 설치하지 않는다.
+  - 오픈소스에 없는 도메인 아이콘(`sheet-upload` 등)은 같은 규칙으로 직접 그린다.
+  - 아이콘은 장식이다(`aria-hidden`). 이름은 버튼 글자나 `aria-label`이 맡는다.
+  - 로고는 `apps/web/public/logo.svg`다. 바꾸면 `apps/web`에서 `npx --yes @vite-pwa/assets-generator@2.0.0`으로 favicon·PWA 아이콘을 다시 만든다(설정은 `pwa-assets.config.js`).
 
 ## 2. 메뉴와 화면
 

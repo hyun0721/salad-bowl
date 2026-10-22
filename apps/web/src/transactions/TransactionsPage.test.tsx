@@ -152,7 +152,7 @@ describe('TransactionsPage', () => {
     const detail = screen.getByRole('complementary', { name: '거래 상세' })
     expect(within(detail).getByRole('heading', { name: '김밥' })).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: '+ 거래 추가' }))
+    await user.click(screen.getByRole('button', { name: '거래 추가' }))
     expect(within(detail).getByRole('heading', { name: '거래 추가 (수동)' })).toBeInTheDocument()
   })
 
@@ -186,7 +186,7 @@ describe('TransactionsPage', () => {
     await user.type(screen.getByLabelText('메모'), 'x')
     expect(screen.getByLabelText('메모')).toHaveFocus()
 
-    await user.click(screen.getByRole('button', { name: '+ 거래 추가' }))
+    await user.click(screen.getByRole('button', { name: '거래 추가' }))
     expect(screen.getByRole('heading', { name: '거래 추가 (수동)' })).toHaveFocus()
     expect(screen.getByRole('complementary', { name: '거래 추가' })).toBeInTheDocument()
   })
@@ -219,7 +219,7 @@ describe('TransactionsPage', () => {
     const { user } = renderPage(<TransactionsPage today={today} />, { groups })
 
     await screen.findByText('이 달에 거래가 없습니다.')
-    await user.click(screen.getByRole('button', { name: '+ 거래 추가' }))
+    await user.click(screen.getByRole('button', { name: '거래 추가' }))
     fireEvent.change(screen.getByLabelText('일시'), { target: { value: '2026-09-05T13:30' } })
     await user.type(screen.getByLabelText('대분류'), '식비')
     await user.type(screen.getByLabelText('내용'), '9월 간식')

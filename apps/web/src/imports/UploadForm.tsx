@@ -1,4 +1,5 @@
 import { useState, type DragEvent, type FormEvent } from 'react'
+import Icon from '../common/Icon'
 import ui from '../common/ui.module.css'
 import { uploadErrorMessage, validateUploadFile, type ImportResult } from './importsApi'
 import styles from './UploadForm.module.css'
@@ -43,6 +44,7 @@ export default function UploadForm({ onDone }: Props) {
         onDragLeave={() => setDragging(false)}
         onDrop={onDrop}
       >
+        <span className={styles.dropIcon}><Icon name="sheet-upload" size={32} /></span>
         <span className={styles.dropTitle}>파일을 끌어다 놓거나 눌러서 선택</span>
         <span className={ui.muted}>.xlsx · 한 번에 최대 3개월치 · 512KB 이하 · 원본 파일과 개인정보 시트는 저장하지 않습니다</span>
         <input type="file" accept=".xlsx" className={styles.input}
@@ -51,7 +53,7 @@ export default function UploadForm({ onDone }: Props) {
       </label>
       <div className={styles.actions}>
         <button type="submit" className={`${ui.button} ${ui.primary}`} disabled={!file || upload.isPending}>
-          {upload.isPending ? '올리는 중' : '업로드'}
+          <Icon name="upload" size={18} />{upload.isPending ? '올리는 중' : '업로드'}
         </button>
       </div>
       {error && <p role="alert" className={ui.alert}>{error}</p>}

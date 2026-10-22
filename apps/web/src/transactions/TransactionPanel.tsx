@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useAuth } from '../auth/AuthProvider'
 import { errorMessage } from '../common/errorMessage'
+import Icon from '../common/Icon'
 import { formatDateTime, formatInstant, formatSignedWon } from '../common/format'
 import ui from '../common/ui.module.css'
 import styles from './TransactionPanel.module.css'
@@ -75,7 +76,7 @@ export default function TransactionPanel({ tx, onClose }: Props) {
     <div className={ui.stack}>
       <div className={styles.header}>
         <h2 ref={headingRef} tabIndex={-1}>{tx.description}</h2>
-        <button type="button" className={ui.button} onClick={onClose}>닫기</button>
+        <button type="button" className={ui.button} onClick={onClose}><Icon name="x" size={18} />닫기</button>
       </div>
       <p className={styles.amount}>{formatSignedWon(tx.amount)}</p>
       <p className={ui.muted}>
@@ -106,7 +107,7 @@ export default function TransactionPanel({ tx, onClose }: Props) {
           )}
           <div className={styles.actions}>
             {canDelete && !confirming && (
-              <button type="button" className={`${ui.button} ${ui.danger}`} onClick={() => setConfirming(true)}>삭제</button>
+              <button type="button" className={`${ui.button} ${ui.danger}`} onClick={() => setConfirming(true)}><Icon name="trash" size={18} />삭제</button>
             )}
             {canDelete && confirming && (
               <span className={ui.row}>
