@@ -508,7 +508,7 @@ function handlers(coverage: CoverageMonth[]) {
     await user.click(await screen.findByRole('button', { name: '2026년 9월 등록됨 3건, 데이터 관리' }))
     const dialog = screen.getByRole('dialog', { name: '2026년 9월 데이터' })
     await user.click(within(dialog).getByRole('button', { name: '다시 업로드' }))
-    await user.upload(within(dialog).getByLabelText(/파일을 끌어다 놓거나/), new File([new Uint8Array(10)], 'sep.xlsx'))
+    await user.upload(dialog.querySelector<HTMLInputElement>('input[type="file"]')!, new File([new Uint8Array(10)], 'sep.xlsx'))
     await user.click(within(dialog).getByRole('button', { name: '업로드' }))
 
     await waitFor(() => expect(within(dialog).getByRole('button', { name: '닫기' })).toBeDisabled())
