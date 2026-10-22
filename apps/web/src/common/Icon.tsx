@@ -45,6 +45,12 @@ const ICONS = {
       <circle cx="9" cy="7" r="4" />
     </>
   ),
+  user: (
+    <>
+      <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+      <circle cx="12" cy="7" r="4" />
+    </>
+  ),
   plus: (
     <>
       <path d="M5 12h14" />
