@@ -2,18 +2,11 @@ import { useEffect, useRef, useState } from 'react'
 import { NavLink, Outlet, Link, useLocation, useNavigate } from 'react-router'
 import { useAuth } from '../auth/AuthProvider'
 import { useGroups } from '../groups/GroupProvider'
-import Icon, { type IconName } from '../common/Icon'
+import Icon from '../common/Icon'
 import Select from '../common/Select'
 import SlowServerNotice from './SlowServerNotice'
 import styles from './AppLayout.module.css'
-
-const MENU: { to: string; label: string; icon: IconName; end: boolean }[] = [
-  { to: '/', label: '홈', icon: 'home', end: true },
-  { to: '/dashboard', label: '그룹 대시보드', icon: 'dashboard', end: false },
-  { to: '/transactions', label: '거래 목록', icon: 'receipt', end: false },
-  { to: '/upload', label: '업로드', icon: 'sheet-upload', end: false },
-  { to: '/groups', label: '그룹 관리', icon: 'users', end: false },
-]
+import { MENU } from './menu'
 
 export default function AppLayout() {
   const { me, logout } = useAuth()
