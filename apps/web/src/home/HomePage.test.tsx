@@ -246,6 +246,24 @@ describe('HomePage', () => {
     expect(within(dialog).getByLabelText('삭제하려면 2026-09를 입력하세요')).toHaveValue('2026-09')
   })
 
+  it('resets the delete confirmation when it is cancelled', async () => {
+    handlers([{ month: '2026-09', importedCount: 168, manualCount: 12 }])
+    const { user } = renderPage(<HomePage today={today} />)
+
+    await user.click(await screen.findByRole('button', { name: '2026년 9월 등록됨 168건, 데이터 관리' }))
+    const dialog = screen.getByRole('dialog', { name: '2026년 9월 데이터' })
+    await user.click(within(dialog).getByRole('button', { name: '이 달 데이터 삭제' }))
+    await user.click(within(dialog).getByLabelText('직접 추가한 거래 12건도 함께 삭제'))
+    await user.type(within(dialog).getByLabelText('삭제하려면 2026-09를 입력하세요'), '2026-09')
+    expect(within(dialog).getByRole('button', { name: '삭제' })).toBeEnabled()
+    await user.click(within(dialog).getByRole('button', { name: '취소' }))
+    await user.click(within(dialog).getByRole('button', { name: '이 달 데이터 삭제' }))
+
+    expect(within(dialog).getByLabelText('삭제하려면 2026-09를 입력하세요')).toHaveValue('')
+    expect(within(dialog).getByRole('button', { name: '삭제' })).toBeDisabled()
+    expect(within(dialog).getByLabelText('직접 추가한 거래 12건도 함께 삭제')).not.toBeChecked()
+  })
+
   it('keeps the month dialog open while re-uploading', async () => {
     server.use(
       http.get('*/api/me/coverage', () => HttpResponse.json([{ month: '2026-09', importedCount: 3, manualCount: 0 }])),

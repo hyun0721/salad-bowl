@@ -23,6 +23,13 @@ export default function MonthDataDialog({ coverage, onClose, onDeleted }: Props)
   const uploading = useIsMutating({ mutationKey: ['upload'] }) > 0
   const target = includeManual ? `거래 ${importedCount + manualCount}건` : `업로드한 거래 ${importedCount}건`
 
+  function cancelConfirm() {
+    setTyped('')
+    setIncludeManual(false)
+    remove.reset()
+    setStep('summary')
+  }
+
   function confirmDelete() {
     remove.mutate({ month, includeManual }, {
       onSuccess: (result) => onDeleted(`${label} 거래 ${result.deletedImported + result.deletedManual}건을 삭제했습니다.`),
@@ -75,7 +82,7 @@ export default function MonthDataDialog({ coverage, onClose, onDeleted }: Props)
           {remove.isError && <p role="alert" className={ui.alert}>{errorMessage(remove.error)}</p>}
           <div className={ui.row}>
             <button type="button" className={ui.button} disabled={remove.isPending}
-              onClick={() => setStep('summary')}>취소</button>
+              onClick={cancelConfirm}>취소</button>
             <button type="button" className={`${ui.button} ${ui.danger}`}
               disabled={typed !== month || uploading || remove.isPending}
               onClick={confirmDelete}>삭제</button>

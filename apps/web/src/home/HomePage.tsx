@@ -38,9 +38,9 @@ export default function HomePage({ today: todayProp }: Props) {
       <div className={ui.pageHeader}>
         <h1>내 가계부</h1>
         <div className={ui.row}>
-          <button type="button" className={ui.button} aria-label="이전 연도" onClick={() => setYear(year - 1)}>‹</button>
+          <button type="button" className={ui.button} aria-label="이전 연도" onClick={() => { setNotice(null); setYear(year - 1) }}>‹</button>
           <span className={styles.year}>{year}년</span>
-          <button type="button" className={ui.button} aria-label="다음 연도" onClick={() => setYear(year + 1)}>›</button>
+          <button type="button" className={ui.button} aria-label="다음 연도" onClick={() => { setNotice(null); setYear(year + 1) }}>›</button>
         </div>
       </div>
 
