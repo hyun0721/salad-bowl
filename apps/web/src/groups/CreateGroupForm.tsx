@@ -1,21 +1,22 @@
 import { useState, type FormEvent } from 'react'
 import { errorMessage } from '../common/errorMessage'
 import ui from '../common/ui.module.css'
-import styles from './GroupsPage.module.css'
 import { useGroupMutations } from './useGroupMutations'
 
-export default function CreateGroupForm() {
+type Props = { onCreated: () => void }
+
+/** 그룹 관리의 "그룹 만들기" 대화상자 안에 들어간다. 만들면 새 그룹이 선택되고 대화상자를 닫는다. */
+export default function CreateGroupForm({ onCreated }: Props) {
   const { create } = useGroupMutations()
   const [name, setName] = useState('')
 
   function onSubmit(event: FormEvent) {
     event.preventDefault()
-    create.mutate(name.trim(), { onSuccess: () => setName('') })
+    create.mutate(name.trim(), { onSuccess: onCreated })
   }
 
   return (
-    <form className={ui.stack} aria-labelledby="create-group-title" onSubmit={onSubmit}>
-      <h3 id="create-group-title" className={styles.subTitle}>새 그룹 만들기</h3>
+    <form className={ui.stack} onSubmit={onSubmit}>
       <label className={ui.field}>
         <span>그룹 이름</span>
         <input className={ui.input} required maxLength={50} value={name} onChange={(e) => setName(e.target.value)} />

@@ -71,10 +71,14 @@ describe('GroupsPage', () => {
     )
 
     expect(await screen.findByText(/아직 속한 그룹이 없습니다/)).toBeInTheDocument()
-    await user.type(screen.getByLabelText('그룹 이름'), '새 그룹')
-    await user.click(screen.getByRole('button', { name: '만들기' }))
+    expect(screen.queryByLabelText('그룹 이름')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '그룹 만들기' }))
+    const dialog = screen.getByRole('dialog', { name: '새 그룹 만들기' })
+    await user.type(within(dialog).getByLabelText('그룹 이름'), '새 그룹')
+    await user.click(within(dialog).getByRole('button', { name: '만들기' }))
 
     expect(await screen.findByRole('heading', { level: 2, name: '새 그룹' })).toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(body).toEqual({ name: '새 그룹' })
   })
 
