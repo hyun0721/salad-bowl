@@ -62,7 +62,7 @@ describe('HomePage', () => {
 
     await user.click(await screen.findByRole('button', { name: '2026년 2월 미등록, 업로드하기' }))
     const dialog = screen.getByRole('dialog', { name: '2026년 2월 데이터 업로드' })
-    await user.upload(within(dialog).getByLabelText(/파일을 끌어다 놓거나/),
+    await user.upload(dialog.querySelector<HTMLInputElement>('input[type="file"]')!,
       new File([new Uint8Array(10)], 'feb.xlsx'))
     await user.click(within(dialog).getByRole('button', { name: '업로드' }))
     expect(await within(dialog).findByRole('status')).toHaveTextContent('신규90건')
@@ -140,7 +140,7 @@ describe('HomePage', () => {
 
     await user.click(await screen.findByRole('button', { name: '2026년 2월 미등록, 업로드하기' }))
     const dialog = screen.getByRole('dialog', { name: '2026년 2월 데이터 업로드' })
-    await user.upload(within(dialog).getByLabelText(/파일을 끌어다 놓거나/), new File([new Uint8Array(10)], 'feb.xlsx'))
+    await user.upload(dialog.querySelector<HTMLInputElement>('input[type="file"]')!, new File([new Uint8Array(10)], 'feb.xlsx'))
     await user.click(within(dialog).getByRole('button', { name: '업로드' }))
 
     await waitFor(() => expect(within(dialog).getByRole('button', { name: '닫기' })).toBeDisabled())

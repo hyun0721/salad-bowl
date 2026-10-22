@@ -1,7 +1,9 @@
-import { useState, type DragEvent, type FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
+import { Button, DropZone, FileTrigger } from 'react-aria-components'
+import { useMediaQuery } from '../common/useMediaQuery'
 import Icon from '../common/Icon'
 import ui from '../common/ui.module.css'
-import { uploadErrorMessage, validateUploadFile, type ImportResult } from './importsApi'
+import { ACCEPTED_UPLOAD_FILE_TYPES, uploadErrorMessage, validateUploadFile, type ImportResult } from './importsApi'
 import styles from './UploadForm.module.css'
 import { useUpload } from './useUpload'
 
@@ -11,7 +13,7 @@ export default function UploadForm({ onDone }: Props) {
   const upload = useUpload()
   const [file, setFile] = useState<File | null>(null)
   const [clientError, setClientError] = useState<string | null>(null)
-  const [dragging, setDragging] = useState(false)
+  const mobile = useMediaQuery('(max-width: 820px)')
 
   function choose(next: File | null | undefined) {
     upload.reset()
@@ -21,10 +23,10 @@ export default function UploadForm({ onDone }: Props) {
     setFile(problem ? null : next)
   }
 
-  function onDrop(event: DragEvent<HTMLLabelElement>) {
-    event.preventDefault()
-    setDragging(false)
-    choose(event.dataTransfer.files[0])
+  function clearFile() {
+    setFile(null)
+    setClientError(null)
+    upload.reset()
   }
 
   function onSubmit(event: FormEvent) {
@@ -38,19 +40,30 @@ export default function UploadForm({ onDone }: Props) {
 
   return (
     <form className={ui.stack} onSubmit={onSubmit}>
-      <label
-        className={dragging ? `${styles.drop} ${styles.dragging}` : styles.drop}
-        onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
-        onDragLeave={() => setDragging(false)}
-        onDrop={onDrop}
-      >
+      <DropZone className={styles.drop} aria-label="엑셀 파일 업로드"
+        onDrop={async (event) => {
+          const item = event.items.find((item) => item.kind === 'file')
+          if (item?.kind === 'file') choose(await item.getFile())
+        }}>
         <span className={styles.dropIcon}><Icon name="sheet-upload" size={32} /></span>
-        <span className={styles.dropTitle}>파일을 끌어다 놓거나 눌러서 선택</span>
+        <span className={styles.dropTitle}>{mobile
+          ? '파일 선택 버튼을 눌러 엑셀 파일을 고르세요'
+          : '파일을 끌어다 놓거나 파일 선택 버튼을 누르세요'}</span>
         <span className={ui.muted}>.xlsx · 한 번에 최대 3개월치 · 512KB 이하 · 원본 파일과 개인정보 시트는 저장하지 않습니다</span>
-        <input type="file" accept=".xlsx" className={styles.input}
-          onChange={(e) => choose(e.target.files?.[0])} />
-        {file && <span className={styles.fileName}>{file.name}</span>}
-      </label>
+        <FileTrigger acceptedFileTypes={ACCEPTED_UPLOAD_FILE_TYPES} onSelect={(files) => choose(files?.[0])}>
+          <Button className={`${ui.button} ${styles.choose}`}>파일 선택</Button>
+        </FileTrigger>
+        {file && (
+          <span className={styles.fileChip}>
+            <Icon name="sheet-upload" size={18} />
+            <span className={styles.fileName}>{file.name}</span>
+            <span>{Math.ceil(file.size / 1024)} KB</span>
+            <Button className={styles.clear} onPress={clearFile} isDisabled={upload.isPending}>
+              <Icon name="x" size={18} /><span>선택 취소</span>
+            </Button>
+          </span>
+        )}
+      </DropZone>
       <div className={styles.actions}>
         <button type="submit" className={`${ui.button} ${ui.primary}`} disabled={!file || upload.isPending}>
           <Icon name="upload" size={18} />{upload.isPending ? '올리는 중' : '업로드'}
