@@ -6,6 +6,7 @@ import com.saladbowl.api.group.GroupAccess;
 import com.saladbowl.api.transaction.TransactionDtos.AuditView;
 import com.saladbowl.api.transaction.TransactionDtos.CoverageMonth;
 import com.saladbowl.api.transaction.TransactionDtos.ManualTransactionRequest;
+import com.saladbowl.api.transaction.TransactionDtos.MonthDeleteResult;
 import com.saladbowl.api.transaction.TransactionDtos.TransactionView;
 import com.saladbowl.api.transaction.TransactionDtos.UpdateTransactionRequest;
 import com.saladbowl.api.user.User;
@@ -32,14 +33,16 @@ public class TransactionService {
     private final GroupAccess access;
     private final TransactionAuditRepository audits;
     private final UserRepository users;
+    private final LedgerLock ledgerLock;
 
     public TransactionService(LedgerTransactionRepository transactions, TransactionViews views, GroupAccess access,
-                              TransactionAuditRepository audits, UserRepository users) {
+                              TransactionAuditRepository audits, UserRepository users, LedgerLock ledgerLock) {
         this.transactions = transactions;
         this.views = views;
         this.access = access;
         this.audits = audits;
         this.users = users;
+        this.ledgerLock = ledgerLock;
     }
 
     public record Range(LocalDateTime from, LocalDateTime to) {
@@ -65,10 +68,11 @@ public class TransactionService {
         }
         LocalDateTime from = LocalDateTime.of(year, 1, 1, 0, 0);
         LocalDateTime to = from.plusYears(1);
-        return transactions.countImportedByMonth(userId, from, to).stream()
+        return transactions.countByMonth(userId, from, to).stream()
                 .map(row -> new CoverageMonth(
                         YearMonth.of(year, ((Number) row[0]).intValue()).toString(),
-                        ((Number) row[1]).longValue()))
+                        ((Number) row[1]).longValue(),
+                        ((Number) row[2]).longValue()))
                 .toList();
     }
 
@@ -138,6 +142,19 @@ public class TransactionService {
                 .map(a -> new AuditView(a.getActorId(), nicknames.get(a.getActorId()), a.getField(),
                         a.getBeforeValue(), a.getAfterValue(), a.getChangedAt()))
                 .toList();
+    }
+
+    /** 내 그 달 거래를 영구 삭제한다. 기본은 import 거래만, includeManual이면 수동 거래도 지운다. */
+    @Transactional
+    public MonthDeleteResult deleteMonth(long userId, YearMonth month, boolean includeManual) {
+        Range range = monthRange(month);
+        // 같은 회원의 업로드와 겹치지 않게 회원별 잠금을 잡은 뒤 지운다.
+        ledgerLock.lockOwner(userId);
+        int imported = transactions.deleteOwnedBetween(userId, TransactionSource.IMPORT, range.from(), range.to());
+        int manual = includeManual
+                ? transactions.deleteOwnedBetween(userId, TransactionSource.MANUAL, range.from(), range.to())
+                : 0;
+        return new MonthDeleteResult(imported, manual);
     }
 
     @Transactional

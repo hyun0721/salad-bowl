@@ -36,7 +36,7 @@
 
 | 화면 | 내용 | 쓰는 API |
 |---|---|---|
-| **홈** | 연도별 **월 커버리지 캘린더**(1~12월, 등록됨·건수 / 미등록 / 예정), 이번 달 내 수입·지출, 최근 업로드 | `GET /me/coverage?year=`(신규), `GET /me/transactions?month=`, `GET /imports` |
+| **홈** | 연도별 **월 커버리지 캘린더**(1~12월, 등록됨·건수 / 미등록 / 예정), 이번 달 내 수입·지출, 최근 업로드, 등록된 월을 누르면 월 데이터 대화상자(다시 업로드·월 삭제) | `GET /me/coverage?year=`(신규), `GET /me/transactions?month=`, `GET /imports`, `DELETE /me/transactions?month=&includeManual=` |
 | **그룹 대시보드** | 선택한 그룹의 월간 요약: 수입·지출, 카테고리별 지출, 멤버별 | `GET /groups/{id}/summary?month=` |
 | **거래 목록** | [내 거래]/[그룹 거래] 전환, 월·멤버·검색 필터, 표. 행을 누르면 오른쪽 상세 패널, [+ 거래 추가] | `GET /me/transactions`, `GET /groups/{id}/transactions`, `POST /me/transactions`, `PATCH`/`DELETE /transactions/{id}`, `GET /transactions/{id}/audits` |
 | **업로드** | 안내, 파일 선택(.xlsx, 5MB), 결과(전체·신규·갱신·변경 없음), 실패 메시지(행 번호), 업로드 이력 | `POST /imports`, `GET /imports` |
@@ -88,5 +88,6 @@
 |---|---|
 | refresh 쿠키 설정화 | `app.auth.refresh-cookie.path`, `.same-site`, `.secure` |
 | `POST /auth/logout` | 같은 속성에 `Max-Age=0`으로 쿠키를 지운다. 204를 돌려준다 |
-| `GET /me/coverage?year=YYYY` | `[{month: "2026-09", importedCount: 168}]`. import 거래가 있는 달만 돌려준다 |
+| `GET /me/coverage?year=YYYY` | `[{month: "2026-09", importedCount: 168, manualCount: 12}]`. import 거래가 있는 달만 돌려준다 |
+| `DELETE /me/transactions?month=YYYY-MM&includeManual=` | 내 그 달 거래 영구 삭제. 기본은 import만. `{deletedImported, deletedManual}` ([월 데이터 삭제 설계](2026-10-22-month-data-delete-design.md)) |
 | 업로드 파일 이름 | 마지막 경로 조각만 저장한다(Plan 03 후속 과제) |
