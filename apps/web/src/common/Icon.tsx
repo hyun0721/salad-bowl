@@ -4,6 +4,8 @@ import type { ReactNode } from 'react'
 // 기본 아이콘은 Lucide(ISC, lucide-static 1.61.0)의 경로를 옮겨 왔다(라이선스: THIRD_PARTY_NOTICES.md). 새로 필요하면 같은 버전의 SVG에서 경로만 복사한다.
 // 도메인 아이콘(sheet-upload 등)은 같은 규칙으로 직접 그렸다.
 const ICONS = {
+  'chevron-down': <path d="m6 9 6 6 6-6" />,
+  check: <path d="M20 6 9 17l-5-5" />,
   'chevron-left': <path d="m15 18-6-6 6-6" />,
   'chevron-right': <path d="m9 18 6-6-6-6" />,
   home: (

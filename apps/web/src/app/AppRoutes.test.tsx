@@ -68,8 +68,8 @@ describe('AppRoutes', () => {
     expect(within(nav).getByRole('link', { name: '홈' })).toHaveAttribute('aria-current', 'page')
     expect(within(nav).getByRole('link', { name: '거래 목록' })).toBeInTheDocument()
     expect(screen.getByText('나')).toBeInTheDocument()
-    const select = await screen.findByRole('combobox', { name: '그룹' })
-    expect(select).toHaveValue('10')
+    const select = await screen.findByRole('button', { name: /그룹/ })
+    expect(select).toHaveTextContent('우리집')
   })
 
   it('remembers the selected group', async () => {
@@ -80,7 +80,8 @@ describe('AppRoutes', () => {
     renderApp('/')
     const user = userEvent.setup()
 
-    await user.selectOptions(await screen.findByRole('combobox', { name: '그룹' }), '20')
+    await user.click(await screen.findByRole('button', { name: /그룹/ }))
+    await user.click(screen.getByRole('option', { name: '커플 가계부' }))
 
     expect(window.localStorage.getItem('saladbowl.selectedGroupId')).toBe('20')
   })
@@ -182,7 +183,7 @@ describe('AppRoutes', () => {
     fail = false
     await user.click(screen.getByRole('button', { name: '다시 시도' }))
 
-    expect(await screen.findByRole('combobox', { name: '그룹' })).toHaveValue('10')
+    expect(await screen.findByRole('button', { name: /그룹/ })).toHaveTextContent('우리집')
   })
 
   it('shows a loading label while groups are loading', async () => {
@@ -208,7 +209,7 @@ describe('AppRoutes', () => {
     server.use(http.post('*/api/auth/logout', () => new HttpResponse(null, { status: 204 })))
     const client = renderApp('/')
     const user = userEvent.setup()
-    expect(await screen.findByRole('option', { name: 'A의 그룹' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: /그룹/ })).toHaveTextContent('A의 그룹')
 
     await user.click(screen.getByRole('button', { name: '로그아웃' }))
     await screen.findByRole('button', { name: '로그인' })
@@ -228,7 +229,7 @@ describe('AppRoutes', () => {
 
     expect(await screen.findByText('그룹 불러오는 중')).toBeInTheDocument()
     expect(screen.queryByText('A의 그룹')).not.toBeInTheDocument()
-    expect(await screen.findByRole('option', { name: 'B의 그룹' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: /그룹/ })).toHaveTextContent('B의 그룹')
   })
 
   it('returns to the invite page after logging in', async () => {
@@ -265,7 +266,7 @@ describe('AppRoutes', () => {
     )
     const client = renderApp('/')
     const user = userEvent.setup()
-    await screen.findByRole('combobox', { name: '그룹' })
+    await screen.findByRole('button', { name: /그룹/ })
     server.use(http.get('*/api/imports', () =>
       HttpResponse.json({ code: 'UNAUTHORIZED', message: 'x' }, { status: 401 })))
 

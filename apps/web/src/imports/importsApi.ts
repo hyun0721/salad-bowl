@@ -12,6 +12,8 @@ export type ImportResult = {
 
 export type ImportBatchView = ImportResult & { fileName: string; importedAt: string }
 
+export const ACCEPTED_UPLOAD_FILE_TYPES = ['.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']
+
 export const MAX_UPLOAD_BYTES = 512 * 1024
 
 /** 서버에 보내기 전에 거를 수 있는 것만 거른다. 내용 검사는 서버가 한다. */

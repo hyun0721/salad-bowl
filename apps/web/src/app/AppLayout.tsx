@@ -3,6 +3,7 @@ import { NavLink, Outlet, Link, useLocation, useNavigate } from 'react-router'
 import { useAuth } from '../auth/AuthProvider'
 import { useGroups } from '../groups/GroupProvider'
 import Icon, { type IconName } from '../common/Icon'
+import Select from '../common/Select'
 import SlowServerNotice from './SlowServerNotice'
 import styles from './AppLayout.module.css'
 
@@ -65,13 +66,8 @@ export default function AppLayout() {
               <button type="button" className={styles.logout} onClick={retry}>다시 시도</button>
             </span>
           ) : groups.length > 0 ? (
-            <label className={styles.group}>
-              <span>그룹</span>
-              <select aria-label="그룹" value={selectedGroupId ?? ''}
-                onChange={(e) => selectGroup(Number(e.target.value))}>
-                {groups.map((g) => <option key={g.groupId} value={g.groupId}>{g.name}</option>)}
-              </select>
-            </label>
+            <Select label="그룹" items={groups.map((g) => ({ id: g.groupId, label: g.name }))}
+              selectedKey={selectedGroupId} onSelectionChange={(key) => { if (key != null) selectGroup(Number(key)) }} />
           ) : (
             <Link to="/groups" className={styles.noGroup}>그룹 없음 · 만들기 또는 초대받기</Link>
           )}
