@@ -43,6 +43,11 @@ export function currentYearMonth(today: Date = new Date()): string {
   return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`
 }
 
+/** 화면의 기본 조회 월: 지난달. 한 달이 끝난 뒤 정리하는 서비스라 이번 달은 아직 비어 있다. */
+export function defaultYearMonth(today: Date = new Date()): string {
+  return shiftMonth(currentYearMonth(today), -1)
+}
+
 /** `YYYY-MM`을 delta개월 옮긴다. */
 export function shiftMonth(month: string, delta: number): string {
   const [year, m] = month.split('-').map(Number)

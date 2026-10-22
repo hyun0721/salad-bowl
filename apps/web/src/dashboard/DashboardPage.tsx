@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import MonthPicker from '../common/MonthPicker'
 import ui from '../common/ui.module.css'
-import { currentYearMonth, formatMonthLabel, formatWon } from '../common/format'
+import { defaultYearMonth, formatMonthLabel, formatWon } from '../common/format'
 import { usePageTitle } from '../common/usePageTitle'
 import { useGroups } from '../groups/GroupProvider'
 import NoGroupNotice from '../groups/NoGroupNotice'
@@ -14,7 +14,7 @@ type Props = { today?: Date }
 export default function DashboardPage({ today }: Props) {
   usePageTitle('그룹 대시보드')
   const { groups, selectedGroupId, isLoading, isError, retry } = useGroups()
-  const [month, setMonth] = useState(() => currentYearMonth(today ?? new Date()))
+  const [month, setMonth] = useState(() => defaultYearMonth(today ?? new Date()))
   const summary = useQuery({
     queryKey: ['summary', selectedGroupId, month],
     queryFn: () => dashboardApi.summary(selectedGroupId!, month),

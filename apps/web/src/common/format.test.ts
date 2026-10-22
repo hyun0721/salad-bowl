@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { currentYearMonth, formatDateTime, formatInstant, formatMonthLabel, formatSignedWon, formatWon, shiftMonth } from './format'
+import { currentYearMonth, defaultYearMonth, formatDateTime, formatInstant, formatMonthLabel, formatSignedWon, formatWon, shiftMonth } from './format'
 
 describe('format', () => {
   it('formats won with and without sign', () => {
@@ -16,6 +16,11 @@ describe('format', () => {
     expect(formatMonthLabel('2026-09')).toBe('2026년 9월')
     expect(currentYearMonth(new Date(2026, 9, 19))).toBe('2026-10')
     expect(currentYearMonth(new Date(2026, 0, 1))).toBe('2026-01')
+  })
+
+  it('defaults to last month', () => {
+    expect(defaultYearMonth(new Date(2026, 9, 19))).toBe('2026-09')
+    expect(defaultYearMonth(new Date(2026, 0, 1))).toBe('2025-12')
   })
 
   it('formats an instant in Seoul time regardless of its offset', () => {

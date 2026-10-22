@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react'
 import Icon from '../common/Icon'
 import MonthPicker from '../common/MonthPicker'
 import ui from '../common/ui.module.css'
-import { currentYearMonth } from '../common/format'
+import { defaultYearMonth } from '../common/format'
 import { usePageTitle } from '../common/usePageTitle'
 import { useGroups } from '../groups/GroupProvider'
 import { groupsApi } from '../groups/groupsApi'
@@ -20,7 +20,7 @@ export default function TransactionsPage({ today }: Props) {
   usePageTitle('거래 목록')
   const { selectedGroupId } = useGroups()
   const [scope, setScope] = useState<Scope>('mine')
-  const [month, setMonth] = useState(() => currentYearMonth(today ?? new Date()))
+  const [month, setMonth] = useState(() => defaultYearMonth(today ?? new Date()))
   // 멤버 선택은 그룹별로 기억한다. 헤더에서 그룹을 바꾸면 이전 그룹의 멤버 id가 남지 않는다.
   const [member, setMember] = useState<{ groupId: number; userId: number } | null>(null)
   const [search, setSearch] = useState('')
