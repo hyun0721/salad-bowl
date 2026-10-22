@@ -4,29 +4,16 @@
 
 이 배포 설정이 들어간 PR을 CI 통과 후 `main`에 머지한다. Render Blueprint는 `main`의 `render.yaml`을, Pages 프로덕션 브랜치는 `main`의 `_routes.json`·`_headers`를 사용한다. `sync-config`의 Run workflow 버튼과 `keepalive` 예약 실행은 기본 브랜치의 워크플로를 사용하므로 기본 브랜치도 `main`인지 확인한다.
 
-## 1. 구성과 무료 티어 조건
+## 1. 구성
 
-브라우저 → Cloudflare Pages(정적 파일 + `/api` Function) → Render(Spring Boot) → Supabase Postgres(세션 풀러) 순서로 요청을 처리한다. 다음은 2026-10에 확인한 조건을 기준으로 작성한다. 무료 티어 조건은 바뀔 수 있으므로 서비스를 만들 때 다시 확인한다.
-
-| 서비스 | 무료 티어 기준 |
-|---|---|
-| Render | 메모리 512MB·CPU 0.1, 15분 유휴 시 sleep, 월 750시간으로 운영한다. |
-| Supabase | DB 500MB를 제공하며 7일 비활성 시 일시정지한다. 직접 연결은 IPv6 전용이므로 IPv4 연결에는 세션 풀러를 사용한다. |
-| Cloudflare Pages | Functions는 하루 10만 요청으로 제한하며 정적 요청은 무제한으로 제공한다. |
-
-`keepalive`는 10분마다 Pages를 통해 API health를 요청한다. 서비스 1개를 계속 켜 두면 31일 기준 약 744시간을 사용한다. 무료 서비스를 하나 더 상시 가동하면 월 750시간으로는 부족하므로 함께 계산한다. GitHub 예약 실행은 늦어질 수 있으므로 sleep을 완전히 막는다고 가정하지 않는다. CPU 0.1에서 기동은 약 3~4분이며, 2026-10 측정에서는 약 3분 40초가 걸렸으므로 이를 기준으로 대기한다.
-
-운영 메모리는 `apps/api/Dockerfile`의 `JAVA_TOOL_OPTIONS=-XX:MaxRAMPercentage=50 -XX:+UseSerialGC -XX:TieredStopAtLevel=1 -Xss512k`와 `MALLOC_ARENA_MAX=2`로 제한한다. 512MiB 컨테이너의 힙은 약 256MiB로 사용하며 나머지는 네이티브 메모리 등에 배정한다. `application-prod.yml`은 Tomcat 스레드 최대 20개·최소 대기 2개, Hikari 최대 연결 5개로 설정한다. import는 서버 전체에서 동시에 1건만 처리한다.
-
-### 용량 기준
-
-[설계 6.5절](superpowers/specs/2026-10-18-salad-bowl-design.md)의 추정치를 사용한다. 1인 3년 약 5~6MB, 6인 그룹 3년 약 35MB로 계산한다. 500MB에는 약 75~80명분의 3년치를 수용한다고 추정한다. 이용자가 약 50명을 넘으면 상위 플랜이나 다른 DB로 이전하는 방안을 검토한다.
+요청 흐름과 워크플로 구성은 [시스템 아키텍처](architecture.md)를, 무료 티어 조건·콜드스타트·메모리·용량 기준은 [한계점](limits.md)을 참조한다. 무료 티어 조건은 바뀔 수 있으므로 서비스를 만들 때 다시 확인한다. API 첫 기동은 약 3~4분 걸리므로 이를 기준으로 대기한다.
 
 ## 2. Supabase
 
 1. 계정을 만들고 새 프로젝트를 생성한다. 지역은 Singapore로 선택하고 DB 비밀번호는 비밀번호 관리자에 저장한다.
-2. Connect → **Session pooler**에서 host, port `5432`, user `postgres.<project-ref>`, database `postgres`를 확인한다.
+2. Connect → **Direct**(Connection string) → Type `JDBC`, Method **Session pooler**에서 host, port `5432`, user `postgres.<project-ref>`, database `postgres`를 확인한다.
 3. JDBC URL은 `jdbc:postgresql://<pooler-host>:5432/postgres?sslmode=require` 형식으로 준비한다. 직접 연결이나 트랜잭션 풀러와 혼동하지 않도록 확인한다.
+4. Project Settings → **Data API**를 끈다. 앱은 JDBC로만 연결하며, Data API가 켜져 있으면 `public` 스키마의 테이블이 공개 키로 노출될 수 있다.
 
 스키마는 API가 처음 기동할 때 Flyway가 생성한다.
 
@@ -43,7 +30,7 @@
 
 ## 4. Cloudflare Pages
 
-1. 계정을 만들고 Workers & Pages → Pages → Connect to Git에서 이 저장소를 선택한다.
+1. 계정을 만들고 Workers & Pages → Create application 화면 맨 아래의 "Looking to deploy Pages? Get started" → Import an existing Git repository에서 이 저장소를 선택한다. Deploy command 입력란이 보이면 Workers 화면이므로 되돌아간다.
 2. 다음 표대로 설정한다. 환경변수는 이 단계에서 직접 입력하지 않고 `sync-config`로 반영한다.
 
 | 항목 | 값 |
