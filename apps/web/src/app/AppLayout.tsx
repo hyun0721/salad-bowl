@@ -2,15 +2,16 @@ import { useEffect, useRef, useState } from 'react'
 import { NavLink, Outlet, Link, useLocation, useNavigate } from 'react-router'
 import { useAuth } from '../auth/AuthProvider'
 import { useGroups } from '../groups/GroupProvider'
+import Icon, { type IconName } from '../common/Icon'
 import SlowServerNotice from './SlowServerNotice'
 import styles from './AppLayout.module.css'
 
-const MENU = [
-  { to: '/', label: '홈', end: true },
-  { to: '/dashboard', label: '그룹 대시보드', end: false },
-  { to: '/transactions', label: '거래 목록', end: false },
-  { to: '/upload', label: '업로드', end: false },
-  { to: '/groups', label: '그룹 관리', end: false },
+const MENU: { to: string; label: string; icon: IconName; end: boolean }[] = [
+  { to: '/', label: '홈', icon: 'home', end: true },
+  { to: '/dashboard', label: '그룹 대시보드', icon: 'dashboard', end: false },
+  { to: '/transactions', label: '거래 목록', icon: 'receipt', end: false },
+  { to: '/upload', label: '업로드', icon: 'sheet-upload', end: false },
+  { to: '/groups', label: '그룹 관리', icon: 'users', end: false },
 ]
 
 export default function AppLayout() {
@@ -46,11 +47,11 @@ export default function AppLayout() {
   return (
     <div className={styles.shell}>
       <nav aria-label="주 메뉴" className={styles.nav}>
-        <span className={styles.logo}>Salad Bowl</span>
+        <span className={styles.logo}><img src="/logo.svg" alt="" width="28" height="28" />Salad Bowl</span>
         {MENU.map((item) => (
           <NavLink key={item.to} to={item.to} end={item.end}
             className={({ isActive }) => (isActive ? `${styles.link} ${styles.active}` : styles.link)}>
-            {item.label}
+            <Icon name={item.icon} />{item.label}
           </NavLink>
         ))}
       </nav>
@@ -76,7 +77,7 @@ export default function AppLayout() {
           )}
           <div className={styles.user}>
             <span>{me?.nickname}</span>
-            <button type="button" className={styles.logout} onClick={onLogout}>로그아웃</button>
+            <button type="button" className={styles.logout} onClick={onLogout}><Icon name="log-out" size={18} />로그아웃</button>
           </div>
         </header>
         {logoutError && (

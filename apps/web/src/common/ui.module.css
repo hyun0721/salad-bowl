@@ -2,7 +2,7 @@
 .stack { display: flex; flex-direction: column; gap: var(--space-3); }
 .row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); }
 .pageHeader { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-3); }
-.button { min-height: 40px; padding: 0 var(--space-4); border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface-000); color: var(--ink); cursor: pointer; }
+.button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; padding: 0 var(--space-4); border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface-000); color: var(--ink); cursor: pointer; }
 .button:disabled { opacity: 0.6; cursor: default; }
 .primary { min-height: 44px; border: 0; background: var(--brand); color: var(--on-brand); font-weight: 700; }
 .danger { border-color: var(--danger); color: var(--danger); }

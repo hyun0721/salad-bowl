@@ -1,5 +1,6 @@
 .drop { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-2); min-height: 180px; padding: var(--space-4); border: 2px dashed var(--line); border-radius: var(--radius-md); background: var(--surface-100); text-align: center; cursor: pointer; }
 .dragging { border-color: var(--brand); background: var(--brand-tint); }
+.dropIcon { display: flex; color: var(--brand); }
 .dropTitle { font-weight: 700; }
 .input { max-width: 100%; }
 .fileName { font-weight: 500; }

@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
+import Icon from '../common/Icon'
 import MonthPicker from '../common/MonthPicker'
 import ui from '../common/ui.module.css'
 import { currentYearMonth } from '../common/format'
@@ -65,7 +66,7 @@ export default function TransactionsPage({ today }: Props) {
       <div className={ui.pageHeader}>
         <h1>거래 목록</h1>
         <button type="button" className={`${ui.button} ${ui.primary}`}
-          onClick={() => { setAdding(true); setSelectedId(null) }}>+ 거래 추가</button>
+          onClick={() => { setAdding(true); setSelectedId(null) }}><Icon name="plus" />거래 추가</button>
       </div>
       <div className={ui.row}>
         <div role="group" aria-label="범위" className={styles.scope}>
