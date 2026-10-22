@@ -65,10 +65,11 @@ public class TransactionService {
         }
         LocalDateTime from = LocalDateTime.of(year, 1, 1, 0, 0);
         LocalDateTime to = from.plusYears(1);
-        return transactions.countImportedByMonth(userId, from, to).stream()
+        return transactions.countByMonth(userId, from, to).stream()
                 .map(row -> new CoverageMonth(
                         YearMonth.of(year, ((Number) row[0]).intValue()).toString(),
-                        ((Number) row[1]).longValue()))
+                        ((Number) row[1]).longValue(),
+                        ((Number) row[2]).longValue()))
                 .toList();
     }
 

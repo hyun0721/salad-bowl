@@ -57,7 +57,7 @@ public final class TransactionDtos {
                             OffsetDateTime changedAt) {
     }
 
-    /** month는 yyyy-MM. import 거래가 있는 달만 돌려준다. */
-    public record CoverageMonth(String month, long importedCount) {
+    /** month는 yyyy-MM. import 거래가 있는 달만 돌려준다. manualCount는 그 달의 직접 추가한 거래 수다. */
+    public record CoverageMonth(String month, long importedCount, long manualCount) {
     }
 }
