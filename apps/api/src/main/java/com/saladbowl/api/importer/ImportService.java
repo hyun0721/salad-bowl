@@ -4,6 +4,7 @@ import com.saladbowl.api.common.ApiException;
 import com.saladbowl.api.common.ErrorCode;
 import com.saladbowl.api.importer.ImportDtos.ImportBatchView;
 import com.saladbowl.api.importer.ImportDtos.ImportResult;
+import com.saladbowl.api.transaction.LedgerLock;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -31,24 +32,26 @@ public class ImportService {
     private final MergeService mergeService;
     private final ImportBatchRepository batches;
     private final TransactionTemplate transaction;
+    private final LedgerLock ledgerLock;
     /** 512MB 인스턴스에서 파싱 메모리가 겹치지 않도록 프로세스 전체에서 import를 하나씩만 처리한다. */
     private final Semaphore slot = new Semaphore(1, true);
     private final Duration wait;
 
     @Autowired
     public ImportService(BanksaladParser parser, MergeService mergeService, ImportBatchRepository batches,
-                         PlatformTransactionManager transactionManager) {
-        this(parser, mergeService, batches, transactionManager, DEFAULT_WAIT);
+                         PlatformTransactionManager transactionManager, LedgerLock ledgerLock) {
+        this(parser, mergeService, batches, transactionManager, ledgerLock, DEFAULT_WAIT);
     }
 
     /** 테스트에서 짧은 대기 시간을 쓰기 위한 생성자. */
     ImportService(BanksaladParser parser, MergeService mergeService, ImportBatchRepository batches,
-                  PlatformTransactionManager transactionManager, Duration wait) {
+                  PlatformTransactionManager transactionManager, LedgerLock ledgerLock, Duration wait) {
         this.wait = wait;
         this.parser = parser;
         this.mergeService = mergeService;
         this.batches = batches;
         this.transaction = new TransactionTemplate(transactionManager);
+        this.ledgerLock = ledgerLock;
     }
 
     /**
@@ -61,6 +64,8 @@ public class ImportService {
             List<ParsedRow> rows = parser.parse(in);
             checkPeriod(rows);
             return transaction.execute(status -> {
+                // 같은 회원의 월 삭제와 겹치지 않게 DB 쓰기 구간만 회원별로 잠근다.
+                ledgerLock.lockOwner(ownerId);
                 ImportBatch batch = batches.save(new ImportBatch(ownerId, fileName));
                 MergeService.MergeCounts counts = mergeService.merge(ownerId, batch.getId(), rows);
                 batch.record(rows.size(), counts.created(), counts.updated(), counts.unchanged());
