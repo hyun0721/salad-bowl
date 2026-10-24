@@ -12,6 +12,29 @@ const columns: DataColumn<Item>[] = [
 const names = () => screen.getAllByRole('row').slice(1).map((row) => within(row).getByRole('rowheader').textContent)
 
 describe('DataTable', () => {
+  it('updates the current row when currentId changes with the same items', () => {
+    const props = { label: '거래 목록', columns, items, rowText: (i: Item) => i.name, onRowAction: vi.fn() }
+    const { rerender } = render(<DataTable {...props} currentId={1} />)
+    expect(screen.getByRole('row', { name: /김밥/ })).toHaveClass('current')
+    expect(screen.getByRole('row', { name: /월급/ })).not.toHaveClass('current')
+
+    rerender(<DataTable {...props} currentId={2} />)
+    expect(screen.getByRole('row', { name: /월급/ })).toHaveClass('current')
+    expect(screen.getByRole('row', { name: /김밥/ })).not.toHaveClass('current')
+  })
+
+  it('updates cell rendering when columns change with the same items', () => {
+    const props = { label: '거래 목록', items, rowText: (i: Item) => i.name, onRowAction: vi.fn() }
+    const { rerender } = render(<DataTable {...props} columns={columns} />)
+    expect(within(screen.getByRole('row', { name: /김밥/ })).getByRole('gridcell')).toHaveTextContent('-4000')
+
+    const updatedColumns = columns.map((column) => column.id === 'amount'
+      ? { ...column, render: (i: Item) => `${i.amount}원` }
+      : column)
+    rerender(<DataTable {...props} columns={updatedColumns} />)
+    expect(within(screen.getByRole('row', { name: /김밥/ })).getByRole('gridcell')).toHaveTextContent('-4000원')
+  })
+
   it('is a labelled table with column headers in the given order', () => {
     render(<DataTable label="거래 목록" columns={columns} items={items} rowText={(i) => i.name} onRowAction={vi.fn()} />)
     const table = screen.getByRole('grid', { name: '거래 목록' })

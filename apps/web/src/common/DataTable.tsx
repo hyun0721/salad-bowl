@@ -51,7 +51,7 @@ export default function DataTable<T extends { id: Key }>({ label, columns, items
           </Column>
         )}
       </TableHeader>
-      <TableBody items={sorted}>
+      <TableBody items={sorted} dependencies={[currentId, columns]}>
         {(item) => (
           <Row id={item.id} columns={columns} textValue={rowText(item)}
             className={item.id === currentId ? `${styles.row} ${styles.current}` : styles.row}>
