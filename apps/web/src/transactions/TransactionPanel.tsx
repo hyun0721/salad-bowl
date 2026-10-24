@@ -1,3 +1,7 @@
+import Checkbox from '../common/Checkbox'
+import ComboBox from '../common/ComboBox'
+import { TextAreaField } from '../common/TextField'
+import { majorOptions, minorOptions, useCategories } from './categoriesApi'
 import { useQuery } from '@tanstack/react-query'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useAuth } from '../auth/AuthProvider'
@@ -30,6 +34,7 @@ type Props = { tx: TransactionView; onClose: () => void }
 
 export default function TransactionPanel({ tx, onClose }: Props) {
   const { me } = useAuth()
+  const list = useCategories().data ?? []
   const { update, remove } = useTransactionMutations()
   const audits = useQuery({ queryKey: ['audits', tx.id], queryFn: () => transactionsApi.audits(tx.id) })
   const [major, setMajor] = useState(tx.categoryMajor)
@@ -86,24 +91,12 @@ export default function TransactionPanel({ tx, onClose }: Props) {
 
       {tx.editable ? (
         <form className={ui.stack} onSubmit={onSave}>
-          <label className={ui.field}>
-            <span>대분류</span>
-            <input className={ui.input} maxLength={100} value={major} onChange={(e) => setMajor(e.target.value)} />
-          </label>
-          <label className={ui.field}>
-            <span>소분류</span>
-            <input className={ui.input} maxLength={100} value={minor} onChange={(e) => setMinor(e.target.value)} />
-          </label>
-          <label className={ui.field}>
-            <span>메모</span>
-            <textarea className={ui.input} rows={2} maxLength={1000} value={memo} onChange={(e) => setMemo(e.target.value)} />
-          </label>
+          <ComboBox label="대분류" value={major} onChange={setMajor} options={majorOptions(list)} maxLength={100} />
+          <ComboBox label="소분류" value={minor} onChange={setMinor} options={minorOptions(list, major.trim())} maxLength={100} />
+          <TextAreaField label="메모" value={memo} onChange={setMemo} maxLength={1000} rows={2} />
           <p className={ui.muted}>비워 두고 저장하면 엑셀의 원래 값으로 돌아갑니다.</p>
           {isOwner && (
-            <label className={styles.check}>
-              <input type="checkbox" checked={hidden} onChange={(e) => setHidden(e.target.checked)} />
-              <span>그룹 화면에서 숨기기 (본인만)</span>
-            </label>
+            <Checkbox isSelected={hidden} onChange={setHidden}>그룹 화면에서 숨기기 (본인만)</Checkbox>
           )}
           <div className={styles.actions}>
             {canDelete && !confirming && (
