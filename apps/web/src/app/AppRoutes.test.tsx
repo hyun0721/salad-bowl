@@ -6,6 +6,7 @@ import { MemoryRouter } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { setAccessToken } from '../api/client'
 import { AuthProvider } from '../auth/AuthProvider'
+import { mockViewport } from '../test/mockViewport'
 import { server } from '../test/server'
 import AppRoutes from './AppRoutes'
 
@@ -309,5 +310,62 @@ describe('AppRoutes', () => {
     } finally {
       onlineManager.setOnline(true)
     }
+  })
+})
+
+describe('AppRoutes on a narrow screen', () => {
+  beforeEach(() => { mockViewport(true) })
+
+  it('shows the bottom tab bar instead of the sidebar', async () => {
+    signedIn([{ groupId: 10, name: '우리집', myRole: 'ADMIN', memberCount: 3 }])
+    renderApp('/')
+
+    const navs = await screen.findAllByRole('navigation', { name: '주 메뉴' })
+    expect(navs).toHaveLength(1)
+    const names = within(navs[0]).getAllByRole('link').map((link) => link.textContent)
+    expect(names).toEqual(['홈', '대시보드', '거래', '업로드', '그룹'])
+    expect(within(navs[0]).getByRole('link', { name: '홈' })).toHaveAttribute('aria-current', 'page')
+    // 닉네임과 로그아웃은 상단 바에 없고 계정 시트 안에 있다.
+    expect(screen.queryByRole('button', { name: '로그아웃' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '계정' })).toBeInTheDocument()
+  })
+
+  it('moves focus to the new screen title after switching tabs', async () => {
+    signedIn([])
+    renderApp('/')
+    const user = userEvent.setup()
+
+    const nav = await screen.findByRole('navigation', { name: '주 메뉴' })
+    await user.click(within(nav).getByRole('link', { name: '그룹' }))
+
+    expect(await screen.findByRole('heading', { level: 1, name: '그룹 관리' })).toHaveFocus()
+  })
+
+  it('signs out from the account sheet', async () => {
+    signedIn([])
+    server.use(http.post('*/api/auth/logout', () => new HttpResponse(null, { status: 204 })))
+    renderApp('/')
+    const user = userEvent.setup()
+
+    await user.click(await screen.findByRole('button', { name: '계정' }))
+    const sheet = await screen.findByRole('dialog', { name: '계정' })
+    expect(sheet).toHaveTextContent('나')
+    await user.click(within(sheet).getByRole('button', { name: '로그아웃' }))
+
+    expect(await screen.findByRole('button', { name: '로그인' })).toBeInTheDocument()
+  })
+
+  it('keeps the sheet open with an alert when logout fails', async () => {
+    signedIn([])
+    server.use(http.post('*/api/auth/logout', () =>
+      HttpResponse.json({ code: 'INTERNAL', message: 'x' }, { status: 500 })))
+    renderApp('/')
+    const user = userEvent.setup()
+
+    await user.click(await screen.findByRole('button', { name: '계정' }))
+    const sheet = await screen.findByRole('dialog', { name: '계정' })
+    await user.click(within(sheet).getByRole('button', { name: '로그아웃' }))
+
+    expect(await within(sheet).findByRole('alert')).toHaveTextContent('로그아웃하지 못했습니다. 잠시 후 다시 시도해 주세요.')
   })
 })
