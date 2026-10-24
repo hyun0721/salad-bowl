@@ -38,7 +38,7 @@ export function DialogFrame(props: FrameProps) {
   if (narrow) {
     return (
       <SheetOverlay isOpen={isOpen} onOpenChange={onOpenChange} preventDismissal={closeDisabled} className={styles.sheetOverlay}>
-        <SheetBackdrop className={styles.backdrop} />
+        <SheetBackdrop className={styles.sheetBackdrop} />
         <Sheet className={styles.modalSheet}>
           <SheetContent className={styles.content}>{({ close }) => body(close)}</SheetContent>
         </Sheet>

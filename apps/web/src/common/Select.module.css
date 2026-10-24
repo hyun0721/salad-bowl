@@ -18,4 +18,3 @@
 .field { flex-direction: column; align-items: stretch; gap: 4px; }
 .field .label { font-weight: 500; line-height: 18px; }
 .field .trigger { max-width: none; width: 100%; }
-

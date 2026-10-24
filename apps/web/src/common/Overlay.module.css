@@ -17,6 +17,8 @@
 .dialogTitle { margin: 0; }
 .header { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
 .sheetOverlay { z-index: 20; }
+/* RAC가 SheetBackdrop에 absolute inset 0을 직접 준다. 모달용 .backdrop(fixed, z-index)을 쓰면 시트 위를 덮어 탭을 막는다. */
+.sheetBackdrop { background: var(--overlay); }
 /* width: 100%가 없으면 RAC 시트가 가로 가운데 정렬이라 내용 폭만큼만 열린다(Plan 06a). */
 .modalSheet { width: 100%; max-height: 70vh; max-height: 70dvh; overflow: auto; background: var(--surface-000); border-radius: var(--radius-lg) var(--radius-lg) 0 0; padding-bottom: env(safe-area-inset-bottom); overscroll-behavior: contain; }
 .modalSheet .content { padding: var(--space-4) max(var(--space-4), env(safe-area-inset-right, 0px)) var(--space-4) max(var(--space-4), env(safe-area-inset-left, 0px)); }
