@@ -12,11 +12,13 @@
 
 ## Global Constraints
 
-- 시각 디자인은 바꾸지 않는다. 색·간격·radius는 `apps/web/src/styles/tokens.css`의 변수만 쓴다. 예외: 4px 이하 장식 치수, 터치 영역과 아이콘 버튼 크기(36·40·44·48px), 글자 크기.
+- 시각 디자인은 바꾸지 않는다. 색·간격·radius는 `apps/web/src/styles/tokens.css`의 변수만 쓴다. 예외: 4px 이하 장식 치수, 터치 영역과 아이콘 버튼 크기(36·40·44·48px), 하단 탭 바 높이(56px), 글자 크기.
 - `react-aria-components`는 `apps/web/src/common/`, 테스트, `main.tsx`에서만 import한다. Toast의 `UNSTABLE_` API는 `common/Toast.tsx` 한 파일에서만 쓴다(1.22.1에서 아직 불안정 API라 바뀌면 이 파일만 고친다).
 - 모바일 폭 기준은 `(max-width: 820px)`이고 `common/useMediaQuery.ts`의 `useMediaQuery`로 판단한다. 모바일 폭의 대화상자와 확인 대화상자는 하단 시트다. 모바일 폭의 버튼 터치 영역은 44px 이상이다.
 - 버튼·라벨 문구는 지금 그대로 쓴다("닫기", "취소", "나가기 확인", "`<닉네임>` 내보내기 확인", "삭제 확인", "저장했습니다." 등). 테스트가 이 이름으로 찾는다.
 - 오류 문구는 Toast로 옮기지 않는다. 인라인 `role="alert"` 그대로다.
+- 바깥 누르기: 넓은 화면의 `Dialog`(업로드·월 데이터·그룹 만들기)는 지금 Modal처럼 바깥을 눌러도 닫히지 않는다(입력한 내용을 잃지 않게). `ConfirmDialog`와 모바일 시트는 바깥을 누르면 닫힌다. 어느 쪽이든 `closeDisabled`·`isPending`이면 모든 닫기를 막는다.
+- 열린 동안 화면 폭이 820px을 넘나들어도 모달/시트 모양을 바꾸지 않는다(안의 폼이 다시 마운트되어 상태를 잃지 않게). `ResponsiveOverlay`의 `useOverlayMode`와 같은 규칙이다.
 - 새 npm 패키지를 설치하지 않는다.
 - 주석은 한국어로, "왜"만 짧게 쓴다.
 - jsdom 한계(Plan 06a): RAC `Sheet`는 jsdom에서 닫힌 뒤 DOM이 남는다. 시트 경로는 `aria-expanded`·열림까지만 테스트하고, 실제 닫힘·포커스 복귀는 Task 6 브라우저 확인에서 본다. 넓은 화면(테스트 기본값) 경로는 RAC `Modal`이라 jsdom에서 닫힘·포커스 복귀까지 테스트한다.
@@ -40,9 +42,12 @@
 | `transactions/TransactionPanel.tsx`, `groups/GroupSettings.tsx`, `groups/InviteSection.tsx` (수정) | 성공 문구 → `toast` |
 | `App.tsx`, `test/renderPage.tsx` (수정) | `ToastRegion` 배치 |
 | `common/BottomSheet.tsx`, `app/AccountSheet.tsx`, `app/AppLayout.tsx` (수정) | 계정 시트를 열 때 지난 로그아웃 실패 문구를 지운다 |
+| `auth/LoginPage.tsx` + `.module.css`, `transactions/TransactionsPage.tsx` + `.module.css` (수정) | 탭, 범위 전환 |
+| `test/setup.ts` (수정) | 테스트마다 알림 큐 비우기 |
 
 범위 밖: 넓은 화면 Select 팝오버의 `role=dialog`([Plan 07a 후속](2026-10-24-plan-07a-followups.md))는 RAC 모달 Popover의 기본 동작이라 이번에도 바꾸지 않는다. 바꾸려면 `isNonModal`과 바깥 누르기 닫기를 직접 만들어야 하고, 이득(안내 한 마디)보다 위험(바깥 누르기 회귀)이 크다.
-| `auth/LoginPage.tsx` + `.module.css`, `transactions/TransactionsPage.tsx` + `.module.css` (수정) | 탭, 범위 전환 |
+
+스펙과 다른 점: 알림 영역(`ToastRegion`)은 스펙의 `AppLayout`이 아니라 `App.tsx`에 둔다. 로그인 화면(AppLayout 밖)에서도 쓸 수 있게 하기 위해서다. 넓은 화면 상단의 로그아웃 실패 문구는 다음 시도 때 지워지는 지금 동작을 유지한다(시트만 고친다).
 
 ---
 
@@ -56,9 +61,9 @@
 
 **Interfaces:**
 - Produces:
-  - `DialogFrame` (named export of `Dialog.tsx`): props `{ isOpen: boolean; onOpenChange: (open: boolean) => void; title: string; isDismissable?: boolean; headerAction?: ReactNode; children: (opts: { close: () => void }) => ReactNode }`. `headerAction`은 제목 오른쪽에 그린다. 넓은 화면은 가운데 모달, 모바일 폭은 하단 시트. 제목(`Heading slot="title"`)을 그린다.
+  - `DialogFrame` (named export of `Dialog.tsx`): props `{ isOpen: boolean; onOpenChange: (open: boolean) => void; title: string; closeDisabled?: boolean; closeOnOutsideClick?: boolean; headerAction?: ReactNode; children: (opts: { close: () => void }) => ReactNode }`. `closeDisabled`면 Esc·바깥 누르기·쓸어 닫기를 모두 막는다. `closeOnOutsideClick`(기본 `false`)은 넓은 화면에서 바깥 누르기로 닫을지다(모바일 시트는 늘 닫힌다). `headerAction`은 제목 오른쪽에 그린다. 제목은 `h2`다. 넓은 화면은 가운데 모달, 모바일 폭은 하단 시트. 제목(`Heading slot="title"`)을 그린다.
   - `Dialog` (default export of `Dialog.tsx`): props `{ title: string; onClose: () => void; closeDisabled?: boolean; children: ReactNode }` — 지금 `Modal`과 같다. 마운트되면 열려 있고, 닫기 요청(닫기 버튼·Esc·바깥 누르기)마다 `onClose`를 부른다. `closeDisabled`면 셋 다 막는다.
-  - `Overlay.module.css` 클래스: `popover`, `sheet`, `dialog`, `title`(기존 Select의 것), `backdrop`, `modal`, `modalSheet`, `header`, `content`
+  - `Overlay.module.css` 클래스: `popover`, `sheet`, `dialog`, `title`(기존 Select의 것), `backdrop`, `modal`, `sheetOverlay`, `modalSheet`, `header`, `dialogTitle`, `content`
 
 - [ ] **Step 1: 오버레이 CSS 옮기기**
 
@@ -72,7 +77,7 @@ Run (in `apps/web`): `npx vitest run src/common` → 모두 PASS(동작 변화 �
 
 ```tsx
 import { useState } from 'react'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import Dialog from './Dialog'
@@ -108,8 +113,20 @@ describe('Dialog', () => {
     expect(screen.getByRole('dialog')).toContainElement(document.activeElement as HTMLElement)
     await user.keyboard('{Escape}')
 
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '열기' })).toHaveFocus()
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    // RAC FocusScope는 닫힌 뒤 다음 프레임에 포커스를 돌려준다.
+    await waitFor(() => expect(screen.getByRole('button', { name: '열기' })).toHaveFocus())
+  })
+
+  it('does not close on an outside click (like the old Modal)', async () => {
+    const onClose = vi.fn()
+    const user = userEvent.setup()
+    render(<><button type="button">밖</button><Dialog title="제목" onClose={onClose}><p>내용</p></Dialog></>)
+
+    await user.click(document.body)
+
+    expect(onClose).not.toHaveBeenCalled()
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
   })
 
   it('keeps focus inside while tabbing', async () => {
@@ -135,7 +152,7 @@ describe('Dialog', () => {
 })
 ```
 
-기존 `Modal.test.tsx`의 다른 시나리오(있다면)도 같은 방식으로 옮긴다. 대화상자 자체가 포커스를 갖던 검사(`toHaveFocus`)는 RAC가 첫 포커스 대상을 정하므로 "대화상자 안에 포커스가 있다"로 바꿨다.
+기존 `Modal.test.tsx`의 다른 시나리오(있다면)도 같은 방식으로 옮긴다. 바깥 누르기 테스트에서 `document.body` 클릭이 RAC 밑깔개(underlay)에 닿지 않으면, 렌더된 밑깔개 요소(`ModalOverlay`의 DOM)를 찾아 누르도록 바꾼다. 대화상자 자체가 포커스를 갖던 검사(`toHaveFocus`)는 RAC가 첫 포커스 대상을 정하므로 "대화상자 안에 포커스가 있다"로 바꿨다.
 
 - [ ] **Step 3: 실패 확인**
 
@@ -144,12 +161,12 @@ Expected: FAIL — `Failed to resolve import "./Dialog"`
 
 - [ ] **Step 4: Dialog 구현**
 
-먼저 `node_modules/react-aria-components/dist/types/src/Modal.d.ts`, `Sheet.d.ts`, `Dialog.d.ts`에서 `ModalOverlay`의 `isOpen`/`onOpenChange`/`isDismissable`/`isKeyboardDismissDisabled`, `SheetOverlay`의 `isOpen`/`onOpenChange`, `Sheet`의 `preventDismissal`을 확인한다. 아래와 다르면 타입을 따르고 보고서에 적는다.
+먼저 `node_modules/react-aria-components/dist/types/src/Modal.d.ts`, `Sheet.d.ts`, `Dialog.d.ts`, `Heading.d.ts`에서 `ModalOverlay`의 `isOpen`/`onOpenChange`/`isDismissable`/`isKeyboardDismissDisabled`, `SheetOverlay`의 `isOpen`/`onOpenChange`/`preventDismissal`(Sheet.d.ts 74줄 근처, `Sheet`가 아니라 `SheetOverlay`의 prop), `Heading`의 `level`을 확인한다. RAC `Heading` 기본은 `h3`라서 `level={2}`를 준다(지금 Modal 제목은 `h2`이고 `base.css`의 `h2` 모양을 쓴다). 아래와 다르면 타입을 따르고 보고서에 적는다.
 
 `apps/web/src/common/Dialog.tsx`:
 
 ```tsx
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import {
   Dialog as AriaDialog, Heading, Modal, ModalOverlay, Sheet, SheetBackdrop, SheetContent, SheetOverlay,
 } from 'react-aria-components'
@@ -161,18 +178,26 @@ type FrameProps = {
   isOpen: boolean
   onOpenChange: (open: boolean) => void
   title: string
-  isDismissable?: boolean
+  closeDisabled?: boolean
+  closeOnOutsideClick?: boolean
   headerAction?: ReactNode
   children: (opts: { close: () => void }) => ReactNode
 }
 
 /** 넓은 화면은 가운데 모달, 좁은 화면은 아래에서 올라오는 시트. 포커스 가두기·Esc·복귀는 RAC가 맡는다. */
-export function DialogFrame({ isOpen, onOpenChange, title, isDismissable = true, headerAction, children }: FrameProps) {
-  const narrow = useMediaQuery('(max-width: 820px)')
+export function DialogFrame(props: FrameProps) {
+  const { isOpen, onOpenChange, title, closeDisabled = false, closeOnOutsideClick = false, headerAction, children } = props
+  // 열린 동안 폭이 바뀌어도(회전 등) 모달과 시트를 바꾸지 않는다. 바꾸면 안의 폼이 다시 마운트되어 입력을 잃는다.
+  const narrowNow = useMediaQuery('(max-width: 820px)')
+  const [openedNarrow, setOpenedNarrow] = useState<boolean | null>(isOpen ? narrowNow : null)
+  if (isOpen && openedNarrow === null) setOpenedNarrow(narrowNow)
+  if (!isOpen && openedNarrow !== null) setOpenedNarrow(null)
+  const narrow = openedNarrow ?? narrowNow
+
   const body = (close: () => void) => (
     <>
       <div className={styles.header}>
-        <Heading slot="title" className={styles.title}>{title}</Heading>
+        <Heading slot="title" level={2} className={styles.dialogTitle}>{title}</Heading>
         {headerAction}
       </div>
       {children({ close })}
@@ -180,17 +205,17 @@ export function DialogFrame({ isOpen, onOpenChange, title, isDismissable = true,
   )
   if (narrow) {
     return (
-      <SheetOverlay isOpen={isOpen} onOpenChange={onOpenChange} className={styles.sheetOverlay}>
+      <SheetOverlay isOpen={isOpen} onOpenChange={onOpenChange} preventDismissal={closeDisabled} className={styles.sheetOverlay}>
         <SheetBackdrop className={styles.backdrop} />
-        <Sheet preventDismissal={!isDismissable} className={styles.modalSheet}>
+        <Sheet className={styles.modalSheet}>
           <SheetContent className={styles.content}>{({ close }) => body(close)}</SheetContent>
         </Sheet>
       </SheetOverlay>
     )
   }
   return (
-    <ModalOverlay isOpen={isOpen} onOpenChange={onOpenChange} isDismissable={isDismissable}
-      isKeyboardDismissDisabled={!isDismissable} className={styles.backdrop}>
+    <ModalOverlay isOpen={isOpen} onOpenChange={onOpenChange} isDismissable={closeOnOutsideClick && !closeDisabled}
+      isKeyboardDismissDisabled={closeDisabled} className={styles.backdrop}>
       <Modal className={styles.modal}>
         <AriaDialog className={styles.content}>{({ close }) => body(close)}</AriaDialog>
       </Modal>
@@ -204,7 +229,7 @@ type Props = { title: string; onClose: () => void; closeDisabled?: boolean; chil
 export default function Dialog({ title, onClose, closeDisabled = false, children }: Props) {
   return (
     <DialogFrame isOpen onOpenChange={(open) => { if (!open && !closeDisabled) onClose() }}
-      title={title} isDismissable={!closeDisabled}
+      title={title} closeDisabled={closeDisabled}
       headerAction={<button type="button" className={ui.button} disabled={closeDisabled} onClick={onClose}>닫기</button>}>
       {() => children}
     </DialogFrame>
@@ -220,9 +245,11 @@ export default function Dialog({ title, onClose, closeDisabled = false, children
 .backdrop { position: fixed; inset: 0; z-index: 10; display: flex; align-items: center; justify-content: center; padding: var(--space-6) max(16px, env(safe-area-inset-left, 0px)); background: var(--overlay); }
 .modal { width: 100%; max-width: 560px; max-height: 100%; overflow: auto; background: var(--surface-000); border-radius: var(--radius-lg); }
 .content { display: flex; flex-direction: column; gap: var(--space-4); padding: var(--space-6); outline: none; }
+/* 옮겨 온 .title(Select 시트 제목)에는 안쪽 여백이 있어 대화상자 제목에는 따로 쓴다. 글자 모양은 base.css의 h2를 따른다. */
+.dialogTitle { margin: 0; }
 .header { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
 .sheetOverlay { z-index: 20; }
-.modalSheet { width: 100%; max-height: 85vh; max-height: 85dvh; overflow: auto; background: var(--surface-000); border-radius: var(--radius-lg) var(--radius-lg) 0 0; padding-bottom: env(safe-area-inset-bottom); overscroll-behavior: contain; }
+.modalSheet { width: 100%; max-height: 70vh; max-height: 70dvh; overflow: auto; background: var(--surface-000); border-radius: var(--radius-lg) var(--radius-lg) 0 0; padding-bottom: env(safe-area-inset-bottom); overscroll-behavior: contain; }
 .modalSheet .content { padding: var(--space-4) max(var(--space-4), env(safe-area-inset-right, 0px)) var(--space-4) max(var(--space-4), env(safe-area-inset-left, 0px)); }
 ```
 
@@ -257,7 +284,7 @@ git commit -m "feat(web): React Aria Dialog replaces the hand-made Modal"
 
 **Interfaces:**
 - Consumes: `DialogFrame`(Task 1)
-- Produces: `ConfirmDialog` (default), props `{ triggerLabel: string; triggerAriaLabel?: string; triggerIcon?: IconName; title: string; description: string; confirmLabel: string; confirmAriaLabel?: string; isPending: boolean; error: string | null; onConfirm: (close: () => void) => void }`
+- Produces: `ConfirmDialog` (default), props `{ triggerLabel: string; triggerAriaLabel?: string; triggerIcon?: IconName; title: string; description: string; confirmLabel: string; confirmAriaLabel?: string; isPending: boolean; error: string | null; onConfirm: (close: () => void) => void; onOpen?: () => void }`. `onOpen`은 열 때마다 불린다(지난 실패 문구를 지우려고 호출한 쪽이 `mutation.reset()`을 넘긴다).
 
 동작:
 - 위험 버튼 모양의 트리거(`ui.button ui.danger`, 아이콘이 있으면 앞에)를 누르면 확인 대화상자가 열린다. 포커스는 "취소" 버튼에 간다(실수로 Enter를 눌러도 실행되지 않게).
@@ -271,7 +298,7 @@ git commit -m "feat(web): React Aria Dialog replaces the hand-made Modal"
 `apps/web/src/common/ConfirmDialog.test.tsx`:
 
 ```tsx
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import ConfirmDialog from './ConfirmDialog'
@@ -298,7 +325,37 @@ describe('ConfirmDialog', () => {
 
     await user.click(within(dialog).getByRole('button', { name: '취소' }))
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-    expect(trigger).toHaveFocus()
+    await waitFor(() => expect(trigger).toHaveFocus())
+  })
+
+  it('closes even when the caller closes in the same tick that pending ends', async () => {
+    // mutate의 onSuccess는 리렌더 전에 불린다. 그때 isPending이 아직 true여도 close()는 닫아야 한다.
+    const user = userEvent.setup()
+    let close: () => void = () => {}
+    const { rerender } = render(
+      <ConfirmDialog triggerLabel="그룹 나가기" title="그룹 나가기" description="설명" confirmLabel="나가기 확인"
+        isPending={false} error={null} onConfirm={(c) => { close = c }} />,
+    )
+    await user.click(screen.getByRole('button', { name: '그룹 나가기' }))
+    await user.click(screen.getByRole('button', { name: '나가기 확인' }))
+    rerender(
+      <ConfirmDialog triggerLabel="그룹 나가기" title="그룹 나가기" description="설명" confirmLabel="나가기 확인"
+        isPending error={null} onConfirm={(c) => { close = c }} />,
+    )
+
+    act(() => close())
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  })
+
+  it('calls onOpen every time it opens', async () => {
+    const onOpen = vi.fn()
+    const { user } = renderConfirm({ onOpen })
+    await user.click(screen.getByRole('button', { name: '그룹 나가기' }))
+    await user.click(screen.getByRole('button', { name: '취소' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await user.click(screen.getByRole('button', { name: '그룹 나가기' }))
+    expect(onOpen).toHaveBeenCalledTimes(2)
   })
 
   it('confirms through the callback and closes when the caller says so', async () => {
@@ -365,6 +422,7 @@ type Props = {
   isPending: boolean
   error: string | null
   onConfirm: (close: () => void) => void
+  onOpen?: () => void
 }
 
 /**
@@ -372,15 +430,19 @@ type Props = {
  * 트리거는 RAC Button이라 Safari처럼 누를 때 포커스를 주지 않는 브라우저에서도 닫힌 뒤 트리거로 돌아온다.
  */
 export default function ConfirmDialog(props: Props) {
-  const { triggerLabel, triggerAriaLabel, triggerIcon, title, description, confirmLabel, confirmAriaLabel, isPending, error, onConfirm } = props
+  const { triggerLabel, triggerAriaLabel, triggerIcon, title, description, confirmLabel, confirmAriaLabel, isPending, error, onConfirm, onOpen } = props
   const [open, setOpen] = useState(false)
+  // 실행 중 닫기 막기는 closeDisabled와 버튼 비활성이 맡는다. 여기서 isPending을 보면
+  // mutate의 onSuccess(리렌더 전, isPending이 아직 true)에서 부른 close가 막힌다.
+  const close = () => setOpen(false)
   return (
     <>
-      <Button aria-label={triggerAriaLabel} className={`${ui.button} ${ui.danger}`} onPress={() => setOpen(true)}>
+      <Button aria-label={triggerAriaLabel} className={`${ui.button} ${ui.danger}`}
+        onPress={() => { onOpen?.(); setOpen(true) }}>
         {triggerIcon && <Icon name={triggerIcon} size={18} />}{triggerLabel}
       </Button>
-      <DialogFrame isOpen={open} onOpenChange={(next) => { if (!isPending) setOpen(next) }} title={title} isDismissable={!isPending}>
-        {({ close }) => (
+      <DialogFrame isOpen={open} onOpenChange={setOpen} title={title} closeDisabled={isPending} closeOnOutsideClick>
+        {() => (
           <>
             <p>{description}</p>
             {error && <p role="alert" className={ui.alert}>{error}</p>}
@@ -409,7 +471,7 @@ export default function ConfirmDialog(props: Props) {
 <ConfirmDialog triggerLabel="그룹 나가기" title="그룹 나가기"
   description={`${name}에서 나가면 다시 초대받아야 합류할 수 있습니다. 나갈까요?`}
   confirmLabel="나가기 확인" isPending={leave.isPending} error={leave.isError ? errorMessage(leave.error) : null}
-  onConfirm={(close) => leave.mutate(groupId, { onSuccess: close })} />
+  onOpen={() => leave.reset()} onConfirm={(close) => leave.mutate(groupId, { onSuccess: close })} />
 ```
 
 `MemberList.tsx`의 `MemberRow`: 같은 방식으로 상태·포커스 코드를 지우고:
@@ -419,7 +481,7 @@ export default function ConfirmDialog(props: Props) {
   title={`${member.nickname} 내보내기`} description="내보내면 차단되어 다시 합류할 수 없습니다."
   confirmLabel="내보내기 확인" confirmAriaLabel={`${member.nickname} 내보내기 확인`}
   isPending={removeMember.isPending} error={removeMember.isError ? errorMessage(removeMember.error) : null}
-  onConfirm={(close) => removeMember.mutate({ groupId, userId: member.userId }, { onSuccess: close })} />
+  onOpen={() => removeMember.reset()} onConfirm={(close) => removeMember.mutate({ groupId, userId: member.userId }, { onSuccess: close })} />
 ```
 
 (바깥의 `removeMember.isError` 문단은 지운다.)
@@ -430,7 +492,7 @@ export default function ConfirmDialog(props: Props) {
 {canDelete && (
   <ConfirmDialog triggerLabel="삭제" triggerIcon="trash" title="거래 삭제" description="이 거래를 삭제할까요?"
     confirmLabel="삭제 확인" isPending={remove.isPending} error={remove.isError ? errorMessage(remove.error) : null}
-    onConfirm={() => remove.mutate(tx.id, { onSuccess: onClose })} />
+    onOpen={() => remove.reset()} onConfirm={() => remove.mutate(tx.id, { onSuccess: onClose })} />
 )}
 ```
 
@@ -440,7 +502,7 @@ export default function ConfirmDialog(props: Props) {
 
 Run: `npx vitest run src/common/ConfirmDialog.test.tsx src/groups src/transactions`
 
-`GroupsPage.test.tsx` 142줄 근처와 `GroupsAdmin.test.tsx` 50줄 근처의 `expect(screen.getByRole('button', { name: '취소' })).toHaveFocus()`는 그대로 통과해야 한다. 취소 후 트리거로 포커스가 돌아오는지 보는 검사가 있으면 RAC 닫힘이 끝난 뒤를 기다리도록 `await waitFor(...)`로 감싼다. 실패 응답 문구를 확인하는 테스트는 이제 문구가 대화상자 안에 있으므로 `within(screen.getByRole('dialog'))`로 찾도록 바꾼다. 기대 문구와 API 호출 검사는 바꾸지 않는다.
+`GroupsPage.test.tsx` 142줄 근처와 `GroupsAdmin.test.tsx` 50줄 근처의 `expect(screen.getByRole('button', { name: '취소' })).toHaveFocus()`는 그대로 통과해야 한다(필요하면 `await waitFor(...)`로 감싼다). 취소 후 트리거로 포커스가 돌아오는지 보는 검사가 있으면 RAC 닫힘이 끝난 뒤를 기다리도록 `await waitFor(...)`로 감싼다. 실패 응답 문구를 확인하는 테스트는 이제 문구가 대화상자 안에 있으므로 `within(screen.getByRole('dialog'))`로 찾도록 바꾼다. 기대 문구와 API 호출 검사는 바꾸지 않는다.
 
 Expected: 모두 PASS
 
@@ -552,7 +614,28 @@ export default function ToastRegion() {
 }
 ```
 
-`ToastQueue` 생성자 옵션 이름(`maxVisibleToasts`)이 다르면 타입대로 고친다. 큐가 모듈 단위라 테스트 사이에 알림이 남을 수 있다. 테스트가 서로 영향을 주면 `Toast.tsx`에 테스트용으로 큐를 비우는 함수(예: `clearToasts()`, 주석 "테스트 전용")를 두고 `test/setup.ts`의 `afterEach`에서 부른다.
+큐가 모듈 하나에 있어 테스트 사이에 알림이 남는다. RAC 알림 내용에는 `role="alert"`가 붙어서, 남은 알림이 `findByRole('alert')` 같은 기존 테스트를 깨뜨린다(`TransactionPanel.test.tsx` 110·122줄 근처). 그래서 반드시 `Toast.tsx`에 다음을 더하고:
+
+```tsx
+/** 테스트 전용: 테스트 사이에 남은 알림을 지운다. */
+// oxlint-disable-next-line react/only-export-components
+export function clearToasts() {
+  queue.clear()
+}
+```
+
+`test/setup.ts`의 `afterEach`에서 부른다. setup은 node 환경(proxy) 테스트에서도 돌므로 `window`가 있을 때만, 동적 import로 부른다:
+
+```ts
+afterEach(async () => {
+  if (typeof window !== 'undefined') {
+    const { clearToasts } = await import('../common/Toast')
+    clearToasts()
+  }
+})
+```
+
+(기존 `afterEach`가 있으면 그 안에 넣는다.) `ToastQueue`의 `clear()`·`maxVisibleToasts` 이름은 `react-stately` 타입으로 확인한다.
 
 `apps/web/src/common/Toast.module.css`:
 
@@ -574,14 +657,14 @@ export default function ToastRegion() {
 - `App.tsx`: `ErrorBoundary` 바깥, `BrowserRouter` 안 마지막 자식으로 `<ToastRegion />`을 둔다(로그인 화면에서도 쓸 수 있게).
 - `test/renderPage.tsx`: 렌더 트리 안(예: `GroupProvider` 다음)에 `<ToastRegion />`을 둔다. 화면 테스트가 알림 문구를 찾을 수 있게 한다.
 
-- [ ] **Step 5: 성공 문구 세 곳 교체**
+- [ ] **Step 5: 성공 문구 세 곳 교체** (`test/setup.ts`도 이 Task의 커밋에 들어간다)
 
 - `TransactionPanel.tsx`: `{update.isSuccess && <p role="status" …>저장했습니다.</p>}`를 지우고, `update.mutate`의 `onSuccess` 안에서 `toast('저장했습니다.')`를 부른다.
 - `GroupSettings.tsx` `RenameForm`: `rename.isSuccess` 문단을 지우고 `rename.mutate({ groupId, name: trimmed }, { onSuccess: () => toast('이름을 바꿨습니다.') })`.
 - `InviteSection.tsx`: `copied === 'done'` 문단을 지우고, 복사 성공 시 `toast('링크를 복사했습니다.')`. `copied` 상태가 실패 표시에만 쓰이게 되면 `'done'` 값을 없애고 실패 여부만 남긴다(`'failed'` 문구와 동작은 그대로).
 
 테스트를 맞춘다(기대 문구는 바꾸지 않는다):
-- `TransactionPanel.test.tsx` 38줄: `findByRole('status')` → `findByText('저장했습니다.')`
+- `TransactionPanel.test.tsx` 38·54·139줄 근처의 `findByRole('status')` 세 곳 모두 → `findByText('저장했습니다.')`(저장 뒤 화면을 기다리는 용도면 같은 문구로 기다린다)
 - `GroupsPage.test.tsx` 99줄, `GroupsAdmin.test.tsx` 70줄: `findByText`라 그대로 통과해야 한다.
 
 - [ ] **Step 6: 계정 시트를 열 때 지난 로그아웃 실패 문구 지우기**
@@ -792,7 +875,7 @@ export default function SegmentedControl({ label, items, selectedKey, onSelectio
 
 `LoginPage.tsx`:
 - `useRef`, `KeyboardEvent`, `tabs` ref, `onTabKeyDown`, `role="tablist"` 블록을 지운다.
-- 지금 `<form id="auth-panel" role="tabpanel" …>…</form>` 전체를 `const form = (<form className={styles.form} onSubmit={onSubmit}>…</form>)`로 꺼내고(`id`·`role`·`aria-labelledby`는 지운다), 그 자리에:
+- 지금 `<form id="auth-panel" role="tabpanel" …>…</form>` 전체를 `const form = (<form className={styles.form} onSubmit={onSubmit}>…</form>)`로 꺼낸다(`id`·`role`·`aria-labelledby`는 지운다). 단, 폼 안의 안내(`role="status"`)·오류(`role="alert"`) 문단은 폼에서 빼서 `Tabs` **바깥 바로 아래**에 둔다. 탭 패널은 선택된 것만 그리므로, 가입 후 로그인 실패로 탭이 "로그인"으로 바뀔 때 안내가 새 패널과 함께 마운트되면 스크린리더가 읽지 않을 수 있다. 그 자리에:
 
 ```tsx
 <Tabs label="로그인 또는 회원가입" tabs={MODES.map((m) => ({ id: m, label: TAB_LABEL[m] }))}
@@ -811,6 +894,7 @@ export default function SegmentedControl({ label, items, selectedKey, onSelectio
   selectedKey={inGroup ? 'group' : 'mine'} onSelectionChange={(id) => changeScope(id as 'mine' | 'group')} />
 ```
 
+- 지금 코드(32~33줄 근처)는 `scope`가 `'group'`인데 `selectedGroupId`가 `null`이면 화면은 "내 거래"를 보여준다. 이때 "내 거래"가 이미 선택된 것으로 보여 눌러도 `onSelectionChange`가 불리지 않으므로 `scope`가 `'group'`에 남는다. `selectedGroupId`가 `null`이 되면 `scope`를 `'mine'`으로 맞추는 처리를 더한다(예: 렌더 중 `if (selectedGroupId === null && scope === 'group') setScope('mine')`처럼 상태 맞추기, 또는 `changeScope`와 같은 정리 함수 호출). 기존 동작(그룹이 생기면 다시 고를 수 있음)은 유지한다.
 - `TransactionsPage.module.css`의 `.scope`, `.scopeButton` 규칙을 지운다.
 
 테스트 맞추기(기대값은 바꾸지 않는다):
@@ -874,7 +958,7 @@ git commit -m "test(web): share switch disabled while saving and invite address 
 Plan 07a Task 8과 같은 방식으로 `apps/web/preview.html` + `src/preview.tsx`를 만든다. `fetch`를 가짜 응답으로 바꾸고 `ToastRegion`을 포함한 앱 트리에서 홈(업로드 대화상자), 거래(내 거래/그룹 거래 전환, 거래 상세의 저장·삭제), 그룹(이름 바꾸기, 나가기, 멤버 내보내기, 초대 링크 복사), 로그인 화면을 오갈 수 있게 한다. 이동은 페이지 안 링크(클라이언트 라우팅)로 한다(`/preview.html/…`로 새로 고침하면 dev 서버가 `index.html`을 준다).
 
 - [ ] **Step 2: 넓은 폭(1200×800)**
-  - 대화상자: 가운데에 열리고, Tab이 안에서만 돈다. Esc·바깥 누르기·닫기로 닫히고 연 버튼으로 포커스가 돌아온다. 업로드 중에는 셋 다 막힌다.
+  - 대화상자: 가운데에 열리고 제목 모양(h2)이 이전과 같다. Tab이 안에서만 돈다. Esc·닫기로 닫히고(바깥 누르기로는 닫히지 않는다) 연 버튼으로 포커스가 돌아온다. 업로드 중에는 둘 다 막힌다.
   - 확인 대화상자: 트리거를 누르면 열리고 포커스가 "취소"에 있다. 실패하면 대화상자 안에 오류가 보인다. 확인이 끝나면 닫힌다.
   - 알림: 저장·이름 바꾸기·링크 복사 뒤 화면 하단 가운데에 뜨고 4초 뒤 사라진다. × 버튼으로 닫힌다. 스크린리더 지역 이름 "알림".
   - 로그인 탭: 방향키로 이동, 모양이 이전과 같다. 범위 전환: 모양이 이전과 같고 그룹이 없으면 "그룹 거래"가 비활성.
