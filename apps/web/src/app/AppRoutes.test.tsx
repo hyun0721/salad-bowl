@@ -2,6 +2,7 @@ import { onlineManager, QueryClient, QueryClientProvider } from '@tanstack/react
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { delay, http, HttpResponse } from 'msw'
+import { I18nProvider } from 'react-aria-components'
 import { MemoryRouter } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { setAccessToken } from '../api/client'
@@ -15,13 +16,15 @@ const me = { userId: 1, email: 'me@test.com', nickname: '나' }
 function renderApp(path: string) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   render(
-    <QueryClientProvider client={client}>
-      <AuthProvider>
-        <MemoryRouter initialEntries={[path]}>
-          <AppRoutes />
-        </MemoryRouter>
-      </AuthProvider>
-    </QueryClientProvider>,
+    <I18nProvider locale="ko-KR">
+      <QueryClientProvider client={client}>
+        <AuthProvider>
+          <MemoryRouter initialEntries={[path]}>
+            <AppRoutes />
+          </MemoryRouter>
+        </AuthProvider>
+      </QueryClientProvider>
+    </I18nProvider>,
   )
   return client
 }

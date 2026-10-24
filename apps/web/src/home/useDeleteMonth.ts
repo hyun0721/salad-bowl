@@ -12,6 +12,7 @@ export function useDeleteMonth() {
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: ['coverage'] })
       void client.invalidateQueries({ queryKey: ['transactions'] })
+      void client.invalidateQueries({ queryKey: ['categories'] })
       void client.invalidateQueries({ queryKey: ['summary'] })
     },
   })

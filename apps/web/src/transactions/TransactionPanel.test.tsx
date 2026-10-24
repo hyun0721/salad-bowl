@@ -1,6 +1,6 @@
 import { screen, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { server } from '../test/server'
 import { renderPage, testMe } from '../test/renderPage'
 import TransactionPanel from './TransactionPanel'
@@ -17,6 +17,10 @@ function auditsHandler(rows: unknown[] = []) {
 }
 
 describe('TransactionPanel', () => {
+  beforeEach(() => {
+    server.use(http.get('*/api/me/categories', () => HttpResponse.json([])))
+  })
+
   it('sends only the fields that changed', async () => {
     auditsHandler()
     let body: unknown

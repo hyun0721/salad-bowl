@@ -1,6 +1,8 @@
 import { useIsMutating } from '@tanstack/react-query'
 import { useState } from 'react'
+import Checkbox from '../common/Checkbox'
 import Modal from '../common/Modal'
+import TextField from '../common/TextField'
 import { errorMessage } from '../common/errorMessage'
 import { formatMonthLabel } from '../common/format'
 import ui from '../common/ui.module.css'
@@ -67,17 +69,12 @@ export default function MonthDataDialog({ coverage, onClose, onDeleted }: Props)
             같은 엑셀을 다시 올리면 거래는 돌아오지만 수정한 내용은 돌아오지 않습니다.
           </p>
           {manualCount > 0 && (
-            <label className={styles.check}>
-              <input type="checkbox" checked={includeManual} disabled={remove.isPending}
-                onChange={(e) => setIncludeManual(e.target.checked)} />
-              <span>직접 추가한 거래 {manualCount}건도 함께 삭제</span>
-            </label>
+            <Checkbox isSelected={includeManual} isDisabled={remove.isPending} onChange={setIncludeManual}>
+              직접 추가한 거래 {manualCount}건도 함께 삭제
+            </Checkbox>
           )}
-          <label className={ui.field}>
-            <span>삭제하려면 {month}를 입력하세요</span>
-            <input className={ui.input} value={typed} autoComplete="off" disabled={remove.isPending}
-              onChange={(e) => setTyped(e.target.value)} />
-          </label>
+          <TextField label={`삭제하려면 ${month}를 입력하세요`} value={typed} onChange={setTyped}
+            autoComplete="off" isDisabled={remove.isPending} />
           {uploading && <p className={ui.status}>업로드가 끝난 뒤 삭제할 수 있습니다.</p>}
           {remove.isError && <p role="alert" className={ui.alert}>{errorMessage(remove.error)}</p>}
           <div className={ui.row}>

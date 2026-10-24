@@ -23,3 +23,8 @@
 @media (prefers-reduced-motion: reduce) {
   .sheet[data-entering], .sheet[data-exiting] { animation: none; }
 }
+
+/* 폼 안에서는 다른 입력칸처럼 라벨을 위에, 트리거를 칸 전체 폭으로 둔다. */
+.field { flex-direction: column; align-items: stretch; gap: 4px; }
+.field .label { font-weight: 500; line-height: 18px; }
+.field .trigger { max-width: none; width: 100%; }

@@ -2,6 +2,7 @@ import { useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 import { errorMessage } from '../common/errorMessage'
 import { safeNext } from '../common/safeNext'
+import TextField from '../common/TextField'
 import { useAuth } from './AuthProvider'
 import { SignupLoginError } from './authErrors'
 import styles from './LoginPage.module.css'
@@ -83,23 +84,15 @@ export default function LoginPage() {
         </div>
         <form id="auth-panel" role="tabpanel" aria-labelledby={`auth-tab-${mode}`} className={styles.form}
           onSubmit={onSubmit}>
-          <label className={styles.field}>
-            <span>이메일</span>
-            <input type="email" autoComplete="email" required value={email}
-              onChange={(e) => setEmail(e.target.value)} />
-          </label>
-          <label className={styles.field}>
-            <span>비밀번호{mode === 'signup' ? ' (8~64자)' : ''}</span>
-            <input type="password" required minLength={mode === 'signup' ? 8 : undefined} maxLength={64}
-              autoComplete={mode === 'login' ? 'current-password' : 'new-password'} value={password}
-              onChange={(e) => setPassword(e.target.value)} />
-          </label>
+          <TextField label="이메일" type="email" autoComplete="email" isRequired
+            value={email} onChange={setEmail} className={styles.field} />
+          <TextField label={`비밀번호${mode === 'signup' ? ' (8~64자)' : ''}`} type="password" isRequired
+            minLength={mode === 'signup' ? 8 : undefined} maxLength={64}
+            autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+            value={password} onChange={setPassword} className={styles.field} />
           {mode === 'signup' && (
-            <label className={styles.field}>
-              <span>닉네임 (그룹에서 보이는 이름)</span>
-              <input type="text" required maxLength={50} value={nickname}
-                onChange={(e) => setNickname(e.target.value)} />
-            </label>
+            <TextField label="닉네임 (그룹에서 보이는 이름)" isRequired maxLength={50}
+              value={nickname} onChange={setNickname} className={styles.field} />
           )}
           <button type="submit" className={styles.submit} disabled={busy}>
             {mode === 'login' ? '로그인' : '가입하고 시작하기'}

@@ -1,6 +1,7 @@
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
+import { typeDateTime } from '../test/typeDateTime'
 import { server } from '../test/server'
 import { renderPage } from '../test/renderPage'
 import TransactionsPage from './TransactionsPage'
@@ -20,6 +21,10 @@ function mineHandler(items: TransactionView[]) {
 }
 
 describe('TransactionsPage', () => {
+  beforeEach(() => {
+    server.use(http.get('*/api/me/categories', () => HttpResponse.json([])))
+  })
+
   it('lists my transactions for the current month with signed amounts and badges', async () => {
     mineHandler([
       { ...base, id: 2, description: '국밥', amount: -9000, edited: true },
@@ -69,7 +74,8 @@ describe('TransactionsPage', () => {
     expect(await within(list).findByText('택시')).toBeInTheDocument()
     expect(within(list).getAllByRole('button')[0]).toHaveTextContent('멤버')
 
-    await user.selectOptions(await screen.findByRole('combobox', { name: '멤버' }), '2')
+    await user.click(await screen.findByRole('button', { name: '전체 멤버' }))
+    await user.click(await screen.findByRole('option', { name: '멤버' }))
 
     expect(await within(list).findByText('택시')).toBeInTheDocument()
     expect(within(list).queryByText('커피')).not.toBeInTheDocument()
@@ -92,7 +98,7 @@ describe('TransactionsPage', () => {
     fireEvent.change(screen.getByLabelText('월'), { target: { value: '2026-09' } })
     expect(await screen.findByText('스타벅스')).toBeInTheDocument()
 
-    await user.type(screen.getByLabelText('검색'), '교통')
+    await user.type(screen.getByRole('searchbox', { name: '검색' }), '교통')
 
     expect(screen.queryByText('스타벅스')).not.toBeInTheDocument()
     expect(screen.getByText('버스')).toBeInTheDocument()
@@ -140,7 +146,7 @@ describe('TransactionsPage', () => {
     fail = false
     await user.click(screen.getByRole('button', { name: '멤버 목록 다시 시도' }))
 
-    expect(await screen.findByRole('combobox', { name: '멤버' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: '전체 멤버' })).toBeInTheDocument()
   })
 
   it('opens the detail panel for a row and the add form from the button', async () => {
@@ -196,7 +202,7 @@ describe('TransactionsPage', () => {
     const { user } = renderPage(<TransactionsPage today={today} />, { groups })
 
     await screen.findByText('김밥')
-    await user.type(screen.getByLabelText('검색'), '없는말')
+    await user.type(screen.getByRole('searchbox', { name: '검색' }), '없는말')
 
     expect(screen.getByText('검색 결과가 없습니다.')).toBeInTheDocument()
     expect(screen.queryByText('이 달에 거래가 없습니다.')).not.toBeInTheDocument()
@@ -220,8 +226,8 @@ describe('TransactionsPage', () => {
 
     await screen.findByText('이 달에 거래가 없습니다.')
     await user.click(screen.getByRole('button', { name: '거래 추가' }))
-    fireEvent.change(screen.getByLabelText('일시'), { target: { value: '2026-09-05T13:30' } })
-    await user.type(screen.getByLabelText('대분류'), '식비')
+    await typeDateTime(user, '202609051330')
+    await user.type(screen.getByRole('combobox', { name: '대분류' }), '식비')
     await user.type(screen.getByLabelText('내용'), '9월 간식')
     await user.type(screen.getByLabelText('금액 (원)'), '3000')
     await user.click(screen.getByRole('button', { name: '추가' }))

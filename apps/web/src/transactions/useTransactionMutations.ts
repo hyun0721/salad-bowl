@@ -3,7 +3,10 @@ import { transactionsApi, type ManualTransactionInput, type TransactionPatch } f
 
 export function useTransactionMutations() {
   const client = useQueryClient()
-  const refreshLists = () => client.invalidateQueries({ queryKey: ['transactions'] })
+  const refreshLists = () => Promise.all([
+    client.invalidateQueries({ queryKey: ['transactions'] }),
+    client.invalidateQueries({ queryKey: ['categories'] }),
+  ])
 
   const update = useMutation({
     mutationFn: ({ id, patch }: { id: number; patch: TransactionPatch }) => transactionsApi.update(id, patch),

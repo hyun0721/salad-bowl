@@ -6,6 +6,14 @@ import type { ReactNode } from 'react'
 const ICONS = {
   'chevron-down': <path d="m6 9 6 6 6-6" />,
   check: <path d="M20 6 9 17l-5-5" />,
+  calendar: (
+    <>
+      <path d="M8 2v4" />
+      <path d="M16 2v4" />
+      <rect width="18" height="18" x="3" y="4" rx="2" />
+      <path d="M3 10h18" />
+    </>
+  ),
   'chevron-left': <path d="m15 18-6-6 6-6" />,
   'chevron-right': <path d="m9 18 6-6-6-6" />,
   home: (

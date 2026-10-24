@@ -1,0 +1,3 @@
+.money { position: relative; display: flex; align-items: center; }
+.money .input { flex: 1; padding-right: 36px; text-align: right; font-variant-numeric: tabular-nums; }
+.unit { position: absolute; right: var(--space-3); color: var(--ink-muted); pointer-events: none; }

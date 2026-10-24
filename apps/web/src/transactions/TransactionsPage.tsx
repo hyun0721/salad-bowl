@@ -1,3 +1,5 @@
+import SearchField from '../common/SearchField'
+import Select from '../common/Select'
 import { useQuery } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import Icon from '../common/Icon'
@@ -77,14 +79,10 @@ export default function TransactionsPage({ today }: Props) {
         </div>
         <MonthPicker month={month} onChange={setMonth} />
         {inGroup && detail.data && (
-          <label className={styles.inlineField}>
-            <span>멤버</span>
-            <select className={ui.input} value={memberId ?? ''}
-              onChange={(e) => setMember(e.target.value ? { groupId, userId: Number(e.target.value) } : null)}>
-              <option value="">전체</option>
-              {detail.data.members.map((m) => <option key={m.userId} value={m.userId}>{m.nickname}</option>)}
-            </select>
-          </label>
+          <Select label="멤버"
+            items={[{ id: 'all', label: '전체' }, ...detail.data.members.map((m) => ({ id: m.userId, label: m.nickname }))]}
+            selectedKey={memberId ?? 'all'}
+            onSelectionChange={(key) => setMember(key == null || key === 'all' ? null : { groupId, userId: Number(key) })} />
         )}
         {inGroup && detail.isError && (
           <>
@@ -92,11 +90,7 @@ export default function TransactionsPage({ today }: Props) {
             <button type="button" className={ui.button} onClick={() => void detail.refetch()}>멤버 목록 다시 시도</button>
           </>
         )}
-        <label className={`${styles.inlineField} ${styles.search}`}>
-          <span>검색</span>
-          <input type="search" className={ui.input} placeholder="내용·카테고리" value={search}
-            onChange={(e) => setSearch(e.target.value)} />
-        </label>
+        <SearchField label="검색" value={search} onChange={setSearch} placeholder="내용·카테고리" className={styles.search} />
       </div>
       {selectedGroupId === null && <p className={ui.muted}>그룹에 속하면 그룹 거래를 볼 수 있습니다.</p>}
 

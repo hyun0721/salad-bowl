@@ -109,7 +109,7 @@ describe('GroupsPage', () => {
     }))
     const { user } = renderPage(<GroupsPage />, { groups: [home] })
 
-    const toggle = await screen.findByRole('checkbox', { name: '내 거래를 이 그룹에 공개' })
+    const toggle = await screen.findByRole('switch', { name: '내 거래를 이 그룹에 공개' })
     expect(toggle).toBeChecked()
     await user.click(toggle)
 
