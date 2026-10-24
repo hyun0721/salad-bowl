@@ -2,6 +2,7 @@ package com.saladbowl.api.transaction;
 
 import com.saladbowl.api.auth.CurrentUser;
 import com.saladbowl.api.transaction.TransactionDtos.AuditView;
+import com.saladbowl.api.transaction.TransactionDtos.CategoryOption;
 import com.saladbowl.api.transaction.TransactionDtos.CoverageMonth;
 import com.saladbowl.api.transaction.TransactionDtos.ManualTransactionRequest;
 import com.saladbowl.api.transaction.TransactionDtos.MonthDeleteResult;
@@ -39,6 +40,11 @@ public class TransactionController {
     @GetMapping("/me/coverage")
     public List<CoverageMonth> coverage(@CurrentUser Long userId, @RequestParam int year) {
         return transactionService.coverage(userId, year);
+    }
+
+    @GetMapping("/me/categories")
+    public List<CategoryOption> categories(@CurrentUser Long userId) {
+        return transactionService.categories(userId);
     }
 
     @PostMapping("/me/transactions")

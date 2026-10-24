@@ -4,8 +4,10 @@ import com.saladbowl.api.common.ApiException;
 import com.saladbowl.api.common.ErrorCode;
 import com.saladbowl.api.group.GroupAccess;
 import com.saladbowl.api.transaction.TransactionDtos.AuditView;
+import com.saladbowl.api.transaction.TransactionDtos.CategoryOption;
 import com.saladbowl.api.transaction.TransactionDtos.CoverageMonth;
 import com.saladbowl.api.transaction.TransactionDtos.ManualTransactionRequest;
+import com.saladbowl.api.transaction.TransactionDtos.MinorOption;
 import com.saladbowl.api.transaction.TransactionDtos.MonthDeleteResult;
 import com.saladbowl.api.transaction.TransactionDtos.TransactionView;
 import com.saladbowl.api.transaction.TransactionDtos.UpdateTransactionRequest;
@@ -17,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -73,6 +76,30 @@ public class TransactionService {
                         YearMonth.of(year, ((Number) row[0]).intValue()).toString(),
                         ((Number) row[1]).longValue(),
                         ((Number) row[2]).longValue()))
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<CategoryOption> categories(long userId) {
+        Map<String, Map<String, Long>> byMajor = new HashMap<>();
+        for (Object[] row : transactions.countDisplayCategories(userId)) {
+            byMajor.computeIfAbsent((String) row[0], k -> new HashMap<>())
+                    .merge((String) row[1], ((Number) row[2]).longValue(), Long::sum);
+        }
+        Comparator<CategoryOption> majorOrder = Comparator.comparingLong(CategoryOption::count).reversed()
+                .thenComparing(CategoryOption::major);
+        Comparator<MinorOption> minorOrder = Comparator.comparingLong(MinorOption::count).reversed()
+                .thenComparing(MinorOption::minor);
+        return byMajor.entrySet().stream()
+                .map(e -> new CategoryOption(
+                        e.getKey(),
+                        e.getValue().values().stream().mapToLong(Long::longValue).sum(),
+                        e.getValue().entrySet().stream()
+                                .filter(m -> !m.getKey().isEmpty())
+                                .map(m -> new MinorOption(m.getKey(), m.getValue()))
+                                .sorted(minorOrder)
+                                .toList()))
+                .sorted(majorOrder)
                 .toList();
     }
 
