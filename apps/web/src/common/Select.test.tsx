@@ -67,4 +67,11 @@ describe('Select', () => {
     await user.keyboard('{Escape}')
     await waitFor(() => expect(screen.queryByRole('listbox')).not.toBeInTheDocument())
   })
+  it('puts the label above a full-width trigger in the field variant', () => {
+    render(<Select variant="field" label="타입" items={[{ id: 'EXPENSE', label: '지출' }]} selectedKey="EXPENSE" onSelectionChange={vi.fn()} />)
+    const trigger = screen.getByRole('button', { name: /타입/ })
+    expect(trigger).toHaveTextContent('지출')
+    expect(trigger.closest('[data-variant="field"]')).not.toBeNull()
+  })
+
 })
