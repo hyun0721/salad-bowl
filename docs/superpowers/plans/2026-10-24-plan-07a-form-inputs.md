@@ -6,16 +6,17 @@
 
 **Architecture:** `apps/web/src/common/`에 공용 래퍼(TextField, TextAreaField, MoneyField, DateTimePicker, SearchField, Checkbox, Switch, ComboBox)를 만들고 화면은 래퍼만 쓴다. 넓은 화면 팝오버와 좁은 화면 하단 시트를 고르는 로직은 `Select.tsx`에서 `ResponsiveOverlay`로 분리해 Select와 DateTimePicker가 같이 쓴다. 카테고리 후보는 새 API `GET /me/categories`가 내 거래의 화면 표시 카테고리를 많이 쓴 순서로 돌려준다.
 
-**Tech Stack:** Spring Boot 3 + JPA(JPQL) + MockMvc 통합 테스트(Testcontainers), React 19, react-aria-components 1.22.1, @internationalized/date 3.12.4, TanStack Query 5, CSS Modules, Vitest + Testing Library + MSW
+**Tech Stack:** Spring Boot 4.1.1 + JPA(JPQL, Boot 기본 Hibernate) + MockMvc 통합 테스트(Testcontainers), React 19, react-aria-components 1.22.1, @internationalized/date 3.12.4, TanStack Query 5, CSS Modules, Vitest + Testing Library + MSW
 
 **Spec:** `docs/superpowers/specs/2026-10-22-react-aria-rollout-design.md` 4장(단계 1). 계획 번호는 [Plan 06a 후속 과제](2026-10-22-plan-06a-followups.md)의 결정대로 07a다.
 
 ## Global Constraints
 
-- 시각 디자인은 바꾸지 않는다. 색·간격·radius는 `apps/web/src/styles/tokens.css`의 변수만 쓴다. 예외: 4px 이하 장식 치수, 터치 영역 높이(40px, 44px, 48px), 글자 크기(토큰이 없다).
+- 시각 디자인은 바꾸지 않는다. 색·간격·radius는 `apps/web/src/styles/tokens.css`의 변수만 쓴다. 예외: 4px 이하 장식 치수, 터치 영역과 아이콘 버튼 크기(36·40·44·48px), 입력칸 안 아이콘 버튼 자리를 비우는 `padding-right`(그 버튼 폭과 같은 값), 스위치 트랙·썸 크기, 글자 크기(토큰이 없다).
 - `react-aria-components`와 `@internationalized/date`는 `apps/web/src/common/`에서만 import한다. 화면 코드는 `common/`의 래퍼만 쓴다.
-- 모바일 폭 기준은 `(max-width: 820px)`이고 `common/useMediaQuery.ts`의 `useMediaQuery`로 판단한다. 모바일 폭에서 입력칸·버튼 높이는 44px 이상이다.
-- 라벨은 화면에 보인다. 테스트는 지금처럼 `getByLabelText('<라벨>')`로 입력칸을 찾을 수 있어야 한다(라벨 문구는 바꾸지 않는다).
+- 모바일 폭 기준은 `(max-width: 820px)`이고 `common/useMediaQuery.ts`의 `useMediaQuery`로 판단한다. 모바일 폭에서 입력칸과 **모든 버튼(입력칸 안 아이콘 버튼, 달력 이동 버튼 포함)** 의 터치 영역은 44px 이상이다.
+- 라벨은 화면에 보인다. 테스트는 지금처럼 `getByLabelText('<라벨>')`로 입력칸을 찾을 수 있어야 한다(라벨 문구는 바꾸지 않는다). 예외: 일시(`DateTimePicker`)는 칸이 여러 개라 `getByRole('group', { name: '일시' })` 안의 `spinbutton`으로 찾는다.
+- 공용 부품의 `className` prop은 기본 클래스를 **대체하지 않고 더한다**(`[base, className].filter(Boolean).join(' ')`).
 - 검증은 브라우저 기본 검증을 쓴다(`validationBehavior="native"`, `isRequired`, `maxLength`). 오류 문구는 RAC `FieldError`로 입력칸 아래에 보인다. 서버 오류는 지금처럼 폼 아래 `ui.alert`.
 - 새 npm 패키지를 설치하지 않는다. `@internationalized/date@^3.12.4`는 컨트롤러가 이미 `apps/web/package.json`에 넣었다.
 - 주석은 한국어로, 주변 코드처럼 "왜"만 짧게 쓴다.
@@ -153,6 +154,25 @@ class CategoryApiTest extends IntegrationTest {
     }
 
     @Test
+    void sortsMinorTiesByNameAndDropsDeletedTransactions() throws Exception {
+        AuthedUser me = TestAuth.signupAndLogin(mvc, "me@test.com", "나");
+        manual(me, "식비", "카페");
+        manual(me, "식비", "간식");
+        LedgerTransaction gone = manual(me, "여행", "숙소");
+
+        mvc.perform(get("/me/categories").header("Authorization", me.bearer()))
+                .andExpect(jsonPath("$", hasSize(2)));
+
+        transactions.delete(gone);
+
+        mvc.perform(get("/me/categories").header("Authorization", me.bearer()))
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].major").value("식비"))
+                .andExpect(jsonPath("$[0].minors[0].minor").value("간식"))
+                .andExpect(jsonPath("$[0].minors[1].minor").value("카페"));
+    }
+
+    @Test
     void showsOnlyMyTransactions() throws Exception {
         AuthedUser me = TestAuth.signupAndLogin(mvc, "me@test.com", "나");
         AuthedUser other = TestAuth.signupAndLogin(mvc, "other@test.com", "남");
@@ -238,7 +258,7 @@ Expected: FAIL (404, 매핑 없음)
 
 필요한 import(`java.util.Comparator`, `HashMap`, `Map`, `TransactionDtos.CategoryOption`, `TransactionDtos.MinorOption`)를 더한다.
 
-`TransactionController.java`의 `coverage` 다음에 추가한다:
+`TransactionController.java`에 `import com.saladbowl.api.transaction.TransactionDtos.CategoryOption;`을 더하고, `coverage` 다음에 추가한다:
 
 ```java
     @GetMapping("/me/categories")
@@ -250,7 +270,7 @@ Expected: FAIL (404, 매핑 없음)
 - [ ] **Step 4: 통과 확인**
 
 Run: `./gradlew test --tests com.saladbowl.api.transaction.CategoryApiTest`
-Expected: PASS (4 tests)
+Expected: PASS (5 tests)
 
 - [ ] **Step 5: 전체 확인과 커밋**
 
@@ -360,9 +380,18 @@ describe('SearchField', () => {
     await user.click(screen.getByRole('button', { name: '검색어 지우기' }))
     expect(onChange).toHaveBeenLastCalledWith('')
 
+    onChange.mockClear()
     rerender(<SearchField label="검색" value="택시" onChange={onChange} />)
     await user.type(screen.getByRole('searchbox', { name: '검색' }), '{Escape}')
-    expect(onChange).toHaveBeenLastCalledWith('')
+    expect(onChange).toHaveBeenCalledWith('')
+  })
+
+  it('keeps its own root class next to a passed class and marks empty', () => {
+    const { container } = render(<SearchField label="검색" value="" onChange={vi.fn()} className="extra" />)
+    const root = container.firstElementChild!
+    expect(root).toHaveClass('extra')
+    expect(root.classList.length).toBeGreaterThan(1)
+    expect(root).toHaveAttribute('data-empty')
   })
 })
 
@@ -416,7 +445,7 @@ textarea.input { padding: var(--space-2) var(--space-3); resize: vertical; }
 .check[data-disabled] { opacity: 0.6; cursor: default; }
 .box { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface-000); color: var(--on-brand); }
 .check[data-selected] .box { background: var(--brand); border-color: var(--brand); }
-.track { position: relative; width: 40px; height: 24px; border-radius: 12px; background: var(--line); transition: background 120ms; }
+.track { position: relative; width: 40px; height: 24px; border-radius: var(--radius-md); background: var(--line); transition: background 120ms; }
 .thumb { position: absolute; top: 2px; left: 2px; width: 20px; height: 20px; border-radius: 50%; background: var(--surface-000); transition: translate 120ms; }
 .check[data-selected] .track { background: var(--brand); }
 .check[data-selected] .thumb { translate: 16px 0; }
@@ -425,9 +454,11 @@ textarea.input { padding: var(--space-2) var(--space-3); resize: vertical; }
 .search .input { flex: 1; padding-right: 40px; }
 .search .input::-webkit-search-cancel-button { display: none; }
 .clear { position: absolute; right: 2px; display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border: 0; background: transparent; color: var(--ink-muted); cursor: pointer; }
-.search[data-empty] .clear { display: none; }
+.field[data-empty] .clear { display: none; }
 @media (max-width: 820px) {
   .input, .check { min-height: 44px; }
+  .search .input { padding-right: 44px; }
+  .clear { right: 0; width: 44px; height: 44px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .track, .thumb { transition: none; }
@@ -461,7 +492,7 @@ type Props = {
 /** 보이는 라벨, 설명, 브라우저 검증 오류 자리를 같은 모양으로 둔 한 줄 입력칸. */
 export default function TextField({ label, description, className, ...rest }: Props) {
   return (
-    <AriaTextField {...rest} validationBehavior="native" className={className ?? styles.field}>
+    <AriaTextField {...rest} validationBehavior="native" className={[styles.field, className].filter(Boolean).join(' ')}>
       <Label className={styles.label}>{label}</Label>
       <Input className={styles.input} />
       {description && <Text slot="description" className={styles.description}>{description}</Text>}
@@ -495,7 +526,7 @@ type Props = { label: string; value: string; onChange: (value: string) => void; 
 /** 지우기 버튼과 Esc로 비우는 검색칸. 브라우저 기본 지우기 버튼은 모양이 제각각이라 숨긴다. */
 export default function SearchField({ label, placeholder, className, ...rest }: Props) {
   return (
-    <AriaSearchField {...rest} className={className ?? styles.field}>
+    <AriaSearchField {...rest} className={[styles.field, className].filter(Boolean).join(' ')}>
       <Label className={styles.label}>{label}</Label>
       <div className={styles.search}>
         <Input placeholder={placeholder} className={styles.input} />
@@ -506,7 +537,7 @@ export default function SearchField({ label, placeholder, className, ...rest }: 
 }
 ```
 
-`data-empty`는 RAC `SearchField` 루트에 붙는다. 지우기 버튼을 숨기는 선택자가 `.search[data-empty]`로는 잡히지 않으면(루트가 `.field`이기 때문) `.field[data-empty] .clear`처럼 실제 DOM에 맞춰 고치고 보고서에 적는다.
+`data-empty`는 RAC `SearchField` 루트(`.field`)에 붙는다(`SearchField.js` 79줄 근처). 그래서 CSS는 `.field[data-empty] .clear`로 숨긴다.
 
 `apps/web/src/common/Checkbox.tsx`:
 
@@ -560,7 +591,7 @@ export default function Switch({ children, ...rest }: Props) {
 - [ ] **Step 6: 통과 확인**
 
 Run: `npx vitest run src/common/Fields.test.tsx`
-Expected: PASS (6 tests)
+Expected: PASS (7 tests)
 
 오류 문구 테스트의 선택자(`[slot="errorMessage"]`)가 RAC `FieldError`의 실제 DOM과 다르면, `FieldError`가 렌더하는 요소를 확인해 그 속성으로 바꾸고 보고서에 적는다. 오류 문구 자체(브라우저가 정하는 문장)는 검사하지 않는다.
 
@@ -675,6 +706,8 @@ describe('DateTimePicker', () => {
 
   it('shows an initial value and opens a calendar', async () => {
     const { user } = renderPicker(vi.fn(), '2026-10-05T13:30')
+    const group = screen.getByRole('group', { name: '일시' })
+    expect(within(group).getAllByRole('spinbutton').map((s) => s.textContent?.trim())).toEqual(['2026', '10', '05', '13', '30'])
 
     await user.click(screen.getByRole('button', { name: /달력/ }))
 
@@ -896,7 +929,8 @@ export default function DateTimePicker({ label, value, onChange, isRequired }: P
 .cell[data-selected] { background: var(--brand); color: var(--on-brand); font-weight: 700; }
 @media (max-width: 820px) {
   .group { min-height: 44px; }
-  .button { width: 44px; height: 42px; }
+  .button { width: 44px; height: 44px; }
+  .nav { width: 44px; height: 44px; }
   .grid { width: 100%; }
   .cell { width: auto; height: 44px; }
 }
@@ -906,6 +940,8 @@ export default function DateTimePicker({ label, value, onChange, isRequired }: P
 
 Run: `npx vitest run src/common/MoneyField.test.tsx src/common/DateTimePicker.test.tsx src/common/Select.test.tsx`
 Expected: PASS
+
+초기값 테스트의 칸 글자(`'05'`처럼 0을 붙이는지)가 ko-KR 표시와 다르면 실제 표시대로 고치되, 다섯 칸의 순서와 숫자 값은 유지하고 보고서에 적는다. Select `variant="field"` 테스트는 표식(`data-variant`)만 확인한다. 라벨 위치와 전체 폭은 Task 8 브라우저 확인 항목이다.
 
 DateTimePicker 첫 테스트는 ko-KR에서 칸 순서가 연·월·일·시·분이고, 칸이 다 차면 다음 칸으로 넘어간다고 가정한다. 순서나 자동 이동이 다르면 칸마다 `user.click(segments[i])` 후 입력하도록 바꾸고 보고서에 적는다. 검사하는 값(`'2026-10-05T13:30'`)은 바꾸지 않는다.
 
@@ -1056,7 +1092,7 @@ export function minorOptions(list: CategoryOption[], major: string): string[] {
 
 - [ ] **Step 4: ComboBox 구현**
 
-먼저 `ComboBox.d.ts`에서 `allowsCustomValue`, `inputValue`/`onInputChange`, `menuTrigger`, `items`를 확인한다.
+먼저 `ComboBox.d.ts`에서 `allowsCustomValue`, `inputValue`/`onInputChange`, `menuTrigger`, `defaultItems`를 확인한다. `react-stately`의 `useComboBoxState.js` 110줄 근처: `items`를 주면 기본 필터를 건너뛴다. 그래서 `defaultItems`를 쓴다.
 
 `apps/web/src/common/ComboBox.tsx`:
 
@@ -1081,8 +1117,9 @@ type Props = {
  */
 export default function ComboBox({ label, value, onChange, options, isRequired, maxLength }: Props) {
   const items = options.map((name) => ({ id: name, name }))
+  // items를 주면 RAC가 입력값으로 거르지 않는다(useComboBoxState). defaultItems로 기본 필터(포함 검색)를 쓴다.
   return (
-    <AriaComboBox allowsCustomValue inputValue={value} onInputChange={onChange} items={items}
+    <AriaComboBox allowsCustomValue inputValue={value} onInputChange={onChange} defaultItems={items}
       menuTrigger="focus" isRequired={isRequired} validationBehavior="native" className={fields.field}>
       <Label className={fields.label}>{label}</Label>
       <div className={styles.wrap}>
@@ -1114,6 +1151,8 @@ export default function ComboBox({ label, value, onChange, options, isRequired, 
 .item[data-focused], .item[data-hovered] { background: var(--surface-100); }
 @media (max-width: 820px) {
   .item { min-height: 48px; }
+  .input { padding-right: 44px; }
+  .button { right: 0; width: 44px; height: 44px; }
 }
 ```
 
@@ -1177,12 +1216,52 @@ async function typeDateTime(user: ReturnType<typeof import('@testing-library/use
   })
 ```
 
+실패·재조회 테스트를 두 개 더한다:
+
+```tsx
+  it('still accepts a typed category when the suggestions fail to load', async () => {
+    server.use(http.get('*/api/me/categories', () => HttpResponse.json({ code: 'INTERNAL', message: 'x' }, { status: 500 })))
+    const { user } = renderPage(<ManualTransactionForm onDone={vi.fn()} onCancel={vi.fn()} />)
+    const major = await screen.findByRole('combobox', { name: '대분류' })
+
+    await user.type(major, '새 분류')
+
+    expect(major).toHaveValue('새 분류')
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('reloads suggestions after adding a transaction', async () => {
+    let calls = 0
+    server.use(
+      http.get('*/api/me/categories', () => { calls += 1; return HttpResponse.json([]) }),
+      http.post('*/api/me/transactions', async ({ request }) => {
+        const body = (await request.json()) as Record<string, unknown>
+        return HttpResponse.json({ id: 1, ...body, ownerId: 1, ownerNickname: '나', currency: 'KRW', hidden: false, source: 'MANUAL', edited: false, editable: true, categoryMinor: '', paymentMethod: '', memo: null }, { status: 201 })
+      }),
+    )
+    const onDone = vi.fn()
+    const { user } = renderPage(<ManualTransactionForm onDone={onDone} onCancel={vi.fn()} />)
+    await vi.waitFor(() => expect(calls).toBe(1))
+
+    await typeDateTime(user, '202610051330')
+    await user.type(screen.getByRole('combobox', { name: '대분류' }), '식비')
+    await user.type(screen.getByLabelText('내용'), '점심')
+    await user.type(screen.getByLabelText('금액 (원)'), '6500')
+    await user.click(screen.getByRole('button', { name: '추가' }))
+
+    await vi.waitFor(() => expect(onDone).toHaveBeenCalled())
+    await vi.waitFor(() => expect(calls).toBe(2))
+  })
+```
+
 `TransactionPanel.test.tsx`:
 - `findByLabelText('대분류')`는 그대로 쓸 수 있다(ComboBox 입력칸도 라벨이 붙는다). 각 테스트에 `*/api/me/categories` 핸들러(`HttpResponse.json([])`)를 더한다. MSW `onUnhandledRequest: 'error'`라서 없으면 실패한다.
 - 숨기기 체크박스는 `getByRole('checkbox', { name: '그룹 화면에서 숨기기 (본인만)' })`로 찾을 수 있어야 한다(기존 `findByLabelText`도 통과하면 그대로 둔다).
 
 `TransactionsPage.test.tsx`:
 - 멤버 필터는 이제 공용 Select다. `user.selectOptions(…combobox '멤버'…, '2')`를 `await user.click(screen.getByRole('button', { name: /멤버/ }))` 후 `await user.click(await screen.findByRole('option', { name: '멤버' }))`로 바꾼다(옵션 이름은 테스트 데이터의 닉네임). 기대값은 바꾸지 않는다.
+- 143줄 근처 "멤버 목록 다시 시도" 테스트의 `findByRole('combobox', { name: '멤버' })`를 `findByRole('button', { name: /멤버/ })`로 바꾼다.
+- 223줄 근처 수동 추가 테스트의 `fireEvent.change(screen.getByLabelText('일시'), …'2026-09-05T13:30'…)`를 ManualTransactionForm 테스트와 같은 도우미로 `'202609051330'`을 입력하도록 바꾼다(도우미를 두 파일에서 쓰면 `src/test/typeDateTime.ts`로 옮겨 export한다). 대분류는 `getByRole('combobox', { name: '대분류' })`로 찾는다. 기대값은 바꾸지 않는다.
 - 검색칸은 `getByRole('searchbox', { name: '검색' })`로 찾는다.
 - 페이지가 수동 추가 폼을 열 수 있으므로 `*/api/me/categories` 핸들러(`[]`)를 기본으로 둔다.
 
@@ -1256,7 +1335,7 @@ Expected: 공개 토글 테스트 FAIL
 - `GroupSettings.tsx` `RenameForm`: `<TextField label="새 이름" value={value} onChange={(v) => { setValue(v); rename.reset() }} isRequired maxLength={50} />`
 - `GroupSettings.tsx` `ShareToggle`: `<Switch isSelected={enabled} isDisabled={setShare.isPending} onChange={(v) => setShare.mutate({ groupId, enabled: v })}>내 거래를 이 그룹에 공개</Switch>`(기존 `styles.check` 라벨 블록 대체)
 - `InviteSection.tsx`: 읽기 전용 주소 칸을 `<TextField label="초대 주소" value={link} onChange={() => {}} isReadOnly className={styles.linkField} />`로 바꾼다. 기존의 "포커스하면 전체 선택"은 유지해야 한다(복사 실패 안내가 "주소 칸을 눌러 직접 복사"이다). `TextField`에 `onFocus?: (event: FocusEvent<HTMLInputElement>) => void` prop을 더해 `Input`에 넘기고, 여기서 `onFocus={(e) => e.currentTarget.select()}`를 준다. `TextField`의 Interfaces 변경은 보고서에 적는다.
-- `GroupsPage.module.css`: `styles.check`, `.linkInput` 등 더 쓰이지 않는 규칙을 지운다. `.linkField`가 `ui.field`와 함께 쓰이던 폭 규칙이면 새 `TextField` 루트에서도 같은 폭이 나오게 맞춘다.
+- `GroupsPage.module.css`: `styles.check`처럼 더 쓰이지 않는 규칙을 지운다. `.linkField`(`flex: 1 1 240px; min-width: 0;`)는 `TextField` 기본 클래스에 더해지므로 라벨·간격은 기본 클래스가 맡는다. 주소 입력이 칸 전체 폭을 쓰도록 `.linkField input { width: 100%; min-width: 0; }`을 더하고 `.linkInput`은 지운다.
 
 - [ ] **Step 3: 로그인 화면 적용**
 
@@ -1287,8 +1366,8 @@ git commit -m "feat(web): group, invite and login forms use shared fields"
 
 코드를 바꾸지 않는 점검이다. 남은 것이 있으면 해당 Task 구현자에게 맡긴다.
 
-- [ ] **Step 1:** 저장소 루트에서 `grep -rnE "<(input|select|textarea)\b" apps/web/src --include=*.tsx | grep -v "\.test\."`를 돌린다. 남아도 되는 것: `MonthPicker.tsx`의 `type="month"`(스펙 범위 밖). 그 밖에 남은 것이 있으면 목록을 만들어 해당 Task로 돌려보낸다.
-- [ ] **Step 2:** `grep -rn "react-aria-components\|@internationalized/date" apps/web/src --include=*.tsx --include=*.ts | grep -v "src/common/\|src/test/\|\.test\.\|src/main.tsx"`가 비어 있어야 한다(`main.tsx`의 `I18nProvider`는 PR #12에서 둔 예외).
+- [ ] **Step 1:** 저장소 루트에서 `grep -rnE "<(input|select|textarea)\b" apps/web/src --include='*.tsx' | grep -v "\.test\."`를 돌린다. 남아도 되는 것: `MonthPicker.tsx`의 `type="month"`(스펙 범위 밖). 그 밖에 남은 것이 있으면 목록을 만들어 해당 Task로 돌려보낸다.
+- [ ] **Step 2:** `grep -rn "react-aria-components\|@internationalized/date" apps/web/src --include='*.tsx' --include='*.ts' | grep -v "src/common/\|src/test/\|\.test\.\|src/main.tsx"`가 비어 있어야 한다(`main.tsx`의 `I18nProvider`는 PR #12에서 둔 예외).
 
 ---
 
