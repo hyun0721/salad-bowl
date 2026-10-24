@@ -18,10 +18,12 @@
 | RAC 적용 | 646.23 kB | 188.20 kB | 4.16 kB |
 | + 한국어 외 문구 제거(`@react-aria/optimize-locales-plugin`), 리뷰 수정 반영 | 546.15 kB | **165.62 kB** | 4.21 kB |
 | + 모바일 내비게이션(Plan 06a: Sheet, SelectionIndicator) | 568.64 kB | **172.23 kB** | 4.63 kB |
+| + 폼 입력·카테고리 자동완성(Plan 07a: TextField, NumberField, DatePicker, ComboBox 등) | 713.28 kB | **216.87 kB** | 5.48 kB |
 
 - 최종 증가분은 gzip 약 +56 kB(+50%)다. Select·ListBox·Popover·DropZone이 공유하는 포커스·키보드·컬렉션·오버레이 계층이 대부분이고, 컴포넌트를 더 써도 이 기반은 다시 늘지 않는다.
 - 줄일 방법: 화면 단위 지연 로딩(`React.lazy`)으로 업로드·거래 화면을 첫 화면 청크에서 빼기. 이번 PoC 범위 밖이다.
 - Vite가 500 kB 초과 청크 경고를 낸다. 지연 로딩을 하면 함께 사라진다.
+- Plan 07a에서 gzip 약 +45 kB가 늘었다. RAC `DatePicker`가 `@internationalized/date`의 모든 달력 체계(일본력·불기 등)를 함께 싣고(번들에 `heisei`·`reiwa` 문자열이 있다), 1.22.1의 `DatePicker`에는 이를 줄이는 `createCalendar` 옵션이 없다. 거래 화면을 지연 로딩하면(단계 3) 이 비용이 첫 화면에서 빠진다.
 
 ## 라이선스 고지
 - Vite 8 내장 `build.license`로 빌드할 때 `dist/third-party-licenses.md`를 만든다. 번들에 들어간 의존성 12개(Apache-2.0 4개: `react-aria-components`, `react-aria`, `react-stately`, `@internationalized/string` / MIT 8개)의 이름·버전·라이선스 전문이 들어가고, 배포하면 `/third-party-licenses.md`로 열린다.
