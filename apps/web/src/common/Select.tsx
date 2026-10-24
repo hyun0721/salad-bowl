@@ -36,7 +36,7 @@ export default function Select({ label, items, selectedKey, onSelectionChange, v
         <SelectValue className={styles.value} />
         <span className={styles.chevron}><Icon name="chevron-down" size={18} /></span>
       </Button>
-      <ResponsiveOverlay mobile={mobile} title={label}>{list}</ResponsiveOverlay>
+      <ResponsiveOverlay mobile={mobile} title={label} dialog={false}>{list}</ResponsiveOverlay>
     </AriaSelect>
   )
 }

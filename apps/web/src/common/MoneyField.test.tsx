@@ -38,4 +38,29 @@ describe('MoneyField', () => {
 
     expect(onValue).toHaveBeenLastCalledWith(null)
   })
+
+  it('does not clamp a typed 0 and shows the min message', async () => {
+    const user = userEvent.setup()
+    render(<I18nProvider locale="ko-KR"><form><Controlled onValue={vi.fn()} /></form></I18nProvider>)
+    const input = screen.getByLabelText('금액 (원)')
+
+    await user.type(input, '0')
+    await user.tab()
+
+    expect(input).toHaveValue('0')
+    expect(input).toBeInvalid()
+    expect(await screen.findByText('1원 이상 입력하세요')).toBeInTheDocument()
+  })
+
+  it('rejects an amount over the max', async () => {
+    const user = userEvent.setup()
+    render(<I18nProvider locale="ko-KR"><form><Controlled onValue={vi.fn()} /></form></I18nProvider>)
+    const input = screen.getByLabelText('금액 (원)')
+
+    await user.type(input, '10000000000000')
+    await user.tab()
+
+    expect(input).toBeInvalid()
+    expect(await screen.findByText('금액이 너무 큽니다')).toBeInTheDocument()
+  })
 })

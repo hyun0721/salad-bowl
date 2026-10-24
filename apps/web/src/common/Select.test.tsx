@@ -74,4 +74,20 @@ describe('Select', () => {
     expect(trigger.closest('[data-variant="field"]')).not.toBeNull()
   })
 
+
+  it('renders a plain popover without a nested Dialog on wide screens', async () => {
+    vi.stubGlobal('matchMedia', vi.fn((query: string) => ({
+      matches: false, media: query,
+      addEventListener: vi.fn(), removeEventListener: vi.fn(), addListener: vi.fn(), removeListener: vi.fn(),
+    })))
+    const user = userEvent.setup()
+    render(<Select label="그룹" items={items} selectedKey={10} onSelectionChange={vi.fn()} />)
+    await user.click(screen.getByRole('button', { name: /그룹/ }))
+    expect(screen.getByRole('listbox')).toBeInTheDocument()
+    // 모달 Popover가 스스로 다는 role=dialog 하나뿐이어야 한다(Dialog를 또 씌우면 둘).
+    const dialogs = screen.getAllByRole('dialog')
+    expect(dialogs).toHaveLength(1)
+    expect(dialogs[0]).toHaveAccessibleName('그룹')
+    expect(dialogs[0].querySelector('[role="dialog"]')).toBeNull()
+  })
 })
