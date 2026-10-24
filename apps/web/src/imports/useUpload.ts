@@ -11,6 +11,7 @@ export function useUpload() {
       void client.invalidateQueries({ queryKey: ['coverage'] })
       void client.invalidateQueries({ queryKey: ['imports'] })
       void client.invalidateQueries({ queryKey: ['transactions'] })
+      void client.invalidateQueries({ queryKey: ['categories'] })
     },
   })
 }
