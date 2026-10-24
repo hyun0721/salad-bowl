@@ -1,7 +1,7 @@
 import { useIsMutating, useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Link } from 'react-router'
-import Modal from '../common/Modal'
+import Dialog from '../common/Dialog'
 import ui from '../common/ui.module.css'
 import { defaultYearMonth, formatInstant, formatMonthLabel, formatWon } from '../common/format'
 import { usePageTitle } from '../common/usePageTitle'
@@ -107,10 +107,10 @@ export default function HomePage({ today: todayProp }: Props) {
       </div>
 
       {uploadMonth && (
-        <Modal title={`${formatMonthLabel(uploadMonth)} 데이터 업로드`} onClose={() => setUploadMonth(null)} closeDisabled={uploading}>
+        <Dialog title={`${formatMonthLabel(uploadMonth)} 데이터 업로드`} onClose={() => setUploadMonth(null)} closeDisabled={uploading}>
           <p className={ui.status}>뱅크샐러드에서 내려받은 엑셀(.xlsx)을 올려주세요. 여러 달이 들어 있어도 거래 일자에 맞게 반영됩니다.</p>
           <UploadForm />
-        </Modal>
+        </Dialog>
       )}
       {managed && (
         <MonthDataDialog coverage={managed} onClose={() => setManaged(null)}

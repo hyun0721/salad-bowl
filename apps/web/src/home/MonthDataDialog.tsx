@@ -1,7 +1,7 @@
 import { useIsMutating } from '@tanstack/react-query'
 import { useState } from 'react'
 import Checkbox from '../common/Checkbox'
-import Modal from '../common/Modal'
+import Dialog from '../common/Dialog'
 import TextField from '../common/TextField'
 import { errorMessage } from '../common/errorMessage'
 import { formatMonthLabel } from '../common/format'
@@ -39,7 +39,7 @@ export default function MonthDataDialog({ coverage, onClose, onDeleted }: Props)
   }
 
   return (
-    <Modal title={`${label} 데이터`} onClose={onClose} closeDisabled={uploading || remove.isPending}>
+    <Dialog title={`${label} 데이터`} onClose={onClose} closeDisabled={uploading || remove.isPending}>
       {step === 'summary' && (
         <div className={ui.stack}>
           <dl className={styles.totals}>
@@ -86,6 +86,6 @@ export default function MonthDataDialog({ coverage, onClose, onDeleted }: Props)
           </div>
         </div>
       )}
-    </Modal>
+    </Dialog>
   )
 }

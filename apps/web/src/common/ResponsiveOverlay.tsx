@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import { Dialog, Heading, Popover } from 'react-aria-components'
 import { useMediaQuery } from './useMediaQuery'
-import styles from './Select.module.css'
+import styles from './Overlay.module.css'
 
 /**
  * 넓은 화면은 트리거 아래 팝오버, 좁은 화면은 하단 시트로 띄운다.

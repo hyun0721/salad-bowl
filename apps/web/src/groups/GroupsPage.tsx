@@ -1,7 +1,7 @@
 import { useIsMutating } from '@tanstack/react-query'
 import { useState } from 'react'
 import Icon from '../common/Icon'
-import Modal from '../common/Modal'
+import Dialog from '../common/Dialog'
 import ui from '../common/ui.module.css'
 import { usePageTitle } from '../common/usePageTitle'
 import CreateGroupForm from './CreateGroupForm'
@@ -54,9 +54,9 @@ export default function GroupsPage() {
       </div>
 
       {creating && (
-        <Modal title="새 그룹 만들기" onClose={() => setCreating(false)} closeDisabled={createPending}>
+        <Dialog title="새 그룹 만들기" onClose={() => setCreating(false)} closeDisabled={createPending}>
           <CreateGroupForm onCreated={() => setCreating(false)} />
-        </Modal>
+        </Dialog>
       )}
     </>
   )
