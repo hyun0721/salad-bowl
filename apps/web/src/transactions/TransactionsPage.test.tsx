@@ -69,7 +69,7 @@ describe('TransactionsPage', () => {
     )
     const { user } = renderPage(<TransactionsPage today={today} />, { groups })
 
-    await user.click(await screen.findByRole('button', { name: '그룹 거래' }))
+    await user.click(await screen.findByRole('radio', { name: '그룹 거래' }))
     const list = screen.getByRole('region', { name: '거래 목록' })
     expect(await within(list).findByText('택시')).toBeInTheDocument()
     expect(within(list).getAllByRole('button')[0]).toHaveTextContent('멤버')
@@ -110,7 +110,31 @@ describe('TransactionsPage', () => {
 
     renderPage(<TransactionsPage today={today} />, { groups: [] })
 
-    expect(await screen.findByRole('button', { name: '그룹 거래' })).toBeDisabled()
+    expect(await screen.findByRole('radio', { name: '그룹 거래' })).toBeDisabled()
+  })
+
+  it('falls back to my transactions when the selected group goes away', async () => {
+    mineHandler([])
+    server.use(
+      http.get('*/api/groups/10', () => HttpResponse.json({ groupId: 10, name: '우리집', myRole: 'ADMIN', members: [] })),
+      http.get('*/api/groups/10/transactions', () => HttpResponse.json([])),
+    )
+    const { user, client } = renderPage(<TransactionsPage today={today} />, { groups })
+
+    await user.click(await screen.findByRole('radio', { name: '그룹 거래' }))
+    expect(screen.getByRole('radio', { name: '그룹 거래' })).toBeChecked()
+
+    server.use(http.get('*/api/groups', () => HttpResponse.json([])))
+    await client.invalidateQueries({ queryKey: ['groups'], exact: true })
+
+    await waitFor(() => expect(screen.getByRole('radio', { name: '그룹 거래' })).toBeDisabled())
+    expect(screen.getByRole('radio', { name: '내 거래' })).toBeChecked()
+
+    // 그룹이 다시 생겨도 범위는 '내 거래'에 머문다(예전 '그룹 거래' 선택이 되살아나지 않는다).
+    server.use(http.get('*/api/groups', () => HttpResponse.json(groups)))
+    await client.invalidateQueries({ queryKey: ['groups'], exact: true })
+    await waitFor(() => expect(screen.getByRole('radio', { name: '그룹 거래' })).toBeEnabled())
+    expect(screen.getByRole('radio', { name: '내 거래' })).toBeChecked()
   })
 
   it('offers retry when loading fails', async () => {
@@ -141,7 +165,7 @@ describe('TransactionsPage', () => {
     )
     const { user } = renderPage(<TransactionsPage today={today} />, { groups })
 
-    await user.click(await screen.findByRole('button', { name: '그룹 거래' }))
+    await user.click(await screen.findByRole('radio', { name: '그룹 거래' }))
     expect(await screen.findByText('멤버 목록을 불러오지 못했습니다.')).toBeInTheDocument()
     fail = false
     await user.click(screen.getByRole('button', { name: '멤버 목록 다시 시도' }))

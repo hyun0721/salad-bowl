@@ -19,6 +19,7 @@
 | + 한국어 외 문구 제거(`@react-aria/optimize-locales-plugin`), 리뷰 수정 반영 | 546.15 kB | **165.62 kB** | 4.21 kB |
 | + 모바일 내비게이션(Plan 06a: Sheet, SelectionIndicator) | 568.64 kB | **172.23 kB** | 4.63 kB |
 | + 폼 입력·카테고리 자동완성(Plan 07a: TextField, NumberField, DatePicker, ComboBox 등) | 713.28 kB | **216.87 kB** | 5.48 kB |
+| + 대화상자·알림·탭(Plan 07b: Modal, Toast, Tabs, ToggleButtonGroup) | 737.43 kB | **223.63 kB** | 5.78 kB |
 
 - 최종 증가분은 gzip 약 +56 kB(+50%)다. Select·ListBox·Popover·DropZone이 공유하는 포커스·키보드·컬렉션·오버레이 계층이 대부분이고, 컴포넌트를 더 써도 이 기반은 다시 늘지 않는다.
 - 줄일 방법: 화면 단위 지연 로딩(`React.lazy`)으로 업로드·거래 화면을 첫 화면 청크에서 빼기. 이번 PoC 범위 밖이다.

@@ -1,6 +1,6 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderPage } from '../test/renderPage'
 import { server } from '../test/server'
 import GroupsPage from './GroupsPage'
@@ -9,6 +9,8 @@ const home = { groupId: 10, name: '우리집', myRole: 'ADMIN', memberCount: 2 }
 const me = { userId: 1, nickname: '나', role: 'ADMIN', shareEnabled: true, joinedAt: '2026-09-01T00:00:00Z' }
 const partner = { userId: 2, nickname: '짝꿍', role: 'MEMBER', shareEnabled: true, joinedAt: '2026-09-02T00:00:00Z' }
 const homeDetail = { groupId: 10, name: '우리집', myRole: 'ADMIN', members: [me, partner] }
+
+afterEach(() => { vi.restoreAllMocks() })
 
 beforeEach(() => {
   try { window.localStorage.clear() } catch { /* storage may be unavailable */ }
@@ -47,9 +49,9 @@ describe('group admin tools', () => {
     const { user } = renderPage(<GroupsPage />, { groups: [home] })
 
     await user.click(await screen.findByRole('button', { name: '짝꿍 내보내기' }))
-    expect(screen.getByRole('button', { name: '취소' })).toHaveFocus()
+    await waitFor(() => expect(screen.getByRole('button', { name: '취소' })).toHaveFocus())
     await user.click(screen.getByRole('button', { name: '취소' }))
-    expect(screen.getByRole('button', { name: '짝꿍 내보내기' })).toHaveFocus()
+    await waitFor(() => expect(screen.getByRole('button', { name: '짝꿍 내보내기' })).toHaveFocus())
   })
 
   it('creates an invite link and copies it', async () => {
@@ -69,6 +71,30 @@ describe('group admin tools', () => {
     await user.click(screen.getByRole('button', { name: '링크 복사' }))
     expect(await screen.findByText('링크를 복사했습니다.')).toBeInTheDocument()
     expect(await navigator.clipboard.readText()).toBe(link)
+
+    // 초대 주소 칸은 포커스하면 전체가 선택되어 바로 복사할 수 있다.
+    const address = screen.getByLabelText('초대 주소') as HTMLInputElement
+    address.focus()
+    expect(address.selectionStart).toBe(0)
+    expect(address.selectionEnd).toBe(address.value.length)
+  })
+
+  it('tells the user to copy by hand when copying the invite link fails', async () => {
+    server.use(
+      http.get('*/api/groups/10', () => HttpResponse.json(homeDetail)),
+      http.get('*/api/groups/10/bans', () => HttpResponse.json([])),
+      http.post('*/api/groups/10/invites', () =>
+        HttpResponse.json({ token: 'abc123', expiresAt: '2026-10-26T03:00:00Z' }, { status: 201 })),
+    )
+    const { user } = renderPage(<GroupsPage />, { groups: [home] })
+
+    await user.click(await screen.findByRole('button', { name: '초대 링크 만들기' }))
+    await screen.findByLabelText('초대 주소')
+    vi.spyOn(navigator.clipboard, 'writeText').mockRejectedValue(new Error('denied'))
+    await user.click(screen.getByRole('button', { name: '링크 복사' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('복사하지 못했습니다. 주소 칸을 눌러 직접 복사해 주세요.')
+    expect(screen.queryByText('링크를 복사했습니다.')).not.toBeInTheDocument()
   })
 
   it('does not offer new invites when the group is full', async () => {

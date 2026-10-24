@@ -35,7 +35,7 @@ describe('TransactionPanel', () => {
     await user.type(major, '외식')
     await user.click(screen.getByRole('button', { name: '저장' }))
 
-    expect(await screen.findByRole('status')).toHaveTextContent('저장했습니다.')
+    expect(await screen.findByText('저장했습니다.')).toBeInTheDocument()
     expect(body).toEqual({ categoryMajor: '외식' })
   })
 
@@ -51,7 +51,7 @@ describe('TransactionPanel', () => {
     await user.clear(await screen.findByLabelText('메모'))
     await user.click(screen.getByRole('button', { name: '저장' }))
 
-    await screen.findByRole('status')
+    await screen.findByText('저장했습니다.')
     expect(body).toEqual({ memo: '' })
   })
 
@@ -136,7 +136,7 @@ describe('TransactionPanel', () => {
     await user.clear(major)
     await user.click(screen.getByRole('button', { name: '저장' }))
 
-    await screen.findByRole('status')
+    await screen.findByText('저장했습니다.')
     expect(screen.getByLabelText('대분류')).toHaveValue('식비')
   })
 

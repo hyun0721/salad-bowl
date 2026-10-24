@@ -1,8 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
+import ConfirmDialog from '../common/ConfirmDialog'
 import { errorMessage } from '../common/errorMessage'
 import ui from '../common/ui.module.css'
 import TextField from '../common/TextField'
 import Switch from '../common/Switch'
+import { toast } from '../common/Toast'
 import { useGroupMutations } from './useGroupMutations'
 
 export function RenameForm({ groupId, name }: { groupId: number; name: string }) {
@@ -11,12 +13,11 @@ export function RenameForm({ groupId, name }: { groupId: number; name: string })
   const trimmed = value.trim()
 
   return (
-    <form className={ui.row} onSubmit={(e) => { e.preventDefault(); rename.mutate({ groupId, name: trimmed }) }}>
+    <form className={ui.row} onSubmit={(e) => { e.preventDefault(); rename.mutate({ groupId, name: trimmed }, { onSuccess: () => toast('이름을 바꿨습니다.') }) }}>
       <TextField label="새 이름" value={value}
         onChange={(v) => { setValue(v); rename.reset() }} isRequired maxLength={50} />
       <button type="submit" className={ui.button}
         disabled={rename.isPending || trimmed === '' || trimmed === name}>이름 바꾸기</button>
-      {rename.isSuccess && <p role="status" className={ui.status}>이름을 바꿨습니다.</p>}
       {rename.isError && <p role="alert" className={ui.alert}>{errorMessage(rename.error)}</p>}
     </form>
   )
@@ -36,33 +37,12 @@ export function ShareToggle({ groupId, enabled }: { groupId: number; enabled: bo
 
 export function LeaveGroup({ groupId, name }: { groupId: number; name: string }) {
   const { leave } = useGroupMutations()
-  const [confirming, setConfirming] = useState(false)
-  const trigger = useRef<HTMLButtonElement>(null)
-  const cancel = useRef<HTMLButtonElement>(null)
-  const focusNext = useRef<'cancel' | 'trigger' | null>(null)
-  // 누른 버튼이 사라져도 포커스가 body로 떨어지지 않도록, 확인 단계가 열리면 취소로, 취소하면 원래 버튼으로 옮긴다.
-  useEffect(() => {
-    if (focusNext.current === 'cancel') cancel.current?.focus()
-    else if (focusNext.current === 'trigger') trigger.current?.focus()
-    focusNext.current = null
-  }, [confirming])
-  function toggleConfirm(open: boolean) {
-    focusNext.current = open ? 'cancel' : 'trigger'
-    setConfirming(open)
-  }
   return (
     <div className={ui.stack}>
-      {confirming ? (
-        <div className={ui.row}>
-          <p className={ui.status}>{name}에서 나가면 다시 초대받아야 합류할 수 있습니다. 나갈까요?</p>
-          <button type="button" className={`${ui.button} ${ui.danger}`} disabled={leave.isPending}
-            onClick={() => leave.mutate(groupId)}>나가기 확인</button>
-          <button ref={cancel} type="button" className={ui.button} onClick={() => toggleConfirm(false)}>취소</button>
-        </div>
-      ) : (
-        <button ref={trigger} type="button" className={`${ui.button} ${ui.danger}`} onClick={() => toggleConfirm(true)}>그룹 나가기</button>
-      )}
-      {leave.isError && <p role="alert" className={ui.alert}>{errorMessage(leave.error)}</p>}
+      <ConfirmDialog triggerLabel="그룹 나가기" title="그룹 나가기"
+        description={`${name}에서 나가면 다시 초대받아야 합류할 수 있습니다. 나갈까요?`}
+        confirmLabel="나가기 확인" isPending={leave.isPending} error={leave.isError ? errorMessage(leave.error) : null}
+        onOpen={() => leave.reset()} onConfirm={(close) => leave.mutate(groupId, { onSuccess: close })} />
     </div>
   )
 }

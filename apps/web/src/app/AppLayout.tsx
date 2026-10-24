@@ -74,7 +74,7 @@ export default function AppLayout() {
           {narrow && <img src="/logo.svg" alt="Salad Bowl" width="28" height="28" className={styles.headerLogo} />}
           {narrow ? <div className={styles.groupSlot}>{groupArea}</div> : groupArea}
           {narrow ? (
-            <AccountSheet nickname={me?.nickname ?? ''} onLogout={onLogout} logoutFailed={logoutError} />
+            <AccountSheet nickname={me?.nickname ?? ''} onLogout={onLogout} logoutFailed={logoutError} onOpen={() => setLogoutError(false)} />
           ) : (
             <div className={styles.user}>
               <span>{me?.nickname}</span>
