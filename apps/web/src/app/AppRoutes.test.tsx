@@ -302,6 +302,19 @@ describe('AppRoutes', () => {
     await waitFor(() => expect(heading).toHaveFocus())
   })
 
+  it('keeps the menu visible through a lazy page transition', async () => {
+    signedIn([])
+    server.use(http.get('*/api/me/categories', () => HttpResponse.json([])))
+    renderApp('/')
+    const user = userEvent.setup()
+
+    await screen.findByRole('heading', { level: 1, name: '내 가계부' })
+    await user.click(screen.getByRole('link', { name: '거래 목록' }))
+
+    expect(screen.getByRole('navigation', { name: '주 메뉴' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { level: 1, name: '거래 목록' })).toHaveFocus()
+  })
+
   it('shows groups as loading, not missing, while offline', async () => {
     signedIn([])
     onlineManager.setOnline(false)
