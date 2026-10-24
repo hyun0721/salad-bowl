@@ -1,8 +1,10 @@
 import { useState } from 'react'
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
-import Dialog from './Dialog'
+import Dialog, { DialogFrame } from './Dialog'
+import TextField from './TextField'
+import { mockViewport } from '../test/mockViewport'
 
 describe('Dialog', () => {
   it('is a labelled modal dialog that closes with Escape or the close button', async () => {
@@ -71,4 +73,25 @@ describe('Dialog', () => {
     expect(screen.getByRole('button', { name: '닫기' })).toBeDisabled()
     expect(onClose).not.toHaveBeenCalled()
   })
+})
+
+it('keeps the same modal and its input when the width changes while open', async () => {
+  const viewport = mockViewport(false)
+  const user = userEvent.setup()
+  function Harness() {
+    const [name, setName] = useState('')
+    return (
+      <DialogFrame isOpen onOpenChange={() => {}} title="그룹 만들기">
+        {() => <TextField label="이름" value={name} onChange={setName} />}
+      </DialogFrame>
+    )
+  }
+  render(<Harness />)
+  await user.type(screen.getByLabelText('이름'), '우리집')
+  const dialog = screen.getByRole('dialog', { name: '그룹 만들기' })
+
+  act(() => viewport.set(true))
+
+  expect(screen.getByRole('dialog', { name: '그룹 만들기' })).toBe(dialog)
+  expect(screen.getByLabelText('이름')).toHaveValue('우리집')
 })
