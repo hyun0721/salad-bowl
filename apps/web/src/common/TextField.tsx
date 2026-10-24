@@ -13,6 +13,7 @@ type Props = {
   minLength?: number
   autoComplete?: string
   isReadOnly?: boolean
+  isDisabled?: boolean
   description?: string
   className?: string
 }

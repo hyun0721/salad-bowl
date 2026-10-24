@@ -4,6 +4,7 @@
 textarea.input { padding: var(--space-2) var(--space-3); resize: vertical; }
 .input[data-focused], .input:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
 .input[data-invalid] { border-color: var(--danger); }
+.input[disabled] { opacity: 0.6; }
 .input[readonly] { background: var(--surface-100); }
 .description { font-size: 13px; line-height: 18px; color: var(--ink-muted); }
 .error { font-size: 13px; line-height: 18px; color: var(--danger); }

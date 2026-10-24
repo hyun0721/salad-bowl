@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { Button, DropZone, FileTrigger } from 'react-aria-components'
+import FileDropZone, { FilePickerButton } from '../common/FileDropZone'
 import { useMediaQuery } from '../common/useMediaQuery'
 import Icon from '../common/Icon'
 import ui from '../common/ui.module.css'
@@ -40,30 +40,26 @@ export default function UploadForm({ onDone }: Props) {
 
   return (
     <form className={ui.stack} onSubmit={onSubmit}>
-      <DropZone className={styles.drop} aria-label="엑셀 파일 업로드"
-        onDrop={async (event) => {
-          const item = event.items.find((item) => item.kind === 'file')
-          if (item?.kind === 'file') choose(await item.getFile())
-        }}>
+      <FileDropZone className={styles.drop} label="엑셀 파일 업로드" onFile={choose}>
         <span className={styles.dropIcon}><Icon name="sheet-upload" size={32} /></span>
         <span className={styles.dropTitle}>{mobile
           ? '파일 선택 버튼을 눌러 엑셀 파일을 고르세요'
           : '파일을 끌어다 놓거나 파일 선택 버튼을 누르세요'}</span>
         <span className={ui.muted}>.xlsx · 한 번에 최대 3개월치 · 512KB 이하 · 원본 파일과 개인정보 시트는 저장하지 않습니다</span>
-        <FileTrigger acceptedFileTypes={ACCEPTED_UPLOAD_FILE_TYPES} onSelect={(files) => choose(files?.[0])}>
-          <Button className={`${ui.button} ${styles.choose}`}>파일 선택</Button>
-        </FileTrigger>
+        <FilePickerButton accept={ACCEPTED_UPLOAD_FILE_TYPES} onFile={choose} className={`${ui.button} ${styles.choose}`}>
+          파일 선택
+        </FilePickerButton>
         {file && (
           <span className={styles.fileChip}>
             <Icon name="sheet-upload" size={18} />
             <span className={styles.fileName}>{file.name}</span>
             <span>{Math.ceil(file.size / 1024)} KB</span>
-            <Button className={styles.clear} onPress={clearFile} isDisabled={upload.isPending}>
+            <button type="button" className={styles.clear} onClick={clearFile} disabled={upload.isPending}>
               <Icon name="x" size={18} /><span>선택 취소</span>
-            </Button>
+            </button>
           </span>
         )}
-      </DropZone>
+      </FileDropZone>
       <div className={styles.actions}>
         <button type="submit" className={`${ui.button} ${ui.primary}`} disabled={!file || upload.isPending}>
           <Icon name="upload" size={18} />{upload.isPending ? '올리는 중' : '업로드'}
