@@ -1,3 +1,4 @@
+import type { FocusEvent } from 'react'
 import { FieldError, Input, Label, Text, TextArea, TextField as AriaTextField } from 'react-aria-components'
 import styles from './Field.module.css'
 
@@ -5,6 +6,7 @@ type Props = {
   label: string
   value: string
   onChange: (value: string) => void
+  onFocus?: (event: FocusEvent<HTMLInputElement>) => void
   type?: 'text' | 'email' | 'password'
   isRequired?: boolean
   maxLength?: number
@@ -16,11 +18,11 @@ type Props = {
 }
 
 /** 보이는 라벨, 설명, 브라우저 검증 오류 자리를 같은 모양으로 둔 한 줄 입력칸. */
-export default function TextField({ label, description, className, ...rest }: Props) {
+export default function TextField({ label, description, className, onFocus, ...rest }: Props) {
   return (
     <AriaTextField {...rest} validationBehavior="native" className={[styles.field, className].filter(Boolean).join(' ')}>
       <Label className={styles.label}>{label}</Label>
-      <Input className={styles.input} />
+      <Input className={styles.input} onFocus={onFocus} />
       {description && <Text slot="description" className={styles.description}>{description}</Text>}
       <FieldError className={styles.error} />
     </AriaTextField>

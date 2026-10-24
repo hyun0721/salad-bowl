@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { errorMessage } from '../common/errorMessage'
+import TextField from '../common/TextField'
 import ui from '../common/ui.module.css'
 import { useGroupMutations } from './useGroupMutations'
 
@@ -17,10 +18,7 @@ export default function CreateGroupForm({ onCreated }: Props) {
 
   return (
     <form className={ui.stack} onSubmit={onSubmit}>
-      <label className={ui.field}>
-        <span>그룹 이름</span>
-        <input className={ui.input} required maxLength={50} value={name} onChange={(e) => setName(e.target.value)} />
-      </label>
+      <TextField label="그룹 이름" value={name} onChange={setName} isRequired maxLength={50} />
       <button type="submit" className={`${ui.button} ${ui.primary}`}
         disabled={create.isPending || name.trim() === ''}>만들기</button>
       {create.isError && <p role="alert" className={ui.alert}>{errorMessage(create.error)}</p>}

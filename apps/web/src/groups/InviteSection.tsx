@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { errorMessage } from '../common/errorMessage'
 import { formatInstant } from '../common/format'
+import TextField from '../common/TextField'
 import ui from '../common/ui.module.css'
 import styles from './GroupsPage.module.css'
 import { useGroupMutations } from './useGroupMutations'
@@ -36,11 +37,8 @@ export default function InviteSection({ groupId, memberCount }: { groupId: numbe
       </div>
       {invite && link && (
         <div className={ui.row}>
-          <label className={`${ui.field} ${styles.linkField}`}>
-            <span>초대 주소</span>
-            <input className={`${ui.input} ${styles.linkInput}`} readOnly value={link}
-              onFocus={(e) => e.currentTarget.select()} />
-          </label>
+          <TextField label="초대 주소" value={link} onChange={() => {}} isReadOnly className={styles.linkField}
+            onFocus={(e) => e.currentTarget.select()} />
           <button type="button" className={`${ui.button} ${ui.primary}`} onClick={() => void copy(link)}>링크 복사</button>
           <span className={ui.muted}>{formatInstant(invite.expiresAt)}까지</span>
         </div>

@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { errorMessage } from '../common/errorMessage'
 import ui from '../common/ui.module.css'
-import styles from './GroupsPage.module.css'
+import TextField from '../common/TextField'
+import Switch from '../common/Switch'
 import { useGroupMutations } from './useGroupMutations'
 
 export function RenameForm({ groupId, name }: { groupId: number; name: string }) {
@@ -11,11 +12,8 @@ export function RenameForm({ groupId, name }: { groupId: number; name: string })
 
   return (
     <form className={ui.row} onSubmit={(e) => { e.preventDefault(); rename.mutate({ groupId, name: trimmed }) }}>
-      <label className={ui.field}>
-        <span>새 이름</span>
-        <input className={ui.input} required maxLength={50} value={value}
-          onChange={(e) => { setValue(e.target.value); rename.reset() }} />
-      </label>
+      <TextField label="새 이름" value={value}
+        onChange={(v) => { setValue(v); rename.reset() }} isRequired maxLength={50} />
       <button type="submit" className={ui.button}
         disabled={rename.isPending || trimmed === '' || trimmed === name}>이름 바꾸기</button>
       {rename.isSuccess && <p role="status" className={ui.status}>이름을 바꿨습니다.</p>}
@@ -28,11 +26,8 @@ export function ShareToggle({ groupId, enabled }: { groupId: number; enabled: bo
   const { setShare } = useGroupMutations()
   return (
     <div className={ui.stack}>
-      <label className={styles.check}>
-        <input type="checkbox" checked={enabled} disabled={setShare.isPending}
-          onChange={(e) => setShare.mutate({ groupId, enabled: e.target.checked })} />
-        <span>내 거래를 이 그룹에 공개</span>
-      </label>
+      <Switch isSelected={enabled} isDisabled={setShare.isPending}
+        onChange={(v) => setShare.mutate({ groupId, enabled: v })}>내 거래를 이 그룹에 공개</Switch>
       <p className={ui.muted}>끄면 이 그룹의 대시보드와 그룹 거래에서 내 거래가 빠집니다. 숨긴 거래는 켜도 보이지 않습니다.</p>
       {setShare.isError && <p role="alert" className={ui.alert}>{errorMessage(setShare.error)}</p>}
     </div>
