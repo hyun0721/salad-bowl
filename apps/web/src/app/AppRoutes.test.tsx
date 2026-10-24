@@ -370,5 +370,11 @@ describe('AppRoutes on a narrow screen', () => {
     await user.click(within(sheet).getByRole('button', { name: '로그아웃' }))
 
     expect(await within(sheet).findByRole('alert')).toHaveTextContent('로그아웃하지 못했습니다. 잠시 후 다시 시도해 주세요.')
+
+    // 닫았다 다시 열면 지난 실패 문구는 사라진다.
+    await user.keyboard('{Escape}')
+    await user.click(screen.getByRole('button', { name: '계정' }))
+    const reopened = screen.getAllByRole('dialog', { name: '계정' }).at(-1)!
+    await waitFor(() => expect(within(reopened).queryByRole('alert')).not.toBeInTheDocument())
   })
 })

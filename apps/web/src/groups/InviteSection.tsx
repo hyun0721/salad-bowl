@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { errorMessage } from '../common/errorMessage'
 import { formatInstant } from '../common/format'
+import { toast } from '../common/Toast'
 import TextField from '../common/TextField'
 import ui from '../common/ui.module.css'
 import styles from './GroupsPage.module.css'
@@ -10,7 +11,7 @@ const MAX_MEMBERS = 6
 
 export default function InviteSection({ groupId, memberCount }: { groupId: number; memberCount: number }) {
   const { createInvite } = useGroupMutations()
-  const [copied, setCopied] = useState<'done' | 'failed' | null>(null)
+  const [copied, setCopied] = useState<'failed' | null>(null)
   const invite = createInvite.data
   const link = invite ? `${window.location.origin}/invite/${invite.token}` : null
   const full = memberCount >= MAX_MEMBERS
@@ -18,7 +19,8 @@ export default function InviteSection({ groupId, memberCount }: { groupId: numbe
   async function copy(text: string) {
     try {
       await navigator.clipboard.writeText(text)
-      setCopied('done')
+      setCopied(null)
+      toast('링크를 복사했습니다.')
     } catch {
       setCopied('failed')
     }
@@ -43,7 +45,6 @@ export default function InviteSection({ groupId, memberCount }: { groupId: numbe
           <span className={ui.muted}>{formatInstant(invite.expiresAt)}까지</span>
         </div>
       )}
-      {copied === 'done' && <p role="status" className={ui.status}>링크를 복사했습니다.</p>}
       {copied === 'failed' && <p role="alert" className={ui.alert}>복사하지 못했습니다. 주소 칸을 눌러 직접 복사해 주세요.</p>}
       {createInvite.isError && <p role="alert" className={ui.alert}>{errorMessage(createInvite.error)}</p>}
     </section>

@@ -43,8 +43,13 @@ if (typeof window !== 'undefined') {
 }
 
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))
-afterEach(() => {
+afterEach(async () => {
   cleanup()
+  // 큐가 모듈 하나라 알림이 테스트 사이에 남는다. Node 환경(proxy)에는 DOM이 없어 건너뛴다.
+  if (typeof window !== 'undefined') {
+    const { clearToasts } = await import('../common/Toast')
+    clearToasts()
+  }
   vi.unstubAllGlobals()
   server.resetHandlers()
   setAccessToken(null)

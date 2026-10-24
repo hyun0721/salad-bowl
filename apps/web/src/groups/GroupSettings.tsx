@@ -4,6 +4,7 @@ import { errorMessage } from '../common/errorMessage'
 import ui from '../common/ui.module.css'
 import TextField from '../common/TextField'
 import Switch from '../common/Switch'
+import { toast } from '../common/Toast'
 import { useGroupMutations } from './useGroupMutations'
 
 export function RenameForm({ groupId, name }: { groupId: number; name: string }) {
@@ -12,12 +13,11 @@ export function RenameForm({ groupId, name }: { groupId: number; name: string })
   const trimmed = value.trim()
 
   return (
-    <form className={ui.row} onSubmit={(e) => { e.preventDefault(); rename.mutate({ groupId, name: trimmed }) }}>
+    <form className={ui.row} onSubmit={(e) => { e.preventDefault(); rename.mutate({ groupId, name: trimmed }, { onSuccess: () => toast('이름을 바꿨습니다.') }) }}>
       <TextField label="새 이름" value={value}
         onChange={(v) => { setValue(v); rename.reset() }} isRequired maxLength={50} />
       <button type="submit" className={ui.button}
         disabled={rename.isPending || trimmed === '' || trimmed === name}>이름 바꾸기</button>
-      {rename.isSuccess && <p role="status" className={ui.status}>이름을 바꿨습니다.</p>}
       {rename.isError && <p role="alert" className={ui.alert}>{errorMessage(rename.error)}</p>}
     </form>
   )

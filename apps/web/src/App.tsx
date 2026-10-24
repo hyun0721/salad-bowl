@@ -5,6 +5,7 @@ import { createQueryClient } from './api/queryClient'
 import ErrorBoundary from './app/ErrorBoundary'
 import AppRoutes from './app/AppRoutes'
 import { AuthProvider } from './auth/AuthProvider'
+import ToastRegion from './common/Toast'
 
 export default function App() {
   const [client] = useState(createQueryClient)
@@ -15,6 +16,7 @@ export default function App() {
           <ErrorBoundary>
             <AppRoutes />
           </ErrorBoundary>
+          <ToastRegion />
         </BrowserRouter>
       </AuthProvider>
     </QueryClientProvider>

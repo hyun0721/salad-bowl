@@ -8,6 +8,7 @@ import { useAuth } from '../auth/AuthProvider'
 import { errorMessage } from '../common/errorMessage'
 import ConfirmDialog from '../common/ConfirmDialog'
 import Icon from '../common/Icon'
+import { toast } from '../common/Toast'
 import { formatDateTime, formatInstant, formatSignedWon } from '../common/format'
 import ui from '../common/ui.module.css'
 import styles from './TransactionPanel.module.css'
@@ -67,6 +68,7 @@ export default function TransactionPanel({ tx, onClose }: Props) {
         setMinor(updated.categoryMinor)
         setMemo(updated.memo ?? '')
         setHidden(updated.hidden)
+        toast('저장했습니다.')
       },
     })
   }
@@ -102,7 +104,6 @@ export default function TransactionPanel({ tx, onClose }: Props) {
             )}
             <button type="submit" className={`${ui.button} ${ui.primary} ${styles.save}`} disabled={update.isPending}>저장</button>
           </div>
-          {update.isSuccess && <p role="status" className={ui.status}>저장했습니다.</p>}
         </form>
       ) : (
         <p className={styles.readOnly}>다른 멤버의 거래는 볼 수만 있습니다. 관리자만 수정할 수 있습니다.</p>
