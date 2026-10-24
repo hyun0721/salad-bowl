@@ -1,3 +1,4 @@
+import SegmentedControl from '../common/SegmentedControl'
 import SearchField from '../common/SearchField'
 import Select from '../common/Select'
 import { useQuery } from '@tanstack/react-query'
@@ -28,6 +29,9 @@ export default function TransactionsPage({ today }: Props) {
   const [search, setSearch] = useState('')
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [adding, setAdding] = useState(false)
+
+  // 그룹이 없어지면 화면은 '내 거래'로 보이는데, 이미 선택된 것을 눌러도 변경이 없으므로 scope를 맞춰 둔다.
+  if (selectedGroupId === null && scope === 'group') setScope('mine')
 
   const groupId = scope === 'group' ? selectedGroupId : null
   const inGroup = groupId !== null
@@ -71,12 +75,8 @@ export default function TransactionsPage({ today }: Props) {
           onClick={() => { setAdding(true); setSelectedId(null) }}><Icon name="plus" />거래 추가</button>
       </div>
       <div className={ui.row}>
-        <div role="group" aria-label="범위" className={styles.scope}>
-          <button type="button" aria-pressed={!inGroup} className={styles.scopeButton}
-            onClick={() => changeScope('mine')}>내 거래</button>
-          <button type="button" aria-pressed={inGroup} className={styles.scopeButton}
-            disabled={selectedGroupId === null} onClick={() => changeScope('group')}>그룹 거래</button>
-        </div>
+        <SegmentedControl label="범위" items={[{ id: 'mine', label: '내 거래' }, { id: 'group', label: '그룹 거래', isDisabled: selectedGroupId === null }]}
+          selectedKey={inGroup ? 'group' : 'mine'} onSelectionChange={(id) => changeScope(id as Scope)} />
         <MonthPicker month={month} onChange={setMonth} />
         {inGroup && detail.data && (
           <Select label="멤버"
