@@ -224,6 +224,65 @@ describe('TransactionsPage', () => {
     expect(within(detail).getByRole('heading', { name: '거래 추가 (수동)' })).toBeInTheDocument()
   })
 
+  it('opens detail in a full-height sheet on a narrow screen', async () => {
+    mockViewport(true)
+    mineHandler([{ ...base }])
+    server.use(http.get('*/api/transactions/:id/audits', () => HttpResponse.json([])))
+    const { user } = renderPage(<TransactionsPage today={today} />, { groups })
+
+    await user.click(await screen.findByRole('row', { name: /김밥/ }))
+    const sheet = screen.getByRole('dialog', { name: '김밥' })
+    expect(within(sheet).getByRole('button', { name: '닫기' })).toBeInTheDocument()
+    expect(within(sheet).getByLabelText('메모')).toBeInTheDocument()
+    expect(screen.queryByRole('complementary')).not.toBeInTheDocument()
+  })
+
+  it('opens the add form in a sheet on a narrow screen', async () => {
+    mockViewport(true)
+    mineHandler([])
+    const { user } = renderPage(<TransactionsPage today={today} />, { groups })
+
+    await user.click(await screen.findByRole('button', { name: '거래 추가' }))
+    expect(within(screen.getByRole('dialog', { name: '거래 추가 (수동)' })).getByLabelText('내용')).toBeInTheDocument()
+  })
+
+  it('moves focus to the list heading after deleting a transaction', async () => {
+    let deleted = false
+    server.use(
+      http.get('*/api/me/transactions', () => HttpResponse.json(deleted ? [] : [{ ...base, source: 'MANUAL' }])),
+      http.delete('*/api/transactions/:id', () => { deleted = true; return new HttpResponse(null, { status: 204 }) }),
+      http.get('*/api/transactions/:id/audits', () => HttpResponse.json([])),
+    )
+    const { user } = renderPage(<TransactionsPage today={today} />, { groups })
+
+    await user.click(await screen.findByRole('row', { name: /김밥/ }))
+    await user.click(screen.getByRole('button', { name: '삭제' }))
+    await user.click(screen.getByRole('button', { name: '삭제 확인' }))
+
+    await waitFor(() => expect(screen.queryByRole('complementary', { name: '거래 상세' })).not.toBeInTheDocument())
+    await waitFor(() => expect(screen.getByRole('heading', { name: '거래 목록', level: 2 })).toHaveFocus())
+  })
+
+  it('closes a group transaction panel when the scope falls back to my transactions', async () => {
+    mineHandler([{ ...base, id: 6, description: '커피' }])
+    server.use(
+      http.get('*/api/groups/10', () => HttpResponse.json({ groupId: 10, name: '우리집', myRole: 'ADMIN', members: [] })),
+      http.get('*/api/groups/10/transactions', () => HttpResponse.json([{ ...base, id: 6, description: '커피' }])),
+      http.get('*/api/transactions/:id/audits', () => HttpResponse.json([])),
+    )
+    const { user, client } = renderPage(<TransactionsPage today={today} />, { groups })
+
+    await user.click(await screen.findByRole('radio', { name: '그룹 거래' }))
+    await user.click(await screen.findByRole('row', { name: /커피/ }))
+    expect(screen.getByRole('complementary', { name: '거래 상세' })).toBeInTheDocument()
+
+    server.use(http.get('*/api/groups', () => HttpResponse.json([])))
+    await client.invalidateQueries({ queryKey: ['groups'], exact: true })
+
+    await waitFor(() => expect(screen.getByRole('radio', { name: '내 거래' })).toBeChecked())
+    expect(screen.queryByRole('complementary', { name: '거래 상세' })).not.toBeInTheDocument()
+  })
+
   it('closes the panel when the selected transaction is no longer in the visible list', async () => {
     server.use(
       http.get('*/api/me/transactions', ({ request }) => HttpResponse.json(

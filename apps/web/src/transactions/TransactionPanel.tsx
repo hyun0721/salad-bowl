@@ -3,11 +3,10 @@ import ComboBox from '../common/ComboBox'
 import { TextAreaField } from '../common/TextField'
 import { majorOptions, minorOptions, useCategories } from './categoriesApi'
 import { useQuery } from '@tanstack/react-query'
-import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
 import { useAuth } from '../auth/AuthProvider'
 import { errorMessage } from '../common/errorMessage'
 import ConfirmDialog from '../common/ConfirmDialog'
-import Icon from '../common/Icon'
 import { toast } from '../common/Toast'
 import { formatDateTime, formatInstant, formatSignedWon } from '../common/format'
 import ui from '../common/ui.module.css'
@@ -32,9 +31,9 @@ function auditLine(a: AuditView): string {
   return `${formatInstant(a.changedAt)} · ${a.actorNickname} · ${label}: ${auditValue(a.field, a.before)} → ${auditValue(a.field, a.after)}`
 }
 
-type Props = { tx: TransactionView; onClose: () => void }
+type Props = { tx: TransactionView; onDeleted: () => void }
 
-export default function TransactionPanel({ tx, onClose }: Props) {
+export default function TransactionPanel({ tx, onDeleted }: Props) {
   const { me } = useAuth()
   const list = useCategories().data ?? []
   const { update, remove } = useTransactionMutations()
@@ -43,13 +42,6 @@ export default function TransactionPanel({ tx, onClose }: Props) {
   const [minor, setMinor] = useState(tx.categoryMinor)
   const [memo, setMemo] = useState(tx.memo ?? '')
   const [hidden, setHidden] = useState(tx.hidden)
-  const headingRef = useRef<HTMLHeadingElement>(null)
-
-  // 패널은 목록 아래로 밀려 화면 밖에 열릴 수 있어, 열릴 때 제목으로 포커스를 옮긴다. 다시 렌더할 때는 옮기지 않는다.
-  useEffect(() => {
-    headingRef.current?.focus()
-  }, [])
-
   const isOwner = me?.userId === tx.ownerId
   const canDelete = isOwner && tx.source === 'MANUAL'
 
@@ -77,10 +69,6 @@ export default function TransactionPanel({ tx, onClose }: Props) {
 
   return (
     <div className={ui.stack}>
-      <div className={styles.header}>
-        <h2 ref={headingRef} tabIndex={-1}>{tx.description}</h2>
-        <button type="button" className={ui.button} onClick={onClose}><Icon name="x" size={18} />닫기</button>
-      </div>
       <p className={styles.amount}>{formatSignedWon(tx.amount)}</p>
       <p className={ui.muted}>
         {[formatDateTime(tx.occurredAt), tx.paymentMethod, tx.ownerNickname, tx.source === 'MANUAL' ? '수동' : '엑셀']
@@ -100,7 +88,7 @@ export default function TransactionPanel({ tx, onClose }: Props) {
             {canDelete && (
               <ConfirmDialog triggerLabel="삭제" triggerIcon="trash" title="거래 삭제" description="이 거래를 삭제할까요?"
                 confirmLabel="삭제 확인" isPending={remove.isPending} error={remove.isError ? errorMessage(remove.error) : null}
-                onOpen={() => remove.reset()} onConfirm={() => remove.mutate(tx.id, { onSuccess: onClose })} />
+                onOpen={() => remove.reset()} onConfirm={() => remove.mutate(tx.id, { onSuccess: onDeleted })} />
             )}
             <button type="submit" className={`${ui.button} ${ui.primary} ${styles.save}`} disabled={update.isPending}>저장</button>
           </div>
