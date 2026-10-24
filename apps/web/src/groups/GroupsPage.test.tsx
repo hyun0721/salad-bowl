@@ -139,8 +139,8 @@ describe('GroupsPage', () => {
     const { user } = renderPage(<GroupsPage />, { groups: [friends] })
 
     await user.click(await screen.findByRole('button', { name: '그룹 나가기' }))
-    expect(screen.getByRole('button', { name: '취소' })).toHaveFocus()
+    await waitFor(() => expect(screen.getByRole('button', { name: '취소' })).toHaveFocus())
     await user.click(screen.getByRole('button', { name: '취소' }))
-    expect(screen.getByRole('button', { name: '그룹 나가기' })).toHaveFocus()
+    await waitFor(() => expect(screen.getByRole('button', { name: '그룹 나가기' })).toHaveFocus())
   })
 })

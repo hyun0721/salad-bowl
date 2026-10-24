@@ -47,9 +47,9 @@ describe('group admin tools', () => {
     const { user } = renderPage(<GroupsPage />, { groups: [home] })
 
     await user.click(await screen.findByRole('button', { name: '짝꿍 내보내기' }))
-    expect(screen.getByRole('button', { name: '취소' })).toHaveFocus()
+    await waitFor(() => expect(screen.getByRole('button', { name: '취소' })).toHaveFocus())
     await user.click(screen.getByRole('button', { name: '취소' }))
-    expect(screen.getByRole('button', { name: '짝꿍 내보내기' })).toHaveFocus()
+    await waitFor(() => expect(screen.getByRole('button', { name: '짝꿍 내보내기' })).toHaveFocus())
   })
 
   it('creates an invite link and copies it', async () => {

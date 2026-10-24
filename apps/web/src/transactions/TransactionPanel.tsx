@@ -6,6 +6,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useAuth } from '../auth/AuthProvider'
 import { errorMessage } from '../common/errorMessage'
+import ConfirmDialog from '../common/ConfirmDialog'
 import Icon from '../common/Icon'
 import { formatDateTime, formatInstant, formatSignedWon } from '../common/format'
 import ui from '../common/ui.module.css'
@@ -41,7 +42,6 @@ export default function TransactionPanel({ tx, onClose }: Props) {
   const [minor, setMinor] = useState(tx.categoryMinor)
   const [memo, setMemo] = useState(tx.memo ?? '')
   const [hidden, setHidden] = useState(tx.hidden)
-  const [confirming, setConfirming] = useState(false)
   const headingRef = useRef<HTMLHeadingElement>(null)
 
   // 패널은 목록 아래로 밀려 화면 밖에 열릴 수 있어, 열릴 때 제목으로 포커스를 옮긴다. 다시 렌더할 때는 옮기지 않는다.
@@ -71,11 +71,7 @@ export default function TransactionPanel({ tx, onClose }: Props) {
     })
   }
 
-  function onDelete() {
-    remove.mutate(tx.id, { onSuccess: onClose })
-  }
-
-  const error = update.isError ? errorMessage(update.error) : remove.isError ? errorMessage(remove.error) : null
+  const error = update.isError ? errorMessage(update.error) : null
 
   return (
     <div className={ui.stack}>
@@ -99,15 +95,10 @@ export default function TransactionPanel({ tx, onClose }: Props) {
             <Checkbox isSelected={hidden} onChange={setHidden}>그룹 화면에서 숨기기 (본인만)</Checkbox>
           )}
           <div className={styles.actions}>
-            {canDelete && !confirming && (
-              <button type="button" className={`${ui.button} ${ui.danger}`} onClick={() => setConfirming(true)}><Icon name="trash" size={18} />삭제</button>
-            )}
-            {canDelete && confirming && (
-              <span className={ui.row}>
-                <span>이 거래를 삭제할까요?</span>
-                <button type="button" className={`${ui.button} ${ui.danger}`} disabled={remove.isPending} onClick={onDelete}>삭제 확인</button>
-                <button type="button" className={ui.button} onClick={() => setConfirming(false)}>취소</button>
-              </span>
+            {canDelete && (
+              <ConfirmDialog triggerLabel="삭제" triggerIcon="trash" title="거래 삭제" description="이 거래를 삭제할까요?"
+                confirmLabel="삭제 확인" isPending={remove.isPending} error={remove.isError ? errorMessage(remove.error) : null}
+                onOpen={() => remove.reset()} onConfirm={() => remove.mutate(tx.id, { onSuccess: onClose })} />
             )}
             <button type="submit" className={`${ui.button} ${ui.primary} ${styles.save}`} disabled={update.isPending}>저장</button>
           </div>
