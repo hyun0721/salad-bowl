@@ -19,10 +19,10 @@ Plan 05(배포)의 Task별 리뷰(Claude·Codex 교차), 최종 리뷰(opus + Co
 - GitHub 예약 실행이 늦어 Render가 잠드는 빈도.
 
 ## Plan 06 (운영·보안 보강)에 더할 것
-- `RefreshCookieProperties`: `same-site`가 없으면 `Set.of(...).contains(null)`이 NPE를 낸다. null 검사를 먼저 하고 테스트를 더한다.
-- 업로드 중 `SlowServerNotice`가 "서버를 깨우는 중…"을 보여준다(업로드가 3초를 넘으면). `/imports` POST는 느린 요청 집계에서 빼거나 업로드 전용 문구를 쓴다.
-- 1MB 요청 한도·Tomcat swallow 한도를 넘는 요청은 413 대신 연결이 끊겨 프록시가 502를 낼 수 있다. 웹 사전 검사(512KB)가 일상 사용은 막는다.
-- import 대기(20초)가 CPU 0.1의 import 시간(약 81초)보다 짧아, 동시 업로드의 두 번째는 대부분 503이다. 사용자가 늘면 대기열·진행 표시를 검토한다.
+- `RefreshCookieProperties`: `same-site`가 없으면 `Set.of(...).contains(null)`이 NPE를 낸다. null 검사를 먼저 하고 테스트를 더한다. → Plan 08에서 처리
+- 업로드 중 `SlowServerNotice`가 "서버를 깨우는 중…"을 보여준다(업로드가 3초를 넘으면). `/imports` POST는 느린 요청 집계에서 빼거나 업로드 전용 문구를 쓴다. → Plan 08에서 업로드는 집계에서 뺐다
+- 1MB 요청 한도·Tomcat swallow 한도를 넘는 요청은 413 대신 연결이 끊겨 프록시가 502를 낼 수 있다. 웹 사전 검사(512KB)가 일상 사용은 막는다. → Plan 08에서 프록시가 1MB 초과 본문에 413으로 답한다
+- import 대기(20초)가 CPU 0.1의 import 시간(약 81초)보다 짧아, 동시 업로드의 두 번째는 대부분 503이다. 사용자가 늘면 대기열·진행 표시를 검토한다. → Plan 08은 문구에 기다릴 시간만 알렸다(Cloudflare 100초 한도 때문에 대기를 늘리지 않음). 대기열은 남긴다
 
 ## 나중에 (사소함)
 - `FILE_TOO_LARGE` 문구가 `importsApi.ts`와 `errorMessage.ts`에 중복된다.
