@@ -1,6 +1,7 @@
 import { fireEvent, screen, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
+import { mockViewport } from '../test/mockViewport'
 import { renderPage } from '../test/renderPage'
 import { server } from '../test/server'
 import CategoryBreakdown from './CategoryBreakdown'
@@ -27,6 +28,8 @@ describe('CategoryBreakdown', () => {
     expect(within(region).queryByText('환불')).not.toBeInTheDocument()
     expect(within(region).queryByText('취소')).not.toBeInTheDocument()
     expect(region.querySelector('svg')).toHaveAttribute('aria-hidden', 'true')
+    expect(Array.from(region.querySelectorAll('text.label')).map((label) => label.textContent)).toEqual(['식비 80%', '교통 20%', '기타 1% 미만'])
+    expect(within(region).getByRole('list')).toBeInTheDocument()
     expect(region.querySelector('[aria-hidden="true"][style*="--swatch-color"]')).not.toHaveClass('undefined')
   })
 
@@ -57,4 +60,13 @@ describe('CategoryBreakdown', () => {
     expect(slice).toHaveAttribute('data-active', 'true')
     expect(screen.getByRole('region', { name: '카테고리별 지출' }).querySelectorAll('svg path[data-active="true"]')).toHaveLength(1)
   })
+})
+
+
+it('uses compact chart geometry on narrow screens', async () => {
+  mockViewport(true)
+  renderPage(<CategoryBreakdown groupId={10} month="2026-10" summary={{ ...summary, byCategory: [{ category: '아주긴카테고리', expense: 1 }] }} />)
+  const region = await screen.findByRole('region', { name: '카테고리별 지출' })
+  expect(region.querySelector('text.label')).toHaveTextContent('아주긴카… 100%')
+  expect(within(region).getByRole('button', { name: '아주긴카테고리 100% ₩ 1' })).toBeInTheDocument()
 })
