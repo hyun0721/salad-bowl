@@ -363,6 +363,53 @@ describe('TransactionsPage', () => {
     expect(await screen.findByRole('dialog', { name: '9월 간식' })).toBeInTheDocument()
   })
 
+  it('keeps the sheet open when the month of a newly added transaction is cached', async () => {
+    mockViewport(true)
+    const created: TransactionView = {
+      ...base, id: 20, occurredAt: '2026-09-05T13:30:00', description: '9월 간식', source: 'MANUAL', amount: -3000,
+    }
+    let added = false
+    let releaseSeptember: () => void = () => {}
+    server.use(
+      http.get('*/api/me/transactions', async ({ request }) => {
+        if (added && new URL(request.url).searchParams.get('month') === '2026-09') {
+          await new Promise<void>((resolve) => { releaseSeptember = resolve })
+          return HttpResponse.json([created])
+        }
+        return HttpResponse.json([])
+      }),
+      http.post('*/api/me/transactions', () => {
+        added = true
+        return HttpResponse.json(created, { status: 201 })
+      }),
+      http.get('*/api/transactions/:id/audits', () => HttpResponse.json([])),
+    )
+    const { user } = renderPage(<TransactionsPage today={today} />, { groups })
+
+    await screen.findByText('이 달에 거래가 없습니다.')
+    await user.click(screen.getByRole('button', { name: '이전 달' }))
+    await waitFor(() => expect(screen.getByLabelText('월')).toHaveValue('2026-09'))
+    await screen.findByText('이 달에 거래가 없습니다.')
+    await user.click(screen.getByRole('button', { name: '다음 달' }))
+    await waitFor(() => expect(screen.getByLabelText('월')).toHaveValue('2026-10'))
+    await user.click(screen.getByRole('button', { name: '거래 추가' }))
+    await typeDateTime(user, '202609051330')
+    await user.type(screen.getByRole('combobox', { name: '대분류' }), '식비')
+    await user.type(screen.getByLabelText('내용'), '9월 간식')
+    await user.type(screen.getByLabelText('금액 (원)'), '3000')
+    const sheet = screen.getByRole('dialog', { name: '거래 추가 (수동)' })
+    await user.click(within(sheet).getByRole('button', { name: '추가' }))
+
+    try {
+      await waitFor(() => expect(screen.getByLabelText('월')).toHaveValue('2026-09'))
+      expect(sheet.parentElement).not.toHaveAttribute('data-exiting', 'true')
+      expect(within(sheet).getByRole('button', { name: '추가' })).toBeDisabled()
+    } finally {
+      releaseSeptember()
+    }
+    expect(await screen.findByRole('dialog', { name: '9월 간식' })).toBeInTheDocument()
+  })
+
   it('moves focus to the panel heading and to the add form heading, not on re-render', async () => {
     mineHandler([{ ...base }])
     server.use(http.get('*/api/transactions/:id/audits', () => HttpResponse.json([])))

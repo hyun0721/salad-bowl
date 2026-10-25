@@ -42,6 +42,29 @@ describe('group admin tools', () => {
     await waitFor(() => expect(screen.getByRole('heading', { name: /멤버 \(/ })).toHaveFocus())
   })
 
+  it('does not move focus to the member heading after a failed removal', async () => {
+    let partnerLeft = false
+    server.use(
+      http.get('*/api/groups/10', () => HttpResponse.json(partnerLeft ? { ...homeDetail, members: [me] } : homeDetail)),
+      http.get('*/api/groups/10/bans', () => HttpResponse.json([])),
+      http.delete('*/api/groups/10/members/2', () =>
+        HttpResponse.json({ code: 'INTERNAL_ERROR', message: 'x' }, { status: 500 })),
+    )
+    const { user, client } = renderPage(<GroupsPage />, { groups: [home] })
+
+    const trigger = await screen.findByRole('button', { name: '짝꿍 내보내기' })
+    const heading = screen.getByRole('heading', { name: '멤버 (2/6)' })
+    await user.click(trigger)
+    await user.click(screen.getByRole('button', { name: '짝꿍 내보내기 확인' }))
+    expect(await screen.findByRole('alert')).toBeInTheDocument()
+    expect(heading).not.toHaveFocus()
+
+    partnerLeft = true
+    await client.invalidateQueries({ queryKey: ['groups', 10] })
+    await waitFor(() => expect(heading).toHaveTextContent('멤버 (1/6)'))
+    expect(heading).not.toHaveFocus()
+  })
+
   it('moves focus to cancel when the remove confirmation opens and back to the trigger on cancel', async () => {
     server.use(
       http.get('*/api/groups/10', () => HttpResponse.json(homeDetail)),

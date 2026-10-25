@@ -79,13 +79,13 @@ export default function TransactionsPage({ today }: Props) {
 
   // 선택한 거래는 현재 목록에서 찾는다. 월·멤버·그룹이 바뀌어 목록에 없으면 패널을 보이지 않는다.
   const selected = list.data?.find((tx) => tx.id === selectedId) ?? null
-  // 추가한 거래의 달을 불러오는 동안에는 목록에 아직 없어도 패널을 닫지 않는다.
-  const open = adding || selected !== null || (selectedId !== null && list.isPending)
-  const narrow = useNarrowWhileOpen(open)
   // 닫힘 애니메이션 동안 마지막 내용을 유지한다.
   const current = adding ? 'add' : selected
   const [shown, setShown] = useState<'add' | typeof selected>(current)
   if (current !== null && current !== shown) setShown(current)
+  // 추가한 거래의 달을 다시 불러오는 동안에도 시트를 유지한다.
+  const open = adding || selected !== null || (shown === 'add' && selectedId !== null && list.isFetching)
+  const narrow = useNarrowWhileOpen(open)
 
   const listHeadingRef = useRef<HTMLHeadingElement>(null)
   const focusListAfterDelete = useRef(false)
@@ -173,7 +173,7 @@ export default function TransactionsPage({ today }: Props) {
           )}
         </section>
         {!narrow && open && (
-          <aside aria-label={adding ? '거래 추가' : '거래 상세'} className={`${ui.card} ${styles.panel}`}>
+          <aside aria-label={shown === 'add' ? '거래 추가' : '거래 상세'} className={`${ui.card} ${styles.panel}`}>
             <PanelHeader key={`header-${shown === 'add' ? 'add' : shown?.id}`} title={title} onClose={closePanel} />
             {body}
           </aside>

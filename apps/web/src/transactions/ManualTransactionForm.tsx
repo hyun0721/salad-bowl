@@ -60,7 +60,7 @@ export default function ManualTransactionForm({ onDone, onCancel }: Props) {
       <TextAreaField label="메모" value={memo} onChange={setMemo} maxLength={1000} rows={2} />
       <div className={styles.actions}>
         <button type="button" className={ui.button} onClick={onCancel}>취소</button>
-        <button type="submit" className={`${ui.button} ${ui.primary} ${styles.save}`} disabled={addManual.isPending}>추가</button>
+        <button type="submit" className={`${ui.button} ${ui.primary} ${styles.save}`} disabled={addManual.isPending || addManual.isSuccess}>추가</button>
       </div>
       {addManual.isError && <p role="alert" className={ui.alert}>{errorMessage(addManual.error)}</p>}
     </form>

@@ -32,7 +32,7 @@ export default function MemberList({ group, canRemove }: Props) {
 }
 
 function MemberRow({ groupId, member, canRemove, onRemoving }: {
-  groupId: number; member: GroupMember; canRemove: boolean; onRemoving: (userId: number) => void
+  groupId: number; member: GroupMember; canRemove: boolean; onRemoving: (userId: number | null) => void
 }) {
   const { removeMember } = useGroupMutations()
   return (
@@ -47,10 +47,10 @@ function MemberRow({ groupId, member, canRemove, onRemoving }: {
             title={`${member.nickname} 내보내기`} description="내보내면 차단되어 다시 합류할 수 없습니다."
             confirmLabel="내보내기 확인" confirmAriaLabel={`${member.nickname} 내보내기 확인`}
             isPending={removeMember.isPending} error={removeMember.isError ? errorMessage(removeMember.error) : null}
-            onOpen={() => removeMember.reset()}
+            onOpen={() => { onRemoving(null); removeMember.reset() }}
             onConfirm={(close) => {
               onRemoving(member.userId)
-              removeMember.mutate({ groupId, userId: member.userId }, { onSuccess: close })
+              removeMember.mutate({ groupId, userId: member.userId }, { onSuccess: close, onError: () => onRemoving(null) })
             }} />
         </span>
       )}
