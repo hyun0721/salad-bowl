@@ -60,9 +60,9 @@ describe('DonutChart', () => {
 
   it('marks the active slice', () => {
     const { paths } = renderChart({ activeId: '교통/차량' })
-    expect(paths()[1]).toHaveClass('active')
-    expect(paths()[0]).not.toHaveClass('active')
-    expect(paths()[2]).not.toHaveClass('active')
+    expect(paths()[1]).toHaveAttribute('data-active')
+    expect(paths()[0]).not.toHaveAttribute('data-active')
+    expect(paths()[2]).not.toHaveAttribute('data-active')
   })
 
   it('fills slices past the eighth with a hatch pattern of the same slot', () => {
@@ -85,6 +85,6 @@ describe('sliceStyle', () => {
     expect(sliceStyle(8)).toEqual({ slot: 1, pattern: 'diag45' })
     expect(sliceStyle(15)).toEqual({ slot: 8, pattern: 'diag45' })
     expect(sliceStyle(16)).toEqual({ slot: 1, pattern: 'diag135' })
-    expect(sliceStyle(30)).toEqual({ slot: (30 % 8) + 1, pattern: 'diag135' })
+    expect(sliceStyle(30)).toEqual({ slot: 7, pattern: 'diag135' })
   })
 })

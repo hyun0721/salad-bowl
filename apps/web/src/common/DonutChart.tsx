@@ -82,7 +82,7 @@ export default function DonutChart({ slices, centerLabel, centerValue, activeId,
       </defs>
       {shapes.map(({ slice, d, fill }) => (
         <path key={slice.id} d={d} fillRule="evenodd" style={{ fill }}
-          className={slice.id === activeId ? `${styles.slice} ${styles.active}` : styles.slice}
+          className={styles.slice} data-active={slice.id === activeId || undefined}
           onClick={() => onSelect(slice.id)}
           onPointerEnter={() => onActiveChange(slice.id)}
           onPointerLeave={() => onActiveChange(null)} />
