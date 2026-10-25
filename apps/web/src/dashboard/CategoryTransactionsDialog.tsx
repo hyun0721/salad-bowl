@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { useState } from 'react'
 import CardList from '../common/CardList'
 import DataTable, { type DataColumn } from '../common/DataTable'
 import { DialogFrame } from '../common/Dialog'
@@ -17,22 +18,25 @@ const columns: DataColumn<TransactionView>[] = [
   { id: 'categoryMinor', label: '소분류', render: (tx) => tx.categoryMinor },
   { id: 'description', label: '내용', isRowHeader: true, render: (tx) => tx.description },
   { id: 'paymentMethod', label: '결제수단', width: '110px', render: (tx) => tx.paymentMethod },
-  { id: 'amount', label: '금액', width: '120px', align: 'end', render: (tx) => formatSignedWon(tx.amount) },
+  { id: 'amount', label: '금액', width: '120px', align: 'end', render: (tx) => <span className={styles.txAmount}>{formatSignedWon(tx.amount)}</span> },
 ]
 
 export default function CategoryTransactionsDialog({ groupId, month, category, onClose }: Props) {
   const narrow = useMediaQuery(NARROW)
+  const [lastCategory, setLastCategory] = useState(category)
+  if (category !== null && lastCategory !== category) setLastCategory(category)
+  const displayedCategory = category ?? lastCategory
   const transactions = useQuery({
-    queryKey: ['summary-transactions', groupId, month, category],
-    queryFn: () => dashboardApi.categoryTransactions(groupId, month, category!),
+    queryKey: ['summary-transactions', groupId, month, displayedCategory],
+    queryFn: () => dashboardApi.categoryTransactions(groupId, month, displayedCategory!),
     enabled: category !== null,
   })
   const items = transactions.data ?? []
   const total = -items.reduce((sum, tx) => sum + tx.amount, 0)
 
   return (
-    <DialogFrame isOpen={category !== null} title={category ?? ''} onOpenChange={(open) => { if (!open) onClose() }}
-      closeOnOutsideClick headerAction={<button type="button" className={ui.button} onClick={onClose}>닫기</button>}>
+    <DialogFrame isOpen={category !== null} title={displayedCategory ?? ''} onOpenChange={(open) => { if (!open) onClose() }}
+      closeOnOutsideClick wide headerAction={<button type="button" className={ui.button} onClick={onClose}>닫기</button>}>
       {() => (
         <div className={styles.dialogBody}>
           {transactions.isPending && <p className={ui.status}>불러오는 중입니다.</p>}

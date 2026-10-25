@@ -34,10 +34,9 @@ export default function CategoryBreakdown({ groupId, month, summary }: Props) {
                   <button type="button" className={styles.row}
                     aria-label={`${item.category} ${percent(item.expense)} ${formatWon(item.expense)}`}
                     onPointerEnter={() => setActiveId(item.category)} onPointerLeave={() => setActiveId(null)}
-                    onMouseEnter={() => setActiveId(item.category)} onMouseLeave={() => setActiveId(null)}
                     onFocus={() => setActiveId(item.category)} onBlur={() => setActiveId(null)}
                     onClick={() => setCategory(item.category)}>
-                    <span aria-hidden="true" className={`${styles.swatch} ${styles[swatch.pattern]}`}
+                    <span aria-hidden="true" className={swatch.pattern === 'solid' ? styles.swatch : `${styles.swatch} ${styles[swatch.pattern]}`}
                       style={{ '--swatch-color': `var(--chart-${swatch.slot})` } as React.CSSProperties} />
                     <span className={styles.name}>{item.category}</span>
                     <span className={styles.amount}>{formatWon(item.expense)}</span>

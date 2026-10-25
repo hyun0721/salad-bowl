@@ -27,6 +27,7 @@ describe('CategoryBreakdown', () => {
     expect(within(region).queryByText('환불')).not.toBeInTheDocument()
     expect(within(region).queryByText('취소')).not.toBeInTheDocument()
     expect(region.querySelector('svg')).toHaveAttribute('aria-hidden', 'true')
+    expect(region.querySelector('[aria-hidden="true"][style*="--swatch-color"]')).not.toHaveClass('undefined')
   })
 
   it('shows the empty state when no category has a positive expense', async () => {
@@ -52,7 +53,8 @@ describe('CategoryBreakdown', () => {
     renderPage(<CategoryBreakdown groupId={10} month="2026-10" summary={summary} />)
     const row = await screen.findByRole('button', { name: '식비 80% ₩ 200,000' })
     const slice = screen.getByRole('region', { name: '카테고리별 지출' }).querySelector('svg path')!
-    fireEvent.mouseOver(row)
+    fireEvent.pointerOver(row)
     expect(slice).toHaveAttribute('data-active', 'true')
+    expect(screen.getByRole('region', { name: '카테고리별 지출' }).querySelectorAll('svg path[data-active="true"]')).toHaveLength(1)
   })
 })

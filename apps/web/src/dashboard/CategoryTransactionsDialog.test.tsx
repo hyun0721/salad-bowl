@@ -1,6 +1,7 @@
 import { screen, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { describe, expect, it, vi } from 'vitest'
+import { useState } from 'react'
 import { mockViewport } from '../test/mockViewport'
 import { renderPage } from '../test/renderPage'
 import { server } from '../test/server'
@@ -22,6 +23,7 @@ describe('CategoryTransactionsDialog', () => {
     expect(await within(dialog).findByText('3건 · 합계 ₩ 27,000')).toBeInTheDocument()
     expect(within(dialog).getByRole('grid', { name: '거래 목록' })).toBeInTheDocument()
     expect(within(dialog).getByText('점심 1')).toBeInTheDocument()
+    expect(dialog.parentElement).toHaveClass('wide')
   })
 
   it('shows a card list on a narrow screen', async () => {
@@ -30,6 +32,22 @@ describe('CategoryTransactionsDialog', () => {
     renderPage(<CategoryTransactionsDialog groupId={10} month="2026-10" category="식비" onClose={() => {}} />)
     const dialog = await screen.findByRole('dialog', { name: '식비' })
     expect(await within(dialog).findByRole('grid', { name: '거래 목록' })).toHaveTextContent('점심 1')
+    expect(within(dialog).queryByRole('columnheader')).not.toBeInTheDocument()
+    expect(within(dialog).getByText('10-19 12:30 · 외식 · 나')).toBeInTheDocument()
+  })
+
+  it('keeps the title and loaded content while a narrow sheet closes', async () => {
+    mockViewport(true)
+    server.use(http.get('*/api/groups/10/summary/transactions', () => HttpResponse.json([tx(1, -10000)])))
+    function Harness() {
+      const [category, setCategory] = useState<string | null>('식비')
+      return <CategoryTransactionsDialog groupId={10} month="2026-10" category={category} onClose={() => setCategory(null)} />
+    }
+    const { user } = renderPage(<Harness />)
+    expect(await screen.findByText('1건 · 합계 ₩ 10,000')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '닫기' }))
+    expect(screen.getByRole('dialog', { name: '식비' })).toHaveTextContent('1건 · 합계 ₩ 10,000')
+    expect(screen.queryByText('불러오는 중입니다.')).not.toBeInTheDocument()
   })
 
   it('retries a failed request', async () => {

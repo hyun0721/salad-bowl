@@ -105,6 +105,11 @@ describe('DialogFrame sheet outside press', () => {
   })
 })
 
+it('uses a wider modal when requested', () => {
+  render(<DialogFrame isOpen onOpenChange={() => {}} title="거래 목록" wide>{() => <p>내용</p>}</DialogFrame>)
+  expect(screen.getByRole('dialog', { name: '거래 목록' }).parentElement).toHaveClass('wide')
+})
+
 it('keeps the same modal and its input when the width changes while open', async () => {
   const viewport = mockViewport(false)
   const user = userEvent.setup()
