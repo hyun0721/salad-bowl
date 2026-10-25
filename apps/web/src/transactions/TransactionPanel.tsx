@@ -88,7 +88,7 @@ export default function TransactionPanel({ tx, onDeleted }: Props) {
             {canDelete && (
               <ConfirmDialog triggerLabel="삭제" triggerIcon="trash" title="거래 삭제" description="이 거래를 삭제할까요?"
                 confirmLabel="삭제 확인" isPending={remove.isPending} error={remove.isError ? errorMessage(remove.error) : null}
-                onOpen={() => remove.reset()} onConfirm={() => remove.mutate(tx.id, { onSuccess: onDeleted })} />
+                onOpen={() => remove.reset()} onConfirm={(close) => remove.mutate(tx.id, { onSuccess: () => { close(); onDeleted() } })} />
             )}
             <button type="submit" className={`${ui.button} ${ui.primary} ${styles.save}`} disabled={update.isPending}>저장</button>
           </div>

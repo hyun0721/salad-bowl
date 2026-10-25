@@ -22,7 +22,7 @@
 | + 대화상자·알림·탭(Plan 07b: Modal, Toast, Tabs, ToggleButtonGroup) | 737.43 kB | **223.63 kB** | 5.78 kB |
 | + 목록·시트·지연 로딩(Plan 07c: Table, GridList, React.lazy) | 818.64 kB | **260.37 kB** | 9.19 kB |
 
-- Plan 07b까지의 단일 청크 증가분은 gzip 약 +56 kB(+50%)였다. Select·ListBox·Popover·DropZone이 공유하는 포커스·키보드·컬렉션·오버레이 계층이 대부분이다.
+- RAC 적용 직후의 단일 청크 증가분은 gzip 약 +56 kB(+50%, 110.07 → 165.62 kB)였다. Select·ListBox·Popover·DropZone이 공유하는 포커스·키보드·컬렉션·오버레이 계층이 대부분이다.
 - Plan 07c에서 화면 단위 지연 로딩을 적용했다. 홈 첫 진입 JS(엔트리와 `index.html`의 `modulepreload`)는 gzip 합계 182.00 kB다. 가장 큰 청크는 338.93 kB(gzip 106.16 kB), 거래 화면 청크는 213.40 kB(gzip 64.34 kB)이며 `DatePicker`를 포함한다. Vite의 500 kB 초과 청크 경고는 Plan 07c에서 사라졌다.
 - Plan 07a에서 gzip 약 +45 kB가 늘었다. RAC `DatePicker`가 `@internationalized/date`의 모든 달력 체계(일본력·불기 등)를 함께 싣고(번들에 `heisei`·`reiwa` 문자열이 있다), 1.22.1의 `DatePicker`에는 이를 줄이는 `createCalendar` 옵션이 없다. 거래 화면 지연 로딩으로 이 비용은 홈 첫 진입 JS에서 빠졌다.
 
@@ -32,7 +32,7 @@
 - 소스를 옮겨 온 Lucide 아이콘 경로는 이 파일에 잡히지 않으므로 `THIRD_PARTY_NOTICES.md`에 계속 둔다.
 
 ## 확인한 것
-- 자동: typecheck, 테스트 225개, lint, build 통과.
+- 자동: typecheck, 테스트 228개, lint, build 통과.
 - 열린 동안 화면 폭이 820px을 넘나들어도(회전 등) 팝오버와 시트를 바꾸지 않는다. 바꾸면 포커스가 사라진다.
 - 브라우저(데스크톱 폭 1200px, 좁은 폭 453px): 데스크톱은 목록이 트리거 아래에 펼쳐지고, 좁은 폭은 하단 시트로 뜬다.
 - 실기기(iOS Safari·Android Chrome·Windows 스크린리더)는 확인하지 않았다.

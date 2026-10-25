@@ -72,6 +72,7 @@ describe('TransactionPanel', () => {
 
     await vi.waitFor(() => expect(onDeleted).toHaveBeenCalled())
     expect(deleted).toBe(true)
+    await vi.waitFor(() => expect(screen.queryByRole('dialog', { name: '거래 삭제' })).not.toBeInTheDocument())
   })
 
   it('hides owner-only controls for another member and shows read-only when not editable', async () => {
