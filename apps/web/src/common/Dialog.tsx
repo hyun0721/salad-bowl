@@ -33,7 +33,10 @@ export function DialogFrame(props: FrameProps) {
   )
   if (narrow) {
     return (
-      <SheetOverlay isOpen={isOpen} onOpenChange={onOpenChange} preventDismissal={closeDisabled} className={styles.sheetOverlay}>
+      <SheetOverlay isOpen={isOpen} onOpenChange={onOpenChange} preventDismissal={closeDisabled}
+        // 입력이 있는 대화상자는 바깥을 실수로 눌러 입력을 잃지 않게 한다(넓은 화면 모달과 같은 규칙).
+        shouldCloseOnInteractOutside={() => closeOnOutsideClick}
+        className={styles.sheetOverlay}>
         <SheetBackdrop className={styles.sheetBackdrop} />
         <Sheet className={fullHeight ? `${styles.modalSheet} ${styles.fullSheet}` : styles.modalSheet}>
           <SheetContent className={styles.content}>{({ close }) => body(close)}</SheetContent>
