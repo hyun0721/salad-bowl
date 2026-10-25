@@ -19,6 +19,8 @@ describe('errorMessage', () => {
   })
 
   it('prefers overrides and falls back for unknown codes', () => {
+    expect(errorMessage(new ApiError(413, 'REQUEST_TOO_LARGE', 'x'))).toBe('요청이 너무 큽니다.')
+    expect(errorMessage(new ApiError(400, 'BAD_REQUEST', 'x'))).toBe('요청을 처리하지 못했습니다.')
     expect(errorMessage(new ApiError(404, 'NOT_FOUND', 'x'), { NOT_FOUND: '거래를 찾을 수 없습니다.' })).toBe('거래를 찾을 수 없습니다.')
     expect(errorMessage(new ApiError(418, 'TEAPOT', 'x'))).toBe('요청을 처리하지 못했습니다.')
     expect(errorMessage(new Error('x'))).toBe('요청을 처리하지 못했습니다.')
