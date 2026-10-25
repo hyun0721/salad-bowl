@@ -39,6 +39,7 @@ describe('group admin tools', () => {
     expect(await within(bans).findByText('짝꿍')).toBeInTheDocument()
     await waitFor(() =>
       expect(within(screen.getByRole('region', { name: /^멤버/ })).queryByText('짝꿍')).not.toBeInTheDocument())
+    await waitFor(() => expect(screen.getByRole('heading', { name: /멤버 \(/ })).toHaveFocus())
   })
 
   it('moves focus to cancel when the remove confirmation opens and back to the trigger on cancel', async () => {
