@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { Suspense, useEffect, useRef, useState, type RefObject } from 'react'
 import { NavLink, Outlet, Link, useLocation, useNavigate } from 'react-router'
 import { useAuth } from '../auth/AuthProvider'
 import { useGroups } from '../groups/GroupProvider'
@@ -7,17 +7,13 @@ import Select from '../common/Select'
 import { useMediaQuery } from '../common/useMediaQuery'
 import AccountSheet from './AccountSheet'
 import BottomTabBar from './BottomTabBar'
+import PageLoading from './PageLoading'
 import SlowServerNotice from './SlowServerNotice'
 import styles from './AppLayout.module.css'
 import { MENU } from './menu'
 
-export default function AppLayout() {
-  const { me, logout } = useAuth()
-  const narrow = useMediaQuery('(max-width: 820px)')
-  const { groups, selectedGroupId, selectGroup, isLoading, isError, retry } = useGroups()
-  const navigate = useNavigate()
+function FocusHeadingOnRouteChange({ mainRef }: { mainRef: RefObject<HTMLElement | null> }) {
   const location = useLocation()
-  const mainRef = useRef<HTMLElement>(null)
   const lastPath = useRef(location.pathname)
   useEffect(() => {
     // 메뉴로 화면을 바꾸면 새 화면 제목으로 포커스를 옮긴다(스크린리더가 바뀐 화면을 읽도록). 처음 들어올 때는 옮기지 않는다.
@@ -28,7 +24,16 @@ export default function AppLayout() {
       heading.setAttribute('tabindex', '-1')
       heading.focus()
     }
-  }, [location.pathname])
+  }, [location.pathname, mainRef])
+  return null
+}
+
+export default function AppLayout() {
+  const { me, logout } = useAuth()
+  const narrow = useMediaQuery('(max-width: 820px)')
+  const { groups, selectedGroupId, selectGroup, isLoading, isError, retry } = useGroups()
+  const navigate = useNavigate()
+  const mainRef = useRef<HTMLElement>(null)
 
   const [logoutError, setLogoutError] = useState(false)
 
@@ -87,7 +92,10 @@ export default function AppLayout() {
         )}
         <SlowServerNotice />
         <main ref={mainRef} className={narrow ? `${styles.content} ${styles.withTabBar}` : styles.content}>
-          <Outlet />
+          <Suspense fallback={<PageLoading />}>
+            <Outlet />
+            <FocusHeadingOnRouteChange mainRef={mainRef} />
+          </Suspense>
         </main>
       </div>
       {narrow && <BottomTabBar />}

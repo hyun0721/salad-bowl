@@ -2,8 +2,10 @@ import SegmentedControl from '../common/SegmentedControl'
 import SearchField from '../common/SearchField'
 import Select from '../common/Select'
 import { useQuery } from '@tanstack/react-query'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Icon from '../common/Icon'
+import { DialogFrame } from '../common/Dialog'
+import { useNarrowWhileOpen } from '../common/useMediaQuery'
 import MonthPicker from '../common/MonthPicker'
 import ui from '../common/ui.module.css'
 import { defaultYearMonth } from '../common/format'
@@ -13,11 +15,24 @@ import { groupsApi } from '../groups/groupsApi'
 import ManualTransactionForm from './ManualTransactionForm'
 import TransactionList from './TransactionList'
 import TransactionPanel from './TransactionPanel'
+import panelStyles from './TransactionPanel.module.css'
 import styles from './TransactionsPage.module.css'
 import { transactionsApi } from './transactionsApi'
 
 type Scope = 'mine' | 'group'
 type Props = { today?: Date }
+
+function PanelHeader({ title, onClose }: { title: string; onClose: () => void }) {
+  const ref = useRef<HTMLHeadingElement>(null)
+  // 넓은 화면 패널은 목록 아래로 밀릴 수 있어 처음 열릴 때 제목으로 포커스를 옮긴다.
+  useEffect(() => { ref.current?.focus() }, [])
+  return (
+    <div className={panelStyles.header}>
+      <h2 ref={ref} tabIndex={-1}>{title}</h2>
+      <button type="button" className={ui.button} onClick={onClose}><Icon name="x" size={18} />닫기</button>
+    </div>
+  )
+}
 
 export default function TransactionsPage({ today }: Props) {
   usePageTitle('거래 목록')
@@ -31,7 +46,11 @@ export default function TransactionsPage({ today }: Props) {
   const [adding, setAdding] = useState(false)
 
   // 그룹이 없어지면 화면은 '내 거래'로 보이는데, 이미 선택된 것을 눌러도 변경이 없으므로 scope를 맞춰 둔다.
-  if (selectedGroupId === null && scope === 'group') setScope('mine')
+  if (selectedGroupId === null && scope === 'group') {
+    setScope('mine')
+    // 그룹 목록에서 연 내 거래가 내 목록에도 있으면 선택을 해제해야 패널이 닫힌다.
+    setSelectedId(null)
+  }
 
   const groupId = scope === 'group' ? selectedGroupId : null
   const inGroup = groupId !== null
@@ -60,6 +79,40 @@ export default function TransactionsPage({ today }: Props) {
 
   // 선택한 거래는 현재 목록에서 찾는다. 월·멤버·그룹이 바뀌어 목록에 없으면 패널을 보이지 않는다.
   const selected = list.data?.find((tx) => tx.id === selectedId) ?? null
+  const open = adding || selected !== null
+  const narrow = useNarrowWhileOpen(open)
+  // 닫힘 애니메이션 동안 마지막 내용을 유지한다.
+  const current = adding ? 'add' : selected
+  const [shown, setShown] = useState<'add' | typeof selected>(current)
+  if (current !== null && current !== shown) setShown(current)
+
+  const listHeadingRef = useRef<HTMLHeadingElement>(null)
+  const focusListAfterDelete = useRef(false)
+  useEffect(() => {
+    // 삭제한 행이 사라진 뒤 목록 제목으로 포커스를 옮긴다.
+    if (!focusListAfterDelete.current) return
+    focusListAfterDelete.current = false
+    listHeadingRef.current?.focus()
+  })
+
+  function closePanel() {
+    setAdding(false)
+    setSelectedId(null)
+  }
+
+  const title = shown === 'add' ? '거래 추가 (수동)' : shown?.description ?? ''
+  const body = shown === 'add' ? (
+    <ManualTransactionForm onCancel={closePanel} onDone={(created) => {
+      // 다른 달에 추가한 거래도 목록과 상세 패널에 보이도록 그 달로 옮긴다.
+      setAdding(false)
+      setScope('mine')
+      setMonth(created.occurredAt.slice(0, 7))
+      setSelectedId(created.id)
+    }} />
+  ) : shown && (
+    <TransactionPanel key={shown.id} tx={shown}
+      onDeleted={() => { focusListAfterDelete.current = true; setSelectedId(null) }} />
+  )
 
   function changeScope(next: Scope) {
     setScope(next)
@@ -96,7 +149,7 @@ export default function TransactionsPage({ today }: Props) {
 
       <div className={styles.layout}>
         <section aria-labelledby="list-title" className={`${ui.card} ${styles.listCard}`}>
-          <h2 id="list-title" className={styles.visuallyHidden}>거래 목록</h2>
+          <h2 id="list-title" ref={listHeadingRef} tabIndex={-1} className={styles.visuallyHidden}>거래 목록</h2>
           {list.isPending && <p className={ui.status}>불러오는 중입니다.</p>}
           {list.isError && (
             <div className={ui.row}>
@@ -112,24 +165,19 @@ export default function TransactionsPage({ today }: Props) {
               onSelect={(id) => { setSelectedId(id); setAdding(false) }} />
           )}
         </section>
-        {(adding || selected) && (
+        {!narrow && open && (
           <aside aria-label={adding ? '거래 추가' : '거래 상세'} className={`${ui.card} ${styles.panel}`}>
-            {adding ? (
-              <ManualTransactionForm
-                onCancel={() => setAdding(false)}
-                onDone={(created) => {
-                  // 다른 달에 추가한 거래도 목록과 상세 패널에 보이도록 그 달로 옮긴다.
-                  setAdding(false)
-                  setScope('mine')
-                  setMonth(created.occurredAt.slice(0, 7))
-                  setSelectedId(created.id)
-                }} />
-            ) : selected && (
-              <TransactionPanel key={selected.id} tx={selected} onClose={() => setSelectedId(null)} />
-            )}
+            <PanelHeader key={`header-${shown === 'add' ? 'add' : shown?.id}`} title={title} onClose={closePanel} />
+            {body}
           </aside>
         )}
       </div>
+      {narrow && shown && (
+        <DialogFrame isOpen={open} onOpenChange={(next) => { if (!next) closePanel() }} title={title} fullHeight
+          headerAction={<button type="button" className={ui.button} onClick={closePanel}><Icon name="x" size={18} />닫기</button>}>
+          {() => body}
+        </DialogFrame>
+      )}
     </>
   )
 }

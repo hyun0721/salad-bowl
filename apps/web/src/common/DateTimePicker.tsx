@@ -1,10 +1,12 @@
+import { useState } from 'react'
 import { parseDateTime, type CalendarDateTime } from '@internationalized/date'
 import {
   Button, Calendar, CalendarCell, CalendarGrid, DateInput, DatePicker, DateSegment,
   FieldError, Group, Heading, Label,
 } from 'react-aria-components'
 import Icon from './Icon'
-import { ResponsiveOverlay, useOverlayMode } from './ResponsiveOverlay'
+import { ResponsiveOverlay } from './ResponsiveOverlay'
+import { useNarrowWhileOpen } from './useMediaQuery'
 import fields from './Field.module.css'
 import styles from './DateTimePicker.module.css'
 
@@ -21,11 +23,12 @@ function toValue(text: string): CalendarDateTime | null {
 
 /** 연·월·일·시·분을 칸별로 입력하거나 달력에서 고른다. API에는 지금처럼 YYYY-MM-DDTHH:mm으로 보낸다. */
 export default function DateTimePicker({ label, value, onChange, isRequired }: Props) {
-  const { mobile, onOpenChange } = useOverlayMode()
+  const [open, setOpen] = useState(false)
+  const mobile = useNarrowWhileOpen(open)
   return (
     <DatePicker value={toValue(value)} onChange={(v) => onChange(v ? v.toString().slice(0, 16) : '')}
       granularity="minute" hourCycle={24} isRequired={isRequired} validationBehavior="native"
-      onOpenChange={onOpenChange} className={fields.field}>
+      onOpenChange={setOpen} className={fields.field}>
       <Label className={fields.label}>{label}</Label>
       <Group className={styles.group}>
         <DateInput className={styles.input}>

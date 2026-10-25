@@ -21,7 +21,7 @@ export function useTransactionMutations() {
   })
   const addManual = useMutation({
     mutationFn: (input: ManualTransactionInput) => transactionsApi.addManual(input),
-    onSuccess: () => void refreshLists(),
+    onSuccess: () => refreshLists(),
   })
   return { update, remove, addManual }
 }

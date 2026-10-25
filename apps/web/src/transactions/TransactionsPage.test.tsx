@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { typeDateTime } from '../test/typeDateTime'
 import { server } from '../test/server'
 import { renderPage } from '../test/renderPage'
+import { mockViewport } from '../test/mockViewport'
 import TransactionsPage from './TransactionsPage'
 import type { TransactionView } from './transactionsApi'
 
@@ -35,7 +36,7 @@ describe('TransactionsPage', () => {
     renderPage(<TransactionsPage today={today} />, { groups })
 
     const list = await screen.findByRole('region', { name: '거래 목록' })
-    const rows = await within(list).findAllByRole('button')
+    const rows = (await within(list).findAllByRole('row')).slice(1)
     expect(rows).toHaveLength(3)
     expect(rows[0]).toHaveTextContent('10-05 12:30')
     expect(rows[0]).toHaveTextContent('-₩ 9,000')
@@ -43,6 +44,43 @@ describe('TransactionsPage', () => {
     expect(rows[1]).toHaveTextContent('숨김')
     expect(rows[2]).toHaveTextContent('+₩ 3,000,000')
     expect(document.title).toBe('거래 목록 · Salad Bowl')
+  })
+
+  it('sorts by amount and opens a row with the keyboard', async () => {
+    mineHandler([
+      { ...base, id: 1, description: '김밥', amount: -4000 },
+      { ...base, id: 2, description: '월급', amount: 3000000 },
+      { ...base, id: 3, description: '국밥', amount: -9000 },
+    ])
+    server.use(http.get('*/api/transactions/:id/audits', () => HttpResponse.json([])))
+    const { user } = renderPage(<TransactionsPage today={today} />, { groups })
+    const table = await screen.findByRole('grid', { name: '거래 목록' })
+    expect(within(table).getAllByRole('columnheader').map((h) => h.textContent)).toEqual(['일시', '카테고리', '내용', '결제수단', '금액'])
+
+    await user.click(within(table).getByRole('columnheader', { name: /금액/ }))
+    const rows = within(table).getAllByRole('row').slice(1)
+    expect(rows.map((r) => within(r).getByRole('rowheader').textContent)).toEqual(['국밥', '김밥', '월급'])
+
+    await user.click(rows[0])
+    // 상세 제목으로 옮겨진 포커스를 표로 되돌린 뒤 행 키보드 이동을 확인한다.
+    rows[0].focus()
+    await user.keyboard('{ArrowDown}{Enter}')
+    const detail = screen.getByRole('complementary', { name: '거래 상세' })
+    expect(within(detail).getByRole('heading', { name: '김밥' })).toBeInTheDocument()
+  })
+
+  it('shows cards with description, amount and details on a narrow screen', async () => {
+    mockViewport(true)
+    mineHandler([{ ...base, edited: true }])
+    renderPage(<TransactionsPage today={today} />, { groups })
+
+    const list = await screen.findByRole('grid', { name: '거래 목록' })
+    const card = within(list).getByRole('row', { name: /김밥/ })
+    expect(card).toHaveTextContent('-₩ 4,000')
+    expect(card).toHaveTextContent('10-05 12:30')
+    expect(card).toHaveTextContent('식비 · 점심')
+    expect(card).toHaveTextContent('수정됨')
+    expect(within(list).queryByRole('columnheader')).not.toBeInTheDocument()
   })
 
   it('switches to group transactions with owner names and filters by member', async () => {
@@ -72,7 +110,7 @@ describe('TransactionsPage', () => {
     await user.click(await screen.findByRole('radio', { name: '그룹 거래' }))
     const list = screen.getByRole('region', { name: '거래 목록' })
     expect(await within(list).findByText('택시')).toBeInTheDocument()
-    expect(within(list).getAllByRole('button')[0]).toHaveTextContent('멤버')
+    expect(within(list).getAllByRole('row')[1]).toHaveTextContent('멤버')
 
     await user.click(await screen.findByRole('button', { name: '전체 멤버' }))
     await user.click(await screen.findByRole('option', { name: '멤버' }))
@@ -178,12 +216,71 @@ describe('TransactionsPage', () => {
     server.use(http.get('*/api/transactions/:id/audits', () => HttpResponse.json([])))
     const { user } = renderPage(<TransactionsPage today={today} />, { groups })
 
-    await user.click(await screen.findByRole('button', { name: /김밥/ }))
+    await user.click(await screen.findByRole('row', { name: /김밥/ }))
     const detail = screen.getByRole('complementary', { name: '거래 상세' })
     expect(within(detail).getByRole('heading', { name: '김밥' })).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: '거래 추가' }))
     expect(within(detail).getByRole('heading', { name: '거래 추가 (수동)' })).toBeInTheDocument()
+  })
+
+  it('opens detail in a full-height sheet on a narrow screen', async () => {
+    mockViewport(true)
+    mineHandler([{ ...base }])
+    server.use(http.get('*/api/transactions/:id/audits', () => HttpResponse.json([])))
+    const { user } = renderPage(<TransactionsPage today={today} />, { groups })
+
+    await user.click(await screen.findByRole('row', { name: /김밥/ }))
+    const sheet = screen.getByRole('dialog', { name: '김밥' })
+    expect(within(sheet).getByRole('button', { name: '닫기' })).toBeInTheDocument()
+    expect(within(sheet).getByLabelText('메모')).toBeInTheDocument()
+    expect(screen.queryByRole('complementary')).not.toBeInTheDocument()
+  })
+
+  it('opens the add form in a sheet on a narrow screen', async () => {
+    mockViewport(true)
+    mineHandler([])
+    const { user } = renderPage(<TransactionsPage today={today} />, { groups })
+
+    await user.click(await screen.findByRole('button', { name: '거래 추가' }))
+    expect(within(screen.getByRole('dialog', { name: '거래 추가 (수동)' })).getByLabelText('내용')).toBeInTheDocument()
+  })
+
+  it('moves focus to the list heading after deleting a transaction', async () => {
+    let deleted = false
+    server.use(
+      http.get('*/api/me/transactions', () => HttpResponse.json(deleted ? [] : [{ ...base, source: 'MANUAL' }])),
+      http.delete('*/api/transactions/:id', () => { deleted = true; return new HttpResponse(null, { status: 204 }) }),
+      http.get('*/api/transactions/:id/audits', () => HttpResponse.json([])),
+    )
+    const { user } = renderPage(<TransactionsPage today={today} />, { groups })
+
+    await user.click(await screen.findByRole('row', { name: /김밥/ }))
+    await user.click(screen.getByRole('button', { name: '삭제' }))
+    await user.click(screen.getByRole('button', { name: '삭제 확인' }))
+
+    await waitFor(() => expect(screen.queryByRole('complementary', { name: '거래 상세' })).not.toBeInTheDocument())
+    await waitFor(() => expect(screen.getByRole('heading', { name: '거래 목록', level: 2 })).toHaveFocus())
+  })
+
+  it('closes a group transaction panel when the scope falls back to my transactions', async () => {
+    mineHandler([{ ...base, id: 6, description: '커피' }])
+    server.use(
+      http.get('*/api/groups/10', () => HttpResponse.json({ groupId: 10, name: '우리집', myRole: 'ADMIN', members: [] })),
+      http.get('*/api/groups/10/transactions', () => HttpResponse.json([{ ...base, id: 6, description: '커피' }])),
+      http.get('*/api/transactions/:id/audits', () => HttpResponse.json([])),
+    )
+    const { user, client } = renderPage(<TransactionsPage today={today} />, { groups })
+
+    await user.click(await screen.findByRole('radio', { name: '그룹 거래' }))
+    await user.click(await screen.findByRole('row', { name: /커피/ }))
+    expect(screen.getByRole('complementary', { name: '거래 상세' })).toBeInTheDocument()
+
+    server.use(http.get('*/api/groups', () => HttpResponse.json([])))
+    await client.invalidateQueries({ queryKey: ['groups'], exact: true })
+
+    await waitFor(() => expect(screen.getByRole('radio', { name: '내 거래' })).toBeChecked())
+    expect(screen.queryByRole('complementary', { name: '거래 상세' })).not.toBeInTheDocument()
   })
 
   it('closes the panel when the selected transaction is no longer in the visible list', async () => {
@@ -194,7 +291,7 @@ describe('TransactionsPage', () => {
     )
     const { user } = renderPage(<TransactionsPage today={today} />, { groups })
 
-    await user.click(await screen.findByRole('button', { name: /김밥/ }))
+    await user.click(await screen.findByRole('row', { name: /김밥/ }))
     expect(screen.getByRole('complementary', { name: '거래 상세' })).toBeInTheDocument()
 
     fireEvent.change(screen.getByLabelText('월'), { target: { value: '2026-09' } })
@@ -208,7 +305,7 @@ describe('TransactionsPage', () => {
     server.use(http.get('*/api/transactions/:id/audits', () => HttpResponse.json([])))
     const { user } = renderPage(<TransactionsPage today={today} />, { groups })
 
-    await user.click(await screen.findByRole('button', { name: /김밥/ }))
+    await user.click(await screen.findByRole('row', { name: /김밥/ }))
     const heading = screen.getByRole('heading', { name: '김밥' })
     expect(heading).toHaveFocus()
 

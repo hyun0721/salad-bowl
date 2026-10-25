@@ -1,9 +1,11 @@
+import { useState } from 'react'
 import {
   Button, Label, ListBox, ListBoxItem,
   Select as AriaSelect, SelectValue, type SelectProps,
 } from 'react-aria-components'
 import Icon from './Icon'
-import { ResponsiveOverlay, useOverlayMode } from './ResponsiveOverlay'
+import { ResponsiveOverlay } from './ResponsiveOverlay'
+import { useNarrowWhileOpen } from './useMediaQuery'
 import styles from './Select.module.css'
 
 type Item = { id: string | number; label: string }
@@ -16,7 +18,8 @@ type Props = {
 }
 
 export default function Select({ label, items, selectedKey, onSelectionChange, variant = 'inline' }: Props) {
-  const { mobile, onOpenChange } = useOverlayMode()
+  const [open, setOpen] = useState(false)
+  const mobile = useNarrowWhileOpen(open)
   const list = (
     <ListBox items={items} className={styles.list} aria-label={label}>
       {(item) => (
@@ -30,7 +33,7 @@ export default function Select({ label, items, selectedKey, onSelectionChange, v
   return (
     <AriaSelect selectedKey={selectedKey} onSelectionChange={onSelectionChange} data-variant={variant}
       className={variant === 'field' ? `${styles.select} ${styles.field}` : styles.select}
-      onOpenChange={onOpenChange}>
+      onOpenChange={setOpen}>
       <Label className={styles.label}>{label}</Label>
       <Button className={styles.trigger}>
         <SelectValue className={styles.value} />
