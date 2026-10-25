@@ -1,0 +1,7 @@
+.chart { display: block; width: 100%; max-width: 240px; height: auto; }
+.slice { stroke: var(--surface-000); stroke-width: 2px; stroke-linejoin: round; cursor: pointer; }
+.hatch { stroke: var(--surface-000); stroke-width: 2px; }
+.outline { fill: none; stroke: var(--ink); stroke-width: 2px; stroke-linejoin: round; pointer-events: none; }
+.centerLabel, .centerValue { text-anchor: middle; font-family: var(--font-sans); pointer-events: none; }
+.centerLabel { fill: var(--ink-muted); font-size: 13px; }
+.centerValue { fill: var(--ink); font-size: 18px; font-weight: 700; }
