@@ -140,7 +140,7 @@
   - 좁은 화면: `CardList`. 첫 줄 내용·금액, 둘째 줄 일시·소분류·멤버(거래 화면 카드와 같은 모양).
   - 행을 눌러도 아무 동작이 없다(상세·수정은 거래 화면에서). `onRowAction`은 받되 비워 둔다(`DataTable`의 필수 prop).
 - 상태: 불러오는 중, 실패(`role="alert"` + 다시 시도), 빈 목록.
-- 쿼리 키 `['summary-transactions', groupId, month, category]`. 월을 바꾸면 모달을 닫는다.
+- 쿼리 키 `['summary', groupId, month, 'transactions', category]`(`summary`로 시작해야 추방·공개 전환 때 무효화되고 404를 그룹 이탈로 처리한다). 월을 바꾸면 모달을 닫는다.
 - 닫으면 포커스가 눌렀던 조각(또는 목록 행)으로 돌아온다(RAC가 맡는다. 테스트로 확인).
 
 ## 7. 범위 밖

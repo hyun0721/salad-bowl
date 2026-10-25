@@ -27,7 +27,7 @@ export default function CategoryTransactionsDialog({ groupId, month, category, o
   if (category !== null && lastCategory !== category) setLastCategory(category)
   const displayedCategory = category ?? lastCategory
   const transactions = useQuery({
-    queryKey: ['summary-transactions', groupId, month, displayedCategory],
+    queryKey: ['summary', groupId, month, 'transactions', displayedCategory],
     queryFn: () => dashboardApi.categoryTransactions(groupId, month, displayedCategory!),
     enabled: category !== null,
   })
