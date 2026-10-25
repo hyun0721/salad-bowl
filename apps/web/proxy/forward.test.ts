@@ -8,6 +8,26 @@ type FetchCall = [string, RequestInit]
 afterEach(() => vi.unstubAllGlobals())
 
 describe('forward', () => {
+  it('answers 413 FILE_TOO_LARGE without calling the API when the body is over 1MB', async () => {
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+    const request = new Request('https://salad.pages.dev/api/imports', { method: 'POST', body: new Uint8Array(1024 * 1024 + 1) })
+
+    const response = await forward(request, 'https://api.example.com')
+
+    expect(response.status).toBe(413)
+    expect(await response.json()).toMatchObject({ code: 'FILE_TOO_LARGE' })
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('passes a body of exactly 1MB through', async () => {
+    const fetchMock = vi.fn(async () => new Response('{}', { status: 201 }))
+    vi.stubGlobal('fetch', fetchMock)
+    const request = new Request('https://salad.pages.dev/api/imports', { method: 'POST', body: new Uint8Array(1024 * 1024) })
+
+    expect((await forward(request, 'https://api.example.com')).status).toBe(201)
+  })
+
   it('answers 503 SERVER_UNAVAILABLE when API_ORIGIN is not a URL', async () => {
     const fetchMock = vi.fn()
     vi.stubGlobal('fetch', fetchMock)

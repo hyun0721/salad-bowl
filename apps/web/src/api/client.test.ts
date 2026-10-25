@@ -150,4 +150,18 @@ describe('apiFetch', () => {
     expect(states).toEqual([true, false])
     off()
   }, 10000)
+
+  it('does not report a slow request when trackSlow is false', async () => {
+    const states: boolean[] = []
+    const off = onSlowRequests((slow) => states.push(slow))
+    server.use(http.get('*/api/slow', async () => {
+      await delay(3300)
+      return HttpResponse.json({ ok: true })
+    }))
+
+    await apiFetch('/slow', { auth: false, trackSlow: false })
+
+    expect(states).toEqual([])
+    off()
+  }, 10000)
 })
