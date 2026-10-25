@@ -1,0 +1,55 @@
+import { screen, within } from '@testing-library/react'
+import { http, HttpResponse } from 'msw'
+import { describe, expect, it, vi } from 'vitest'
+import { mockViewport } from '../test/mockViewport'
+import { renderPage } from '../test/renderPage'
+import { server } from '../test/server'
+import CategoryTransactionsDialog from './CategoryTransactionsDialog'
+import type { TransactionView } from '../transactions/transactionsApi'
+
+const tx = (id: number, amount: number): TransactionView => ({
+  id, ownerId: 1, ownerNickname: '나', occurredAt: '2026-10-19T12:30:00',
+  type: 'EXPENSE', categoryMajor: '식비', categoryMinor: '외식', description: `점심 ${id}`,
+  amount, currency: 'KRW', paymentMethod: '카드', memo: null, hidden: false,
+  source: 'IMPORT', edited: false, editable: false,
+})
+
+describe('CategoryTransactionsDialog', () => {
+  it('shows a desktop grid and the refund-adjusted total', async () => {
+    server.use(http.get('*/api/groups/10/summary/transactions', () => HttpResponse.json([tx(1, -10000), tx(2, -20000), tx(3, 3000)])))
+    renderPage(<CategoryTransactionsDialog groupId={10} month="2026-10" category="식비" onClose={() => {}} />)
+    const dialog = await screen.findByRole('dialog', { name: '식비' })
+    expect(await within(dialog).findByText('3건 · 합계 ₩ 27,000')).toBeInTheDocument()
+    expect(within(dialog).getByRole('grid', { name: '거래 목록' })).toBeInTheDocument()
+    expect(within(dialog).getByText('점심 1')).toBeInTheDocument()
+  })
+
+  it('shows a card list on a narrow screen', async () => {
+    mockViewport(true)
+    server.use(http.get('*/api/groups/10/summary/transactions', () => HttpResponse.json([tx(1, -10000)])))
+    renderPage(<CategoryTransactionsDialog groupId={10} month="2026-10" category="식비" onClose={() => {}} />)
+    const dialog = await screen.findByRole('dialog', { name: '식비' })
+    expect(await within(dialog).findByRole('grid', { name: '거래 목록' })).toHaveTextContent('점심 1')
+  })
+
+  it('retries a failed request', async () => {
+    let fail = true
+    server.use(http.get('*/api/groups/10/summary/transactions', () => fail
+      ? HttpResponse.json({ code: 'INTERNAL_ERROR', message: 'x' }, { status: 500 })
+      : HttpResponse.json([tx(1, -10000)])))
+    const { user } = renderPage(<CategoryTransactionsDialog groupId={10} month="2026-10" category="식비" onClose={() => {}} />)
+    expect(await screen.findByRole('alert')).toHaveTextContent('거래를 불러오지 못했습니다.')
+    fail = false
+    await user.click(screen.getByRole('button', { name: '다시 시도' }))
+    expect(await screen.findByText('1건 · 합계 ₩ 10,000')).toBeInTheDocument()
+  })
+
+  it('shows an empty state and calls onClose', async () => {
+    server.use(http.get('*/api/groups/10/summary/transactions', () => HttpResponse.json([])))
+    const onClose = vi.fn()
+    const { user } = renderPage(<CategoryTransactionsDialog groupId={10} month="2026-10" category="식비" onClose={onClose} />)
+    expect(await screen.findByText('거래가 없습니다.')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '닫기' }))
+    expect(onClose).toHaveBeenCalledOnce()
+  })
+})
