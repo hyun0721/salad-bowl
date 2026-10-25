@@ -20,10 +20,11 @@ Plan 08(접근성 마무리와 운영 작은 수정)의 Task별 리뷰, 최종 �
 - 거래 화면 테스트의 dialog 동일성 단언이 동어반복이다(`data-exiting` 확인이 실제 검증이다).
 - 프록시 주석의 `max-request-size`는 multipart 요청에만 적용된다. JSON 요청에는 Spring 한도가 다르다.
 - 수동 추가한 거래가 끝내 목록에 나타나지 않으면(예: 다른 필터) `selectedId`가 남고 `shown`이 `'add'`로 남아, 백그라운드 refetch 때마다 채워진 추가 폼(버튼 비활성) 시트가 다시 열릴 수 있다. 닫거나 월을 바꾸면 풀린다.
-- 프록시가 본문을 `arrayBuffer()`로 다 읽은 뒤 크기를 본다. 아주 큰 본문은 Worker 메모리 한도에 먼저 걸릴 수 있다. `Content-Length`로 먼저 거르는 것을 검토한다(API도 따로 막는다).
+- 프록시 본문 읽기: 반론 리뷰(P1)에 따라 `Content-Length` 사전 검사와 스트리밍 누적 검사로 바꿨다. 읽기 시간 제한은 없다(Cloudflare 요청 시간 제한에 맡긴다). 청크가 `Uint8Array`라고 가정한다.
 
 ## 남은 Plan 06 범위
 [Plan 05 계획](2026-10-20-plan-05-deploy.md)이 정한 "Plan 06 운영·보안 보강" 중 이번에 하지 않은 것이다. 영역별로 계획을 나눈다.
 - **인증**: refresh 토큰 서버 측 폐기(`token_version`), 진행 중인 refresh가 로그아웃을 되돌리는 클라이언트 경합, 로그인 횟수 제한.
+  - **출처 검사(Plan 08 반론 리뷰 P2, 이번 PR 전부터 있던 문제)**: 프록시(`apps/web/proxy/forward.ts`)가 모든 `Origin`을 지워서 API의 출처 검사가 효과가 없다. 예를 들어 다른 사이트의 폼이 `/api/auth/logout`을 POST하면 쿠키 없이도 삭제용 `Set-Cookie`가 돌아온다(강제 로그아웃 CSRF, 피해는 로그아웃까지). 프록시에서 상태를 바꾸는 요청의 `Origin`이 허용 출처인지 먼저 확인하고 지운다. 출처가 없는 요청을 어떻게 다룰지와, `SameSite=None` 구성일 때의 CSRF 방어도 함께 정한다.
 - **데이터**: 낙관적 락(`@Version`), `lock_timeout`, 무결성 오류 매핑, import 일괄 삽입(IDENTITY라 JDBC batch 불가), 동시 import 처리, 동시 업로드 대기열·진행 표시.
 - **초대·관리자**: 초대 정리·발급 제한, 관리자 위임(backlog의 "그룹 관리자 위임"과 같다), 프레임워크 4xx `detail` 노출 정책.
