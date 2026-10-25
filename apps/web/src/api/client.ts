@@ -38,7 +38,7 @@ export function apiUrl(path: string): string {
 
 const FAILED_MESSAGE = '요청을 처리하지 못했습니다.'
 
-type ApiInit = RequestInit & { json?: unknown; auth?: boolean }
+type ApiInit = RequestInit & { json?: unknown; auth?: boolean; trackSlow?: boolean }
 
 /**
  * refresh 쿠키로 새 access 토큰을 받는다. 동시에 불려도 요청은 하나만 보낸다.
@@ -71,12 +71,12 @@ export function refreshAccessToken(): Promise<string | null> {
 }
 
 export async function apiFetch<T>(path: string, init: ApiInit = {}): Promise<T> {
-  const { json, auth = true, ...rest } = init
+  const { json, auth = true, trackSlow = true, ...rest } = init
   const send = () => {
     const headers = new Headers(rest.headers)
     if (json !== undefined) headers.set('Content-Type', 'application/json')
     if (auth && accessToken) headers.set('Authorization', `Bearer ${accessToken}`)
-    return rawFetch(path, { ...rest, headers, body: json !== undefined ? JSON.stringify(json) : rest.body })
+    return rawFetch(path, { ...rest, headers, body: json !== undefined ? JSON.stringify(json) : rest.body }, trackSlow)
   }
 
   let res = await send()
@@ -91,19 +91,19 @@ export async function apiFetch<T>(path: string, init: ApiInit = {}): Promise<T> 
   return readJson<T>(res)
 }
 
-/** 요청 하나. 3초가 지나도 끝나지 않으면 느린 요청으로 세고, 끝나면 뺀다. */
-async function rawFetch(path: string, init: RequestInit): Promise<Response> {
+/** 업로드처럼 원래 오래 걸리고 자체 진행 표시가 있는 요청은 "서버 깨우는 중"으로 세지 않는다. */
+async function rawFetch(path: string, init: RequestInit, trackSlow = true): Promise<Response> {
   let slow = false
-  const timer = setTimeout(() => {
+  const timer = trackSlow ? setTimeout(() => {
     slow = true
     markSlow(1)
-  }, SLOW_MS)
+  }, SLOW_MS) : undefined
   try {
     return await fetch(apiUrl(path), { ...init, credentials: 'include' })
   } catch {
     throw new ApiError(0, 'NETWORK_ERROR', '서버에 연결하지 못했습니다.')
   } finally {
-    clearTimeout(timer)
+    if (timer !== undefined) clearTimeout(timer)
     if (slow) markSlow(-1)
   }
 }

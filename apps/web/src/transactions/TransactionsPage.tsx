@@ -79,12 +79,13 @@ export default function TransactionsPage({ today }: Props) {
 
   // 선택한 거래는 현재 목록에서 찾는다. 월·멤버·그룹이 바뀌어 목록에 없으면 패널을 보이지 않는다.
   const selected = list.data?.find((tx) => tx.id === selectedId) ?? null
-  const open = adding || selected !== null
-  const narrow = useNarrowWhileOpen(open)
   // 닫힘 애니메이션 동안 마지막 내용을 유지한다.
   const current = adding ? 'add' : selected
   const [shown, setShown] = useState<'add' | typeof selected>(current)
   if (current !== null && current !== shown) setShown(current)
+  // 추가한 거래의 달을 다시 불러오는 동안에도 시트를 유지한다.
+  const open = adding || selected !== null || (shown === 'add' && selectedId !== null && list.isFetching)
+  const narrow = useNarrowWhileOpen(open)
 
   const listHeadingRef = useRef<HTMLHeadingElement>(null)
   const focusListAfterDelete = useRef(false)
@@ -120,6 +121,12 @@ export default function TransactionsPage({ today }: Props) {
     setSelectedId(null)
   }
 
+  function changeMonth(next: string) {
+    setMonth(next)
+    // 다른 달로 이동하면 돌아왔을 때 이전 거래가 다시 열리지 않게 한다.
+    setSelectedId(null)
+  }
+
   return (
     <>
       <div className={ui.pageHeader}>
@@ -130,7 +137,7 @@ export default function TransactionsPage({ today }: Props) {
       <div className={ui.row}>
         <SegmentedControl label="범위" items={[{ id: 'mine', label: '내 거래' }, { id: 'group', label: '그룹 거래', isDisabled: selectedGroupId === null }]}
           selectedKey={inGroup ? 'group' : 'mine'} onSelectionChange={(id) => changeScope(id as Scope)} />
-        <MonthPicker month={month} onChange={setMonth} />
+        <MonthPicker month={month} onChange={changeMonth} />
         {inGroup && detail.data && (
           <Select label="멤버"
             items={[{ id: 'all', label: '전체' }, ...detail.data.members.map((m) => ({ id: m.userId, label: m.nickname }))]}
@@ -166,7 +173,7 @@ export default function TransactionsPage({ today }: Props) {
           )}
         </section>
         {!narrow && open && (
-          <aside aria-label={adding ? '거래 추가' : '거래 상세'} className={`${ui.card} ${styles.panel}`}>
+          <aside aria-label={shown === 'add' ? '거래 추가' : '거래 상세'} className={`${ui.card} ${styles.panel}`}>
             <PanelHeader key={`header-${shown === 'add' ? 'add' : shown?.id}`} title={title} onClose={closePanel} />
             {body}
           </aside>

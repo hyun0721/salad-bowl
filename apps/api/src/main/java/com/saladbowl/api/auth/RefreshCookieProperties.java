@@ -18,7 +18,7 @@ public record RefreshCookieProperties(String path, String sameSite, boolean secu
         if (path == null || !path.startsWith("/")) {
             throw new IllegalArgumentException("app.auth.refresh-cookie.path must start with /");
         }
-        if (!SAME_SITE_VALUES.contains(sameSite)) {
+        if (sameSite == null || !SAME_SITE_VALUES.contains(sameSite)) {
             throw new IllegalArgumentException("app.auth.refresh-cookie.same-site must be Strict, Lax or None");
         }
         if ("None".equals(sameSite) && !secure) {

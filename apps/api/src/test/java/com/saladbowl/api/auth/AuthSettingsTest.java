@@ -31,6 +31,13 @@ class AuthSettingsTest {
     }
 
     @Test
+    void sameSiteIsRequired() {
+        assertThatThrownBy(() -> new RefreshCookieProperties("/api/auth", null, true))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("same-site");
+    }
+
+    @Test
     void sameSiteMustBeAKnownValue() {
         assertThatThrownBy(() -> new RefreshCookieProperties("/api/auth", "lax", true))
                 .isInstanceOf(IllegalArgumentException.class)

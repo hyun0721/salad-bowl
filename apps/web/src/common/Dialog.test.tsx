@@ -75,6 +75,36 @@ describe('Dialog', () => {
   })
 })
 
+describe('DialogFrame sheet outside press', () => {
+  it('keeps a narrow-screen sheet open on outside press unless closeOnOutsideClick', async () => {
+    mockViewport(true)
+    const user = userEvent.setup()
+    const onOpenChange = vi.fn()
+    render(
+      <>
+        <button type="button">바깥</button>
+        <DialogFrame isOpen onOpenChange={onOpenChange} title="그룹 만들기">{() => <p>내용</p>}</DialogFrame>
+      </>,
+    )
+    expect(screen.getByRole('dialog', { name: '그룹 만들기' })).toBeInTheDocument()
+
+    await user.click(document.body)
+
+    expect(onOpenChange).not.toHaveBeenCalled()
+  })
+
+  it('closes a narrow-screen sheet on outside press when closeOnOutsideClick', async () => {
+    mockViewport(true)
+    const user = userEvent.setup()
+    const onOpenChange = vi.fn()
+    render(<DialogFrame isOpen onOpenChange={onOpenChange} title="거래 삭제" closeOnOutsideClick>{() => <p>내용</p>}</DialogFrame>)
+
+    await user.click(document.body)
+
+    expect(onOpenChange).toHaveBeenCalledWith(false)
+  })
+})
+
 it('keeps the same modal and its input when the width changes while open', async () => {
   const viewport = mockViewport(false)
   const user = userEvent.setup()

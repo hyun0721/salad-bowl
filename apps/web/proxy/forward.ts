@@ -1,3 +1,6 @@
+// API multipart 한도(max-request-size 1MB)와 같은 값을 모든 요청의 상한으로 쓴다.
+const MAX_BODY_BYTES = 1024 * 1024
+
 /**
  * Cloudflare Pages Functions에서 `/api/*` 요청을 API 서버로 넘긴다.
  * 브라우저는 Pages와 같은 출처만 부르므로 CORS가 없고, refresh 쿠키(Path=/api/auth)도 그대로 오간다.
@@ -19,12 +22,51 @@ export async function forward(request: Request, apiOrigin: string): Promise<Resp
   // 브라우저는 같은 출처 POST에도 Origin을 보낸다. 그대로 넘기면 API 서버가 교차 출처 요청으로 보고 CORS 403을 낸다.
   headers.delete('origin')
   const hasBody = request.method !== 'GET' && request.method !== 'HEAD'
+  const tooLarge = () => Response.json({
+    code: incoming.pathname === '/api/imports' ? 'FILE_TOO_LARGE' : 'REQUEST_TOO_LARGE',
+    message: 'request body must be 1MB or smaller',
+  }, { status: 413 })
+
+  if (hasBody && Number(request.headers.get('content-length')) > MAX_BODY_BYTES) {
+    return tooLarge()
+  }
+
+  let body: ArrayBuffer | undefined
+  if (hasBody) {
+    const chunks: Uint8Array[] = []
+    let size = 0
+    // shortcut: 읽기 시간 제한 없음, 끝나지 않는 스트림이 문제가 되면 추가
+    try {
+      const reader = request.body?.getReader()
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          size += value.byteLength
+          if (size > MAX_BODY_BYTES) {
+            void reader.cancel().catch(() => {})
+            return tooLarge()
+          }
+          chunks.push(value)
+        }
+      }
+      const bytes = new Uint8Array(size)
+      let offset = 0
+      for (const chunk of chunks) {
+        bytes.set(chunk, offset)
+        offset += chunk.byteLength
+      }
+      body = bytes.buffer
+    } catch {
+      return Response.json({ code: 'BAD_REQUEST', message: 'request body could not be read' }, { status: 400 })
+    }
+  }
 
   try {
     return await fetch(target.toString(), {
       method: request.method,
       headers,
-      body: hasBody ? await request.arrayBuffer() : undefined,
+      body,
       redirect: 'manual',
     })
   } catch {
