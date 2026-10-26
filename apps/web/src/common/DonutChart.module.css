@@ -1,13 +1,1 @@
-.viewport { max-width: 100%; min-width: 0; }
-.chart { display: block; width: 100%; height: auto; }
-.slice { stroke: var(--surface-000); stroke-width: 2px; stroke-linejoin: round; cursor: pointer; }
-.hatch { stroke: var(--surface-000); stroke-width: 2px; }
-.outline { fill: none; stroke: var(--ink); stroke-width: 2px; stroke-linejoin: round; pointer-events: none; }
-.centerLabel, .centerValue { text-anchor: middle; font-family: var(--font-sans); pointer-events: none; }
-.centerLabel { fill: var(--ink-muted); font-size: var(--center-label-size); }
-.centerValue { fill: var(--ink); font-size: var(--center-value-size); font-weight: 700; }
-.annotation { cursor: pointer; }
-.leader { fill: none; stroke: var(--ink-muted); stroke-width: 1px; pointer-events: stroke; }
-.label { fill: var(--ink); font-family: var(--font-sans); font-size: var(--label-size); }
-.detail { fill: var(--ink-muted); }
-.annotation[data-active] .label { font-weight: 700; }
+.chart { width: 100%; min-width: 0; }

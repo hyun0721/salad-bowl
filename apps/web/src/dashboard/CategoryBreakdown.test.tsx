@@ -1,11 +1,15 @@
 import { fireEvent, screen, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { mockViewport } from '../test/mockViewport'
 import { renderPage } from '../test/renderPage'
 import { server } from '../test/server'
 import CategoryBreakdown from './CategoryBreakdown'
 import type { MonthlySummary } from './dashboardApi'
+
+const chart = vi.hoisted(() => ({ setOption: vi.fn(), on: vi.fn(), off: vi.fn(), resize: vi.fn(), dispose: vi.fn(), dispatchAction: vi.fn() }))
+vi.mock('../common/echarts', () => ({ echarts: { init: vi.fn(() => chart) } }))
+beforeEach(() => vi.clearAllMocks())
 
 const summary: MonthlySummary = {
   month: '2026-10', income: 0, expense: 250001,
@@ -27,8 +31,7 @@ describe('CategoryBreakdown', () => {
     expect(within(region).getByRole('button', { name: '기타 1% 미만 ₩ 1' })).toBeInTheDocument()
     expect(within(region).queryByText('환불')).not.toBeInTheDocument()
     expect(within(region).queryByText('취소')).not.toBeInTheDocument()
-    expect(region.querySelector('svg')).toHaveAttribute('aria-hidden', 'true')
-    expect(Array.from(region.querySelectorAll('text.label')).map((label) => label.textContent)).toEqual(['식비 80%', '교통 20%', '기타 1% 미만'])
+    expect(region.querySelector('div[aria-hidden="true"]')).toBeInTheDocument()
     expect(within(region).getByRole('list')).toBeInTheDocument()
     expect(region.querySelector('[aria-hidden="true"][style*="--swatch-color"]')).not.toHaveClass('undefined')
   })
@@ -55,18 +58,22 @@ describe('CategoryBreakdown', () => {
   it('highlights the matching chart slice on row hover', async () => {
     renderPage(<CategoryBreakdown groupId={10} month="2026-10" summary={summary} />)
     const row = await screen.findByRole('button', { name: '식비 80% ₩ 200,000' })
-    const slice = screen.getByRole('region', { name: '카테고리별 지출' }).querySelector('svg path')!
     fireEvent.pointerOver(row)
-    expect(slice).toHaveAttribute('data-active', 'true')
-    expect(screen.getByRole('region', { name: '카테고리별 지출' }).querySelectorAll('svg path[data-active="true"]')).toHaveLength(1)
+    expect(chart.dispatchAction).toHaveBeenLastCalledWith({ type: 'highlight', seriesIndex: 0, name: '식비' })
+    fireEvent.pointerOut(row)
+    expect(chart.dispatchAction).toHaveBeenLastCalledWith({ type: 'downplay', seriesIndex: 0, name: '식비' })
+    fireEvent.focus(row)
+    expect(chart.dispatchAction).toHaveBeenLastCalledWith({ type: 'highlight', seriesIndex: 0, name: '식비' })
+    fireEvent.blur(row)
+    expect(chart.dispatchAction).toHaveBeenLastCalledWith({ type: 'downplay', seriesIndex: 0, name: '식비' })
   })
 })
 
 
-it('uses compact chart geometry on narrow screens', async () => {
+it('uses compact chart height and keeps the full accessible name on narrow screens', async () => {
   mockViewport(true)
   renderPage(<CategoryBreakdown groupId={10} month="2026-10" summary={{ ...summary, byCategory: [{ category: '아주긴카테고리', expense: 1 }] }} />)
   const region = await screen.findByRole('region', { name: '카테고리별 지출' })
-  expect(region.querySelector('text.label')).toHaveTextContent('아주긴카… 100%')
+  expect(region.querySelector('div[aria-hidden="true"]')).toHaveStyle({ height: '240px' })
   expect(within(region).getByRole('button', { name: '아주긴카테고리 100% ₩ 1' })).toBeInTheDocument()
 })
