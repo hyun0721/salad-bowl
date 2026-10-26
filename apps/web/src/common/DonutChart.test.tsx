@@ -1,6 +1,6 @@
 import { render } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import DonutChart, { buildDonutOption, donutHeight, donutStartAngle, sliceStyle, type DonutSlice } from './DonutChart'
+import DonutChart, { buildDonutOption, centerValueSize, donutHeight, donutStartAngle, sliceStyle, type DonutSlice } from './DonutChart'
 import type { ChartTheme } from './chartTheme'
 
 const chart = vi.hoisted(() => ({ setOption: vi.fn(), on: vi.fn(), off: vi.fn(), resize: vi.fn(), dispose: vi.fn(), isDisposed: vi.fn(() => false), dispatchAction: vi.fn() }))
@@ -28,6 +28,15 @@ describe('donutStartAngle', () => {
   })
 })
 
+describe('centerValueSize', () => {
+  it('keeps the base size for short amounts and shrinks long ones to fit the hole', () => {
+    expect(centerValueSize('₩ 950,000', 12, false)).toBe(18)
+    expect(centerValueSize('₩ 21,480,000', 12, false)).toBeLessThan(18)
+    expect(centerValueSize('₩ 2,500,000', 3, true)).toBeLessThan(12)
+    expect(centerValueSize('₩ 123,456,789,000', 1, true)).toBe(9)
+  })
+})
+
 describe('buildDonutOption', () => {
   it('maps ids, values and two-line display labels with theme tokens', () => {
     const option = buildDonutOption(slices, opts)
@@ -43,7 +52,7 @@ describe('buildDonutOption', () => {
     expect(option.graphic[0]).toMatchObject({ type: 'group', left: 'center', top: 'middle' })
     const [label, value] = option.graphic[0].children
     expect(label.style).toMatchObject({ text: opts.centerLabel, fill: theme.inkMuted, fontSize: 13 })
-    expect(value.style).toMatchObject({ text: opts.centerValue, fill: theme.ink, fontSize: 18, fontWeight: 'bold' })
+    expect(value.style).toMatchObject({ text: opts.centerValue, fill: theme.ink, fontSize: centerValueSize(opts.centerValue, slices.length, false), fontWeight: 'bold' })
     expect(label.y + label.style.fontSize / 2).toBeLessThan(value.y - value.style.fontSize / 2)
     expect(option.series[0].labelLine).not.toHaveProperty('minTurnAngle')
   })
@@ -53,7 +62,7 @@ describe('buildDonutOption', () => {
     expect(option.series[0].radius).toEqual(['30%', '46%'])
     expect(option.series[0].label.rich.name).toMatchObject({ width: 56, fontSize: 12 })
     expect(option.graphic[0].children[0].style.fontSize).toBe(10)
-    expect(option.graphic[0].children[1].style.fontSize).toBe(12)
+    expect(option.graphic[0].children[1].style.fontSize).toBe(centerValueSize(opts.centerValue, 1, true))
   })
   it('reuses eight colors with diagonal decals', () => {
     const data = buildDonutOption(Array.from({ length: 17 }, (_, i) => ({ ...slices[0], id: `${i}` })), opts).series[0].data

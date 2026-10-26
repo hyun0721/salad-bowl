@@ -53,6 +53,14 @@ export function donutStartAngle(slices: DonutSlice[]): number {
   return (180 + mid) % 360
 }
 
+/** 가운데 금액이 도넛 구멍(높이 기준 안쪽 지름)을 넘지 않게 글자 크기를 줄인다. 숫자·기호 폭은 글자 크기의 약 0.6배로 어림한다. */
+// oxlint-disable-next-line react/only-export-components
+export function centerValueSize(text: string, count: number, compact: boolean): number {
+  const inner = (compact ? 0.3 : 0.34) * donutHeight(count, compact)
+  const fit = Math.floor((inner * 0.9) / (Array.from(text).length * 0.6))
+  return Math.max(9, Math.min(compact ? 12 : 18, fit))
+}
+
 // oxlint-disable-next-line react/only-export-components
 export function buildDonutOption(slices: DonutSlice[], { centerLabel, centerValue, compact, theme }: {
   centerLabel: string; centerValue: string; compact: boolean; theme: ChartTheme
@@ -73,7 +81,7 @@ export function buildDonutOption(slices: DonutSlice[], { centerLabel, centerValu
         { type: 'text', y: -10,
           style: { text: centerLabel, align: 'center', verticalAlign: 'middle', fill: theme.inkMuted, fontFamily: theme.font, fontSize: compact ? 10 : 13 } },
         { type: 'text', y: 12,
-          style: { text: centerValue, align: 'center', verticalAlign: 'middle', fill: theme.ink, fontFamily: theme.font, fontSize: compact ? 12 : 18, fontWeight: 'bold' } },
+          style: { text: centerValue, align: 'center', verticalAlign: 'middle', fill: theme.ink, fontFamily: theme.font, fontSize: centerValueSize(centerValue, slices.length, compact), fontWeight: 'bold' } },
       ],
     }],
     series: [{
