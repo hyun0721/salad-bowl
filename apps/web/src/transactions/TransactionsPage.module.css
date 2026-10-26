@@ -1,5 +1,5 @@
 .search { flex: 1 1 200px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-.layout { display: flex; flex-wrap: wrap; gap: var(--space-6); align-items: flex-start; }
+.layout { display: flex; flex-wrap: wrap; gap: var(--space-4); align-items: flex-start; }
 .listCard { flex: 999 1 560px; padding: 0; overflow-x: auto; gap: 0; }
 .listCard > :is(p, div[class]:not([role="grid"])) { margin: var(--space-4); }
 /* 표가 좁아지면 열이 뭉개지므로 넓은 화면 카드 안에서 가로로 스크롤한다. */

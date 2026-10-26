@@ -21,7 +21,7 @@ export default function CategoryBreakdown({ groupId, month, summary }: Props) {
   }
 
   return (
-    <section aria-labelledby="category-title" className={ui.card}>
+    <section aria-labelledby="category-title" className={`${ui.card} ${styles.card}`}>
       <h2 id="category-title">카테고리별 지출</h2>
       {items.length === 0 ? <p className={ui.status}>지출이 없습니다.</p> : (
         <div className={styles.content}>
