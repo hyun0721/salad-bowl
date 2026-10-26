@@ -1,6 +1,7 @@
 package com.saladbowl.api.transaction;
 
 import com.saladbowl.api.auth.CurrentUser;
+import com.saladbowl.api.transaction.SummaryDtos.CategoryTrend;
 import com.saladbowl.api.transaction.SummaryDtos.MonthlySummary;
 import com.saladbowl.api.transaction.TransactionDtos.TransactionView;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -24,6 +25,12 @@ public class SummaryController {
     public MonthlySummary monthly(@CurrentUser Long userId, @PathVariable long groupId,
                                   @RequestParam YearMonth month) {
         return summaryService.monthly(groupId, userId, month);
+    }
+
+    @GetMapping("/groups/{groupId}/summary/trend")
+    public CategoryTrend trend(@CurrentUser Long userId, @PathVariable long groupId,
+                               @RequestParam YearMonth from, @RequestParam YearMonth to) {
+        return summaryService.trend(groupId, userId, from, to);
     }
 
     @GetMapping("/groups/{groupId}/summary/transactions")

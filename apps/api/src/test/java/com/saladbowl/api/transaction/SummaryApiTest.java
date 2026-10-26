@@ -217,4 +217,110 @@ class SummaryApiTest extends IntegrationTest {
                         .header("Authorization", outsider.bearer()))
                 .andExpect(status().isNotFound());
     }
+
+    private org.springframework.test.web.servlet.ResultActions trend(AuthedUser who, String from, String to)
+            throws Exception {
+        var req = get("/groups/" + groupId + "/summary/trend").header("Authorization", who.bearer());
+        if (from != null) {
+            req.param("from", from);
+        }
+        if (to != null) {
+            req.param("to", to);
+        }
+        return mvc.perform(req);
+    }
+
+    @Test
+    void trendMatchesMonthlySummaryPerMonthAndFillsEmptyMonthsWithZero() throws Exception {
+        save(admin, TransactionType.EXPENSE, "2026-08-01T12:00:00", "식비", -10_000);
+        save(member, TransactionType.EXPENSE, "2026-08-31T23:59:00", "식비", -20_000);
+        save(member, TransactionType.EXPENSE, "2026-08-04T12:00:00", "식비", 3_000);
+        save(member, TransactionType.EXPENSE, "2026-10-01T00:00:00", "식비", -7_000);
+        save(member, TransactionType.EXPENSE, "2026-10-02T12:00:00", "교통", -50_000);
+        save(member, TransactionType.EXPENSE, "2026-10-03T12:00:00", "", -1_000);
+        LedgerTransaction lunch = save(member, TransactionType.EXPENSE, "2026-08-05T12:00:00", "식비", -4_000);
+        lunch.setCategoryMajorOverride("외식");
+        transactions.save(lunch);
+
+        trend(admin, "2026-08", "2026-10").andExpect(status().isOk())
+                .andExpect(jsonPath("$.months", hasSize(3)))
+                .andExpect(jsonPath("$.months[0]").value("2026-08"))
+                .andExpect(jsonPath("$.months[2]").value("2026-10"))
+                .andExpect(jsonPath("$.categories", hasSize(4)))
+                .andExpect(jsonPath("$.categories[0].category").value("교통"))
+                .andExpect(jsonPath("$.categories[0].expenses[0]").value(0.0))
+                .andExpect(jsonPath("$.categories[0].expenses[1]").value(0.0))
+                .andExpect(jsonPath("$.categories[0].expenses[2]").value(50_000.0))
+                .andExpect(jsonPath("$.categories[0].total").value(50_000.0))
+                .andExpect(jsonPath("$.categories[1].category").value("식비"))
+                .andExpect(jsonPath("$.categories[1].expenses[0]").value(27_000.0))
+                .andExpect(jsonPath("$.categories[1].expenses[1]").value(0.0))
+                .andExpect(jsonPath("$.categories[1].expenses[2]").value(7_000.0))
+                .andExpect(jsonPath("$.categories[1].total").value(34_000.0))
+                .andExpect(jsonPath("$.categories[2].category").value("외식"))
+                .andExpect(jsonPath("$.categories[2].total").value(4_000.0))
+                .andExpect(jsonPath("$.categories[3].category").value("미분류"))
+                .andExpect(jsonPath("$.categories[3].total").value(1_000.0));
+
+        // 월별 값은 같은 달 /summary 의 byCategory 와 같아야 한다.
+        mvc.perform(get("/groups/" + groupId + "/summary").param("month", "2026-08")
+                        .header("Authorization", admin.bearer()))
+                .andExpect(jsonPath("$.byCategory[?(@.category=='식비')].expense").value(27_000.0))
+                .andExpect(jsonPath("$.byCategory[?(@.category=='외식')].expense").value(4_000.0));
+    }
+
+    @Test
+    void trendExcludesTransferHiddenForeignCurrencyAndSharingOff() throws Exception {
+        save(admin, TransactionType.EXPENSE, "2026-09-01T12:00:00", "식비", -10_000);
+        save(member, TransactionType.TRANSFER, "2026-09-05T12:00:00", "식비", -500_000);
+        LedgerTransaction secret = save(admin, TransactionType.EXPENSE, "2026-09-06T12:00:00", "식비", -7_000);
+        secret.setHidden(true);
+        transactions.save(secret);
+        transactions.save(LedgerTransaction.manual(admin.id(), new TransactionData(
+                java.time.LocalDateTime.parse("2026-09-02T12:00:00"), TransactionType.EXPENSE, "식비", "", "호텔",
+                new BigDecimal("-120.00"), "USD", "카드", null)));
+        save(member, TransactionType.EXPENSE, "2026-09-07T12:00:00", "쇼핑", -20_000);
+        mvc.perform(put("/groups/" + groupId + "/share").header("Authorization", member.bearer())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"enabled":false}
+                                """))
+                .andExpect(status().isOk());
+
+        trend(admin, "2026-09", "2026-09").andExpect(status().isOk())
+                .andExpect(jsonPath("$.months", hasSize(1)))
+                .andExpect(jsonPath("$.categories", hasSize(1)))
+                .andExpect(jsonPath("$.categories[0].category").value("식비"))
+                .andExpect(jsonPath("$.categories[0].total").value(10_000.0));
+    }
+
+    @Test
+    void trendSortsByTotalDescendingThenName() throws Exception {
+        save(admin, TransactionType.EXPENSE, "2026-09-01T12:00:00", "나", -5_000);
+        save(admin, TransactionType.EXPENSE, "2026-09-01T12:00:00", "가", -5_000);
+        save(admin, TransactionType.EXPENSE, "2026-09-01T12:00:00", "다", -9_000);
+
+        trend(admin, "2026-09", "2026-09").andExpect(status().isOk())
+                .andExpect(jsonPath("$.categories[0].category").value("다"))
+                .andExpect(jsonPath("$.categories[1].category").value("가"))
+                .andExpect(jsonPath("$.categories[2].category").value("나"));
+    }
+
+    @Test
+    void trendAcceptsTwelveMonthsButRejectsInvalidRanges() throws Exception {
+        trend(admin, "2025-11", "2026-10").andExpect(status().isOk())
+                .andExpect(jsonPath("$.months", hasSize(12)));
+        trend(admin, "2026-10", "2026-09").andExpect(status().isBadRequest());
+        trend(admin, "2025-10", "2026-10").andExpect(status().isBadRequest());
+        trend(admin, null, "2026-10").andExpect(status().isBadRequest());
+        trend(admin, "2026-10", null).andExpect(status().isBadRequest());
+        trend(admin, "2026-13", "2026-10").andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void trendRejectsOutsider() throws Exception {
+        AuthedUser outsider = TestAuth.signupAndLogin(mvc, "out@test.com", "외부인");
+
+        trend(outsider, "2026-09", "2026-10").andExpect(status().isNotFound());
+    }
 }
