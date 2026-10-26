@@ -262,11 +262,29 @@ class SummaryApiTest extends IntegrationTest {
                 .andExpect(jsonPath("$.categories[3].category").value("미분류"))
                 .andExpect(jsonPath("$.categories[3].total").value(1_000.0));
 
-        // 월별 값은 같은 달 /summary 의 byCategory 와 같아야 한다.
-        mvc.perform(get("/groups/" + groupId + "/summary").param("month", "2026-08")
-                        .header("Authorization", admin.bearer()))
-                .andExpect(jsonPath("$.byCategory[?(@.category=='식비')].expense").value(27_000.0))
-                .andExpect(jsonPath("$.byCategory[?(@.category=='외식')].expense").value(4_000.0));
+        // 모든 월·모든 대분류가 같은 달 /summary 의 byCategory 와 같아야 한다.
+        String body = trend(admin, "2026-08", "2026-10").andReturn().getResponse().getContentAsString();
+        var root = new tools.jackson.databind.ObjectMapper().readTree(body);
+        String[] months = {"2026-08", "2026-09", "2026-10"};
+        for (var cat : root.get("categories")) {
+            org.junit.jupiter.api.Assertions.assertEquals(3, cat.get("expenses").size());
+        }
+        for (int i = 0; i < months.length; i++) {
+            var summary = new tools.jackson.databind.ObjectMapper().readTree(
+                    mvc.perform(get("/groups/" + groupId + "/summary").param("month", months[i])
+                                    .header("Authorization", admin.bearer()))
+                            .andReturn().getResponse().getContentAsString());
+            java.util.Map<String, BigDecimal> expected = new java.util.HashMap<>();
+            for (var c : summary.get("byCategory")) {
+                expected.put(c.get("category").asText(), c.get("expense").decimalValue());
+            }
+            for (var cat : root.get("categories")) {
+                BigDecimal want = expected.getOrDefault(cat.get("category").asText(), BigDecimal.ZERO);
+                org.junit.jupiter.api.Assertions.assertEquals(0,
+                        want.compareTo(cat.get("expenses").get(i).decimalValue()),
+                        cat.get("category").asText() + " " + months[i]);
+            }
+        }
     }
 
     @Test
@@ -315,6 +333,12 @@ class SummaryApiTest extends IntegrationTest {
         trend(admin, null, "2026-10").andExpect(status().isBadRequest());
         trend(admin, "2026-10", null).andExpect(status().isBadRequest());
         trend(admin, "2026-13", "2026-10").andExpect(status().isBadRequest());
+        trend(admin, "9999-01", "9999-12").andExpect(status().isOk());
+        trend(admin, "9999-12", "9999-12").andExpect(status().isOk());
+        trend(admin, "0000-01", "0000-02").andExpect(status().isBadRequest());
+        trend(admin, "9999-12", "+10000-01").andExpect(status().isBadRequest());
+        trend(admin, "-0001-01", "9999-12").andExpect(status().isBadRequest());
+        trend(admin, "+999999999-01", "+999999999-12").andExpect(status().isBadRequest());
     }
 
     @Test

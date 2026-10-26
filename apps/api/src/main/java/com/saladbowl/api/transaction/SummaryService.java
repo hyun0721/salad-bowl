@@ -108,7 +108,10 @@ public class SummaryService {
     @Transactional(readOnly = true)
     public CategoryTrend trend(long groupId, long userId, YearMonth from, YearMonth to) {
         access.requireMember(groupId, userId);
-        if (from.isAfter(to) || from.plusMonths(MAX_TREND_MONTHS).compareTo(to) <= 0) {
+        // 연도 범위를 먼저 확인하고, 12개월 검사는 넘침 없는 월 차이로 한다(plusMonths는 최댓값 근처에서 예외).
+        TransactionService.monthRange(from);
+        TransactionService.monthRange(to);
+        if (from.isAfter(to) || from.until(to, java.time.temporal.ChronoUnit.MONTHS) >= MAX_TREND_MONTHS) {
             throw new ApiException(ErrorCode.VALIDATION_FAILED,
                     "from must not be after to, and the range is at most " + MAX_TREND_MONTHS + " months");
         }
