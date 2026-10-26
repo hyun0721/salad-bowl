@@ -26,8 +26,8 @@ export function sliceStyle(index: number): { slot: number; pattern: 'solid' | 'd
 
 // oxlint-disable-next-line react/only-export-components
 export function donutHeight(count: number, compact: boolean): number {
-  const base = compact ? 240 : 280
-  return Math.min(base + Math.max(0, count - 6) * 22, 460)
+  const base = compact ? 220 : 260
+  return Math.min(base + Math.max(0, count - 6) * 12, 380)
 }
 
 function richText(text: string): string {
@@ -39,6 +39,20 @@ function escapeHtml(text: string): string {
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;')
 }
 
+/**
+ * 작은 조각(5% 미만)이 4개 이상 몰리면 그 묶음의 가운데가 9시 방향에 오도록 돌린다.
+ * 12시에 몰리면 라벨이 위쪽 좁은 곳에 쌓여 지시선이 한데 모이기 때문이다.
+ */
+// oxlint-disable-next-line react/only-export-components
+export function donutStartAngle(slices: DonutSlice[]): number {
+  const total = slices.reduce((sum, s) => sum + s.value, 0)
+  const first = slices.findIndex((s) => s.value / total < 0.05)
+  if (total <= 0 || first < 0 || slices.length - first < 4) return 90
+  const before = slices.slice(0, first).reduce((sum, s) => sum + s.value, 0)
+  const mid = ((before + total) / 2 / total) * 360
+  return (180 + mid) % 360
+}
+
 // oxlint-disable-next-line react/only-export-components
 export function buildDonutOption(slices: DonutSlice[], { centerLabel, centerValue, compact, theme }: {
   centerLabel: string; centerValue: string; compact: boolean; theme: ChartTheme
@@ -47,20 +61,24 @@ export function buildDonutOption(slices: DonutSlice[], { centerLabel, centerValu
     textStyle: { fontFamily: theme.font },
     tooltip: {
       trigger: 'item',
-      formatter: (params: { dataIndex?: number }) => {
-        const slice = params.dataIndex === undefined ? undefined : slices[params.dataIndex]
+      formatter: (params: { name?: string; dataIndex?: number }) => {
+        const slice = slices.find((item) => item.id === params.name)
         return slice ? `${escapeHtml(slice.label)}<br/>${formatWon(slice.value)}${slice.detail ? ` · ${escapeHtml(slice.detail)}` : ''}` : ''
       },
     },
-    // middle 배치가 y 이동을 덮어쓰므로 패딩으로 두 줄 사이의 간격을 확보한다.
-    graphic: [
-      { type: 'text', silent: true, left: 'center', top: 'middle',
-        style: { text: centerLabel, padding: [0, 0, compact ? 20 : 28, 0], fill: theme.inkMuted, fontFamily: theme.font, fontSize: compact ? 10 : 13 } },
-      { type: 'text', silent: true, left: 'center', top: 'middle',
-        style: { text: centerValue, padding: [compact ? 16 : 24, 0, 0, 0], fill: theme.ink, fontFamily: theme.font, fontSize: compact ? 12 : 18, fontWeight: 'bold' } },
-    ],
+    // 그룹만 중앙에 배치하고 자식 좌표를 고정해야 두 줄이 다시 같은 위치로 정렬되지 않는다.
+    graphic: [{
+      type: 'group', silent: true, left: 'center', top: 'middle',
+      children: [
+        { type: 'text', y: -10,
+          style: { text: centerLabel, align: 'center', verticalAlign: 'middle', fill: theme.inkMuted, fontFamily: theme.font, fontSize: compact ? 10 : 13 } },
+        { type: 'text', y: 12,
+          style: { text: centerValue, align: 'center', verticalAlign: 'middle', fill: theme.ink, fontFamily: theme.font, fontSize: compact ? 12 : 18, fontWeight: 'bold' } },
+      ],
+    }],
     series: [{
       type: 'pie', radius: compact ? ['30%', '46%'] : ['34%', '52%'], center: ['50%', '50%'], avoidLabelOverlap: true,
+      startAngle: donutStartAngle(slices),
       data: slices.map((slice, index) => {
         const { slot, pattern } = sliceStyle(index)
         return {
@@ -76,13 +94,13 @@ export function buildDonutOption(slices: DonutSlice[], { centerLabel, centerValu
         }
       }),
       label: {
-        alignTo: 'labelLine', bleedMargin: 4,
+        alignTo: 'none', bleedMargin: 4,
         rich: {
           name: { fontSize: compact ? 12 : 13, color: theme.ink, width: compact ? 56 : 84, overflow: 'truncate' },
           pct: { fontSize: 11, color: theme.inkMuted },
         },
       },
-      labelLine: { length: 8, length2: 6, maxSurfaceAngle: 80, lineStyle: { color: theme.inkMuted } },
+      labelLine: { length: 10, length2: 8, maxSurfaceAngle: 80, lineStyle: { color: theme.inkMuted } },
       itemStyle: { borderColor: theme.surface, borderWidth: 2 },
       emphasis: { scale: true, scaleSize: 6, focus: 'self', label: { rich: { name: { fontWeight: 'bold' } } } },
     }],
@@ -103,10 +121,12 @@ export default function DonutChart({ slices, centerLabel, centerValue, activeId,
     // 옵션 교체로 강조 상태가 초기화되므로 현재 선택을 다시 적용한다.
   }, [activeId, option])
 
+  const onEvents = useMemo(() => ({
+    click: ({ name }: { name?: string }) => { if (name !== undefined) onSelect(name) },
+    mouseover: ({ name }: { name?: string }) => { if (name !== undefined) onActiveChange(name) },
+    mouseout: () => onActiveChange(null),
+  }), [onSelect, onActiveChange])
+
   return <EChart ref={chartRef} option={option} height={donutHeight(slices.length, compact)}
-    className={[styles.chart, className].filter(Boolean).join(' ')} onEvents={{
-      click: ({ name }) => { if (name !== undefined) onSelect(name) },
-      mouseover: ({ name }) => { if (name !== undefined) onActiveChange(name) },
-      mouseout: () => onActiveChange(null),
-    }} />
+    className={[styles.chart, className].filter(Boolean).join(' ')} onEvents={onEvents} />
 }

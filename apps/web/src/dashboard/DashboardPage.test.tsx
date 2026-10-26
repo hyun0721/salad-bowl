@@ -5,7 +5,7 @@ import { renderPage } from '../test/renderPage'
 import { server } from '../test/server'
 import DashboardPage from './DashboardPage'
 
-vi.mock('../common/echarts', () => ({ echarts: { init: () => ({ setOption: vi.fn(), on: vi.fn(), off: vi.fn(), resize: vi.fn(), dispose: vi.fn(), dispatchAction: vi.fn() }) } }))
+vi.mock('../common/echarts', () => ({ echarts: { init: () => ({ setOption: vi.fn(), on: vi.fn(), off: vi.fn(), resize: vi.fn(), dispose: vi.fn(), isDisposed: vi.fn(() => false), dispatchAction: vi.fn() }) } }))
 
 const today = new Date(2026, 10, 19) // 기본 월은 지난달 2026-10
 const group = { groupId: 10, name: '우리집', myRole: 'ADMIN', memberCount: 2 }

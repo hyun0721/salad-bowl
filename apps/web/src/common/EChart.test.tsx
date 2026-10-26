@@ -4,9 +4,17 @@ import { beforeEach, expect, it, vi } from 'vitest'
 import { EChart } from './EChart'
 import { echarts, type ChartInstance } from './echarts'
 
-const chart = vi.hoisted(() => ({ setOption: vi.fn(), on: vi.fn(), off: vi.fn(), resize: vi.fn(), dispose: vi.fn() }))
+const chart = vi.hoisted(() => ({ setOption: vi.fn(), on: vi.fn(), off: vi.fn(), resize: vi.fn(), dispose: vi.fn(), isDisposed: vi.fn(() => false) }))
 vi.mock('./echarts', () => ({ echarts: { init: vi.fn(() => chart) } }))
-beforeEach(() => vi.clearAllMocks())
+beforeEach(() => {
+  vi.clearAllMocks()
+  chart.isDisposed.mockReturnValue(false)
+  chart.dispose.mockImplementation(() => { chart.isDisposed.mockReturnValue(true) })
+  vi.mocked(echarts.init).mockImplementation(() => {
+    chart.isDisposed.mockReturnValue(false)
+    return chart as unknown as ChartInstance
+  })
+})
 
 it('initializes SVG, replaces options, exposes its instance and disposes on unmount', () => {
   const ref = createRef<ChartInstance | null>()
@@ -46,10 +54,10 @@ it('dispatches events and removes old handlers on replacement, removal and unmou
   rerender(<EChart option={option} height={240} />)
   expect(chart.off).toHaveBeenCalledWith('click', nextHandler)
   rerender(<EChart option={option} height={240} onEvents={{ click }} />)
-  const finalHandler = chart.on.mock.calls.at(-1)![1]
   chart.off.mockClear()
   unmount()
-  expect(chart.off).toHaveBeenCalledWith('click', finalHandler)
+  expect(chart.isDisposed()).toBe(true)
+  expect(chart.off).not.toHaveBeenCalled()
 })
 
 it('disables animation for reduced motion and updates when the preference changes', () => {

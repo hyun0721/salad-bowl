@@ -37,7 +37,10 @@ export const EChart = forwardRef<ChartInstance | null, Props>(function EChart({ 
       return [name, listener] as const
     })
     events.forEach(([name, handler]) => chart.on(name, handler))
-    return () => events.forEach(([name, handler]) => chart.off(name, handler))
+    return () => {
+      // 레이아웃 효과가 먼저 인스턴스를 폐기한 경우 off도 폐기된 인스턴스를 호출하지 않는다.
+      if (!chart.isDisposed()) events.forEach(([name, handler]) => chart.off(name, handler))
+    }
   }, [onEvents])
 
   return <div ref={containerRef} aria-hidden="true" style={{ height }} className={[styles.chart, className].filter(Boolean).join(' ')} />
