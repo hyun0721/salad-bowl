@@ -13,13 +13,14 @@ type FrameProps = {
   closeDisabled?: boolean
   closeOnOutsideClick?: boolean
   fullHeight?: boolean
+  wide?: boolean
   headerAction?: ReactNode
   children: (opts: { close: () => void }) => ReactNode
 }
 
 /** 넓은 화면은 가운데 모달, 좁은 화면은 아래에서 올라오는 시트. 포커스 가두기·Esc·복귀는 RAC가 맡는다. */
 export function DialogFrame(props: FrameProps) {
-  const { isOpen, onOpenChange, title, closeDisabled = false, closeOnOutsideClick = false, fullHeight = false, headerAction, children } = props
+  const { isOpen, onOpenChange, title, closeDisabled = false, closeOnOutsideClick = false, fullHeight = false, wide = false, headerAction, children } = props
   const narrow = useNarrowWhileOpen(isOpen)
 
   const body = (close: () => void) => (
@@ -47,7 +48,7 @@ export function DialogFrame(props: FrameProps) {
   return (
     <ModalOverlay isOpen={isOpen} onOpenChange={onOpenChange} isDismissable={closeOnOutsideClick && !closeDisabled}
       isKeyboardDismissDisabled={closeDisabled} className={styles.backdrop}>
-      <Modal className={styles.modal}>
+      <Modal className={wide ? `${styles.modal} ${styles.wide}` : styles.modal}>
         <AriaDialog className={styles.content}>{({ close }) => body(close)}</AriaDialog>
       </Modal>
     </ModalOverlay>

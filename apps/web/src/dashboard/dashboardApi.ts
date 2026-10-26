@@ -1,4 +1,5 @@
 import { apiFetch } from '../api/client'
+import type { TransactionView } from '../transactions/transactionsApi'
 
 export type CategoryTotal = { category: string; expense: number }
 export type MemberTotal = { userId: number; nickname: string; income: number; expense: number }
@@ -14,4 +15,6 @@ export type MonthlySummary = {
 export const dashboardApi = {
   summary: (groupId: number, month: string) =>
     apiFetch<MonthlySummary>(`/groups/${groupId}/summary?month=${month}`),
+  categoryTransactions: (groupId: number, month: string, category: string) =>
+    apiFetch<TransactionView[]>(`/groups/${groupId}/summary/transactions?${new URLSearchParams({ month, category })}`),
 }

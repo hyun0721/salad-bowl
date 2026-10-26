@@ -119,6 +119,96 @@ class SummaryApiTest extends IntegrationTest {
                 .andExpect(jsonPath("$.byMember[0].nickname").value("관리자"));
     }
 
+    private org.springframework.test.web.servlet.ResultActions categoryTxs(AuthedUser who, String category)
+            throws Exception {
+        return mvc.perform(get("/groups/" + groupId + "/summary/transactions").param("month", "2026-09")
+                .param("category", category).header("Authorization", who.bearer()));
+    }
+
+    @Test
+    void categoryTransactionsMatchSummaryAndApplySummaryRules() throws Exception {
+        save(admin, TransactionType.EXPENSE, "2026-09-01T12:00:00", "식비", -10_000);
+        save(member, TransactionType.EXPENSE, "2026-09-02T12:00:00", "식비", -20_000);
+        save(member, TransactionType.EXPENSE, "2026-09-04T12:00:00", "식비", 3_000);
+        save(member, TransactionType.EXPENSE, "2026-09-03T12:00:00", "교통", -5_000);
+        save(member, TransactionType.EXPENSE, "2026-10-01T12:00:00", "식비", -99_000);
+        save(member, TransactionType.TRANSFER, "2026-09-05T12:00:00", "식비", -500_000);
+        LedgerTransaction secret = save(member, TransactionType.EXPENSE, "2026-09-06T12:00:00", "식비", -7_000);
+        secret.setHidden(true);
+        transactions.save(secret);
+        transactions.save(LedgerTransaction.manual(member.id(), new TransactionData(
+                java.time.LocalDateTime.parse("2026-09-07T12:00:00"), TransactionType.EXPENSE, "식비", "", "해외",
+                new BigDecimal("-50.00"), "USD", "카드", null)));
+
+        categoryTxs(admin, "식비")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(3)))
+                .andExpect(jsonPath("$[0].amount").value(3_000.0))
+                .andExpect(jsonPath("$[1].amount").value(-20_000.0))
+                .andExpect(jsonPath("$[2].amount").value(-10_000.0));
+
+        // 합계(부호 반전)가 요약의 같은 대분류 expense와 같다: 27,000
+        mvc.perform(get("/groups/" + groupId + "/summary").param("month", "2026-09")
+                        .header("Authorization", admin.bearer()))
+                .andExpect(jsonPath("$.byCategory[0].category").value("식비"))
+                .andExpect(jsonPath("$.byCategory[0].expense").value(27_000.0));
+    }
+
+    @Test
+    void categoryTransactionsExcludeMembersWhoTurnedSharingOff() throws Exception {
+        save(admin, TransactionType.EXPENSE, "2026-09-01T12:00:00", "식비", -10_000);
+        save(member, TransactionType.EXPENSE, "2026-09-02T12:00:00", "식비", -20_000);
+        mvc.perform(put("/groups/" + groupId + "/share").header("Authorization", member.bearer())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"enabled":false}
+                                """))
+                .andExpect(status().isOk());
+
+        categoryTxs(admin, "식비")
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].amount").value(-10_000.0));
+    }
+
+    @Test
+    void categoryTransactionsFollowOverrideCategory() throws Exception {
+        LedgerTransaction lunch = save(member, TransactionType.EXPENSE, "2026-09-02T12:00:00", "식비", -20_000);
+        lunch.setCategoryMajorOverride("외식");
+        transactions.save(lunch);
+
+        categoryTxs(admin, "외식").andExpect(jsonPath("$", hasSize(1)));
+        categoryTxs(admin, "식비").andExpect(jsonPath("$", hasSize(0)));
+    }
+
+    @Test
+    void blankMajorCategoryIsGroupedAsUncategorized() throws Exception {
+        save(admin, TransactionType.EXPENSE, "2026-09-01T12:00:00", "", -1_000);
+        save(member, TransactionType.EXPENSE, "2026-09-02T12:00:00", "   ", -2_000);
+
+        mvc.perform(get("/groups/" + groupId + "/summary").param("month", "2026-09")
+                        .header("Authorization", admin.bearer()))
+                .andExpect(jsonPath("$.byCategory", hasSize(1)))
+                .andExpect(jsonPath("$.byCategory[0].category").value("미분류"))
+                .andExpect(jsonPath("$.byCategory[0].expense").value(3_000.0));
+
+        categoryTxs(admin, "미분류").andExpect(jsonPath("$", hasSize(2)));
+    }
+
+    @Test
+    void categoryTransactionsAcceptSlashInCategoryAndUnknownIsEmpty() throws Exception {
+        save(member, TransactionType.EXPENSE, "2026-09-02T12:00:00", "교통/차량", -4_000);
+
+        categoryTxs(admin, "교통/차량").andExpect(jsonPath("$", hasSize(1)));
+        categoryTxs(admin, "없는분류").andExpect(jsonPath("$", hasSize(0)));
+    }
+
+    @Test
+    void categoryTransactionsRejectOutsider() throws Exception {
+        AuthedUser outsider = TestAuth.signupAndLogin(mvc, "out@test.com", "외부인");
+
+        categoryTxs(outsider, "식비").andExpect(status().isNotFound());
+    }
+
     @Test
     void outsiderGets404() throws Exception {
         AuthedUser outsider = TestAuth.signupAndLogin(mvc, "out@test.com", "외부인");
