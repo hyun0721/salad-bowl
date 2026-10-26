@@ -1,5 +1,5 @@
 .year { min-width: 72px; text-align: center; font-size: 18px; font-weight: 700; }
-.twoColumns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-6); }
+.twoColumns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-4); }
 .totals { margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }
 .totals > div { padding: var(--space-4); border-radius: var(--radius-sm); background: var(--surface-100); }
 .totals dt { font-size: 13px; color: var(--ink-muted); }

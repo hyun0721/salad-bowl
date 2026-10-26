@@ -1,4 +1,4 @@
-.card { background: var(--surface-000); border: 1px solid var(--line); border-radius: var(--radius-md); padding: var(--space-6); display: flex; flex-direction: column; gap: var(--space-4); min-width: 0; }
+.card { background: var(--surface-000); border: 1px solid var(--line); border-radius: var(--radius-md); padding: var(--space-4) var(--space-5); display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
 .stack { display: flex; flex-direction: column; gap: var(--space-3); }
 .row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); }
 .pageHeader { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-3); }
@@ -12,7 +12,7 @@
 textarea.input { padding: var(--space-2) var(--space-3); }
 .alert { margin: 0; padding: var(--space-3); border-radius: var(--radius-sm); color: var(--danger); background: var(--surface-100); }
 .status { margin: 0; color: var(--ink-muted); }
-.muted { color: var(--ink-muted); font-size: 13px; line-height: 18px; }
+.muted { margin: 0; color: var(--ink-muted); font-size: 13px; line-height: 18px; }
 .badge { display: inline-block; margin-left: 6px; font-size: 12px; line-height: 16px; color: var(--ink-muted); }
 .badgePending { color: var(--pending); }
 .linkButton { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
