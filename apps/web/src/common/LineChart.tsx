@@ -24,7 +24,11 @@ export function monthLabels(months: string[]): string[] {
 
 // oxlint-disable-next-line react/only-export-components
 export function compactWon(value: number): string {
-  return value >= 10000 ? `${Math.round(value / 10000)}만` : value.toLocaleString('ko-KR')
+  const amount = Math.abs(value)
+  const sign = value < 0 ? '-' : ''
+  if (amount < 10000) return value.toLocaleString('ko-KR')
+  if (amount < 100000) return `${sign}${Number((amount / 10000).toFixed(1))}만`
+  return `${sign}${Math.round(amount / 10000)}만`
 }
 
 function escapeHtml(text: string): string {

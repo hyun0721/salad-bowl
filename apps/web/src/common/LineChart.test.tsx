@@ -17,12 +17,13 @@ it('labels January and the first month of a cross-year range with the year', () 
   expect(monthLabels(['2026-01'])).toEqual(['2026.1'])
   expect(monthLabels([])).toEqual([])
 })
-it('rounds amounts in ten-thousand units and preserves smaller amounts', () => {
+it('shows a decimal below ten man and preserves signs', () => {
   expect(compactWon(300000)).toBe('30만')
-  expect(compactWon(9500)).toBe('9,500')
+  expect(compactWon(9999)).toBe('9,999')
   expect(compactWon(0)).toBe('0')
-  expect(compactWon(15500)).toBe('2만')
-  expect(compactWon(10000)).toBe('1만')
+  expect(compactWon(15000)).toBe('1.5만')
+  expect(compactWon(20000)).toBe('2만')
+  expect(compactWon(-15000)).toBe('-1.5만')
 })
 it('cycles eight colors and caps the dash tier at dotted', () => {
   expect(lineStyleFor(0)).toEqual({ slot: 1, dash: 'solid' })

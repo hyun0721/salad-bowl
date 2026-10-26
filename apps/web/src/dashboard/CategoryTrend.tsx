@@ -1,5 +1,5 @@
-import { useId, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useId, useMemo, useState } from 'react'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import LineChart, { lineStyleFor } from '../common/LineChart'
 import MonthPicker from '../common/MonthPicker'
 import SegmentedControl from '../common/SegmentedControl'
@@ -17,6 +17,13 @@ const presets: { id: RangePreset; label: string }[] = [
   { id: '12', label: '12개월' },
   { id: 'custom', label: '직접 지정' },
 ]
+const compactPresets: { id: RangePreset; label: string }[] = [
+  { id: 'prev', label: '전월' },
+  { id: '3', label: '3개월' },
+  { id: '6', label: '6개월' },
+  { id: '12', label: '12개월' },
+  { id: 'custom', label: '직접' },
+]
 
 type Props = { groupId: number; month: string }
 
@@ -32,14 +39,18 @@ export default function CategoryTrend({ groupId, month }: Props) {
     queryKey: ['summary', groupId, 'trend', range.from, range.to],
     queryFn: () => dashboardApi.trend(groupId, range.from, range.to),
     enabled: error === null,
+    placeholderData: keepPreviousData,
   })
-  const categories = trend.data?.categories.filter((item) => item.total > 0) ?? []
-  const topFive = categories.slice(0, 5).map((item) => item.category)
-  const isSelected = (category: string) => (selected ?? topFive).includes(category)
-  const visible = categories.flatMap((item, index) => isSelected(item.category) ? [{ item, index }] : [])
-  const series = visible.map(({ item, index }) => ({
-    id: item.category, label: item.category, values: item.expenses, styleIndex: index,
-  }))
+  const { categories, topFive, active, visible, series } = useMemo(() => {
+    const categories = trend.data?.categories.filter((item) => item.total > 0) ?? []
+    const topFive = categories.slice(0, 5).map((item) => item.category)
+    const active = selected ?? topFive
+    const visible = categories.flatMap((item, index) => active.includes(item.category) ? [{ item, index }] : [])
+    const series = visible.map(({ item, index }) => ({
+      id: item.category, label: item.category, values: item.expenses, styleIndex: index,
+    }))
+    return { categories, topFive, active, visible, series }
+  }, [trend.data, selected])
 
   function selectPreset(id: string) {
     const next = id as RangePreset
@@ -60,7 +71,7 @@ export default function CategoryTrend({ groupId, month }: Props) {
     <section aria-labelledby={titleId} className={`${ui.card} ${styles.card}`}>
       <h2 id={titleId}>대분류별 추이</h2>
       <div className={styles.presetScroll}>
-        <SegmentedControl label="기간" items={presets} selectedKey={preset} onSelectionChange={selectPreset} />
+        <SegmentedControl label="기간" items={compact ? compactPresets : presets} selectedKey={preset} onSelectionChange={selectPreset} />
       </div>
       {preset === 'custom' && (
         <div className={styles.range}>
@@ -80,12 +91,14 @@ export default function CategoryTrend({ groupId, month }: Props) {
       )}
       {!error && trend.data && (
         categories.length === 0 ? <p className={ui.status}>이 기간에 지출이 없습니다.</p> : <>
-          <div className={styles.chips} aria-label="대분류 선택">
+          <div className={styles.chips} role="group" aria-label="대분류 선택">
             {categories.map((item, index) => {
               const { slot, dash } = lineStyleFor(index)
+              const pressed = active.includes(item.category)
               return (
                 <button key={item.category} type="button" className={styles.chip}
-                  aria-pressed={isSelected(item.category)} onClick={() => toggle(item.category)}>
+                  aria-pressed={pressed} onClick={() => toggle(item.category)}>
+                  {pressed && <span aria-hidden="true" className={styles.check}>✓</span>}
                   <span aria-hidden="true" className={styles.marker}
                     style={{ '--marker-color': `var(--chart-${slot})`, '--marker-style': dash } as React.CSSProperties} />
                   {item.category}
@@ -102,9 +115,9 @@ export default function CategoryTrend({ groupId, month }: Props) {
               <table className={styles.table}>
                 <caption>대분류별 월 지출</caption>
                 <thead><tr><th scope="col">월</th>{visible.map(({ item }) => <th scope="col" key={item.category}>{item.category}</th>)}</tr></thead>
-                <tbody>{trend.data.months.map((month, monthIndex) => (
-                  <tr key={month}>
-                    <th scope="row">{formatMonthLabel(month)}</th>
+                <tbody>{trend.data.months.map((rowMonth, monthIndex) => (
+                  <tr key={rowMonth}>
+                    <th scope="row">{formatMonthLabel(rowMonth)}</th>
                     {visible.map(({ item }) => <td key={item.category}>{formatWon(item.expenses[monthIndex] ?? 0)}</td>)}
                   </tr>
                 ))}</tbody>
