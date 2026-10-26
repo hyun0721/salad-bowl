@@ -42,6 +42,7 @@ function escapeHtml(text: string): string {
 /**
  * 작은 조각(5% 미만)이 4개 이상 몰리면 그 묶음의 가운데가 9시 방향에 오도록 돌린다.
  * 12시에 몰리면 라벨이 위쪽 좁은 곳에 쌓여 지시선이 한데 모이기 때문이다.
+ * slices는 큰 순서로 온다고 본다(요약 API가 지출 내림차순으로 준다). 작은 조각이 끝에 모여 있어야 한다.
  */
 // oxlint-disable-next-line react/only-export-components
 export function donutStartAngle(slices: DonutSlice[]): number {
