@@ -8,6 +8,7 @@ import { useGroups } from '../groups/GroupProvider'
 import NoGroupNotice from '../groups/NoGroupNotice'
 import styles from './DashboardPage.module.css'
 import CategoryBreakdown from './CategoryBreakdown'
+import CategoryTrend from './CategoryTrend'
 import { dashboardApi, type MonthlySummary } from './dashboardApi'
 
 type Props = { today?: Date }
@@ -55,15 +56,16 @@ export default function DashboardPage({ today }: Props) {
           <button type="button" className={ui.button} onClick={() => void summary.refetch()}>다시 시도</button>
         </div>
       )}
-      {summary.data && <SummaryView groupId={selectedGroupId} month={month} summary={summary.data} />}
+      <SummaryView key={selectedGroupId} groupId={selectedGroupId} month={month} summary={summary.data} />
     </>
   )
 }
 
-function SummaryView({ groupId, month, summary }: { groupId: number; month: string; summary: MonthlySummary }) {
-  const empty = summary.income === 0 && summary.expense === 0
+function SummaryView({ groupId, month, summary }: { groupId: number; month: string; summary?: MonthlySummary }) {
+  const empty = summary && summary.income === 0 && summary.expense === 0
   return (
     <>
+      {summary && <>
       <div className={styles.totals}>
         <section aria-labelledby="income-title" className={ui.card}>
           <h2 id="income-title" className={styles.totalLabel}>수입</h2>
@@ -97,6 +99,8 @@ function SummaryView({ groupId, month, summary }: { groupId: number; month: stri
           )}
         </section>
       </div>
+      </>}
+      <CategoryTrend groupId={groupId} month={month} />
     </>
   )
 }

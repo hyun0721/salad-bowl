@@ -11,10 +11,16 @@ export type MonthlySummary = {
   byCategory: CategoryTotal[]
   byMember: MemberTotal[]
 }
+export type CategoryTrend = {
+  months: string[]
+  categories: { category: string; expenses: number[]; total: number }[]
+}
 
 export const dashboardApi = {
   summary: (groupId: number, month: string) =>
     apiFetch<MonthlySummary>(`/groups/${groupId}/summary?month=${month}`),
   categoryTransactions: (groupId: number, month: string, category: string) =>
     apiFetch<TransactionView[]>(`/groups/${groupId}/summary/transactions?${new URLSearchParams({ month, category })}`),
+  trend: (groupId: number, from: string, to: string) =>
+    apiFetch<CategoryTrend>(`/groups/${groupId}/summary/trend?${new URLSearchParams({ from, to })}`),
 }
