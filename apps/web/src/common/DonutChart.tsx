@@ -131,7 +131,12 @@ export default function DonutChart({ slices, centerLabel, centerValue, activeId,
   }, [activeId, option])
 
   const onEvents = useMemo(() => ({
-    click: ({ name }: { name?: string }) => { if (name !== undefined) onSelect(name) },
+    click: ({ name }: { name?: string }) => {
+      if (name === undefined) return
+      // 터치에는 mouseout이 없어 툴팁이 열린 모달 위에 남는다.
+      chartRef.current?.dispatchAction({ type: 'hideTip' })
+      onSelect(name)
+    },
     mouseover: ({ name }: { name?: string }) => { if (name !== undefined) onActiveChange(name) },
     mouseout: () => onActiveChange(null),
   }), [onSelect, onActiveChange])
