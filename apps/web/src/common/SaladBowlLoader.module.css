@@ -7,7 +7,8 @@
 .pour path { stroke-dasharray: 1; animation: pour 700ms ease-out both; }
 .stir { animation: stir 700ms ease-in-out; }
 .wait { animation: stir 2400ms ease-in-out infinite; }
-.text { display: flex; flex-direction: column; gap: var(--space-1); }
+/* 좁은 카드에서 한 글자만 다음 줄로 넘어가지 않게 낱말 단위로 줄을 바꾸고 줄 길이를 맞춘다. */
+.text { display: flex; flex-direction: column; gap: 2px; word-break: keep-all; text-wrap: balance; }
 .message { margin: 0; font-weight: 600; color: var(--ink); }
 .hint { margin: 0; font-size: 13px; color: var(--ink-muted); }
 @keyframes drop { from { transform: translateY(-140px); opacity: 0; } 40% { opacity: 1; } to { transform: none; opacity: 1; } }
