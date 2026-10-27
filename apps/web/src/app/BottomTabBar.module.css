@@ -1,5 +1,5 @@
 .bar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 5; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); padding: 0 env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px); background: var(--surface-000); border-top: 1px solid var(--line); }
-.tab { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: 56px; color: var(--ink-muted); font-size: 12px; line-height: 16px; text-decoration: none; }
+.tab { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: 56px; color: var(--ink-muted); font-size: var(--text-xs); line-height: 16px; text-decoration: none; }
 .active { color: var(--brand); font-weight: 700; }
 .tab:focus-visible { outline: 2px solid var(--brand); outline-offset: -4px; }
 .indicator { position: absolute; top: 0; left: 25%; right: 25%; height: 3px; border-radius: 0 0 3px 3px; background: var(--brand); transition: translate 200ms ease-out, width 200ms ease-out; }

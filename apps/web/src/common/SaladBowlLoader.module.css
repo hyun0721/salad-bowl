@@ -10,7 +10,7 @@
 /* 좁은 카드에서 한 글자만 다음 줄로 넘어가지 않게 낱말 단위로 줄을 바꾸고 줄 길이를 맞춘다. */
 .text { display: flex; flex-direction: column; gap: 2px; word-break: keep-all; text-wrap: balance; }
 .message { margin: 0; font-weight: 600; color: var(--ink); }
-.hint { margin: 0; font-size: 13px; color: var(--ink-muted); }
+.hint { margin: 0; font-size: var(--text-sm); color: var(--ink-muted); }
 @keyframes drop { from { transform: translateY(-140px); opacity: 0; } 40% { opacity: 1; } to { transform: none; opacity: 1; } }
 @keyframes pour { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
 @keyframes stir { 0%, 100% { transform: rotate(0deg); } 25% { transform: rotate(-4deg); } 75% { transform: rotate(4deg); } }

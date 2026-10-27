@@ -5,11 +5,11 @@ body {
   background: var(--surface-100);
   color: var(--ink);
   font-family: var(--font-sans);
-  font-size: 15px;
+  font-size: var(--text-base);
   line-height: 24px;
 }
-h1 { margin: 0; font-size: 28px; line-height: 36px; font-weight: 700; }
-h2 { margin: 0; font-size: 18px; line-height: 26px; font-weight: 700; }
+h1 { margin: 0; font-size: var(--text-2xl); line-height: 36px; font-weight: 700; }
+h2 { margin: 0; font-size: var(--text-md); line-height: 26px; font-weight: 700; }
 a { color: var(--brand); }
 button, input, select, textarea { font: inherit; color: inherit; }
 :focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
