@@ -229,6 +229,39 @@ describe('forward', () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
+  it.each([
+    ['null', 'POST'],
+    ['https://salad.pages.dev.evil.com', 'POST'],
+    ['https://salad.pages.dev:8443', 'POST'],
+    ['HTTPS://SALAD.PAGES.DEV', 'POST'],
+    ['https://other.example', 'PUT'],
+    ['https://other.example', 'DELETE'],
+    ['https://other.example', 'PATCH'],
+  ])('rejects %s Origin on %s', async (origin, method) => {
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+
+    const response = await forward(new Request('https://salad.pages.dev/api/me', {
+      method, headers: { origin, 'sec-fetch-site': 'same-origin' },
+    }), 'https://api.example.com')
+
+    expect(response.status).toBe(403)
+    expect(await response.json()).toMatchObject({ code: 'FORBIDDEN_ORIGIN' })
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('allows OPTIONS regardless of Origin', async () => {
+    const fetchMock = vi.fn(async (..._args: FetchCall) => new Response(null, { status: 204 }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const response = await forward(new Request('https://salad.pages.dev/api/me', {
+      method: 'OPTIONS', headers: { origin: 'https://other.example' },
+    }), 'https://api.example.com')
+
+    expect(response.status).toBe(204)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
   it('allows same-origin Fetch Metadata without Origin', async () => {
     const fetchMock = vi.fn(async () => new Response('{}'))
     vi.stubGlobal('fetch', fetchMock)

@@ -5,6 +5,7 @@ const SLOW_MS = 3000
 
 let accessToken: string | null = null
 let refreshing: Promise<string | null> | null = null
+// 로그아웃 전에 시작한 refresh 응답이 새 로그인 세션의 토큰을 덮어쓰지 못하게 한다.
 let authEpoch = 0
 const authLostListeners = new Set<() => void>()
 const slowListeners = new Set<(slow: boolean) => void>()
@@ -17,6 +18,7 @@ export function setAccessToken(token: string | null) {
 export function clearSession(): void {
   accessToken = null
   authEpoch++
+  refreshing = null
 }
 
 export function getAccessToken(): string | null {
@@ -54,7 +56,7 @@ type ApiInit = RequestInit & { json?: unknown; auth?: boolean; trackSlow?: boole
 export function refreshAccessToken(): Promise<string | null> {
   if (!refreshing) {
     const epoch = authEpoch
-    refreshing = rawFetch('/auth/refresh', { method: 'POST' })
+    const request = rawFetch('/auth/refresh', { method: 'POST' })
       .then(async (res) => {
         if (epoch !== authEpoch) return null
         if (res.status === 401 || res.status === 403) {
@@ -73,8 +75,9 @@ export function refreshAccessToken(): Promise<string | null> {
         return body.accessToken
       })
       .finally(() => {
-        refreshing = null
+        if (refreshing === request) refreshing = null
       })
+    refreshing = request
   }
   return refreshing
 }

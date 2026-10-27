@@ -6,6 +6,7 @@ import { ApiError } from './errors'
 
 afterEach(() => {
   setAccessToken(null)
+  vi.unstubAllGlobals()
   vi.useRealTimers()
 })
 
@@ -33,6 +34,81 @@ describe('apiFetch', () => {
     expect(lost).not.toHaveBeenCalled()
     off()
   })
+
+  it('discards a refresh result when logout happens while parsing JSON', async () => {
+    setAccessToken('old')
+    let release!: () => void
+    const parsing = new Promise<void>((resolve) => { release = resolve })
+    const response = new Response('{}')
+    const json = vi.spyOn(response, 'json').mockImplementation(async () => {
+      await parsing
+      return { accessToken: 'late' }
+    })
+    vi.stubGlobal('fetch', vi.fn(async () => response))
+
+    const refresh = refreshAccessToken()
+    await vi.waitFor(() => expect(json).toHaveBeenCalledTimes(1))
+    clearSession()
+    release()
+
+    await expect(refresh).resolves.toBeNull()
+    expect(getAccessToken()).toBeNull()
+  })
+
+  it('refreshes a new login after logout when its API request returns 401', async () => {
+    clearSession()
+    setAccessToken('new-login')
+    let refreshCalls = 0
+    server.use(
+      http.get('*/api/me', ({ request }) =>
+        request.headers.get('Authorization') === 'Bearer renewed'
+          ? HttpResponse.json({ ok: true })
+          : HttpResponse.json({ code: 'UNAUTHORIZED', message: 'x' }, { status: 401 })),
+      http.post('*/api/auth/refresh', () => {
+        refreshCalls++
+        return HttpResponse.json({ accessToken: 'renewed' })
+      }),
+    )
+
+    await expect(apiFetch('/me')).resolves.toEqual({ ok: true })
+    expect(refreshCalls).toBe(1)
+    expect(getAccessToken()).toBe('renewed')
+  })
+
+  it('starts a new refresh after logout and keeps it shared when the old one finishes', async () => {
+    setAccessToken('old')
+    let releaseOld!: () => void
+    let releaseNew!: () => void
+    const oldResponse = new Promise<Response>((resolve) => {
+      releaseOld = () => resolve(Response.json({ accessToken: 'stale' }))
+    })
+    const newResponse = new Promise<Response>((resolve) => {
+      releaseNew = () => resolve(Response.json({ accessToken: 'renewed' }))
+    })
+    const fetchMock = vi.fn()
+      .mockImplementationOnce(() => oldResponse)
+      .mockImplementationOnce(() => newResponse)
+    vi.stubGlobal('fetch', fetchMock)
+
+    const oldRefresh = refreshAccessToken()
+    clearSession()
+    setAccessToken('new-login')
+    const newRefresh = refreshAccessToken()
+    const callsAfterNewRefresh = fetchMock.mock.calls.length
+
+    releaseOld()
+    await expect(oldRefresh).resolves.toBeNull()
+    const joinedRefresh = refreshAccessToken()
+    const callsAfterJoin = fetchMock.mock.calls.length
+
+    releaseNew()
+    expect(callsAfterNewRefresh).toBe(2)
+    expect(callsAfterJoin).toBe(2)
+    await expect(newRefresh).resolves.toBe('renewed')
+    await expect(joinedRefresh).resolves.toBe('renewed')
+    expect(getAccessToken()).toBe('renewed')
+  })
+
   it('reports an HTML 5xx from the proxy as SERVER_UNAVAILABLE', async () => {
     server.use(http.get('*/api/me', () =>
       new HttpResponse('<html>502 Bad Gateway</html>', { status: 502, headers: { 'content-type': 'text/html' } })))
