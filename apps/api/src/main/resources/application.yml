@@ -31,6 +31,8 @@ app:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
   security:
     bcrypt-strength: 10
+    # 비어 있으면(로컬·테스트) 프록시 검사를 끈다. 운영(prod)은 필수다.
+    proxy-secret: ${PROXY_SECRET:}
 
 management:
   endpoints:

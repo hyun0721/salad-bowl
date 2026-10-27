@@ -3,6 +3,10 @@ import { ApiError } from '../api/errors'
 import { errorMessage } from './errorMessage'
 
 describe('errorMessage', () => {
+  it('maps origin and login limit errors', () => {
+    expect(errorMessage(new ApiError(403, 'FORBIDDEN_ORIGIN', 'x'))).toBe('요청을 처리할 수 없습니다. 페이지를 새로고침해 주세요.')
+    expect(errorMessage(new ApiError(429, 'TOO_MANY_ATTEMPTS', 'x'))).toBe('로그인 시도가 너무 많습니다. 15분쯤 뒤 다시 시도해 주세요.')
+  })
   it('maps upload and transaction codes', () => {
     expect(errorMessage(new ApiError(413, 'FILE_TOO_LARGE', 'x'))).toBe('파일은 512KB 이하만 올릴 수 있습니다. 한 번에 최대 3개월치까지 올릴 수 있습니다.')
     expect(errorMessage(new ApiError(400, 'IMPORT_PERIOD_TOO_LONG', 'x'))).toBe('한 번에 최대 3개월치까지 올릴 수 있습니다. 뱅크샐러드에서 기간을 3개월 이하로 나눠 내려받아 주세요.')

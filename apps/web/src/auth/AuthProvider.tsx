@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { onAuthLost, refreshAccessToken, setAccessToken } from '../api/client'
+import { clearSession, onAuthLost, refreshAccessToken, startSession } from '../api/client'
 import { ApiError } from '../api/errors'
 import { authApi, type Me } from './authApi'
 import { SignupLoginError } from './authErrors'
@@ -44,7 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [attempt, setAttempt] = useState(0)
 
   const signOutLocally = useCallback(() => {
-    setAccessToken(null)
+    clearSession()
     setMe(null)
     setStatus('signedOut')
   }, [])
@@ -77,7 +77,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(async (email: string, password: string) => {
     const { accessToken } = await authApi.login(email, password)
-    setAccessToken(accessToken)
+    startSession(accessToken)
     setMe(await authApi.me())
     setStatus('signedIn')
   }, [])

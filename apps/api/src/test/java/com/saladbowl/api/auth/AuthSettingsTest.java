@@ -5,6 +5,7 @@ import com.saladbowl.api.auth.AuthDtos.LoginRequest;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
+import org.springframework.mock.web.MockHttpServletRequest;
 
 import java.time.Duration;
 
@@ -65,13 +66,13 @@ class AuthSettingsTest {
     @Test
     void refreshCookieFollowsConfiguredValues() {
         AuthService authService = mock(AuthService.class);
-        when(authService.login(any())).thenReturn(new IssuedTokens("access", "refresh"));
+        when(authService.login(any(), any())).thenReturn(new IssuedTokens("access", "refresh"));
         JwtProvider jwt = new JwtProvider(new JwtProperties("x".repeat(32), ACCESS, REFRESH));
         AuthController controller = new AuthController(
                 authService, jwt, new RefreshCookieProperties("/custom/auth", "Strict", false));
 
-        String login = controller.login(new LoginRequest("a@b.c", "pw")).getHeaders().getFirst(HttpHeaders.SET_COOKIE);
-        ResponseEntity<Void> logout = controller.logout();
+        String login = controller.login(new LoginRequest("a@b.c", "pw"), new MockHttpServletRequest()).getHeaders().getFirst(HttpHeaders.SET_COOKIE);
+        ResponseEntity<Void> logout = controller.logout(null);
         String cleared = logout.getHeaders().getFirst(HttpHeaders.SET_COOKIE);
 
         assertThat(login).contains("refresh_token=refresh", "Path=/custom/auth", "SameSite=Strict", "HttpOnly")

@@ -7,6 +7,8 @@ const MESSAGES: Record<string, string> = {
   NETWORK_ERROR: '서버에 연결하지 못했습니다. 잠시 후 다시 시도해 주세요.',
   UNAUTHORIZED: '다시 로그인해 주세요.',
   FORBIDDEN: '이 작업을 할 권한이 없습니다.',
+  FORBIDDEN_ORIGIN: '요청을 처리할 수 없습니다. 페이지를 새로고침해 주세요.',
+  TOO_MANY_ATTEMPTS: '로그인 시도가 너무 많습니다. 15분쯤 뒤 다시 시도해 주세요.',
   NOT_FOUND: '찾을 수 없습니다.',
   INVALID_TOKEN: '다시 로그인해 주세요.',
   CONFLICT: '다른 요청과 겹쳤습니다. 잠시 후 다시 시도해 주세요.',

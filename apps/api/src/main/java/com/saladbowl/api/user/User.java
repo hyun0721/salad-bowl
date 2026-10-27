@@ -28,6 +28,10 @@ public class User {
     @Column(nullable = false)
     private String nickname;
 
+    // refresh 토큰의 ver와 비교해 로그아웃 시 모든 기기의 refresh를 한 번에 무효화한다.
+    @Column(name = "token_version", nullable = false)
+    private int tokenVersion;
+
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt;
 
@@ -57,4 +61,5 @@ public class User {
     public String getEmail() { return email; }
     public String getPasswordHash() { return passwordHash; }
     public String getNickname() { return nickname; }
+    public int getTokenVersion() { return tokenVersion; }
 }
