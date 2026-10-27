@@ -8,7 +8,7 @@ import { useMediaQuery } from '../common/useMediaQuery'
 import AccountSheet from './AccountSheet'
 import BottomTabBar from './BottomTabBar'
 import PageLoading from './PageLoading'
-import SlowServerNotice from './SlowServerNotice'
+import SlowServerOverlay from './SlowServerOverlay'
 import styles from './AppLayout.module.css'
 import { MENU } from './menu'
 
@@ -90,7 +90,7 @@ export default function AppLayout() {
         {logoutError && !narrow && (
           <p role="alert" className={styles.logoutError}>로그아웃하지 못했습니다. 잠시 후 다시 시도해 주세요.</p>
         )}
-        <SlowServerNotice />
+        <SlowServerOverlay />
         <main ref={mainRef} className={narrow ? `${styles.content} ${styles.withTabBar}` : styles.content}>
           <Suspense fallback={<PageLoading />}>
             <Outlet />
