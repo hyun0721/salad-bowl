@@ -1,7 +1,7 @@
 import { http, HttpResponse, delay } from 'msw'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { server } from '../test/server'
-import { apiFetch, clearSession, getAccessToken, onAuthLost, onSlowRequests, refreshAccessToken, setAccessToken } from './client'
+import { apiFetch, clearSession, getAccessToken, onAuthLost, onSlowRequests, refreshAccessToken, setAccessToken, startSession } from './client'
 import { ApiError } from './errors'
 
 afterEach(() => {
@@ -11,6 +11,100 @@ afterEach(() => {
 })
 
 describe('apiFetch', () => {
+  it('does not refresh or resend an old account request after another account logs in', async () => {
+    startSession('account-a')
+    let releaseOld!: () => void
+    const oldResponse = new Promise<Response>((resolve) => {
+      releaseOld = () => resolve(Response.json({ code: 'UNAUTHORIZED', message: 'expired' }, { status: 401 }))
+    })
+    const fetchMock = vi.fn()
+      .mockImplementationOnce(() => oldResponse)
+      .mockImplementation(async () => Response.json({ accessToken: 'wrong-refresh' }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const oldRequest = apiFetch('/me/transactions?month=2026-10', { method: 'DELETE' })
+    clearSession()
+    startSession('account-b')
+    releaseOld()
+
+    await expect(oldRequest).rejects.toMatchObject({ status: 401, code: 'UNAUTHORIZED' })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(getAccessToken()).toBe('account-b')
+  })
+
+  it('does not clear a new login token when an old refresh returns 401', async () => {
+    startSession('account-a')
+    let releaseRefresh!: () => void
+    const pending = new Promise<Response>((resolve) => {
+      releaseRefresh = () => resolve(Response.json({ code: 'INVALID_TOKEN' }, { status: 401 }))
+    })
+    vi.stubGlobal('fetch', vi.fn(() => pending))
+
+    const oldRefresh = refreshAccessToken()
+    startSession('account-b')
+    releaseRefresh()
+
+    await expect(oldRefresh).resolves.toBeNull()
+    expect(getAccessToken()).toBe('account-b')
+  })
+
+  it('does not return a successful old account response after a session switch', async () => {
+    startSession('account-a')
+    let releaseOld!: () => void
+    const pending = new Promise<Response>((resolve) => {
+      releaseOld = () => resolve(Response.json({ ok: true }))
+    })
+    vi.stubGlobal('fetch', vi.fn(() => pending))
+
+    const oldRequest = apiFetch('/me')
+    startSession('account-b')
+    releaseOld()
+
+    await expect(oldRequest).rejects.toMatchObject({ status: 401, code: 'UNAUTHORIZED' })
+    expect(getAccessToken()).toBe('account-b')
+  })
+
+  it('does not resend an old request after its refresh finishes in a new session', async () => {
+    startSession('account-a')
+    let releaseRefresh!: () => void
+    const pendingRefresh = new Promise<Response>((resolve) => {
+      releaseRefresh = () => resolve(Response.json({ accessToken: 'late' }))
+    })
+    const fetchMock = vi.fn()
+      .mockImplementationOnce(async () => Response.json({ code: 'UNAUTHORIZED' }, { status: 401 }))
+      .mockImplementationOnce(() => pendingRefresh)
+      .mockImplementation(async () => Response.json({ ok: true }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const oldRequest = apiFetch('/me')
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
+    startSession('account-b')
+    releaseRefresh()
+
+    await expect(oldRequest).rejects.toMatchObject({ status: 401, code: 'UNAUTHORIZED' })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(getAccessToken()).toBe('account-b')
+  })
+
+  it('discards an old response when JSON parsing finishes after a new login', async () => {
+    startSession('account-a')
+    let releaseJson!: () => void
+    const pendingJson = new Promise<void>((resolve) => { releaseJson = resolve })
+    const response = Response.json({ ok: true })
+    const json = vi.spyOn(response, 'json').mockImplementation(async () => {
+      await pendingJson
+      return { ok: true }
+    })
+    vi.stubGlobal('fetch', vi.fn(async () => response))
+
+    const oldRequest = apiFetch('/me')
+    await vi.waitFor(() => expect(json).toHaveBeenCalledTimes(1))
+    startSession('account-b')
+    releaseJson()
+
+    await expect(oldRequest).rejects.toMatchObject({ status: 401, code: 'UNAUTHORIZED' })
+  })
+
   it('discards a refresh response that arrives after local logout', async () => {
     setAccessToken('old')
     const lost = vi.fn()

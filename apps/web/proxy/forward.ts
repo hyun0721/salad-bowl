@@ -5,7 +5,7 @@ const MAX_BODY_BYTES = 1024 * 1024
  * Cloudflare Pages Functions에서 `/api/*` 요청을 API 서버로 넘긴다.
  * 브라우저는 Pages와 같은 출처만 부르므로 CORS가 없고, refresh 쿠키(Path=/api/auth)도 그대로 오간다.
  */
-export async function forward(request: Request, apiOrigin: string): Promise<Response> {
+export async function forward(request: Request, apiOrigin: string, proxySecret?: string): Promise<Response> {
   const incoming = new URL(request.url)
   if (request.method !== 'GET' && request.method !== 'HEAD' && request.method !== 'OPTIONS') {
     const origin = request.headers.get('origin')
@@ -25,6 +25,8 @@ export async function forward(request: Request, apiOrigin: string): Promise<Resp
 
   const headers = new Headers(request.headers)
   headers.delete('host')
+  headers.delete('x-proxy-secret')
+  if (proxySecret) headers.set('x-proxy-secret', proxySecret)
   headers.delete('x-client-ip')
   const cfConnectingIp = request.headers.get('cf-connecting-ip')
   if (cfConnectingIp) headers.set('x-client-ip', cfConnectingIp)

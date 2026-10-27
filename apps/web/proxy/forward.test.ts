@@ -297,6 +297,20 @@ describe('forward', () => {
   })
 
   it.each([
+    ['configured secret', 'trusted-secret', 'trusted-secret'],
+    ['no secret', undefined, null],
+  ])('replaces a forged X-Proxy-Secret with %s', async (_label, proxySecret, expected) => {
+    const fetchMock = vi.fn(async (..._args: FetchCall) => new Response('{}'))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await forward(new Request('https://salad.pages.dev/api/me', {
+      headers: { 'x-proxy-secret': 'forged' },
+    }), 'https://api.example.com', proxySecret)
+
+    expect(new Headers(fetchMock.mock.calls[0][1].headers).get('x-proxy-secret')).toBe(expected)
+  })
+
+  it.each([
     ['https://salad.pages.dev/api', 'https://api.example.com/'],
     ['https://salad.pages.dev/api/', 'https://api.example.com/'],
     ['https://salad.pages.dev/api/x?y=1', 'https://api.example.com/x?y=1'],
@@ -321,6 +335,17 @@ describe('forward', () => {
 })
 
 describe('Pages Function', () => {
+  it('passes PROXY_SECRET to the API', async () => {
+    const fetchMock = vi.fn(async (..._args: FetchCall) => new Response('{}'))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await onRequest({
+      request: new Request('https://salad.pages.dev/api/me'),
+      env: { API_ORIGIN: 'https://api.example.com', PROXY_SECRET: 'trusted-secret' },
+    })
+
+    expect(new Headers(fetchMock.mock.calls[0][1].headers).get('x-proxy-secret')).toBe('trusted-secret')
+  })
   it('answers 503 when API_ORIGIN is not configured', async () => {
     const response = await onRequest({ request: new Request('https://salad.pages.dev/api/me'), env: {} })
 

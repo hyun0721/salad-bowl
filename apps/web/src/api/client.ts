@@ -5,13 +5,19 @@ const SLOW_MS = 3000
 
 let accessToken: string | null = null
 let refreshing: Promise<string | null> | null = null
-// 로그아웃 전에 시작한 refresh 응답이 새 로그인 세션의 토큰을 덮어쓰지 못하게 한다.
+// 세션이 바뀐 뒤 이전 요청의 응답이 새 로그인 세션의 토큰이나 화면에 반영되지 못하게 한다.
 let authEpoch = 0
 const authLostListeners = new Set<() => void>()
 const slowListeners = new Set<(slow: boolean) => void>()
 let slowCount = 0
 
 export function setAccessToken(token: string | null) {
+  accessToken = token
+}
+
+export function startSession(token: string): void {
+  authEpoch++
+  refreshing = null
   accessToken = token
 }
 
@@ -83,6 +89,10 @@ export function refreshAccessToken(): Promise<string | null> {
 }
 
 export async function apiFetch<T>(path: string, init: ApiInit = {}): Promise<T> {
+  const epoch = authEpoch
+  const assertCurrent = () => {
+    if (epoch !== authEpoch) throw new ApiError(401, 'UNAUTHORIZED', '다시 로그인해 주세요.')
+  }
   const { json, auth = true, trackSlow = true, ...rest } = init
   const send = () => {
     const headers = new Headers(rest.headers)
@@ -92,15 +102,34 @@ export async function apiFetch<T>(path: string, init: ApiInit = {}): Promise<T> 
   }
 
   let res = await send()
+  assertCurrent()
   if (res.status === 401 && auth) {
     // 일시적인 refresh 실패는 여기서 그대로 throw된다(세션 유지).
-    const token = await refreshAccessToken()
-    if (!token) throw await toError(res)
+    let token: string | null
+    try {
+      token = await refreshAccessToken()
+    } catch (error) {
+      assertCurrent()
+      throw error
+    }
+    assertCurrent()
+    if (!token) {
+      const error = await toError(res)
+      assertCurrent()
+      throw error
+    }
     res = await send()
+    assertCurrent()
   }
-  if (!res.ok) throw await toError(res)
+  if (!res.ok) {
+    const error = await toError(res)
+    assertCurrent()
+    throw error
+  }
   if (res.status === 204) return undefined as T
-  return readJson<T>(res)
+  const body = await readJson<T>(res)
+  assertCurrent()
+  return body
 }
 
 /** 업로드처럼 원래 오래 걸리고 자체 진행 표시가 있는 요청은 "서버 깨우는 중"으로 세지 않는다. */
