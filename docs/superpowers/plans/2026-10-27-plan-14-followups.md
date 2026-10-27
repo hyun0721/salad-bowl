@@ -12,3 +12,8 @@
 - `Field`·`SegmentedControl`의 비활성 모양은 아직 `opacity: 0.6`이다.
 - 테스트: 비활성 규칙 순서(`.primary:disabled`가 뒤)를 소스 정규식으로만 확인한다. `ResponsiveOverlay` 테스트는 `aria-labelledby === heading.id`를 직접 보지 않는다. 달력 테스트는 숨김 클래스를 확인하지 않는다.
 - `MonthPicker`의 기본 label `'월'` 리터럴이 두 번 나온다.
+- 달력 미등록 칸: `.state`의 inline-flex gap 때문에 "미등록"과 "· 업로드하기" 사이 간격이 조금 넓다(`CoverageCalendar.tsx:48`).
+- 도넛 가운데 금액 글자가 높이 축소로 약 1px 작아졌다. 해당 테스트 이름이 기대값과 맞지 않는다(`DonutChart.tsx:60`).
+- 테스트 정리: `SlowServerOverlay.test.tsx`의 모듈 `status`와 `DateTimePicker.test.tsx`의 spy를 마지막 줄에서만 되돌린다. `afterEach`로 옮긴다. 'stays closed' 테스트는 대조군(같은 조건에서 signedIn이면 열림)이 없다.
+- `AppRoutes.test.tsx:172` 로그인 경로 테스트는 지연이 300ms라 3초 임계값에 닿지 않는다. 복원 중 덮개 억제는 `SlowServerOverlay` 단위 테스트로만 확인된다.
+- 전역 덮개는 `ErrorBoundary` 밖에 있다(오류 화면 위에도 뜬다. 의도에 가까움).
