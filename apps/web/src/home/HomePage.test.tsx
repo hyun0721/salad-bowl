@@ -20,6 +20,15 @@ function handlers(coverage: CoverageMonth[]) {
 }
 
 describe('HomePage', () => {
+  it('draws the year buttons as icons', async () => {
+    handlers([])
+    renderPage(<HomePage today={today} />)
+    const prev = await screen.findByRole('button', { name: '이전 연도' })
+    expect(prev.querySelector('svg')).not.toBeNull()
+    expect(prev).not.toHaveTextContent('‹')
+    expect(screen.getByRole('button', { name: '다음 연도' }).querySelector('svg')).not.toBeNull()
+  })
+
   it('shows registered, missing and upcoming months for the year', async () => {
     handlers([{ month: '2026-01', importedCount: 120, manualCount: 0 }, { month: '2026-09', importedCount: 168, manualCount: 0 }])
 

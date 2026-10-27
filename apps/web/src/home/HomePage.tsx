@@ -2,6 +2,7 @@ import { useIsMutating, useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Link } from 'react-router'
 import Dialog from '../common/Dialog'
+import Icon from '../common/Icon'
 import ui from '../common/ui.module.css'
 import { defaultYearMonth, formatInstant, formatMonthLabel, formatWon } from '../common/format'
 import { usePageTitle } from '../common/usePageTitle'
@@ -38,9 +39,9 @@ export default function HomePage({ today: todayProp }: Props) {
       <div className={ui.pageHeader}>
         <h1>내 가계부</h1>
         <div className={ui.row}>
-          <button type="button" className={ui.button} aria-label="이전 연도" onClick={() => { setNotice(null); setYear(year - 1) }}>‹</button>
+          <button type="button" className={ui.button} aria-label="이전 연도" onClick={() => { setNotice(null); setYear(year - 1) }}><Icon name="chevron-left" size={18} /></button>
           <span className={styles.year}>{year}년</span>
-          <button type="button" className={ui.button} aria-label="다음 연도" onClick={() => { setNotice(null); setYear(year + 1) }}>›</button>
+          <button type="button" className={ui.button} aria-label="다음 연도" onClick={() => { setNotice(null); setYear(year + 1) }}><Icon name="chevron-right" size={18} /></button>
         </div>
       </div>
 
