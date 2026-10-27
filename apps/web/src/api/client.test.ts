@@ -1,7 +1,7 @@
 import { http, HttpResponse, delay } from 'msw'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { server } from '../test/server'
-import { apiFetch, getAccessToken, onAuthLost, onSlowRequests, refreshAccessToken, setAccessToken } from './client'
+import { apiFetch, clearSession, getAccessToken, onAuthLost, onSlowRequests, refreshAccessToken, setAccessToken } from './client'
 import { ApiError } from './errors'
 
 afterEach(() => {
@@ -10,6 +10,29 @@ afterEach(() => {
 })
 
 describe('apiFetch', () => {
+  it('discards a refresh response that arrives after local logout', async () => {
+    setAccessToken('old')
+    const lost = vi.fn()
+    const off = onAuthLost(lost)
+    let release!: () => void
+    const pending = new Promise<void>((resolve) => { release = resolve })
+    let started = false
+    server.use(http.post('*/api/auth/refresh', async () => {
+      started = true
+      await pending
+      return HttpResponse.json({ accessToken: 'late' })
+    }))
+
+    const refresh = refreshAccessToken()
+    await vi.waitFor(() => expect(started).toBe(true))
+    clearSession()
+    release()
+
+    await expect(refresh).resolves.toBeNull()
+    expect(getAccessToken()).toBeNull()
+    expect(lost).not.toHaveBeenCalled()
+    off()
+  })
   it('reports an HTML 5xx from the proxy as SERVER_UNAVAILABLE', async () => {
     server.use(http.get('*/api/me', () =>
       new HttpResponse('<html>502 Bad Gateway</html>', { status: 502, headers: { 'content-type': 'text/html' } })))

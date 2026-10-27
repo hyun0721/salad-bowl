@@ -72,6 +72,19 @@ describe('LoginPage', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('이메일 또는 비밀번호가 맞지 않습니다.')
   })
 
+  it('shows the retry message after too many login attempts', async () => {
+    server.use(http.post('*/api/auth/login', () =>
+      HttpResponse.json({ code: 'TOO_MANY_ATTEMPTS', message: 'x' }, { status: 429 })))
+    renderAt('/login')
+    const user = userEvent.setup()
+
+    await user.type(await screen.findByLabelText('이메일'), 'me@test.com')
+    await user.type(screen.getByLabelText(/비밀번호/), 'password123')
+    await user.click(screen.getByRole('button', { name: '로그인' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('로그인 시도가 너무 많습니다. 15분쯤 뒤 다시 시도해 주세요.')
+  })
+
   it('signs up then logs in', async () => {
     let signupBody: unknown
     server.use(

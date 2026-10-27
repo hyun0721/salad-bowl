@@ -5,12 +5,18 @@ const SLOW_MS = 3000
 
 let accessToken: string | null = null
 let refreshing: Promise<string | null> | null = null
+let authEpoch = 0
 const authLostListeners = new Set<() => void>()
 const slowListeners = new Set<(slow: boolean) => void>()
 let slowCount = 0
 
 export function setAccessToken(token: string | null) {
   accessToken = token
+}
+
+export function clearSession(): void {
+  accessToken = null
+  authEpoch++
 }
 
 export function getAccessToken(): string | null {
@@ -47,8 +53,10 @@ type ApiInit = RequestInit & { json?: unknown; auth?: boolean; trackSlow?: boole
  */
 export function refreshAccessToken(): Promise<string | null> {
   if (!refreshing) {
+    const epoch = authEpoch
     refreshing = rawFetch('/auth/refresh', { method: 'POST' })
       .then(async (res) => {
+        if (epoch !== authEpoch) return null
         if (res.status === 401 || res.status === 403) {
           const hadSession = accessToken !== null
           setAccessToken(null)
@@ -57,6 +65,7 @@ export function refreshAccessToken(): Promise<string | null> {
         }
         if (!res.ok) throw await toError(res)
         const body = await readJson<{ accessToken?: unknown }>(res)
+        if (epoch !== authEpoch) return null
         if (typeof body.accessToken !== 'string') {
           throw new ApiError(res.status, 'REQUEST_FAILED', FAILED_MESSAGE)
         }

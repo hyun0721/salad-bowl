@@ -7,6 +7,12 @@ const MAX_BODY_BYTES = 1024 * 1024
  */
 export async function forward(request: Request, apiOrigin: string): Promise<Response> {
   const incoming = new URL(request.url)
+  if (request.method !== 'GET' && request.method !== 'HEAD' && request.method !== 'OPTIONS') {
+    const origin = request.headers.get('origin')
+    if (origin !== incoming.origin && !(origin === null && request.headers.get('sec-fetch-site') === 'same-origin')) {
+      return Response.json({ code: 'FORBIDDEN_ORIGIN', message: 'cross-origin request is not allowed' }, { status: 403 })
+    }
+  }
   // API_ORIGIN은 경로 없는 origin이어야 한다(예: https://salad-bowl-api.onrender.com). 경로가 있어도 무시된다.
   let target: URL
   try {
@@ -19,6 +25,9 @@ export async function forward(request: Request, apiOrigin: string): Promise<Resp
 
   const headers = new Headers(request.headers)
   headers.delete('host')
+  headers.delete('x-client-ip')
+  const cfConnectingIp = request.headers.get('cf-connecting-ip')
+  if (cfConnectingIp) headers.set('x-client-ip', cfConnectingIp)
   // 브라우저는 같은 출처 POST에도 Origin을 보낸다. 그대로 넘기면 API 서버가 교차 출처 요청으로 보고 CORS 403을 낸다.
   headers.delete('origin')
   const hasBody = request.method !== 'GET' && request.method !== 'HEAD'

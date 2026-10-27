@@ -10,7 +10,7 @@ function streamRequest(path: string, stream: ReadableStream<Uint8Array>, headers
   return new Request(`https://salad.pages.dev${path}`, {
     method: 'POST',
     body: stream,
-    headers,
+    headers: { 'sec-fetch-site': 'same-origin', ...headers },
     duplex: 'half',
   } as RequestInit & { duplex: 'half' })
 }
@@ -96,7 +96,7 @@ describe('forward', () => {
     vi.stubGlobal('fetch', fetchMock)
     const request = new Request(`https://salad.pages.dev${path}`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', 'sec-fetch-site': 'same-origin' },
       body: `{"name":"group"}${' '.repeat(LIMIT)}`,
     })
 
@@ -123,7 +123,7 @@ describe('forward', () => {
   it('answers 413 FILE_TOO_LARGE without calling the API when the body is over 1MB', async () => {
     const fetchMock = vi.fn()
     vi.stubGlobal('fetch', fetchMock)
-    const request = new Request('https://salad.pages.dev/api/imports', { method: 'POST', body: new Uint8Array(1024 * 1024 + 1) })
+    const request = new Request('https://salad.pages.dev/api/imports', { method: 'POST', headers: { 'sec-fetch-site': 'same-origin' }, body: new Uint8Array(1024 * 1024 + 1) })
 
     const response = await forward(request, 'https://api.example.com')
 
@@ -135,7 +135,7 @@ describe('forward', () => {
   it('passes a body of exactly 1MB through', async () => {
     const fetchMock = vi.fn(async () => new Response('{}', { status: 201 }))
     vi.stubGlobal('fetch', fetchMock)
-    const request = new Request('https://salad.pages.dev/api/imports', { method: 'POST', body: new Uint8Array(1024 * 1024) })
+    const request = new Request('https://salad.pages.dev/api/imports', { method: 'POST', headers: { 'sec-fetch-site': 'same-origin' }, body: new Uint8Array(1024 * 1024) })
 
     expect((await forward(request, 'https://api.example.com')).status).toBe(201)
   })
@@ -159,7 +159,7 @@ describe('forward', () => {
     vi.stubGlobal('fetch', fetchMock)
     const request = new Request('https://salad.pages.dev/api/me/transactions?month=2026-10', {
       method: 'POST',
-      headers: { cookie: 'refresh=old', 'content-type': 'application/json' },
+      headers: { cookie: 'refresh=old', 'content-type': 'application/json', 'sec-fetch-site': 'same-origin' },
       body: '{"a":1}',
     })
 
@@ -200,6 +200,67 @@ describe('forward', () => {
     const headers = new Headers(fetchMock.mock.calls[0][1].headers)
     expect(headers.has('origin')).toBe(false)
     expect(headers.get('content-type')).toBe('application/json')
+  })
+
+  it('rejects a different Origin before reading even an oversized body', async () => {
+    const fetchMock = vi.fn()
+    const pull = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+    const request = streamRequest('/api/imports', new ReadableStream({ pull }, { highWaterMark: 0 }), {
+      origin: 'https://other.example', 'content-length': String(LIMIT + 1),
+    })
+
+    const response = await forward(request, 'https://api.example.com')
+
+    expect(response.status).toBe(403)
+    expect(await response.json()).toEqual({ code: 'FORBIDDEN_ORIGIN', message: 'cross-origin request is not allowed' })
+    expect(pull).not.toHaveBeenCalled()
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it.each([undefined, 'cross-site'])('rejects POST without Origin when Sec-Fetch-Site is %s', async (site) => {
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+    const response = await forward(new Request('https://salad.pages.dev/api/auth/logout', {
+      method: 'POST', headers: site ? { 'sec-fetch-site': site } : {},
+    }), 'https://api.example.com')
+
+    expect(response.status).toBe(403)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('allows same-origin Fetch Metadata without Origin', async () => {
+    const fetchMock = vi.fn(async () => new Response('{}'))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const response = await forward(new Request('https://salad.pages.dev/api/auth/logout', {
+      method: 'POST', headers: { 'sec-fetch-site': 'same-origin' },
+    }), 'https://api.example.com')
+
+    expect(response.status).toBe(200)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('allows GET regardless of Origin and removes untrusted X-Client-IP', async () => {
+    const fetchMock = vi.fn(async (..._args: FetchCall) => new Response('{}'))
+    vi.stubGlobal('fetch', fetchMock)
+    await forward(new Request('https://salad.pages.dev/api/me', {
+      headers: { origin: 'https://other.example', 'x-client-ip': '1.2.3.4' },
+    }), 'https://api.example.com')
+
+    const headers = new Headers(fetchMock.mock.calls[0][1].headers)
+    expect(headers.has('origin')).toBe(false)
+    expect(headers.has('x-client-ip')).toBe(false)
+  })
+
+  it('replaces X-Client-IP with CF-Connecting-IP', async () => {
+    const fetchMock = vi.fn(async (..._args: FetchCall) => new Response('{}'))
+    vi.stubGlobal('fetch', fetchMock)
+    await forward(new Request('https://salad.pages.dev/api/me', {
+      headers: { 'x-client-ip': '1.2.3.4', 'cf-connecting-ip': '5.6.7.8' },
+    }), 'https://api.example.com')
+
+    expect(new Headers(fetchMock.mock.calls[0][1].headers).get('x-client-ip')).toBe('5.6.7.8')
   })
 
   it.each([
