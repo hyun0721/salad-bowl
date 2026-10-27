@@ -52,5 +52,8 @@
 | `web-ci` | `apps/web/**` 또는 이 워크플로 파일 변경 시 PR·`main` push | lint·typecheck·test·build |
 | `sync-config` | 수동 | 설정값 검증과 Render·Pages 반영, Render 재배포 |
 | `keepalive` | 10분마다·수동 | Pages를 거쳐 API health를 호출해 sleep과 DB 일시정지를 줄인다. |
+| `docs-pages` | `docs/site/**` 또는 워크플로 변경 시 PR·`main` push, 수동 | PR에서 문서 파일 검사, `main`에서 GitHub Pages에 정적 문서 배포 |
 
 `main`에 머지하면 Pages는 `apps/web` 변경을 바로 배포하고, Render는 api-ci가 통과한 커밋만 배포한다. 절차는 [배포 절차서](deploy.md)를 따른다.
+
+공개 문서는 `docs/site/`만 GitHub Pages에 별도로 배포한다. 최초 설정과 문서 추가는 [문서 자동 배포](docs-pages.md)를 따른다.
