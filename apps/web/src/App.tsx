@@ -5,6 +5,7 @@ import { createQueryClient } from './api/queryClient'
 import ErrorBoundary from './app/ErrorBoundary'
 import AppRoutes from './app/AppRoutes'
 import SlowServerOverlay from './app/SlowServerOverlay'
+import UpdatePrompt from './app/UpdatePrompt'
 import { AuthProvider } from './auth/AuthProvider'
 import ToastRegion from './common/Toast'
 
@@ -18,6 +19,7 @@ export default function App() {
             <AppRoutes />
           </ErrorBoundary>
           <SlowServerOverlay />
+          <UpdatePrompt />
           <ToastRegion />
         </BrowserRouter>
       </AuthProvider>

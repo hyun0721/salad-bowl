@@ -13,6 +13,7 @@
   --pending-tint: #fff8ef;
   --danger: #9a3523;
   --overlay: rgb(20 24 21 / 0.45);
+  --status-bar: var(--brand);
 
   /* 차트 범주색(dataviz 기본 8색, 카드 배경 대비 검증됨). 의미가 다른 --brand와 섞지 않는다. */
   --chart-1: #2a78d6;
@@ -62,6 +63,7 @@
     --pending-tint: #3a2c1c;
     --danger: #f08c78;
     --overlay: rgb(0 0 0 / 0.6);
+    --status-bar: var(--surface-000);
     --chart-1: #3987e5;
     --chart-2: #d95926;
     --chart-3: #199e70;
@@ -87,6 +89,7 @@
   --pending-tint: #3a2c1c;
   --danger: #f08c78;
   --overlay: rgb(0 0 0 / 0.6);
+  --status-bar: var(--surface-000);
   --chart-1: #3987e5;
   --chart-2: #d95926;
   --chart-3: #199e70;
