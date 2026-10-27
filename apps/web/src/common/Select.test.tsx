@@ -1,12 +1,25 @@
 import { act, render, screen, within, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { mockViewport } from '../test/mockViewport'
 import Select from './Select'
 
 const items = [{ id: 10, label: '우리집' }, { id: 20, label: '커플 가계부' }]
 afterEach(() => vi.unstubAllGlobals())
 
 describe('Select', () => {
+  it('opens the mobile sheet without React Aria dialog-title warnings', async () => {
+    mockViewport(true)
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const user = userEvent.setup()
+    render(<Select label="그룹" items={items} selectedKey={10} onSelectionChange={vi.fn()} />)
+    await user.click(screen.getByRole('button', { name: /그룹/ }))
+    expect(await screen.findByRole('dialog', { name: '그룹' })).toBeInTheDocument()
+    expect([...warn.mock.calls, ...error.mock.calls]).toEqual([])
+    warn.mockRestore(); error.mockRestore()
+  })
+
   it.each([false, true])('keeps the open overlay and focus when resizing from mobile=%s', async (initialMobile) => {
     let mobile = initialMobile
     const listeners = new Set<() => void>()

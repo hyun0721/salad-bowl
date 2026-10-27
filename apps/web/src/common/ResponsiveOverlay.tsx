@@ -10,7 +10,7 @@ import styles from './Overlay.module.css'
 export function ResponsiveOverlay({ mobile, title, children, dialog = true }: { mobile: boolean; title: string; children: ReactNode; dialog?: boolean }) {
   return mobile ? (
     <Popover placement="bottom start" className={styles.sheet}>
-      <Dialog className={styles.dialog}>
+      <Dialog aria-label={title} className={styles.dialog}>
         <Heading slot="title" className={styles.title}>{title}</Heading>
         {children}
       </Dialog>
