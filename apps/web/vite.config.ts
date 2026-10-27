@@ -1,12 +1,14 @@
+import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 import optimizeLocales from '@react-aria/optimize-locales-plugin'
 
 // PWA: 설치만 지원한다(오프라인 기능 없음). 앱 셸만 precache하고 /api/* 는 캐시하지 않는다.
+// 새 버전은 앱 안의 알림(UpdatePrompt)으로 사용자가 새로 고친다.
 const pwa = VitePWA({
-  registerType: 'autoUpdate',
-  injectRegister: 'script-defer',
+  registerType: 'prompt',
+  injectRegister: false,
   includeAssets: ['favicon.ico', 'apple-touch-icon-180x180.png', 'logo.svg'],
   manifest: {
     name: 'Salad Bowl',
@@ -66,5 +68,6 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
     css: { modules: { classNameStrategy: 'non-scoped' } },
+    alias: { 'virtual:pwa-register/react': fileURLToPath(new URL('./src/test/pwaRegisterStub.ts', import.meta.url)) },
   },
 })
