@@ -19,6 +19,7 @@
 | [로컬 개발](docs/development.md) | 개발 환경 준비, 실행, 테스트, 개인정보 규칙 |
 | [에이전트 공통 규칙](docs/agent-guidelines.md) | Claude·Codex의 작업 범위, 협업, 검증 기준 |
 | [에이전트 도구](docs/agent-tools.md) | Codex 설정과 Graphify·Archify·Ponytail 호환성 |
+| [Graphify 사용](docs/graphify.md) | 공용 그래프 조회, 갱신, 환경과 공유 방법 |
 | [한계점](docs/limits.md) | 무료 티어 조건, 콜드스타트, 메모리, 업로드 한도, 용량 |
 | [배포 절차서](docs/deploy.md) | 초기 배포, 이후 배포, 설정 변경, 되돌리기, 문제 해결 |
 | [잔여 작업](docs/backlog.md) | 나중에 진행하기로 한 작업 |
