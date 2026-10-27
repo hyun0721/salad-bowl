@@ -34,15 +34,30 @@ describe('DashboardPage', () => {
     }))
     renderPage(<DashboardPage today={today} />, { groups: [group] })
 
-    const income = await screen.findByRole('region', { name: '수입' })
-    expect(await within(income).findByText('₩ 3,000,000')).toBeInTheDocument()
-    expect(within(screen.getByRole('region', { name: '지출' })).getByText('₩ 250,000')).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: '수입 ₩ 3,000,000' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '지출 ₩ 250,000' })).toBeInTheDocument()
     const categories = screen.getByRole('region', { name: '카테고리별 지출' })
     expect(within(categories).getByRole('button', { name: '식비 80% ₩ 200,000' })).toBeInTheDocument()
-    const members = screen.getByRole('region', { name: '멤버별' })
-    expect(within(members).getByRole('row', { name: /짝꿍/ })).toHaveTextContent('₩ 100,000')
+    expect(screen.queryByRole('region', { name: '멤버별' })).not.toBeInTheDocument()
     expect(screen.getByRole('region', { name: '대분류별 추이' })).toBeInTheDocument()
     expect(months).toEqual(['2026-10'])
+  })
+
+  it('opens per-member totals from the income and expense cards', async () => {
+    server.use(http.get('*/api/groups/10/summary', () => HttpResponse.json(summary)))
+    const { user } = renderPage(<DashboardPage today={today} />, { groups: [group] })
+
+    await user.click(await screen.findByRole('button', { name: '지출 ₩ 250,000' }))
+    const expense = await screen.findByRole('dialog', { name: '멤버별 지출' })
+    expect(within(expense).getAllByRole('row').map((r) => r.textContent)).toEqual(
+      ['멤버지출', '나₩ 150,000', '짝꿍₩ 100,000', '합계₩ 250,000'])
+    await user.click(within(expense).getByRole('button', { name: '닫기' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+
+    await user.click(screen.getByRole('button', { name: '수입 ₩ 3,000,000' }))
+    const income = await screen.findByRole('dialog', { name: '멤버별 수입' })
+    expect(within(income).getByRole('row', { name: /짝꿍/ })).toHaveTextContent('₩ 0')
+    expect(within(income).getByRole('row', { name: /합계/ })).toHaveTextContent('₩ 3,000,000')
   })
 
   it('loads the previous month', async () => {
@@ -54,7 +69,7 @@ describe('DashboardPage', () => {
     }))
     const { user } = renderPage(<DashboardPage today={today} />, { groups: [group] })
 
-    await screen.findByRole('region', { name: '수입' })
+    await screen.findByRole('button', { name: /^수입/ })
     await user.click(screen.getByRole('button', { name: '이전 달' }))
 
     await waitFor(() => expect(months).toContain('2026-09'))
@@ -89,10 +104,11 @@ describe('DashboardPage', () => {
   it('says so when nothing was shared this month', async () => {
     server.use(http.get('*/api/groups/10/summary', () => HttpResponse.json(
       { month: '2026-10', income: 0, expense: 0, byCategory: [], byMember: [] })))
-    renderPage(<DashboardPage today={today} />, { groups: [group] })
+    const { user } = renderPage(<DashboardPage today={today} />, { groups: [group] })
 
     expect(await screen.findByText('이 달에 합칠 거래가 없습니다.')).toBeInTheDocument()
-    expect(screen.getByText('공개한 멤버가 없습니다.')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '수입 ₩ 0' }))
+    expect(within(await screen.findByRole('dialog', { name: '멤버별 수입' })).getByText('공개한 멤버가 없습니다.')).toBeInTheDocument()
   })
 
   it('retries a failed summary', async () => {
@@ -106,7 +122,7 @@ describe('DashboardPage', () => {
     fail = false
     await user.click(screen.getByRole('button', { name: '다시 시도' }))
 
-    expect(await screen.findByRole('region', { name: '수입' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: /^수입/ })).toBeInTheDocument()
   })
 
   it('guides people without a group', async () => {

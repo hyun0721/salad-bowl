@@ -10,6 +10,7 @@ import styles from './DashboardPage.module.css'
 import CategoryBreakdown from './CategoryBreakdown'
 import CategoryTrend from './CategoryTrend'
 import { dashboardApi, type MonthlySummary } from './dashboardApi'
+import MemberTotalsDialog, { type TotalKind } from './MemberTotalsDialog'
 
 type Props = { today?: Date }
 
@@ -62,43 +63,23 @@ export default function DashboardPage({ today }: Props) {
 }
 
 function SummaryView({ groupId, month, summary }: { groupId: number; month: string; summary?: MonthlySummary }) {
+  const [kind, setKind] = useState<TotalKind | null>(null)
   const empty = summary && summary.income === 0 && summary.expense === 0
   return (
     <>
       {summary && <>
       <div className={styles.totals}>
-        <section aria-labelledby="income-title" className={ui.card}>
-          <h2 id="income-title" className={styles.totalLabel}>수입</h2>
-          <p className={styles.totalValue}>{formatWon(summary.income)}</p>
-        </section>
-        <section aria-labelledby="expense-title" className={ui.card}>
-          <h2 id="expense-title" className={styles.totalLabel}>지출</h2>
-          <p className={styles.totalValue}>{formatWon(summary.expense)}</p>
-        </section>
+        {([['income', '수입'], ['expense', '지출']] as const).map(([k, label]) => (
+          <button key={k} type="button" aria-haspopup="dialog" aria-label={`${label} ${formatWon(summary[k])}`}
+            className={`${ui.card} ${styles.total}`} onClick={() => setKind(k)}>
+            <span className={styles.totalLabel}>{label}</span>
+            <span className={styles.totalValue}>{formatWon(summary[k])}</span>
+          </button>
+        ))}
       </div>
       {empty && <p className={ui.status}>이 달에 합칠 거래가 없습니다.</p>}
-      <div className={styles.columns}>
-        <CategoryBreakdown key={`${groupId}:${month}`} groupId={groupId} month={month} summary={summary} />
-        <section aria-labelledby="member-title" className={ui.card}>
-          <h2 id="member-title">멤버별</h2>
-          {summary.byMember.length === 0 ? <p className={ui.status}>공개한 멤버가 없습니다.</p> : (
-            <table className={styles.table}>
-              <thead>
-                <tr><th scope="col">멤버</th><th scope="col">수입</th><th scope="col">지출</th></tr>
-              </thead>
-              <tbody>
-                {summary.byMember.map((m) => (
-                  <tr key={m.userId}>
-                    <th scope="row">{m.nickname}</th>
-                    <td>{formatWon(m.income)}</td>
-                    <td>{formatWon(m.expense)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </section>
-      </div>
+      <CategoryBreakdown key={`${groupId}:${month}`} groupId={groupId} month={month} summary={summary} />
+      <MemberTotalsDialog kind={kind} summary={summary} onClose={() => setKind(null)} />
       </>}
       <CategoryTrend groupId={groupId} month={month} />
     </>
