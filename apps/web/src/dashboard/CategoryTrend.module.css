@@ -13,6 +13,7 @@
 .check { font-weight: 700; }
 .marker { width: 18px; flex: 0 0 18px; border-top: 3px var(--marker-style) var(--marker-color); }
 .chart { width: 100%; min-width: 0; }
+.stale { opacity: 0.5; }
 .details { min-width: 0; }
 .details summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; width: fit-content; }
 .tableScroll { max-width: 100%; overflow-x: auto; }

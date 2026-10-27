@@ -108,7 +108,7 @@ export default function CategoryTrend({ groupId, month }: Props) {
           </div>
           {visible.length === 0
             ? <p className={ui.status}>대분류를 하나 이상 고르세요.</p>
-            : <LineChart series={series} months={trend.data.months} compact={compact} className={styles.chart} />}
+            : <div aria-busy={trend.isPlaceholderData || undefined} className={trend.isPlaceholderData ? styles.stale : undefined}>{/* 새 기간을 받는 동안 보이는 이전 차트임을 알린다 */}<LineChart series={series} months={trend.data.months} compact={compact} className={styles.chart} /></div>}
           <details className={styles.details}>
             <summary>표로 보기</summary>
             <div className={styles.tableScroll}>
