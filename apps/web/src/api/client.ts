@@ -52,6 +52,20 @@ export function apiUrl(path: string): string {
 
 const FAILED_MESSAGE = '요청을 처리하지 못했습니다.'
 
+function tokenSubject(token: string | null): string | null {
+  if (!token) return null
+  const parts = token.split('.')
+  if (parts.length !== 3) return null
+  try {
+    // 계정 비교에만 쓰며, 토큰의 서명과 권한은 API가 검증한다.
+    const encoded = parts[1].replaceAll('-', '+').replaceAll('_', '/')
+    const payload = JSON.parse(atob(encoded.padEnd(Math.ceil(encoded.length / 4) * 4, '='))) as { sub?: unknown }
+    return typeof payload?.sub === 'string' && payload.sub.length > 0 ? payload.sub : null
+  } catch {
+    return null
+  }
+}
+
 type ApiInit = RequestInit & { json?: unknown; auth?: boolean; trackSlow?: boolean }
 
 /**
@@ -62,6 +76,7 @@ type ApiInit = RequestInit & { json?: unknown; auth?: boolean; trackSlow?: boole
 export function refreshAccessToken(): Promise<string | null> {
   if (!refreshing) {
     const epoch = authEpoch
+    const subject = tokenSubject(accessToken)
     const request = rawFetch('/auth/refresh', { method: 'POST' })
       .then(async (res) => {
         if (epoch !== authEpoch) return null
@@ -77,6 +92,11 @@ export function refreshAccessToken(): Promise<string | null> {
         if (typeof body.accessToken !== 'string') {
           throw new ApiError(res.status, 'REQUEST_FAILED', FAILED_MESSAGE)
         }
+        if (subject !== null && tokenSubject(body.accessToken) !== subject) {
+          clearSession()
+          authLostListeners.forEach((listener) => listener())
+          return null
+        }
         setAccessToken(body.accessToken)
         return body.accessToken
       })
@@ -90,6 +110,7 @@ export function refreshAccessToken(): Promise<string | null> {
 
 export async function apiFetch<T>(path: string, init: ApiInit = {}): Promise<T> {
   const epoch = authEpoch
+  const subject = tokenSubject(accessToken)
   const assertCurrent = () => {
     if (epoch !== authEpoch) throw new ApiError(401, 'UNAUTHORIZED', '다시 로그인해 주세요.')
   }
@@ -103,6 +124,10 @@ export async function apiFetch<T>(path: string, init: ApiInit = {}): Promise<T> 
 
   let res = await send()
   assertCurrent()
+  // 토큰 없이 시작한 변경 요청은 누구의 요청인지 알 수 없어, 그 사이 다른 탭이 다른 계정으로 바꾼 쿠키로 재전송하지 않는다.
+  const method = (rest.method ?? 'GET').toUpperCase()
+  const replayable = subject !== null || method === 'GET' || method === 'HEAD'
+  if (res.status === 401 && auth && !replayable) throw await toError(res)
   if (res.status === 401 && auth) {
     // 일시적인 refresh 실패는 여기서 그대로 throw된다(세션 유지).
     let token: string | null
@@ -113,6 +138,11 @@ export async function apiFetch<T>(path: string, init: ApiInit = {}): Promise<T> 
       throw error
     }
     assertCurrent()
+    if (token && subject !== null && tokenSubject(token) !== subject) {
+      clearSession()
+      authLostListeners.forEach((listener) => listener())
+      throw new ApiError(401, 'UNAUTHORIZED', '다시 로그인해 주세요.')
+    }
     if (!token) {
       const error = await toError(res)
       assertCurrent()

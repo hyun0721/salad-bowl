@@ -4,6 +4,11 @@ import { server } from '../test/server'
 import { apiFetch, clearSession, getAccessToken, onAuthLost, onSlowRequests, refreshAccessToken, setAccessToken, startSession } from './client'
 import { ApiError } from './errors'
 
+function jwtFor(sub: string, version = 'one'): string {
+  const payload = btoa(JSON.stringify({ sub, version })).replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/, '')
+  return `header.${payload}.signature`
+}
+
 afterEach(() => {
   setAccessToken(null)
   vi.unstubAllGlobals()
@@ -11,6 +16,113 @@ afterEach(() => {
 })
 
 describe('apiFetch', () => {
+  it('does not refresh-and-replay a tokenless mutation', async () => {
+    clearSession()
+    const token = jwtFor('account-b')
+    let deletes = 0
+    let refreshes = 0
+    server.use(
+      http.delete('*/api/me/transactions', () => {
+        deletes += 1
+        return HttpResponse.json({ code: 'UNAUTHORIZED' }, { status: 401 })
+      }),
+      http.post('*/api/auth/refresh', () => {
+        refreshes += 1
+        return HttpResponse.json({ accessToken: token })
+      }),
+    )
+
+    await expect(apiFetch('/me/transactions?month=2026-10', { method: 'DELETE' })).rejects.toMatchObject({ status: 401 })
+    expect(deletes).toBe(1)
+    expect(refreshes).toBe(0)
+  })
+
+  it('does not replay an old account mutation with another tabs cookie', async () => {
+    vi.resetModules()
+    const tab1 = await import('./client')
+    vi.resetModules()
+    const tab2 = await import('./client')
+    const tokenA = jwtFor('account-a')
+    const tokenB = jwtFor('account-b')
+    let sharedCookieOwner = 'account-a'
+    let releaseOld!: () => void
+    const oldResponse = new Promise<Response>((resolve) => {
+      releaseOld = () => resolve(Response.json({ code: 'UNAUTHORIZED' }, { status: 401 }))
+    })
+    let mutationCalls = 0
+    const fetchMock = vi.fn(async (url: string, init: RequestInit) => {
+      if (url.endsWith('/auth/refresh')) {
+        return Response.json({ accessToken: sharedCookieOwner === 'account-b' ? tokenB : tokenA })
+      }
+      if (init.method === 'DELETE') {
+        mutationCalls++
+        return mutationCalls === 1 ? oldResponse : Response.json({ done: true })
+      }
+      throw new Error(`unexpected request: ${url}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    tab1.startSession(tokenA)
+    const lost = vi.fn(() => tab1.clearSession())
+    const off = tab1.onAuthLost(lost)
+
+    const oldMutation = tab1.apiFetch('/me/transactions?month=2026-10', { method: 'DELETE' })
+    tab2.clearSession()
+    sharedCookieOwner = 'account-b'
+    tab2.startSession(tokenB)
+    releaseOld()
+
+    await expect(oldMutation).rejects.toMatchObject({ status: 401, code: 'UNAUTHORIZED' })
+    expect(mutationCalls).toBe(1)
+    expect(lost).toHaveBeenCalledTimes(1)
+    expect(tab1.getAccessToken()).toBeNull()
+    expect(tab2.getAccessToken()).toBe(tokenB)
+    off()
+  })
+
+  it('does not adopt a different account on a direct refresh', async () => {
+    setAccessToken(jwtFor('account-a'))
+    const lost = vi.fn()
+    const off = onAuthLost(lost)
+    server.use(http.post('*/api/auth/refresh', () =>
+      HttpResponse.json({ accessToken: jwtFor('account-b') })))
+
+    await expect(refreshAccessToken()).resolves.toBeNull()
+    expect(getAccessToken()).toBeNull()
+    expect(lost).toHaveBeenCalledTimes(1)
+    off()
+  })
+
+  it('retries a 401 for the same subject', async () => {
+    const oldToken = jwtFor('account-a', 'old')
+    const newToken = jwtFor('account-a', 'new')
+    setAccessToken(oldToken)
+    server.use(
+      http.get('*/api/me', ({ request }) =>
+        request.headers.get('authorization') === `Bearer ${newToken}`
+          ? HttpResponse.json({ ok: true })
+          : HttpResponse.json({ code: 'UNAUTHORIZED' }, { status: 401 })),
+      http.post('*/api/auth/refresh', () => HttpResponse.json({ accessToken: newToken })),
+    )
+
+    await expect(apiFetch('/me')).resolves.toEqual({ ok: true })
+    expect(getAccessToken()).toBe(newToken)
+  })
+
+  it('retries a tokenless authenticated request after refresh', async () => {
+    clearSession()
+    const token = jwtFor('account-b')
+    server.use(
+      http.get('*/api/me', ({ request }) =>
+        request.headers.get('authorization') === `Bearer ${token}`
+          ? HttpResponse.json({ ok: true })
+          : HttpResponse.json({ code: 'UNAUTHORIZED' }, { status: 401 })),
+      http.post('*/api/auth/refresh', () => HttpResponse.json({ accessToken: token })),
+    )
+
+    await expect(apiFetch('/me')).resolves.toEqual({ ok: true })
+    expect(getAccessToken()).toBe(token)
+  })
+
   it('does not refresh or resend an old account request after another account logs in', async () => {
     startSession('account-a')
     let releaseOld!: () => void
