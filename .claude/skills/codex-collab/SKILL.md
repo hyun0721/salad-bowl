@@ -1,11 +1,13 @@
 ---
 name: codex-collab
-description: Use when Claude Code is the controller in salad-bowl and delegates implementation, review, or diagnosis to Codex CLI. This is a Claude-side adapter, not the workflow for a Codex-led session.
+description: Use in a salad-bowl Claude Code session before any code change, whether from a plan or a direct user request, and before opening a PR. It decides which side implements and which side reviews, and how to delegate to Codex CLI. This is a Claude-side adapter, not the workflow for a Codex-led session.
 ---
 
 # Codex 협업 (salad-bowl)
 
-**적용 범위:** Claude Code가 컨트롤러일 때만 적용한다. 먼저 저장소의
+**적용 범위:** Claude Code 세션에서 코드를 바꾸는 모든 작업에 적용한다. 계획 실행과
+사용자의 직접 요청을 구분하지 않는다. 계획이 없는 직접 요청이면 brief와 구현 보고를
+`.superpowers/sdd/<작업명>/`에 짧게 남기고 같은 표를 따른다. 먼저 저장소의
 `docs/agent-guidelines.md`를 따른다. Codex가 직접 시작한 작업에는
 `AGENTS.md`와 `.agents/skills/salad-bowl-workflow/SKILL.md`를 적용한다.
 아래 모델·담당 표는 Claude 위임의 기본값이며 사용자의 지정과 현재 환경이 우선한다.
