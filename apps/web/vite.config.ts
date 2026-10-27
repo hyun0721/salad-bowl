@@ -46,7 +46,7 @@ export default defineConfig({
     // 대시보드 코드만 바뀔 때 이 청크들의 캐시가 유지된다.
     rolldownOptions: {
       output: {
-        advancedChunks: {
+        codeSplitting: {
           groups: [{ name: 'zrender', test: /node_modules[\\/]zrender[\\/]/ }, { name: 'echarts', test: /node_modules[\\/]echarts[\\/]/ }],
         },
       },
