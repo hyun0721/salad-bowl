@@ -16,4 +16,5 @@
 - 도넛 가운데 금액 글자가 높이 축소로 약 1px 작아졌다. 해당 테스트 이름이 기대값과 맞지 않는다(`DonutChart.tsx:60`).
 - 테스트 정리: `SlowServerOverlay.test.tsx`의 모듈 `status`와 `DateTimePicker.test.tsx`의 spy를 마지막 줄에서만 되돌린다. `afterEach`로 옮긴다. 'stays closed' 테스트는 대조군(같은 조건에서 signedIn이면 열림)이 없다.
 - `AppRoutes.test.tsx:172` 로그인 경로 테스트는 지연이 300ms라 3초 임계값에 닿지 않는다. 복원 중 덮개 억제는 `SlowServerOverlay` 단위 테스트로만 확인된다.
+- 단계별 반복 모션(E): 드레싱 단계가 끝나거나 완료가 시작되면 animation 이름이 `pour-loop`→`pour`로 바뀌어 드레싱이 한 번 더 그려진다. 8초 단계 전환이 잎이 뛰어오른 중간에 오면 잎이 바로 내려앉는다. 테스트는 `data-motion`만 확인한다.
 - 전역 덮개는 `ErrorBoundary` 밖에 있다(오류 화면 위에도 뜬다. 의도에 가까움).
