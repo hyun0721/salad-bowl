@@ -156,6 +156,20 @@ class AuthHardeningTest extends IntegrationTest {
         assertThat(tokenVersion(email)).isEqualTo(1);
     }
 
+    @Test
+    void logoutWithExpiredRefreshTokenIs204AndKeepsVersion() throws Exception {
+        String email = uniq() + "@t.com";
+        signup(email);
+        long id = jdbc.queryForObject("SELECT id FROM users WHERE email = ?", Long.class, email);
+        String expired = new JwtProvider(new JwtProperties("test-secret-test-secret-test-secret-test-secret",
+                Duration.ofMinutes(15), Duration.ofSeconds(-1))).issueRefresh(id, 0);
+
+        mvc.perform(post("/auth/logout").cookie(new Cookie("refresh_token", expired)))
+                .andExpect(status().isNoContent());
+
+        assertThat(tokenVersion(email)).isZero();
+    }
+
     // ---- 로그인 횟수 제한 ----
 
     @Test

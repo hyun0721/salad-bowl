@@ -43,20 +43,16 @@ public class AuthService {
     @Transactional(readOnly = true)
     public IssuedTokens login(LoginRequest request, String clientIp) {
         String email = normalize(request.email());
-        // 비밀번호(bcrypt)를 확인하기 전에 제한부터 본다. 막힌 상태에서는 정답이어도 확인하지 않는다.
-        long retryAfter = limiter.retryAfterSeconds(email, clientIp);
+        // 비밀번호(bcrypt)를 확인하기 전에 시도를 원자적으로 예약한다. 막힌 상태에서는 정답이어도 확인하지 않는다.
+        // 없는 이메일도 똑같이 센다(응답으로 계정 존재 여부가 드러나지 않게 하기 위해서다).
+        long retryAfter = limiter.tryAcquire(email, clientIp);
         if (retryAfter > 0) {
             throw new TooManyAttemptsException(retryAfter);
         }
         User user = users.findByEmail(email)
                 .filter(u -> passwordEncoder.matches(request.password(), u.getPasswordHash()))
-                .orElse(null);
-        if (user == null) {
-            // 없는 이메일도 똑같이 센다. 응답으로 계정 존재 여부가 드러나지 않게 하기 위해서다.
-            limiter.recordFailure(email, clientIp);
-            throw new ApiException(ErrorCode.INVALID_CREDENTIALS, "invalid email or password");
-        }
-        limiter.clearEmail(email);
+                .orElseThrow(() -> new ApiException(ErrorCode.INVALID_CREDENTIALS, "invalid email or password"));
+        limiter.recordSuccess(email, clientIp);
         return issue(user);
     }
 
