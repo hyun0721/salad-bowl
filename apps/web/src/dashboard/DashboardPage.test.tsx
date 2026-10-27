@@ -14,9 +14,10 @@ const summary = {
   income: 3000000,
   expense: 250000,
   byCategory: [{ category: '식비', expense: 200000 }, { category: '교통', expense: 50000 }],
+  // 금액이 작은 멤버를 먼저 두어 대화상자의 금액순 정렬을 확인한다.
   byMember: [
-    { userId: 1, nickname: '나', income: 3000000, expense: 150000 },
     { userId: 2, nickname: '짝꿍', income: 0, expense: 100000 },
+    { userId: 1, nickname: '나', income: 3000000, expense: 150000 },
   ],
 }
 
@@ -56,8 +57,8 @@ describe('DashboardPage', () => {
 
     await user.click(screen.getByRole('button', { name: '수입 ₩ 3,000,000' }))
     const income = await screen.findByRole('dialog', { name: '멤버별 수입' })
-    expect(within(income).getByRole('row', { name: /짝꿍/ })).toHaveTextContent('₩ 0')
-    expect(within(income).getByRole('row', { name: /합계/ })).toHaveTextContent('₩ 3,000,000')
+    expect(within(income).getAllByRole('row').map((r) => r.textContent)).toEqual(
+      ['멤버수입', '나₩ 3,000,000', '짝꿍₩ 0', '합계₩ 3,000,000'])
   })
 
   it('loads the previous month', async () => {
