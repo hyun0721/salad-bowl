@@ -71,7 +71,7 @@ Environment `production` → **Deployment branches and tags**를 **Selected bran
 
 Settings → Secrets and variables → Actions → **Variables(저장소)**에 `API_HEALTH_URL`을 `https://<project>.pages.dev/api/actuator/health`로 등록한다. 예약 실행이 Environment 승인에 막히지 않도록 저장소 변수로 관리한다.
 
-> 인증 보강(Plan 12)을 처음 배포할 때는 **PR을 머지하기 전에** 1~3단계를 끝낸다. Render는 main 머지 뒤 검사가 통과하면 자동 배포(`autoDeployTrigger: checksPass`)하고, 새 API는 `PROXY_SECRET`이 없거나 32자 미만이면 기동하지 않는다(이때 Render는 이전 배포를 유지한다). 머지 직후 Pages와 Render가 함께 배포되는 동안 1~2분 정도 403이 날 수 있다.
+아래 1~7단계는 **처음 설치할 때**의 순서다(코드가 이미 `main`에 있다).
 
 1. GitHub Environment `production`에 `PROXY_SECRET`을 비롯한 위 Secret·Variable을 추가한다.
 2. Actions → `sync-config` → Run workflow에서 브랜치 `main`을 선택하고 `dry_run=true`로 실행해 필수 값 존재 여부, `DB_URL`의 `jdbc:postgresql://` 시작 및 `sslmode=require` 포함 여부, JWT·프록시 비밀값의 최소 길이 32자, `API_ORIGIN`의 HTTPS 형식을 확인한다. 이 실행은 플랫폼 API 연결 성공까지 검증하지 않는다.
@@ -80,6 +80,15 @@ Settings → Secrets and variables → Actions → **Variables(저장소)**에 `
 5. Render에서 최신 커밋을 Manual Deploy하여 새 API와 `PROXY_SECRET`을 적용한다. Pages 프록시 배포가 먼저 완료됐는지 확인한다.
 6. `https://<render-host>/actuator/health`의 본문이 `{"status":"UP"}`인지 확인한다. 첫 기동에는 약 3~4분을 기다린다.
 7. Actions → `keepalive`를 수동 실행하고 Pages를 거친 health 응답까지 확인한다.
+
+### 인증 보강(Plan 12)을 이미 운영 중인 서비스에 배포할 때
+
+1. **머지 전에** GitHub Environment `production`에 `PROXY_SECRET`(32자 이상, JWT와 다른 값)을 추가한다.
+2. **머지 전에** `sync-config`를 `dry_run=true`로, 이어서 `dry_run=false`, `deploy=false`로 실행해 Render와 Pages에 값을 넣는다. 지금 돌고 있는 옛 API·옛 프록시는 이 값을 쓰지 않으므로 영향이 없다.
+3. PR을 머지한다. Pages는 새 프록시를 빌드하고(이때부터 `X-Proxy-Secret`을 붙인다), Render는 api-ci 통과 뒤 새 API를 자동 배포한다(`autoDeployTrigger: checksPass`). 수동 Retry·Manual Deploy는 필요 없다.
+4. Pages 빌드가 먼저 끝나면 옛 API는 헤더를 무시하므로 문제가 없다. Render가 먼저 끝나면 Pages 빌드가 끝날 때까지 1~2분 동안 API 요청이 403이 된다.
+5. `PROXY_SECRET`이 없거나 32자 미만이면 새 API는 기동하지 않고 Render는 이전 배포를 유지한다. 이때는 1~2단계를 고친 뒤 Render를 Manual Deploy한다.
+6. 6장의 확인(health, 로그인)을 한다.
 
 기존 refresh 쿠키에는 `ver`가 없으므로 이 배포 뒤 기존 세션은 한 번 로그아웃된다. 새 로그인 이후 refresh 쿠키의 만료는 로그인 시점부터 14일로 고정되며, refresh 요청은 쿠키를 갱신하지 않는다.
 
@@ -145,7 +154,7 @@ Pages 빌드 대상 PR마다 미리보기 주소를 확인한다. 미리보기�
 
 ## 8. 설정값 바꾸기·플랫폼 옮기기
 
-값을 바꿀 때는 GitHub Environment `production`을 수정하고 `sync-config`를 실행한다. 플랫폼 대시보드에서 직접 고친 동기화 대상 값은 다음 동기화에서 덮어쓰므로 원본에서 변경한다. `API_HEALTH_URL`은 예외로 저장소 변수를 수정한다. Pages 값은 최신 배포 Retry로 적용한다. `PROXY_SECRET` 교체 시 Render와 Pages에 같은 값을 넣고 Pages를 먼저 재배포한 다음 API를 배포한다.
+값을 바꿀 때는 GitHub Environment `production`을 수정하고 `sync-config`를 실행한다. `deploy` 기본값이 `false`이므로 Render 값(DB·JWT·프록시 비밀값)을 바로 적용하려면 `deploy=true`로 실행하거나 Render에서 Manual Deploy한다. 플랫폼 대시보드에서 직접 고친 동기화 대상 값은 다음 동기화에서 덮어쓰므로 원본에서 변경한다. `API_HEALTH_URL`은 예외로 저장소 변수를 수정한다. Pages 값은 최신 배포 Retry로 적용한다. `PROXY_SECRET` 교체 시 Render와 Pages에 같은 값을 넣고 Pages를 먼저 재배포한 다음 API를 배포한다.
 
 `JWT_SECRET`을 바꾸면 모든 사용자가 다시 로그인해야 한다. 운영 쿠키는 `Path=/api/auth; SameSite=Lax; Secure`로 고정한다. `CORS_ALLOWED_ORIGINS`는 기본 빈 값이며 같은 출처 프록시를 사용하므로 별도로 설정하지 않는다.
 
@@ -155,7 +164,7 @@ Pages 빌드 대상 PR마다 미리보기 주소를 확인한다. 미리보기�
 
 Pages는 Deployments에서 이전 배포로 Rollback한다. Render는 이전 커밋을 지정해 Manual Deploy한다. DB 마이그레이션(Flyway)은 앱 배포를 되돌려도 되돌리지 않으므로 스키마 변경 PR은 이전 앱과의 호환성을 따로 확인한다.
 
-이 인증 변경 전 API로 되돌리면 `ver` 검사가 없어져 폐기된 refresh 토큰을 다시 받아들인다. 구 API로 되돌릴 때는 `JWT_SECRET`을 교체해 모든 세션을 끊고, GitHub Secret 수정과 `sync-config` 실행 뒤 Render에 적용한다.
+이 인증 변경 전 API로 되돌리면 `ver` 검사가 없어져 폐기된 refresh 토큰을 다시 받아들인다. 구 API로 되돌릴 때는 GitHub Secret의 `JWT_SECRET`을 새 값으로 바꾸고 `sync-config`를 **`deploy=true`**로 실행해(또는 실행 뒤 Render Manual Deploy) 모든 세션을 끊는다. `deploy=false`로만 실행하면 Render에 적용되지 않아 세션이 끊기지 않는다.
 
 ## 10. 문제 해결
 

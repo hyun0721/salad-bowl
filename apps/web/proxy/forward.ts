@@ -26,7 +26,9 @@ export async function forward(request: Request, apiOrigin: string, proxySecret?:
   const headers = new Headers(request.headers)
   headers.delete('host')
   headers.delete('x-proxy-secret')
-  if (proxySecret) headers.set('x-proxy-secret', proxySecret)
+  // API가 앞뒤 공백을 다듬어 비교하므로 같은 값으로 맞춘다.
+  const secret = proxySecret?.trim()
+  if (secret) headers.set('x-proxy-secret', secret)
   headers.delete('x-client-ip')
   const cfConnectingIp = request.headers.get('cf-connecting-ip')
   if (cfConnectingIp) headers.set('x-client-ip', cfConnectingIp)

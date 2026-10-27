@@ -59,9 +59,8 @@ public class AuthService {
         if (found == null || !matches) {
             throw new ApiException(ErrorCode.INVALID_CREDENTIALS, "invalid email or password");
         }
-        User user = found;
         limiter.recordSuccess(email, clientIp);
-        return issue(user);
+        return issue(found);
     }
 
     @Transactional(readOnly = true)
@@ -79,7 +78,7 @@ public class AuthService {
         return jwt.issue(user.getId(), JwtProvider.TokenType.ACCESS);
     }
 
-    /** 어떤 입력이든 예외 없이 끝난다(로그아웃은 언제나 성공). 유효한 현재 버전의 토큰일 때만 버전을 올린다. */
+    /** 쿠키가 없거나 무효여도 실패하지 않는다. 유효한 현재 버전의 토큰일 때만 버전을 올린다. DB 오류는 그대로 올린다(500, 실패를 성공으로 꾸미지 않는다). */
     @Transactional
     public void logout(String refreshToken) {
         if (refreshToken == null || refreshToken.isBlank()) {

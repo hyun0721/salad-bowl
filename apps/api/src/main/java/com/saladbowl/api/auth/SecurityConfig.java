@@ -41,7 +41,7 @@ public class SecurityConfig {
             org.springframework.core.env.Environment environment) {
         requireProxySecret(environment.matchesProfiles("prod"), secret);
         FilterRegistrationBean<ProxySecretFilter> bean =
-                new FilterRegistrationBean<>(new ProxySecretFilter(secret, objectMapper));
+                new FilterRegistrationBean<>(new ProxySecretFilter(secret.trim(), objectMapper));
         bean.setOrder(Ordered.HIGHEST_PRECEDENCE);
         return bean;
     }
