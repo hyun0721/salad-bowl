@@ -163,7 +163,8 @@ describe('AppRoutes', () => {
 
     renderApp('/')
 
-    expect(await screen.findByText(/서버를 깨우는 중입니다/, {}, { timeout: 5000 })).toBeInTheDocument()
+    expect(await screen.findByText('오래 쓰지 않았다면 서버가 깨어나는 데 최대 4분쯤 걸려요', {}, { timeout: 5000 })).toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     // 요청이 끝날 때까지 기다려 느린 요청 상태가 다른 테스트로 새지 않게 한다.
     expect(await screen.findByRole('heading', { name: '내 가계부' }, { timeout: 5000 })).toBeInTheDocument()
   }, 15000)
