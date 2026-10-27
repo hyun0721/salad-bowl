@@ -1,3 +1,4 @@
+import { useRef } from 'react'
 import { useRegisterSW } from 'virtual:pwa-register/react'
 
 const CHECK_MS = 60 * 60 * 1000
@@ -7,10 +8,12 @@ const CHECK_MS = 60 * 60 * 1000
  * 홈 화면 앱은 오래 켜 두는 경우가 많아 열려 있는 동안에도 확인해야 한다.
  */
 export function useAppUpdate() {
+  const registrationRef = useRef<ServiceWorkerRegistration>(undefined)
   const { needRefresh: [needRefresh, setNeedRefresh], updateServiceWorker } = useRegisterSW({
     // shortcut: 등록 콜백의 타이머와 리스너는 앱 수명 동안 하나뿐이라 해제하지 않는다. 등록이 여러 번 일어나면 해제를 넣는다.
     onRegisteredSW(_url, registration) {
       if (!registration) return
+      registrationRef.current = registration
       // 오프라인이면 확인이 실패한다. 다음 확인 때 다시 시도하면 되므로 무시한다.
       const check = () => { registration.update().catch(() => {}) }
       setInterval(check, CHECK_MS)
@@ -19,7 +22,17 @@ export function useAppUpdate() {
   })
   return {
     needRefresh,
-    update: () => { void updateServiceWorker(true) },
+    // 서비스워커가 제어하지 않는 화면(첫 방문 등)에서는 새 버전이 기다리지 않고 바로 켜지거나 controllerchange가 오지 않아,
+    // 플러그인의 새로 고침이 일어나지 않는다. 새 버전이 켜진 것을 직접 확인해 새로 고친다.
+    update: () => {
+      const waiting = registrationRef.current?.waiting
+      if (!waiting) {
+        window.location.reload()
+        return
+      }
+      waiting.addEventListener('statechange', () => { if (waiting.state === 'activated') window.location.reload() })
+      void updateServiceWorker(true)
+    },
     dismiss: () => setNeedRefresh(false),
   }
 }
