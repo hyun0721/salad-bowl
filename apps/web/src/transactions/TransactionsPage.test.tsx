@@ -17,12 +17,18 @@ const base: TransactionView = {
 }
 const groups = [{ groupId: 10, name: '우리집', myRole: 'ADMIN', memberCount: 2 }]
 
+// 넓은 화면의 오른쪽 패널을 쓰는 흐름(패널을 연 채 목록·필터를 조작)을 확인할 때 쓴다.
+function preferSidebar() {
+  window.localStorage.setItem('saladbowl.transactionDetailView', 'sidebar')
+}
+
 function mineHandler(items: TransactionView[]) {
   server.use(http.get('*/api/me/transactions', () => HttpResponse.json(items)))
 }
 
 describe('TransactionsPage', () => {
   beforeEach(() => {
+    try { window.localStorage.clear() } catch { /* storage may be unavailable */ }
     server.use(http.get('*/api/me/categories', () => HttpResponse.json([])))
   })
 
@@ -47,6 +53,7 @@ describe('TransactionsPage', () => {
   })
 
   it('sorts by amount and opens a row with the keyboard', async () => {
+    preferSidebar()
     mineHandler([
       { ...base, id: 1, description: '김밥', amount: -4000 },
       { ...base, id: 2, description: '월급', amount: 3000000 },
@@ -211,13 +218,19 @@ describe('TransactionsPage', () => {
     expect(await screen.findByRole('button', { name: '전체 멤버' })).toBeInTheDocument()
   })
 
-  it('opens the detail panel for a row and the add form from the button', async () => {
+  it('opens detail in a modal by default and remembers switching to the side panel', async () => {
     mineHandler([{ ...base }])
     server.use(http.get('*/api/transactions/:id/audits', () => HttpResponse.json([])))
     const { user } = renderPage(<TransactionsPage today={today} />, { groups })
 
     await user.click(await screen.findByRole('row', { name: /김밥/ }))
+    const modal = screen.getByRole('dialog', { name: '김밥' })
+    expect(screen.queryByRole('complementary')).not.toBeInTheDocument()
+
+    await user.click(within(modal).getByRole('button', { name: '오른쪽 패널로 보기' }))
     const detail = screen.getByRole('complementary', { name: '거래 상세' })
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(window.localStorage.getItem('saladbowl.transactionDetailView')).toBe('sidebar')
     expect(within(detail).getByRole('heading', { name: '김밥' })).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: '거래 추가' }))
@@ -235,6 +248,7 @@ describe('TransactionsPage', () => {
     expect(within(sheet).getByRole('button', { name: '닫기' })).toBeInTheDocument()
     expect(within(sheet).getByLabelText('메모')).toBeInTheDocument()
     expect(screen.queryByRole('complementary')).not.toBeInTheDocument()
+    expect(within(sheet).queryByRole('button', { name: '오른쪽 패널로 보기' })).not.toBeInTheDocument()
   })
 
   it('opens the add form in a sheet on a narrow screen', async () => {
@@ -259,11 +273,80 @@ describe('TransactionsPage', () => {
     await user.click(screen.getByRole('button', { name: '삭제' }))
     await user.click(screen.getByRole('button', { name: '삭제 확인' }))
 
-    await waitFor(() => expect(screen.queryByRole('complementary', { name: '거래 상세' })).not.toBeInTheDocument())
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: '김밥' })).not.toBeInTheDocument())
     await waitFor(() => expect(screen.getByRole('heading', { name: '거래 목록', level: 2 })).toHaveFocus())
   })
 
+  it('keeps unsaved edits when switching between the modal and the side panel', async () => {
+    mineHandler([{ ...base }])
+    server.use(http.get('*/api/transactions/:id/audits', () => HttpResponse.json([])))
+    const { user } = renderPage(<TransactionsPage today={today} />, { groups })
+
+    await user.click(await screen.findByRole('row', { name: /김밥/ }))
+    await user.type(screen.getByLabelText('메모'), '모달에서 쓴 메모')
+    await user.click(screen.getByRole('button', { name: '오른쪽 패널로 보기' }))
+    const panel = screen.getByRole('complementary', { name: '거래 상세' })
+    expect(within(panel).getByLabelText('메모')).toHaveValue('모달에서 쓴 메모')
+
+    await user.type(within(panel).getByLabelText('메모'), ' 추가')
+    await user.click(within(panel).getByRole('button', { name: '가운데 창으로 보기' }))
+    expect(within(screen.getByRole('dialog', { name: '김밥' })).getByLabelText('메모')).toHaveValue('모달에서 쓴 메모 추가')
+  })
+
+  it('keeps the add form input across a switch and starts empty after closing', async () => {
+    mineHandler([])
+    const { user } = renderPage(<TransactionsPage today={today} />, { groups })
+
+    await screen.findByText('이 달에 거래가 없습니다.')
+    await user.click(screen.getByRole('button', { name: '거래 추가' }))
+    await user.type(screen.getByLabelText('내용'), '편의점')
+    await user.click(screen.getByRole('button', { name: '오른쪽 패널로 보기' }))
+    const panel = screen.getByRole('complementary', { name: '거래 추가' })
+    expect(within(panel).getByLabelText('내용')).toHaveValue('편의점')
+
+    await user.click(within(panel).getByRole('button', { name: '닫기' }))
+    await user.click(screen.getByRole('button', { name: '거래 추가' }))
+    expect(within(screen.getByRole('complementary', { name: '거래 추가' })).getByLabelText('내용')).toHaveValue('')
+  })
+
+  it('disables the view switch while a save is in flight', async () => {
+    let release = () => {}
+    mineHandler([{ ...base }])
+    server.use(
+      http.get('*/api/transactions/:id/audits', () => HttpResponse.json([])),
+      http.patch('*/api/transactions/:id', async () => {
+        await new Promise<void>((resolve) => { release = resolve })
+        return HttpResponse.json({ ...base, memo: '메모' })
+      }),
+    )
+    const { user } = renderPage(<TransactionsPage today={today} />, { groups })
+
+    await user.click(await screen.findByRole('row', { name: /김밥/ }))
+    await user.type(screen.getByLabelText('메모'), '메모')
+    await user.click(screen.getByRole('button', { name: '저장' }))
+
+    await waitFor(() => expect(screen.getByRole('button', { name: '오른쪽 패널로 보기' })).toBeDisabled())
+    release()
+    await waitFor(() => expect(screen.getByRole('button', { name: '오른쪽 패널로 보기' })).toBeEnabled())
+  })
+
+  it('returns focus to the row after closing a modal opened from the side panel switch', async () => {
+    preferSidebar()
+    mineHandler([{ ...base }])
+    server.use(http.get('*/api/transactions/:id/audits', () => HttpResponse.json([])))
+    const { user } = renderPage(<TransactionsPage today={today} />, { groups })
+
+    await user.click(await screen.findByRole('row', { name: /김밥/ }))
+    await user.click(screen.getByRole('button', { name: '가운데 창으로 보기' }))
+    expect(screen.getByRole('dialog', { name: '김밥' })).toBeInTheDocument()
+
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await waitFor(() => expect(screen.getByRole('row', { name: /김밥/ })).toHaveFocus())
+  })
+
   it('closes a group transaction panel when the scope falls back to my transactions', async () => {
+    preferSidebar()
     mineHandler([{ ...base, id: 6, description: '커피' }])
     server.use(
       http.get('*/api/groups/10', () => HttpResponse.json({ groupId: 10, name: '우리집', myRole: 'ADMIN', members: [] })),
@@ -284,6 +367,7 @@ describe('TransactionsPage', () => {
   })
 
   it('closes the panel when the selected transaction is no longer in the visible list', async () => {
+    preferSidebar()
     server.use(
       http.get('*/api/me/transactions', ({ request }) => HttpResponse.json(
         new URL(request.url).searchParams.get('month') === '2026-10' ? [{ ...base }] : [])),
@@ -301,6 +385,7 @@ describe('TransactionsPage', () => {
   })
 
   it('clears the selection when the month changes', async () => {
+    preferSidebar()
     server.use(
       http.get('*/api/me/transactions', ({ request }) => HttpResponse.json(
         new URL(request.url).searchParams.get('month') === '2026-10' ? [{ ...base }] : [])),
@@ -411,6 +496,7 @@ describe('TransactionsPage', () => {
   })
 
   it('moves focus to the panel heading and to the add form heading, not on re-render', async () => {
+    preferSidebar()
     mineHandler([{ ...base }])
     server.use(http.get('*/api/transactions/:id/audits', () => HttpResponse.json([])))
     const { user } = renderPage(<TransactionsPage today={today} />, { groups })
@@ -440,6 +526,7 @@ describe('TransactionsPage', () => {
   })
 
   it('jumps to the month of a manually added transaction and opens its panel', async () => {
+    preferSidebar()
     const created: TransactionView = {
       ...base, id: 20, occurredAt: '2026-09-05T13:30:00', description: '9월 간식', source: 'MANUAL', amount: -3000,
     }

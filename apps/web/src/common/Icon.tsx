@@ -78,6 +78,25 @@ const ICONS = {
       <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
     </>
   ),
+  search: (
+    <>
+      <circle cx="11" cy="11" r="8" />
+      <path d="m21 21-4.3-4.3" />
+    </>
+  ),
+  'panel-right': (
+    <>
+      <rect width="18" height="18" x="3" y="3" rx="2" />
+      <path d="M15 3v18" />
+    </>
+  ),
+  // 가운데 창(모달)으로 보기. 바깥 틀 안에 가운데 상자를 둔다.
+  'panel-center': (
+    <>
+      <rect width="18" height="18" x="3" y="3" rx="2" />
+      <rect width="10" height="10" x="7" y="7" rx="1" />
+    </>
+  ),
   trash: (
     <>
       <path d="M10 11v6" />
