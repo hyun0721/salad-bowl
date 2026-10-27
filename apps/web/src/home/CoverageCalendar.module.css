@@ -1,5 +1,5 @@
 .grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: var(--space-3); }
-.cell { width: 100%; min-height: 96px; padding: var(--space-3); border-radius: var(--radius-md); display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start; text-align: left; }
+.cell { width: 100%; min-height: 96px; padding: var(--space-3); border-radius: var(--radius-md); display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start; text-align: left; container-type: inline-size; }
 .month { font-weight: 700; }
 .state { display: inline-flex; align-items: center; gap: var(--space-2); font-size: var(--text-sm); }
 .registered { border: 1px solid var(--brand); background: var(--brand-tint); color: var(--ink); cursor: pointer; }
@@ -7,4 +7,6 @@
 .missing { border: 1px dashed var(--pending); background: var(--pending-tint); color: var(--ink); cursor: pointer; }
 .missing .state { color: var(--pending); }
 .future { border: 1px solid var(--line); background: var(--surface-100); color: var(--ink-muted); }
+/* 좁은 칸에서 "미등록 · 업로드하기"가 어색하게 끊기므로 업로드 안내를 숨긴다(버튼 이름에는 남아 있다). */
+@container (max-width: 120px) { .uploadHint { display: none; } }
 @media (max-width: 820px) { .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }

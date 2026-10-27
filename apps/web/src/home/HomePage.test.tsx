@@ -44,6 +44,15 @@ describe('HomePage', () => {
     expect(document.title).toBe('내 가계부 · Salad Bowl')
   })
 
+  it('splits the missing-month text so the upload hint can hide in narrow cells', async () => {
+    handlers([])
+    renderPage(<HomePage today={today} />)
+    const calendar = await screen.findByRole('region', { name: '월별 등록 현황' })
+    const cell = await within(calendar).findByRole('button', { name: '2026년 1월 미등록, 업로드하기' })
+    expect(cell).toHaveTextContent('미등록 · 업로드하기')
+    expect(within(cell).getByText(/업로드하기/)).toBeInTheDocument()
+  })
+
   it('starts in January on last year, where last month is', async () => {
     const years: (string | null)[] = []
     server.use(
