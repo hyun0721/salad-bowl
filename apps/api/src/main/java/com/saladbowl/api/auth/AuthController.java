@@ -5,6 +5,7 @@ import com.saladbowl.api.auth.AuthDtos.LoginRequest;
 import com.saladbowl.api.auth.AuthDtos.SignupRequest;
 import com.saladbowl.api.auth.AuthDtos.SignupResponse;
 import com.saladbowl.api.auth.AuthDtos.TokenResponse;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -40,8 +41,9 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<TokenResponse> login(@Valid @RequestBody LoginRequest request) {
-        return withTokens(authService.login(request));
+    public ResponseEntity<TokenResponse> login(@Valid @RequestBody LoginRequest request,
+                                               HttpServletRequest http) {
+        return withTokens(authService.login(request, clientIp(http)));
     }
 
     @PostMapping("/refresh")
@@ -51,10 +53,18 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<Void> logout() {
+    public ResponseEntity<Void> logout(@CookieValue(name = REFRESH_COOKIE, required = false) String refreshToken) {
+        authService.logout(refreshToken);
         return ResponseEntity.noContent()
                 .header(HttpHeaders.SET_COOKIE, refreshCookie("", Duration.ZERO).toString())
                 .build();
+    }
+
+    // 웹 프록시가 실제 클라이언트 IP를 X-Client-IP로 넣는다. 직접 호출하면 위조할 수 있다.
+    // shortcut: 위조되면 IP 제한만 우회되고 이메일 제한은 남는다, 프록시 전용 네트워크로 막을 수 있을 때 헤더를 신뢰 경계 안으로 좁힌다.
+    private static String clientIp(HttpServletRequest http) {
+        String header = http.getHeader("X-Client-IP");
+        return header != null && !header.isBlank() ? header.trim() : http.getRemoteAddr();
     }
 
     private ResponseEntity<TokenResponse> withTokens(IssuedTokens tokens) {

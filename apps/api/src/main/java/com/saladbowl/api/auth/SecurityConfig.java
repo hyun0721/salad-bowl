@@ -19,11 +19,18 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import tools.jackson.databind.ObjectMapper;
 
+import java.time.Clock;
 import java.util.Arrays;
 import java.util.List;
 
 @Configuration
 public class SecurityConfig {
+
+    // 로그인 제한의 15분 창을 테스트에서 조작할 수 있도록 Clock을 빈으로 둔다.
+    @Bean
+    public Clock clock() {
+        return Clock.systemUTC();
+    }
 
     @Bean
     public PasswordEncoder passwordEncoder(@Value("${app.security.bcrypt-strength:10}") int strength) {
