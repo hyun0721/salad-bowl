@@ -170,6 +170,19 @@ class AuthHardeningTest extends IntegrationTest {
         assertThat(tokenVersion(email)).isZero();
     }
 
+    @Test
+    void refreshTokenIsGoneAfterFixedExpiry() throws Exception {
+        String email = uniq() + "@t.com";
+        signup(email);
+        long id = jdbc.queryForObject("SELECT id FROM users WHERE email = ?", Long.class, email);
+        // 로그인 14일 뒤를 흉내: 이미 만료된 ver 일치 토큰
+        String expired = new JwtProvider(new JwtProperties("test-secret-test-secret-test-secret-test-secret",
+                Duration.ofMinutes(15), Duration.ofSeconds(-1))).issueRefresh(id, 0);
+
+        mvc.perform(post("/auth/refresh").cookie(new Cookie("refresh_token", expired)))
+                .andExpect(status().isUnauthorized());
+    }
+
     // ---- 로그인 횟수 제한 ----
 
     @Test
@@ -177,10 +190,12 @@ class AuthHardeningTest extends IntegrationTest {
         String email = uniq() + "@t.com";
         signup(email);
         for (int i = 0; i < 5; i++) {
-            assertThat(login(email, "wrong-password", "10.1.0." + i).getResponse().getStatus()).isEqualTo(401);
+            assertThat(login(email, "wrong-password", "10.1.0.1").getResponse().getStatus()).isEqualTo(401);
         }
 
-        MvcResult r = login(email, "password123", "10.1.0.99");
+        // 다른 IP의 본인은 로그인된다(남이 내 계정을 잠그지 못함).
+        assertThat(login(email, "password123", "10.1.0.50").getResponse().getStatus()).isEqualTo(200);
+        MvcResult r = login(email, "password123", "10.1.0.1");
 
         assertThat(r.getResponse().getStatus()).isEqualTo(429);
         assertThat(r.getResponse().getContentAsString()).contains("TOO_MANY_ATTEMPTS");
@@ -196,7 +211,7 @@ class AuthHardeningTest extends IntegrationTest {
         }
         clock.advance(Duration.ofMillis(1500));
 
-        MvcResult r = login(email, "password123", "10.2.0.2");
+        MvcResult r = login(email, "password123", "10.2.0.1");
 
         assertThat(r.getResponse().getHeader("Retry-After")).isEqualTo("899");
     }
@@ -234,10 +249,10 @@ class AuthHardeningTest extends IntegrationTest {
     void unknownEmailCountsToo() throws Exception {
         String email = uniq() + "@nobody.com";
         for (int i = 0; i < 5; i++) {
-            assertThat(login(email, "whatever123", "10.5.0." + i).getResponse().getStatus()).isEqualTo(401);
+            assertThat(login(email, "whatever123", "10.5.0.1").getResponse().getStatus()).isEqualTo(401);
         }
 
-        assertThat(login(email, "whatever123", "10.5.0.99").getResponse().getStatus()).isEqualTo(429);
+        assertThat(login(email, "whatever123", "10.5.0.1").getResponse().getStatus()).isEqualTo(429);
     }
 
     @Test

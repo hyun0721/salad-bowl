@@ -102,7 +102,8 @@ class AuthApiTest extends IntegrationTest {
         mvc.perform(post("/auth/refresh").cookie(refresh))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.accessToken").isString())
-                .andExpect(cookie().exists("refresh_token"));
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.header()
+                        .doesNotExist("Set-Cookie"));
     }
 
     @Test

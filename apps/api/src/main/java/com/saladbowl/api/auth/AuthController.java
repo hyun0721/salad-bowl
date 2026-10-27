@@ -18,12 +18,15 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.Duration;
+import java.util.Locale;
+import java.util.regex.Pattern;
 
 @RestController
 @RequestMapping("/auth")
 public class AuthController {
 
     static final String REFRESH_COOKIE = "refresh_token";
+    private static final Pattern IP_FORMAT = Pattern.compile("[0-9A-Fa-f:.]{1,45}");
 
     private final AuthService authService;
     private final JwtProvider jwt;
@@ -49,7 +52,9 @@ public class AuthController {
     @PostMapping("/refresh")
     public ResponseEntity<TokenResponse> refresh(
             @CookieValue(name = REFRESH_COOKIE, required = false) String refreshToken) {
-        return withTokens(authService.refresh(refreshToken));
+        // 쿠키는 로그인 때 한 번만 심고 14일 뒤 끝난다. 여기서 다시 심으면 늦게 도착한 응답이 새 세션 쿠키를
+        // 덮어쓰고, 탈취된 토큰의 수명이 무한히 늘어난다.
+        return ResponseEntity.ok(new TokenResponse(authService.refresh(refreshToken)));
     }
 
     @PostMapping("/logout")
@@ -60,11 +65,17 @@ public class AuthController {
                 .build();
     }
 
-    // 웹 프록시가 실제 클라이언트 IP를 X-Client-IP로 넣는다. 직접 호출하면 위조할 수 있다.
-    // shortcut: 위조되면 IP 제한만 우회되고 이메일 제한은 남는다, 프록시 전용 네트워크로 막을 수 있을 때 헤더를 신뢰 경계 안으로 좁힌다.
-    private static String clientIp(HttpServletRequest http) {
+    // 프록시가 실제 클라이언트 IP를 X-Client-IP로 넣는다. 프록시 비밀이 맞은 요청에서만 믿고,
+    // 형식이 IP가 아니면(길이·문자) 키 폭주를 막으려 remoteAddr를 쓴다.
+    static String clientIp(HttpServletRequest http) {
         String header = http.getHeader("X-Client-IP");
-        return header != null && !header.isBlank() ? header.trim() : http.getRemoteAddr();
+        if (Boolean.TRUE.equals(http.getAttribute(ProxySecretFilter.TRUSTED_ATTRIBUTE)) && header != null) {
+            String ip = header.trim();
+            if (IP_FORMAT.matcher(ip).matches()) {
+                return ip.toLowerCase(Locale.ROOT);
+            }
+        }
+        return http.getRemoteAddr();
     }
 
     private ResponseEntity<TokenResponse> withTokens(IssuedTokens tokens) {

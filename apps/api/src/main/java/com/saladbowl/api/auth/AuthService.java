@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Locale;
+import java.util.UUID;
 
 @Service
 public class AuthService {
@@ -21,10 +22,12 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtProvider jwt;
     private final LoginAttemptLimiter limiter;
+    private final String dummyHash;
 
     public AuthService(UserRepository users, PasswordEncoder passwordEncoder, JwtProvider jwt,
                        LoginAttemptLimiter limiter) {
         this.limiter = limiter;
+        this.dummyHash = passwordEncoder.encode(UUID.randomUUID().toString());
         this.users = users;
         this.passwordEncoder = passwordEncoder;
         this.jwt = jwt;
@@ -49,15 +52,20 @@ public class AuthService {
         if (retryAfter > 0) {
             throw new TooManyAttemptsException(retryAfter);
         }
-        User user = users.findByEmail(email)
-                .filter(u -> passwordEncoder.matches(request.password(), u.getPasswordHash()))
-                .orElseThrow(() -> new ApiException(ErrorCode.INVALID_CREDENTIALS, "invalid email or password"));
+        User found = users.findByEmail(email).orElse(null);
+        // 없는 이메일도 더미 해시와 비교해 bcrypt 시간을 맞춘다(응답 시간으로 계정 존재가 드러나지 않게).
+        boolean matches = passwordEncoder.matches(request.password(),
+                found != null ? found.getPasswordHash() : dummyHash);
+        if (found == null || !matches) {
+            throw new ApiException(ErrorCode.INVALID_CREDENTIALS, "invalid email or password");
+        }
+        User user = found;
         limiter.recordSuccess(email, clientIp);
         return issue(user);
     }
 
     @Transactional(readOnly = true)
-    public IssuedTokens refresh(String refreshToken) {
+    public String refresh(String refreshToken) {
         if (refreshToken == null || refreshToken.isBlank()) {
             throw new ApiException(ErrorCode.INVALID_TOKEN, "missing refresh token");
         }
@@ -68,7 +76,7 @@ public class AuthService {
         if (claims.ver() == null || claims.ver() != user.getTokenVersion()) {
             throw new ApiException(ErrorCode.INVALID_TOKEN, "revoked refresh token");
         }
-        return issue(user);
+        return jwt.issue(user.getId(), JwtProvider.TokenType.ACCESS);
     }
 
     /** 어떤 입력이든 예외 없이 끝난다(로그아웃은 언제나 성공). 유효한 현재 버전의 토큰일 때만 버전을 올린다. */

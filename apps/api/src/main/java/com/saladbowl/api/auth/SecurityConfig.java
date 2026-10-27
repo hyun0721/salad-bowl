@@ -4,8 +4,10 @@ import com.saladbowl.api.common.ErrorCode;
 import com.saladbowl.api.common.ErrorResponse;
 import jakarta.servlet.DispatcherType;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.Ordered;
 import org.springframework.http.MediaType;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -30,6 +32,16 @@ public class SecurityConfig {
     @Bean
     public Clock clock() {
         return Clock.systemUTC();
+    }
+
+    // Spring Security 체인(-100)보다 먼저 돌려 직접 호출을 인증 전에 막는다.
+    @Bean
+    public FilterRegistrationBean<ProxySecretFilter> proxySecretFilter(
+            @Value("${app.security.proxy-secret:}") String secret, ObjectMapper objectMapper) {
+        FilterRegistrationBean<ProxySecretFilter> bean =
+                new FilterRegistrationBean<>(new ProxySecretFilter(secret, objectMapper));
+        bean.setOrder(Ordered.HIGHEST_PRECEDENCE);
+        return bean;
     }
 
     @Bean
