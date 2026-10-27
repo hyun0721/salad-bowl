@@ -16,6 +16,13 @@ public final class SummaryDtos {
     public record CategoryTotal(String category, BigDecimal expense) {
     }
 
+    /** months는 yyyy-MM 연속 목록이고 expenses는 months와 같은 길이다. */
+    public record CategoryTrend(List<String> months, List<CategoryTrendSeries> categories) {
+    }
+
+    public record CategoryTrendSeries(String category, List<BigDecimal> expenses, BigDecimal total) {
+    }
+
     public record MemberTotal(long userId, String nickname, BigDecimal income, BigDecimal expense) {
     }
 }
