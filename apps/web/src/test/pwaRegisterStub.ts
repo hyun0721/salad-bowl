@@ -11,6 +11,7 @@ export const stubRegister = {
 }
 
 export function useRegisterSW(options: Options = {}) {
+  // oxlint-disable-next-line react/immutability -- 테스트 stub이라 렌더 중 마지막 옵션을 기록해도 된다.
   stubRegister.lastOptions = options
   const needRefresh = useState(stubRegister.needRefresh)
   return { needRefresh, offlineReady: useState(false), updateServiceWorker: stubRegister.updateServiceWorker }
