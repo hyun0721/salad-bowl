@@ -37,11 +37,20 @@ public class SecurityConfig {
     // Spring Security 체인(-100)보다 먼저 돌려 직접 호출을 인증 전에 막는다.
     @Bean
     public FilterRegistrationBean<ProxySecretFilter> proxySecretFilter(
-            @Value("${app.security.proxy-secret:}") String secret, ObjectMapper objectMapper) {
+            @Value("${app.security.proxy-secret:}") String secret, ObjectMapper objectMapper,
+            org.springframework.core.env.Environment environment) {
+        requireProxySecret(environment.matchesProfiles("prod"), secret);
         FilterRegistrationBean<ProxySecretFilter> bean =
                 new FilterRegistrationBean<>(new ProxySecretFilter(secret, objectMapper));
         bean.setOrder(Ordered.HIGHEST_PRECEDENCE);
         return bean;
+    }
+
+    // 빈 값이면 검사가 꺼지므로, 운영에서는 빈 값·짧은 값으로 뜨지 않게 막는다(sync-config도 32자 이상을 확인한다).
+    static void requireProxySecret(boolean prod, String secret) {
+        if (prod && (secret == null || secret.trim().length() < 32)) {
+            throw new IllegalStateException("PROXY_SECRET must be set to at least 32 characters in prod");
+        }
     }
 
     @Bean
