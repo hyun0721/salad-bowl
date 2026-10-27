@@ -4,6 +4,7 @@ import { errorMessage } from '../common/errorMessage'
 import { safeNext } from '../common/safeNext'
 import Tabs from '../common/Tabs'
 import TextField from '../common/TextField'
+import GoogleSignInButton from './GoogleSignInButton'
 import { useAuth } from './AuthProvider'
 import { SignupLoginError } from './authErrors'
 import styles from './LoginPage.module.css'
@@ -13,7 +14,7 @@ const MODES: Mode[] = ['login', 'signup']
 const TAB_LABEL: Record<Mode, string> = { login: '로그인', signup: '회원가입' }
 
 export default function LoginPage() {
-  const { login, signup } = useAuth()
+  const { login, loginWithGoogle, signup } = useAuth()
   const navigate = useNavigate()
   const [params] = useSearchParams()
   const [mode, setMode] = useState<Mode>('login')
@@ -54,6 +55,20 @@ export default function LoginPage() {
     }
   }
 
+  async function onGoogleCredential(idToken: string) {
+    setBusy(true)
+    setError(null)
+    setNotice(null)
+    try {
+      await loginWithGoogle(idToken)
+      navigate(target, { replace: true })
+    } catch (e) {
+      setError(errorMessage(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const form = (
     <form className={styles.form} onSubmit={onSubmit}>
       <TextField label="이메일" type="email" autoComplete="email" isRequired
@@ -83,6 +98,8 @@ export default function LoginPage() {
           selectedKey={mode} onSelectionChange={(id) => changeMode(id as Mode)} className={styles.authTabs}>
           {() => form}
         </Tabs>
+        <GoogleSignInButton onCredential={onGoogleCredential}
+          onError={() => setError('Google 로그인을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.')} />
         {/* 탭 패널은 선택된 것만 그리므로, 안내·오류는 패널 바깥에 둬서 탭이 바뀌어도 스크린리더가 읽게 한다. */}
         <p role="status" className={notice ? styles.notice : styles.noticeEmpty}>{notice}</p>
         {error && <p role="alert" className={styles.error}>{error}</p>}

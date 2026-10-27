@@ -23,6 +23,8 @@ app:
     access-ttl: PT15M
     refresh-ttl: P14D
   auth:
+    # 구글 OAuth 클라이언트 ID. 비어 있으면 구글 로그인은 꺼진다.
+    google-client-id: ${GOOGLE_CLIENT_ID:}
     refresh-cookie:
       path: ${REFRESH_COOKIE_PATH:/api/auth}
       same-site: ${REFRESH_COOKIE_SAME_SITE:Lax}

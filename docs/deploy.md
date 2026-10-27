@@ -66,6 +66,7 @@
 | Variable | `CLOUDFLARE_ACCOUNT_ID` | `<계정 ID>` |
 | Variable | `CLOUDFLARE_PAGES_PROJECT` | `<Pages 프로젝트 이름>` |
 | Variable | `API_ORIGIN` | `https://<render-host>` |
+| Variable (선택) | `GOOGLE_CLIENT_ID` | `<Google OAuth 클라이언트 ID>` — 비우면 구글 로그인이 꺼진다. [11. 구글 로그인](#11-구글-로그인) 참고 |
 
 Environment `production` → **Deployment branches and tags**를 **Selected branches: `main`**으로 제한하는 것을 필수로 설정한다. Required reviewers는 두지 않아도 되지만 배포 브랜치는 반드시 `main`으로 제한한다. 쓰기 권한이 있으면 다른 브랜치에서 워크플로를 고쳐 비밀값을 읽을 수 있고, `RENDER_API_KEY`는 Render 계정 전체 권한을 가지므로 이 제한이 필요하다. `sync-config` job도 `main`에서만 실행되도록 두 번째로 확인한다.
 
@@ -181,3 +182,65 @@ Pages는 Deployments에서 이전 배포로 Rollback한다. Render는 이전 커
 | 업로드가 503 `IMPORT_BUSY`로 실패함 | 화면에 “다른 업로드를 처리하고 있습니다. 잠시 후 다시 시도해 주세요.”를 표시한다. import는 서버 전체에서 동시에 1건만 처리하고 20초 대기 후 거절한다. CPU 0.1에서 한도 근처 파일은 1분 이상 걸릴 수 있으므로 기존 작업 완료 후 재시도한다. |
 | 로그인 후 새로고침하면 로그아웃됨 | 쿠키 `Path=/api/auth`, `Secure`와 HTTPS Pages 주소로 접속했는지 확인한다. 로컬 HTTP에서는 `REFRESH_COOKIE_SECURE=false`로 API를 실행한다. |
 | Supabase가 일시정지됨 | Supabase 대시보드에서 Restore하고 keepalive의 실행 기록과 health 응답을 확인한다. |
+
+## 11. 구글 로그인
+
+구글 로그인은 Google Identity Services의 ID 토큰 방식이다. 브라우저가 구글에서 받은 ID 토큰을 `POST /api/auth/google`로 보내면, API가 구글 공개키(`https://www.googleapis.com/oauth2/v3/certs`)로 서명·발급자·대상(aud)·만료를 검증하고 기존 로그인과 같은 access 토큰과 refresh 쿠키를 발급한다. 리디렉션 URI와 클라이언트 보안 비밀은 사용하지 않는다.
+
+`GOOGLE_CLIENT_ID`가 비어 있으면 기능이 꺼진다. 웹은 버튼을 그리지 않고, API는 503 `GOOGLE_LOGIN_UNAVAILABLE`을 반환한다. 그래서 설정 전에 머지·배포해도 기존 로그인은 영향을 받지 않는다.
+
+동작 규칙:
+
+- 이미 연동된 구글 계정(`google_sub`)이면 그 사용자로 로그인한다.
+- 같은 이메일의 기존 계정이 있으면 구글이 이메일을 인증한(`email_verified=true`) 경우에만 자동 연동한다. 기존 닉네임은 유지한다.
+- 둘 다 아니면 새 계정을 만든다. 닉네임은 구글 이름(최대 50자), 없으면 이메일 앞부분이다.
+- 구글로만 가입한 계정은 비밀번호가 없어 이메일·비밀번호 로그인은 할 수 없다.
+
+### 11.1 서비스별 설정과 확인사항
+
+| 서비스 | 설정 | 확인사항 |
+|---|---|---|
+| Google Cloud Console | API 및 서비스 → OAuth 동의 화면을 만든다(사용자 유형 외부, 범위는 기본 `openid`·`email`·`profile`만). 사용자 인증 정보 → **OAuth 클라이언트 ID**(유형: 웹 애플리케이션)를 만든다. | **승인된 JavaScript 원본**에 `https://<project>.pages.dev`가 슬래시·경로 없이 정확히 들어 있다. 로컬 개발용으로 `http://localhost`와 `http://localhost:5173`도 넣는다. 개인 도메인을 쓰면 그 주소도 넣는다. **승인된 리디렉션 URI**는 비워 둔다. 동의 화면이 "테스트" 상태이면 테스트 사용자로 등록한 계정만 로그인할 수 있으므로, 모두가 쓰려면 "프로덕션"으로 게시한다. 클라이언트 ID는 `….apps.googleusercontent.com` 형태다. 클라이언트 보안 비밀은 쓰지 않는다. |
+| GitHub Environment `production` | **Variable** `GOOGLE_CLIENT_ID` = 클라이언트 ID | Secret이 아니라 Variable에 넣었다(클라이언트 ID는 브라우저에 공개되는 값이다). 앞뒤 공백이 없다. |
+| Render (`salad-bowl-api`) | Environment에 `GOOGLE_CLIENT_ID`. `sync-config`가 넣는다. | 값이 GitHub Variable과 같다. 값을 바꾼 뒤에는 재배포해야 API가 읽는다. |
+| Cloudflare Pages | Settings → Variables and Secrets의 production·preview에 `VITE_GOOGLE_CLIENT_ID`. `sync-config`가 넣는다. | 값이 GitHub Variable과 같다. 빌드할 때 들어가는 값이므로 값을 넣은 **뒤의 배포**에서만 버튼이 보인다. `_headers`에 CSP가 없어 구글 스크립트(`accounts.google.com/gsi/client`)를 따로 허용할 필요가 없다. CSP를 추가하게 되면 이 출처를 허용해야 한다. |
+| Supabase | 설정할 것 없음 | API가 기동할 때 Flyway가 `V6__add_google_login.sql`(`google_sub` 컬럼 추가, `password_hash` NULL 허용)을 실행한다. 기존 데이터는 바뀌지 않는다. |
+
+### 11.2 실행 절차
+
+1. Google Cloud Console에서 11.1의 설정을 마치고 클라이언트 ID를 GitHub Variable `GOOGLE_CLIENT_ID`에 넣는다.
+2. 구글 로그인 PR을 머지한다. Render는 api-ci가 통과한 커밋을 배포하고(이때 V6 마이그레이션 실행), Pages는 웹을 배포한다. 이 시점에는 값이 아직 없으므로 버튼이 보이지 않는 것이 정상이다.
+3. Actions → `sync-config`를 **`main`에서** `dry_run=true`로 먼저 실행해 값 검사가 통과하는지 본다. 머지 전의 `main`에는 구글 단계가 없으므로 반드시 머지 후에 실행한다.
+4. `dry_run=false`, `deploy=true`로 실행한다. Render에 `GOOGLE_CLIENT_ID`, Pages에 `VITE_GOOGLE_CLIENT_ID`가 반영되고 Render 재배포가 요청된다.
+5. Pages 대시보드 → Deployments에서 최신 production 배포를 **Retry**한다. 새 빌드에 `VITE_GOOGLE_CLIENT_ID`가 들어간다.
+6. Render 배포가 Live가 되고 Pages 배포가 끝나면 11.3으로 확인한다.
+
+Render·Pages 대시보드에 값을 직접 넣었다면 3~4단계 대신 Render Manual Deploy와 Pages Retry만 하면 된다. 다만 원본은 GitHub Environment이므로 Variable에도 같은 값을 넣어 둔다.
+
+### 11.3 확인
+
+1. `curl -sS -X POST https://<project>.pages.dev/api/auth/google -H 'Content-Type: application/json' -d '{"idToken":"x"}'`가 401 `INVALID_TOKEN`을 반환한다. 503 `GOOGLE_LOGIN_UNAVAILABLE`이면 Render에 값이 없거나 재배포 전이다.
+2. 로그인 화면 아래에 "Google로 계속하기" 버튼이 보인다.
+3. 새 구글 계정으로 로그인하면 홈으로 이동하고, 닉네임이 구글 이름으로 보인다.
+4. 이메일로 가입해 둔 주소의 구글 계정으로 로그인하면 같은 계정(같은 그룹·거래)으로 들어간다.
+5. 새로고침해도 로그인이 유지되고(refresh 쿠키), 로그아웃 후 다시 구글로 로그인할 수 있다.
+
+### 11.4 문제 해결
+
+| 증상 | 원인과 조치 |
+|---|---|
+| 버튼이 보이지 않음 | Pages에 `VITE_GOOGLE_CLIENT_ID`가 없거나, 값을 넣기 전의 빌드가 떠 있다. Pages 배포를 Retry한다. |
+| 구글 창에 `origin_mismatch` 또는 "액세스 차단됨" | 승인된 JavaScript 원본이 실제 주소와 다르다. 반영까지 몇 분 걸릴 수 있다. |
+| 특정 계정만 로그인됨 | 동의 화면이 "테스트" 상태다. 테스트 사용자로 추가하거나 프로덕션으로 게시한다. |
+| "Google 로그인을 사용할 수 없습니다" (503) | Render에 `GOOGLE_CLIENT_ID`가 없거나 재배포 전이다. |
+| "다시 로그인해 주세요" (401 `INVALID_TOKEN`) | Render와 Pages의 클라이언트 ID가 서로 다르거나(aud 불일치), 구글 이메일이 미인증이다. 두 값을 비교한다. |
+| "Google 로그인을 불러오지 못했습니다" | 브라우저가 `accounts.google.com` 스크립트를 막았다(광고 차단기 등). |
+
+### 11.5 끄기·되돌리기
+
+- **기능만 끄기:** GitHub Variable `GOOGLE_CLIENT_ID`를 지우고, Render와 Pages에서도 값을 직접 지운 뒤 재배포한다(`sync-config`는 빈 값을 지우지 않고 건너뛴다). 이미 구글로 가입한 계정은 비밀번호가 없어 로그인할 수 없게 된다.
+- **코드 되돌리기:** V6 마이그레이션은 컬럼 추가와 NULL 허용뿐이라 그대로 두고 이전 커밋을 배포해도 된다. 이때도 구글 전용 계정은 로그인할 수 없다.
+
+### 11.6 로컬 개발
+
+`apps/web/.env.local`에 `VITE_GOOGLE_CLIENT_ID=<클라이언트 ID>`, API 실행 환경에 `GOOGLE_CLIENT_ID=<같은 값>`을 설정한다. 원본 목록에 `http://localhost:5173`이 있어야 한다.

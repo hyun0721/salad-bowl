@@ -3,6 +3,7 @@ package com.saladbowl.api.auth;
 import com.saladbowl.api.auth.AuthDtos.IssuedTokens;
 import com.saladbowl.api.auth.AuthDtos.LoginRequest;
 import com.saladbowl.api.auth.AuthDtos.SignupRequest;
+import com.saladbowl.api.auth.GoogleIdTokenVerifier.GoogleIdentity;
 import com.saladbowl.api.common.ApiException;
 import com.saladbowl.api.common.ErrorCode;
 import com.saladbowl.api.common.TooManyAttemptsException;
@@ -22,15 +23,17 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtProvider jwt;
     private final LoginAttemptLimiter limiter;
+    private final GoogleIdTokenVerifier google;
     private final String dummyHash;
 
     public AuthService(UserRepository users, PasswordEncoder passwordEncoder, JwtProvider jwt,
-                       LoginAttemptLimiter limiter) {
+                       LoginAttemptLimiter limiter, GoogleIdTokenVerifier google) {
         this.limiter = limiter;
         this.dummyHash = passwordEncoder.encode(UUID.randomUUID().toString());
         this.users = users;
         this.passwordEncoder = passwordEncoder;
         this.jwt = jwt;
+        this.google = google;
     }
 
     @Transactional
@@ -53,14 +56,45 @@ public class AuthService {
             throw new TooManyAttemptsException(retryAfter);
         }
         User found = users.findByEmail(email).orElse(null);
-        // 없는 이메일도 더미 해시와 비교해 bcrypt 시간을 맞춘다(응답 시간으로 계정 존재가 드러나지 않게).
-        boolean matches = passwordEncoder.matches(request.password(),
-                found != null ? found.getPasswordHash() : dummyHash);
-        if (found == null || !matches) {
+        // 없는 이메일이나 비밀번호가 없는(구글 전용) 계정도 더미 해시와 비교해 bcrypt 시간을 맞춘다
+        // (응답 시간으로 계정 존재가 드러나지 않게).
+        String hash = found != null ? found.getPasswordHash() : null;
+        boolean matches = passwordEncoder.matches(request.password(), hash != null ? hash : dummyHash);
+        if (hash == null || !matches) {
             throw new ApiException(ErrorCode.INVALID_CREDENTIALS, "invalid email or password");
         }
         limiter.recordSuccess(email, clientIp);
         return issue(found);
+    }
+
+    /**
+     * 구글 ID 토큰으로 로그인한다. 이미 연동된 계정이면 그대로, 같은 이메일의 기존 계정이 있으면
+     * 구글이 이메일을 인증한 경우에만 연동하고, 없으면 새 계정을 만든다.
+     */
+    @Transactional
+    public IssuedTokens loginWithGoogle(String idToken) {
+        GoogleIdentity identity = google.verify(idToken);
+        User user = users.findByGoogleSub(identity.sub()).orElseGet(() -> linkOrCreate(identity));
+        return issue(user);
+    }
+
+    private User linkOrCreate(GoogleIdentity identity) {
+        if (!identity.emailVerified()) {
+            throw new ApiException(ErrorCode.INVALID_TOKEN, "google email is not verified");
+        }
+        String email = normalize(identity.email());
+        User existing = users.findByEmail(email).orElse(null);
+        if (existing != null) {
+            existing.linkGoogle(identity.sub());
+            return existing;
+        }
+        return users.save(User.fromGoogle(email, nicknameOf(identity, email), identity.sub()));
+    }
+
+    private static String nicknameOf(GoogleIdentity identity, String email) {
+        String name = identity.name() == null || identity.name().isBlank()
+                ? email.substring(0, email.indexOf('@')) : identity.name().trim();
+        return name.length() > 50 ? name.substring(0, 50) : name;
     }
 
     @Transactional(readOnly = true)

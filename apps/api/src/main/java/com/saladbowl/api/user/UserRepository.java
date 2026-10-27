@@ -11,6 +11,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     Optional<User> findByEmail(String email);
 
+    Optional<User> findByGoogleSub(String googleSub);
+
     boolean existsByEmail(String email);
 
     // 조회 후 저장이면 동시 로그아웃에서 증가가 유실되므로 DB에서 원자적으로 올린다. ver가 안 맞으면 0행이다.

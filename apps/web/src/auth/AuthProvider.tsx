@@ -10,6 +10,7 @@ type AuthValue = {
   status: Status
   me: Me | null
   login: (email: string, password: string) => Promise<void>
+  loginWithGoogle: (idToken: string) => Promise<void>
   signup: (email: string, password: string, nickname: string) => Promise<void>
   logout: () => Promise<void>
   /** 'unavailable'에서 세션 복원을 다시 시도한다. */
@@ -82,6 +83,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setStatus('signedIn')
   }, [])
 
+  const loginWithGoogle = useCallback(async (idToken: string) => {
+    const { accessToken } = await authApi.google(idToken)
+    startSession(accessToken)
+    setMe(await authApi.me())
+    setStatus('signedIn')
+  }, [])
+
   const signup = useCallback(async (email: string, password: string, nickname: string) => {
     await authApi.signup(email, password, nickname)
     try {
@@ -98,8 +106,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signOutLocally()
   }, [signOutLocally])
 
-  const value = useMemo(() => ({ status, me, login, signup, logout, retryRestore }),
-    [status, me, login, signup, logout, retryRestore])
+  const value = useMemo(() => ({ status, me, login, loginWithGoogle, signup, logout, retryRestore }),
+    [status, me, login, loginWithGoogle, signup, logout, retryRestore])
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 
