@@ -2,12 +2,16 @@
 html, body, #root { height: 100%; }
 body {
   margin: 0;
+  padding-top: env(safe-area-inset-top, 0px);
   background: var(--surface-100);
   color: var(--ink);
   font-family: var(--font-sans);
   font-size: var(--text-base);
   line-height: 24px;
 }
+/* 홈 화면 앱(iOS standalone)은 상태바 뒤까지 그린다(black-translucent). 상태바 글자가 흰색이라 그 뒤를 칠하고,
+   스크롤한 내용이 상태바 뒤로 비치지 않게 맨 위에 띠를 고정한다. 상태바가 없는 환경에서는 높이가 0이다. */
+body::before { content: ''; position: fixed; top: 0; left: 0; right: 0; z-index: 40; height: env(safe-area-inset-top, 0px); background: var(--status-bar); pointer-events: none; }
 h1 { margin: 0; font-size: var(--text-2xl); line-height: 36px; font-weight: 700; }
 h2 { margin: 0; font-size: var(--text-md); line-height: 26px; font-weight: 700; }
 a { color: var(--brand); }
