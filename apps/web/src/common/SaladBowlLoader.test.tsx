@@ -23,6 +23,20 @@ it('advances the message and fills the bowl over time', () => {
   expect(pieces(container)).toBe(4)
 })
 
+it('repeats each stage motion while it lasts and stops while finishing', () => {
+  const { container, rerender } = render(<SaladBowlLoader />)
+  const scene = () => container.querySelector('[data-motion]')?.getAttribute('data-motion')
+  expect(scene()).toBe('seek')
+  act(() => { vi.advanceTimersByTime(8_000) })
+  expect(scene()).toBe('stir')
+  act(() => { vi.advanceTimersByTime(22_000) })
+  expect(scene()).toBe('dress')
+  act(() => { vi.advanceTimersByTime(60_000) })
+  expect(scene()).toBe('wait')
+  rerender(<SaladBowlLoader done />)
+  expect(scene()).toBeUndefined()
+})
+
 it('hides the drawing and shows the wake-up hint only when slow', () => {
   const { container, rerender } = render(<SaladBowlLoader />)
   expect(container.querySelector('svg')).toHaveAttribute('aria-hidden', 'true')

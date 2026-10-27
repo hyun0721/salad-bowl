@@ -2,12 +2,13 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { useMediaQuery } from './useMediaQuery'
 import styles from './SaladBowlLoader.module.css'
 
+// motion은 그 단계에 머무는 동안 반복하는 움직임이다(멈춘 것처럼 보이지 않게).
 const STAGES = [
-  { at: 0, message: '신선한 재료 찾는 중이에요' },
-  { at: 8_000, message: '맛있게 섞는 중이에요' },
-  { at: 30_000, message: '드레싱 넣는 중이에요' },
-  { at: 90_000, message: '거의 다 됐어요, 조금만요' },
-]
+  { at: 0, message: '신선한 재료 찾는 중이에요', motion: 'seek' },
+  { at: 8_000, message: '맛있게 섞는 중이에요', motion: 'stir' },
+  { at: 30_000, message: '드레싱 넣는 중이에요', motion: 'dress' },
+  { at: 90_000, message: '거의 다 됐어요, 조금만요', motion: 'wait' },
+] as const
 const FILL_STEP_MS = 120
 const SETTLE_MS = 350
 
@@ -50,14 +51,16 @@ export default function SaladBowlLoader({ slow = false, done = false, statusId, 
     return () => clearTimeout(timer)
   }, [done, filled, reducedMotion, onFinished])
 
-  const motion = done ? '' : stage === 1 ? styles.stir : stage === LAST ? styles.wait : ''
+  // 완료 중에는 반복을 멈추고 남은 재료만 담는다.
+  const motion = done ? undefined : STAGES[stage].motion
   return (
     <div className={styles.loader}>
       <svg viewBox="80 72 352 344" width="128" height="125" aria-hidden="true" className={styles.svg}>
-        <g className={`${styles.scene} ${motion}`}>
+        <g className={`${styles.scene} ${motion ? styles[motion] : ''}`} data-motion={motion}>
           {/* 이미 담긴 재료가 다시 떨어지지 않도록 key는 재료 id로 고정한다. */}
           {PIECES.filter((piece) => piece.step <= filled).map((piece) => (
-            <g key={piece.id} data-piece={piece.pour ? undefined : ''} className={piece.pour ? styles.pour : styles.drop}>{piece.node}</g>
+            <g key={piece.id} data-piece={piece.pour ? undefined : ''}
+              className={piece.pour ? styles.pour : `${styles.drop} ${piece.step === stage ? styles.latest : ''}`}>{piece.node}</g>
           ))}
           <path d="M96 244h320c0 88-72 152-160 152S96 332 96 244z" fill="#ffffff" stroke="var(--line)" strokeWidth="6" />
           <rect x="200" y="384" width="112" height="24" rx="12" fill="#ffffff" stroke="var(--line)" strokeWidth="6" />
