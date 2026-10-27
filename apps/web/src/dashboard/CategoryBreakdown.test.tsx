@@ -1,4 +1,4 @@
-import { fireEvent, screen, within } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { mockViewport } from '../test/mockViewport'
@@ -58,6 +58,8 @@ describe('CategoryBreakdown', () => {
   it('highlights the matching chart slice on row hover', async () => {
     renderPage(<CategoryBreakdown groupId={10} month="2026-10" summary={summary} />)
     const row = await screen.findByRole('button', { name: '식비 80% ₩ 200,000' })
+    // 첫 setOption 효과는 버튼이 보인 뒤에 실행될 수 있다(느린 CI). 끝난 뒤에 기록을 지운다.
+    await waitFor(() => expect(chart.setOption).toHaveBeenCalled())
     chart.setOption.mockClear()
     chart.on.mockClear()
     chart.off.mockClear()
