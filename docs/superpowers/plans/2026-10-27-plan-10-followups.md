@@ -39,8 +39,8 @@ Plan 10(대시보드 도넛을 ECharts로 교체)의 Task 리뷰, 브라우저 �
 ## 나중에 (사소함, 리뷰에서 넘긴 것)
 - `useChartTheme`이 `window.matchMedia`를 가드 없이 부른다(테스트 setup이 채운다).
 - `EChart`의 `useImperativeHandle`이 초기화 순서에 기댄 `!` 단언이다.
-- 차트 위아래 빈 공간이 조금 남는다(좁은 화면 약 60px). `donutHeight` 계수를 더 줄일 수 있다.
-- 모바일 대시보드에서 RAC "Dialog 제목" 콘솔 경고가 난다(이번 변경 전부터 있던 것으로 보임, 추측).
+- 차트 위아래 빈 공간이 조금 남는다(좁은 화면 약 60px). `donutHeight` 계수를 더 줄일 수 있다. **(Plan 14에서 처리)**
+- 모바일 대시보드에서 RAC "Dialog 제목" 콘솔 경고가 난다(이번 변경 전부터 있던 것으로 보임, 추측). **(Plan 14에서 처리)**
 - (최종 리뷰) `EChart.test.tsx`의 StrictMode 테스트가 두 번의 init에 같은 가짜 객체를 돌려줘, ref가 두 번째 인스턴스를 가리키는지 실제로는 확인하지 않는다.
 - (최종 리뷰) 테마가 바뀌면 `DonutChart`가 `setOption`을 다시 부르는지 보는 통합 테스트가 없다(훅 테스트와 memo 의존성으로 간접 보장). 가운데 두 줄 겹침 검사가 테스트에 두 번 있다.
 - `centerValueSize`는 차트 폭이 높이보다 넓다고 가정한다. 폭이 더 좁으면 구멍이 더 작아진다.
