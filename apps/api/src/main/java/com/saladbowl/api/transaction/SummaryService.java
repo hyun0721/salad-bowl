@@ -1,17 +1,25 @@
 package com.saladbowl.api.transaction;
 
 import com.saladbowl.api.group.GroupAccess;
+import com.saladbowl.api.common.ApiException;
+import com.saladbowl.api.common.ErrorCode;
 import com.saladbowl.api.transaction.SummaryDtos.CategoryTotal;
+import com.saladbowl.api.transaction.SummaryDtos.CategoryTrend;
+import com.saladbowl.api.transaction.SummaryDtos.CategoryTrendSeries;
 import com.saladbowl.api.transaction.SummaryDtos.MemberTotal;
 import com.saladbowl.api.transaction.SummaryDtos.MonthlySummary;
+import com.saladbowl.api.transaction.TransactionDtos.TransactionView;
 import com.saladbowl.api.user.User;
 import com.saladbowl.api.user.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.time.YearMonth;
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -22,28 +30,51 @@ import java.util.stream.Collectors;
 public class SummaryService {
 
     static final String SUMMARY_CURRENCY = "KRW";
+    static final String UNCATEGORIZED = "미분류";
+    static final int MAX_TREND_MONTHS = 12;
 
     private final LedgerTransactionRepository transactions;
     private final GroupAccess access;
     private final UserRepository users;
+    private final TransactionViews views;
 
-    public SummaryService(LedgerTransactionRepository transactions, GroupAccess access, UserRepository users) {
+    public SummaryService(LedgerTransactionRepository transactions, GroupAccess access, UserRepository users,
+                          TransactionViews views) {
         this.transactions = transactions;
         this.access = access;
         this.users = users;
+        this.views = views;
+    }
+
+    /** 요약에 들어가는 그룹 거래. 합계와 거래 목록이 어긋나지 않도록 한 곳에서만 고른다. */
+    private List<LedgerTransaction> summaryTransactions(List<Long> owners, YearMonth month) {
+        return summaryTransactions(owners, month, month);
+    }
+
+    /** from~to(양끝 포함) 기간. 월 경계는 monthRange와 같아 월 하나일 때 결과가 같다. */
+    private List<LedgerTransaction> summaryTransactions(List<Long> owners, YearMonth from, YearMonth to) {
+        if (owners.isEmpty()) {
+            return List.of();
+        }
+        LocalDateTime start = TransactionService.monthRange(from).from();
+        LocalDateTime end = TransactionService.monthRange(to).to();
+        return transactions.findVisibleBetween(owners, start, end).stream()
+                .filter(tx -> SUMMARY_CURRENCY.equals(tx.getCurrency()))
+                .filter(tx -> tx.getType() != TransactionType.TRANSFER)
+                .toList();
+    }
+
+    /** 대분류가 비었으면 한 묶음으로 보이도록 "미분류"로 센다. 공백 제거는 하지 않는다(기존 집계 키 유지). */
+    static String majorLabel(LedgerTransaction tx) {
+        String major = tx.displayCategory().major();
+        return major == null || major.isBlank() ? UNCATEGORIZED : major;
     }
 
     @Transactional(readOnly = true)
     public MonthlySummary monthly(long groupId, long userId, YearMonth month) {
         access.requireMember(groupId, userId);
         List<Long> owners = access.sharedOwnerIds(groupId);
-        TransactionService.Range range = TransactionService.monthRange(month);
-        List<LedgerTransaction> txs = owners.isEmpty()
-                ? List.of()
-                : transactions.findVisibleBetween(owners, range.from(), range.to()).stream()
-                        .filter(tx -> SUMMARY_CURRENCY.equals(tx.getCurrency()))
-                        .filter(tx -> tx.getType() != TransactionType.TRANSFER)
-                        .toList();
+        List<LedgerTransaction> txs = summaryTransactions(owners, month);
 
         BigDecimal income = sum(txs, TransactionType.INCOME);
         BigDecimal expense = sum(txs, TransactionType.EXPENSE).negate();
@@ -51,7 +82,7 @@ public class SummaryService {
         Map<String, BigDecimal> byCategory = new LinkedHashMap<>();
         for (LedgerTransaction tx : txs) {
             if (tx.getType() == TransactionType.EXPENSE) {
-                byCategory.merge(tx.displayCategory().major(), tx.getAmount().negate(), BigDecimal::add);
+                byCategory.merge(majorLabel(tx), tx.getAmount().negate(), BigDecimal::add);
             }
         }
         List<CategoryTotal> categories = byCategory.entrySet().stream()
@@ -71,6 +102,58 @@ public class SummaryService {
                 .toList();
 
         return new MonthlySummary(month.toString(), income, expense, categories, members);
+    }
+
+    /** 월별 대분류 지출. 각 월 값은 그 달 monthly()의 byCategory와 같은 선별·키를 쓴다. */
+    @Transactional(readOnly = true)
+    public CategoryTrend trend(long groupId, long userId, YearMonth from, YearMonth to) {
+        access.requireMember(groupId, userId);
+        // 연도 범위를 먼저 확인하고, 12개월 검사는 넘침 없는 월 차이로 한다(plusMonths는 최댓값 근처에서 예외).
+        TransactionService.monthRange(from);
+        TransactionService.monthRange(to);
+        if (from.isAfter(to) || from.until(to, java.time.temporal.ChronoUnit.MONTHS) >= MAX_TREND_MONTHS) {
+            throw new ApiException(ErrorCode.VALIDATION_FAILED,
+                    "from must not be after to, and the range is at most " + MAX_TREND_MONTHS + " months");
+        }
+        List<YearMonth> months = new ArrayList<>();
+        for (YearMonth m = from; !m.isAfter(to); m = m.plusMonths(1)) {
+            months.add(m);
+        }
+        Map<String, BigDecimal[]> byCategory = new HashMap<>();
+        for (LedgerTransaction tx : summaryTransactions(access.sharedOwnerIds(groupId), from, to)) {
+            if (tx.getType() != TransactionType.EXPENSE) {
+                continue;
+            }
+            BigDecimal[] row = byCategory.computeIfAbsent(majorLabel(tx), k -> zeros(months.size()));
+            int i = months.indexOf(YearMonth.from(tx.getOccurredAt()));
+            row[i] = row[i].add(tx.getAmount().negate());
+        }
+        List<CategoryTrendSeries> categories = byCategory.entrySet().stream()
+                .map(e -> new CategoryTrendSeries(e.getKey(), List.of(e.getValue()),
+                        java.util.Arrays.stream(e.getValue()).reduce(BigDecimal.ZERO, BigDecimal::add)))
+                .sorted(Comparator.comparing(CategoryTrendSeries::total).reversed()
+                        .thenComparing(CategoryTrendSeries::category))
+                .toList();
+        return new CategoryTrend(months.stream().map(YearMonth::toString).toList(), categories);
+    }
+
+    private static BigDecimal[] zeros(int n) {
+        BigDecimal[] row = new BigDecimal[n];
+        java.util.Arrays.fill(row, BigDecimal.ZERO);
+        return row;
+    }
+
+    /** 요약의 대분류 조각 하나를 이루는 거래. 환불(양수 지출)도 넣어야 합계가 조각과 같다. */
+    @Transactional(readOnly = true)
+    public List<TransactionView> categoryTransactions(long groupId, long userId, YearMonth month, String category) {
+        access.requireMember(groupId, userId);
+        List<LedgerTransaction> matched = summaryTransactions(access.sharedOwnerIds(groupId), month).stream()
+                .filter(tx -> tx.getType() == TransactionType.EXPENSE)
+                .filter(tx -> majorLabel(tx).equals(category))
+                .toList();
+        Map<Long, Boolean> editable = new HashMap<>();
+        return views.toViews(matched,
+                owner -> editable.computeIfAbsent(owner, id -> access.canEditOwnedBy(userId, id)));
     }
 
     private static BigDecimal sum(List<LedgerTransaction> txs, TransactionType type) {

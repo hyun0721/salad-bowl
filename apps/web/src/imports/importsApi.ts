@@ -37,7 +37,7 @@ export const importsApi = {
   upload: (file: File) => {
     const form = new FormData()
     form.append('file', file)
-    return apiFetch<ImportResult>('/imports', { method: 'POST', body: form })
+    return apiFetch<ImportResult>('/imports', { method: 'POST', body: form, trackSlow: false })
   },
   history: () => apiFetch<ImportBatchView[]>('/imports'),
 }

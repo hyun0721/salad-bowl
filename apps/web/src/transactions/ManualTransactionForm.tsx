@@ -1,4 +1,10 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react'
+import ComboBox from '../common/ComboBox'
+import DateTimePicker from '../common/DateTimePicker'
+import MoneyField from '../common/MoneyField'
+import Select from '../common/Select'
+import TextField, { TextAreaField } from '../common/TextField'
+import { majorOptions, minorOptions, useCategories } from './categoriesApi'
+import { useState, type FormEvent } from 'react'
 import { errorMessage } from '../common/errorMessage'
 import ui from '../common/ui.module.css'
 import styles from './TransactionPanel.module.css'
@@ -16,21 +22,16 @@ type Props = { onDone: (created: TransactionView) => void; onCancel: () => void 
 
 export default function ManualTransactionForm({ onDone, onCancel }: Props) {
   const { addManual } = useTransactionMutations()
+  const categories = useCategories()
+  const list = categories.data ?? []
   const [occurredAt, setOccurredAt] = useState('')
   const [type, setType] = useState<TransactionType>('EXPENSE')
   const [major, setMajor] = useState('')
   const [minor, setMinor] = useState('')
   const [description, setDescription] = useState('')
-  const [amount, setAmount] = useState('')
+  const [amount, setAmount] = useState<number | null>(null)
   const [payment, setPayment] = useState('')
   const [memo, setMemo] = useState('')
-  const headingRef = useRef<HTMLHeadingElement>(null)
-
-  // 폼은 목록 아래로 밀려 화면 밖에 열릴 수 있어, 열릴 때 제목으로 포커스를 옮긴다.
-  useEffect(() => {
-    headingRef.current?.focus()
-  }, [])
-
   function onSubmit(event: FormEvent) {
     event.preventDefault()
     addManual.mutate({
@@ -39,7 +40,7 @@ export default function ManualTransactionForm({ onDone, onCancel }: Props) {
       categoryMajor: major.trim(),
       categoryMinor: minor.trim() || undefined,
       description: description.trim(),
-      amount: toSignedAmount(type, Number(amount)),
+      amount: toSignedAmount(type, amount ?? 0),
       paymentMethod: payment.trim() || undefined,
       memo: memo.trim() || undefined,
     }, { onSuccess: (created) => onDone(created) })
@@ -47,50 +48,19 @@ export default function ManualTransactionForm({ onDone, onCancel }: Props) {
 
   return (
     <form className={ui.stack} onSubmit={onSubmit}>
-      <div className={styles.header}>
-        <h2 ref={headingRef} tabIndex={-1}>거래 추가 (수동)</h2>
-        <button type="button" className={ui.button} onClick={onCancel}>닫기</button>
-      </div>
-      <label className={ui.field}>
-        <span>일시</span>
-        <input type="datetime-local" required className={ui.input} value={occurredAt} onChange={(e) => setOccurredAt(e.target.value)} />
-      </label>
-      <label className={ui.field}>
-        <span>타입</span>
-        <select className={ui.input} value={type} onChange={(e) => setType(e.target.value as TransactionType)}>
-          <option value="EXPENSE">지출</option>
-          <option value="INCOME">수입</option>
-          <option value="TRANSFER">이체(출금)</option>
-        </select>
-      </label>
-      <label className={ui.field}>
-        <span>대분류</span>
-        <input required maxLength={100} className={ui.input} value={major} onChange={(e) => setMajor(e.target.value)} />
-      </label>
-      <label className={ui.field}>
-        <span>소분류</span>
-        <input maxLength={100} className={ui.input} value={minor} onChange={(e) => setMinor(e.target.value)} />
-      </label>
-      <label className={ui.field}>
-        <span>내용</span>
-        <input required maxLength={500} className={ui.input} value={description} onChange={(e) => setDescription(e.target.value)} />
-      </label>
-      <label className={ui.field}>
-        <span>금액 (원)</span>
-        <input type="number" required min="1" step="1" inputMode="numeric" className={ui.input} value={amount}
-          onChange={(e) => setAmount(e.target.value)} />
-      </label>
-      <label className={ui.field}>
-        <span>결제수단</span>
-        <input maxLength={100} className={ui.input} value={payment} onChange={(e) => setPayment(e.target.value)} />
-      </label>
-      <label className={ui.field}>
-        <span>메모</span>
-        <textarea rows={2} maxLength={1000} className={ui.input} value={memo} onChange={(e) => setMemo(e.target.value)} />
-      </label>
+      <DateTimePicker label="일시" value={occurredAt} onChange={setOccurredAt} isRequired />
+      <Select variant="field" label="타입"
+        items={[{ id: 'EXPENSE', label: '지출' }, { id: 'INCOME', label: '수입' }, { id: 'TRANSFER', label: '이체(출금)' }]}
+        selectedKey={type} onSelectionChange={(key) => { if (key != null) setType(key as TransactionType) }} />
+      <ComboBox label="대분류" value={major} onChange={setMajor} options={majorOptions(list)} isRequired maxLength={100} />
+      <ComboBox label="소분류" value={minor} onChange={setMinor} options={minorOptions(list, major.trim())} maxLength={100} />
+      <TextField label="내용" value={description} onChange={setDescription} isRequired maxLength={500} />
+      <MoneyField label="금액 (원)" value={amount} onChange={setAmount} isRequired minValue={1} />
+      <TextField label="결제수단" value={payment} onChange={setPayment} maxLength={100} />
+      <TextAreaField label="메모" value={memo} onChange={setMemo} maxLength={1000} rows={2} />
       <div className={styles.actions}>
         <button type="button" className={ui.button} onClick={onCancel}>취소</button>
-        <button type="submit" className={`${ui.button} ${ui.primary} ${styles.save}`} disabled={addManual.isPending}>추가</button>
+        <button type="submit" className={`${ui.button} ${ui.primary} ${styles.save}`} disabled={addManual.isPending || addManual.isSuccess}>추가</button>
       </div>
       {addManual.isError && <p role="alert" className={ui.alert}>{errorMessage(addManual.error)}</p>}
     </form>

@@ -1,9 +1,11 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderPage } from '../test/renderPage'
 import { server } from '../test/server'
 import DashboardPage from './DashboardPage'
+
+vi.mock('../common/echarts', () => ({ echarts: { init: () => ({ setOption: vi.fn(), on: vi.fn(), off: vi.fn(), resize: vi.fn(), dispose: vi.fn(), isDisposed: vi.fn(() => false), dispatchAction: vi.fn() }) } }))
 
 const today = new Date(2026, 10, 19) // 기본 월은 지난달 2026-10
 const group = { groupId: 10, name: '우리집', myRole: 'ADMIN', memberCount: 2 }
@@ -20,6 +22,7 @@ const summary = {
 
 beforeEach(() => {
   try { window.localStorage.clear() } catch { /* storage may be unavailable */ }
+  server.use(http.get('*/api/groups/10/summary/trend', () => HttpResponse.json({ months: [], categories: [] })))
 })
 
 describe('DashboardPage', () => {
@@ -35,10 +38,10 @@ describe('DashboardPage', () => {
     expect(await within(income).findByText('₩ 3,000,000')).toBeInTheDocument()
     expect(within(screen.getByRole('region', { name: '지출' })).getByText('₩ 250,000')).toBeInTheDocument()
     const categories = screen.getByRole('region', { name: '카테고리별 지출' })
-    expect(within(categories).getByText('식비')).toBeInTheDocument()
-    expect(within(categories).getByText('₩ 200,000')).toBeInTheDocument()
+    expect(within(categories).getByRole('button', { name: '식비 80% ₩ 200,000' })).toBeInTheDocument()
     const members = screen.getByRole('region', { name: '멤버별' })
     expect(within(members).getByRole('row', { name: /짝꿍/ })).toHaveTextContent('₩ 100,000')
+    expect(screen.getByRole('region', { name: '대분류별 추이' })).toBeInTheDocument()
     expect(months).toEqual(['2026-10'])
   })
 
@@ -55,6 +58,32 @@ describe('DashboardPage', () => {
     await user.click(screen.getByRole('button', { name: '이전 달' }))
 
     await waitFor(() => expect(months).toContain('2026-09'))
+  })
+
+  it('keeps trend chip choices when the dashboard month changes', async () => {
+    const trendMonths: string[] = []
+    server.use(
+      http.get('*/api/groups/10/summary', ({ request }) => {
+        const month = new URL(request.url).searchParams.get('month')!
+        return HttpResponse.json({ ...summary, month })
+      }),
+      http.get('*/api/groups/10/summary/trend', ({ request }) => {
+        trendMonths.push(new URL(request.url).searchParams.get('to')!)
+        return HttpResponse.json({
+          months: ['2026-09', '2026-10'],
+          categories: [{ category: '식비', expenses: [1000, 2000], total: 3000 }],
+        })
+      }),
+    )
+    const { user } = renderPage(<DashboardPage today={today} />, { groups: [group] })
+    const trend = await screen.findByRole('region', { name: '대분류별 추이' })
+    await within(trend).findByRole('button', { name: '식비' })
+    await user.click(within(trend).getByRole('button', { name: '식비' }))
+    expect(within(trend).getByRole('button', { name: '식비' })).toHaveAttribute('aria-pressed', 'false')
+    await user.click(screen.getByRole('button', { name: '이전 달' }))
+    await waitFor(() => expect(trendMonths).toContain('2026-09'))
+    await waitFor(() => expect(within(screen.getByRole('region', { name: '대분류별 추이' }))
+      .getByRole('button', { name: '식비' })).toHaveAttribute('aria-pressed', 'false'))
   })
 
   it('says so when nothing was shared this month', async () => {

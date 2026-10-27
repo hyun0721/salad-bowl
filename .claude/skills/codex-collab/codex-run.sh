@@ -7,7 +7,7 @@
 #   codex-run.sh review <base-ref> <out-file> [effort]     Codex 기본 리뷰어로 브랜치 리뷰
 #
 # - 마지막 응답은 <out-file>, 전체 로그는 같은 이름의 .log에 남는다. 세션 id는 표준 출력으로 알려준다.
-# - 모델은 CODEX_MODEL(기본 gpt-6-astra)로 고정한다. 전역 설정의 gpt-6.1-sol은 ChatGPT 계정에서 쓸 수 없다.
+# - 모델은 호출마다 CODEX_MODEL로 고른다(기본 gpt-6-astra, SKILL.md 3장 표). 가용 모델은 현재 계정에서 확인하고 전역 설정은 변경하지 않는다.
 # - effort: none|minimal|low|medium|high|xhigh (기본 medium)
 set -euo pipefail
 

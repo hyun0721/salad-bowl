@@ -1,0 +1,25 @@
+.loader { display: flex; flex-direction: column; align-items: center; gap: var(--space-3); text-align: center; }
+/* 재료가 viewBox 위에서 떨어져 들어오므로 잘리지 않게 한다. */
+.svg { overflow: visible; }
+.scene, .drop { transform-box: fill-box; transform-origin: 50% 100%; }
+.drop { animation: drop 600ms cubic-bezier(0.3, 1.35, 0.5, 1) both; }
+.pour path { stroke-dasharray: 1; animation: pour 700ms ease-out both; }
+/* 단계마다 머무는 동안 그 단계의 움직임을 반복한다. 찾기는 떨어진 뒤부터 뛰어오른다. */
+.seek .latest { animation: drop 600ms cubic-bezier(0.3, 1.35, 0.5, 1) both, hop 1400ms ease-in-out 700ms infinite; }
+.stir { animation: stir 1400ms ease-in-out infinite; }
+.dress .pour path { animation: pour-loop 2400ms ease-in-out infinite; }
+.wait { animation: stir 2400ms ease-in-out infinite; }
+/* 좁은 카드에서 한 글자만 다음 줄로 넘어가지 않게 낱말 단위로 줄을 바꾸고 줄 길이를 맞춘다. */
+.text { display: flex; flex-direction: column; gap: 2px; word-break: keep-all; text-wrap: balance; }
+.message { margin: 0; font-weight: 600; color: var(--ink); }
+.hint { margin: 0; font-size: var(--text-sm); color: var(--ink-muted); }
+@keyframes drop { from { transform: translateY(-140px); opacity: 0; } 40% { opacity: 1; } to { transform: none; opacity: 1; } }
+@keyframes pour { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+@keyframes stir { 0%, 100% { transform: rotate(0deg); } 25% { transform: rotate(-4deg); } 75% { transform: rotate(4deg); } }
+@keyframes hop { 0%, 55%, 100% { transform: none; } 25% { transform: translateY(-36px) rotate(-6deg); } }
+@keyframes pour-loop { 0% { stroke-dashoffset: 1; opacity: 1; } 40%, 80% { stroke-dashoffset: 0; opacity: 1; } 100% { stroke-dashoffset: 0; opacity: 0; } }
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .drop, .seek .latest, .pour path, .dress .pour path { animation: fade 150ms ease-out both; }
+  .stir, .wait { animation: none; }
+}

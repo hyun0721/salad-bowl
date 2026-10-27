@@ -109,11 +109,29 @@ describe('GroupsPage', () => {
     }))
     const { user } = renderPage(<GroupsPage />, { groups: [home] })
 
-    const toggle = await screen.findByRole('checkbox', { name: '내 거래를 이 그룹에 공개' })
+    const toggle = await screen.findByRole('switch', { name: '내 거래를 이 그룹에 공개' })
     expect(toggle).toBeChecked()
     await user.click(toggle)
 
     await waitFor(() => expect(body).toEqual({ enabled: false }))
+  })
+
+  it('disables the share switch while saving', async () => {
+    detailHandlers()
+    let release: () => void = () => {}
+    const gate = new Promise<void>((resolve) => { release = resolve })
+    server.use(http.put('*/api/groups/10/share', async () => {
+      await gate
+      return HttpResponse.json({ shareEnabled: false })
+    }))
+    const { user } = renderPage(<GroupsPage />, { groups: [home] })
+
+    const toggle = await screen.findByRole('switch', { name: '내 거래를 이 그룹에 공개' })
+    await user.click(toggle)
+    await waitFor(() => expect(screen.getByRole('switch', { name: '내 거래를 이 그룹에 공개' })).toBeDisabled())
+
+    release()
+    await waitFor(() => expect(screen.getByRole('switch', { name: '내 거래를 이 그룹에 공개' })).toBeEnabled())
   })
 
   it('lets a member leave only after confirming', async () => {
@@ -139,8 +157,8 @@ describe('GroupsPage', () => {
     const { user } = renderPage(<GroupsPage />, { groups: [friends] })
 
     await user.click(await screen.findByRole('button', { name: '그룹 나가기' }))
-    expect(screen.getByRole('button', { name: '취소' })).toHaveFocus()
+    await waitFor(() => expect(screen.getByRole('button', { name: '취소' })).toHaveFocus())
     await user.click(screen.getByRole('button', { name: '취소' }))
-    expect(screen.getByRole('button', { name: '그룹 나가기' })).toHaveFocus()
+    await waitFor(() => expect(screen.getByRole('button', { name: '그룹 나가기' })).toHaveFocus())
   })
 })

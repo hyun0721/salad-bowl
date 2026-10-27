@@ -1,0 +1,28 @@
+.popover { min-width: var(--trigger-width); background: var(--surface-000); border: 1px solid var(--line); border-radius: var(--radius-sm); box-shadow: 0 4px 16px var(--overlay); overflow: auto; }
+.sheet { position: fixed !important; inset: auto 0 0 !important; width: 100%; max-height: 70vh !important; max-height: 70dvh !important; overscroll-behavior: contain; overflow: auto; background: var(--surface-000); border-radius: var(--radius-lg) var(--radius-lg) 0 0; padding-bottom: env(safe-area-inset-bottom); box-shadow: 0 0 0 100vmax var(--overlay); }
+.dialog { outline: none; }
+.title { margin: 0; padding: var(--space-4); font-size: var(--text-md); }
+.sheet[data-entering] { animation: slide-in 160ms ease-out; }
+.sheet[data-exiting] { animation: slide-in 120ms ease-in reverse; }
+@keyframes slide-in { from { transform: translateY(100%); } to { transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) {
+  .sheet[data-entering], .sheet[data-exiting] { animation: none; }
+}
+
+/* Dialog: 가운데 모달(넓은 화면)과 하단 시트(좁은 화면). 값은 옛 Modal.module.css를 그대로 옮겼다. */
+.backdrop { position: fixed; inset: 0; z-index: 10; display: flex; align-items: center; justify-content: center; padding: var(--space-6) max(16px, env(safe-area-inset-left, 0px)); background: var(--overlay); }
+.modal { width: 100%; max-width: 560px; max-height: 100%; overflow: auto; background: var(--surface-000); border-radius: var(--radius-lg); }
+.wide { max-width: 880px; }
+.content { display: flex; flex-direction: column; gap: var(--space-4); padding: var(--space-6); outline: none; }
+/* 옮겨 온 .title(Select 시트 제목)에는 안쪽 여백이 있어 대화상자 제목에는 따로 쓴다. 글자 모양은 base.css의 h2를 따른다. */
+.dialogTitle { margin: 0; }
+.header { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
+.sheetOverlay { z-index: 20; }
+/* RAC가 SheetBackdrop에 absolute inset 0을 직접 준다. 모달용 .backdrop(fixed, z-index)을 쓰면 시트 위를 덮어 탭을 막는다. */
+.sheetBackdrop { background: var(--overlay); }
+/* width: 100%가 없으면 RAC 시트가 가로 가운데 정렬이라 내용 폭만큼만 열린다(Plan 06a). */
+.modalSheet { width: 100%; max-height: 70vh; max-height: 70dvh; overflow: auto; background: var(--surface-000); border-radius: var(--radius-lg) var(--radius-lg) 0 0; padding-bottom: env(safe-area-inset-bottom); overscroll-behavior: contain; }
+.modalSheet .content { padding: var(--space-4) max(var(--space-4), env(safe-area-inset-right, 0px)) var(--space-4) max(var(--space-4), env(safe-area-inset-left, 0px)); }
+
+/* 거래 상세·추가처럼 내용이 긴 시트는 화면 높이를 다 쓴다. 위쪽 안전 영역(노치)을 피한다. */
+.fullSheet { height: 100vh; height: 100dvh; max-height: 100vh; max-height: 100dvh; border-radius: 0; padding-top: env(safe-area-inset-top); }

@@ -1,8 +1,10 @@
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
+import { typeDateTime } from '../test/typeDateTime'
 import { server } from '../test/server'
 import { renderPage } from '../test/renderPage'
+import { mockViewport } from '../test/mockViewport'
 import TransactionsPage from './TransactionsPage'
 import type { TransactionView } from './transactionsApi'
 
@@ -20,6 +22,10 @@ function mineHandler(items: TransactionView[]) {
 }
 
 describe('TransactionsPage', () => {
+  beforeEach(() => {
+    server.use(http.get('*/api/me/categories', () => HttpResponse.json([])))
+  })
+
   it('lists my transactions for the current month with signed amounts and badges', async () => {
     mineHandler([
       { ...base, id: 2, description: '국밥', amount: -9000, edited: true },
@@ -30,7 +36,7 @@ describe('TransactionsPage', () => {
     renderPage(<TransactionsPage today={today} />, { groups })
 
     const list = await screen.findByRole('region', { name: '거래 목록' })
-    const rows = await within(list).findAllByRole('button')
+    const rows = (await within(list).findAllByRole('row')).slice(1)
     expect(rows).toHaveLength(3)
     expect(rows[0]).toHaveTextContent('10-05 12:30')
     expect(rows[0]).toHaveTextContent('-₩ 9,000')
@@ -38,6 +44,43 @@ describe('TransactionsPage', () => {
     expect(rows[1]).toHaveTextContent('숨김')
     expect(rows[2]).toHaveTextContent('+₩ 3,000,000')
     expect(document.title).toBe('거래 목록 · Salad Bowl')
+  })
+
+  it('sorts by amount and opens a row with the keyboard', async () => {
+    mineHandler([
+      { ...base, id: 1, description: '김밥', amount: -4000 },
+      { ...base, id: 2, description: '월급', amount: 3000000 },
+      { ...base, id: 3, description: '국밥', amount: -9000 },
+    ])
+    server.use(http.get('*/api/transactions/:id/audits', () => HttpResponse.json([])))
+    const { user } = renderPage(<TransactionsPage today={today} />, { groups })
+    const table = await screen.findByRole('grid', { name: '거래 목록' })
+    expect(within(table).getAllByRole('columnheader').map((h) => h.textContent)).toEqual(['일시', '카테고리', '내용', '결제수단', '금액'])
+
+    await user.click(within(table).getByRole('columnheader', { name: /금액/ }))
+    const rows = within(table).getAllByRole('row').slice(1)
+    expect(rows.map((r) => within(r).getByRole('rowheader').textContent)).toEqual(['국밥', '김밥', '월급'])
+
+    await user.click(rows[0])
+    // 상세 제목으로 옮겨진 포커스를 표로 되돌린 뒤 행 키보드 이동을 확인한다.
+    rows[0].focus()
+    await user.keyboard('{ArrowDown}{Enter}')
+    const detail = screen.getByRole('complementary', { name: '거래 상세' })
+    expect(within(detail).getByRole('heading', { name: '김밥' })).toBeInTheDocument()
+  })
+
+  it('shows cards with description, amount and details on a narrow screen', async () => {
+    mockViewport(true)
+    mineHandler([{ ...base, edited: true }])
+    renderPage(<TransactionsPage today={today} />, { groups })
+
+    const list = await screen.findByRole('grid', { name: '거래 목록' })
+    const card = within(list).getByRole('row', { name: /김밥/ })
+    expect(card).toHaveTextContent('-₩ 4,000')
+    expect(card).toHaveTextContent('10-05 12:30')
+    expect(card).toHaveTextContent('식비 · 점심')
+    expect(card).toHaveTextContent('수정됨')
+    expect(within(list).queryByRole('columnheader')).not.toBeInTheDocument()
   })
 
   it('switches to group transactions with owner names and filters by member', async () => {
@@ -64,12 +107,13 @@ describe('TransactionsPage', () => {
     )
     const { user } = renderPage(<TransactionsPage today={today} />, { groups })
 
-    await user.click(await screen.findByRole('button', { name: '그룹 거래' }))
+    await user.click(await screen.findByRole('radio', { name: '그룹 거래' }))
     const list = screen.getByRole('region', { name: '거래 목록' })
     expect(await within(list).findByText('택시')).toBeInTheDocument()
-    expect(within(list).getAllByRole('button')[0]).toHaveTextContent('멤버')
+    expect(within(list).getAllByRole('row')[1]).toHaveTextContent('멤버')
 
-    await user.selectOptions(await screen.findByRole('combobox', { name: '멤버' }), '2')
+    await user.click(await screen.findByRole('button', { name: '전체 멤버' }))
+    await user.click(await screen.findByRole('option', { name: '멤버' }))
 
     expect(await within(list).findByText('택시')).toBeInTheDocument()
     expect(within(list).queryByText('커피')).not.toBeInTheDocument()
@@ -92,7 +136,7 @@ describe('TransactionsPage', () => {
     fireEvent.change(screen.getByLabelText('월'), { target: { value: '2026-09' } })
     expect(await screen.findByText('스타벅스')).toBeInTheDocument()
 
-    await user.type(screen.getByLabelText('검색'), '교통')
+    await user.type(screen.getByRole('searchbox', { name: '검색' }), '교통')
 
     expect(screen.queryByText('스타벅스')).not.toBeInTheDocument()
     expect(screen.getByText('버스')).toBeInTheDocument()
@@ -104,7 +148,31 @@ describe('TransactionsPage', () => {
 
     renderPage(<TransactionsPage today={today} />, { groups: [] })
 
-    expect(await screen.findByRole('button', { name: '그룹 거래' })).toBeDisabled()
+    expect(await screen.findByRole('radio', { name: '그룹 거래' })).toBeDisabled()
+  })
+
+  it('falls back to my transactions when the selected group goes away', async () => {
+    mineHandler([])
+    server.use(
+      http.get('*/api/groups/10', () => HttpResponse.json({ groupId: 10, name: '우리집', myRole: 'ADMIN', members: [] })),
+      http.get('*/api/groups/10/transactions', () => HttpResponse.json([])),
+    )
+    const { user, client } = renderPage(<TransactionsPage today={today} />, { groups })
+
+    await user.click(await screen.findByRole('radio', { name: '그룹 거래' }))
+    expect(screen.getByRole('radio', { name: '그룹 거래' })).toBeChecked()
+
+    server.use(http.get('*/api/groups', () => HttpResponse.json([])))
+    await client.invalidateQueries({ queryKey: ['groups'], exact: true })
+
+    await waitFor(() => expect(screen.getByRole('radio', { name: '그룹 거래' })).toBeDisabled())
+    expect(screen.getByRole('radio', { name: '내 거래' })).toBeChecked()
+
+    // 그룹이 다시 생겨도 범위는 '내 거래'에 머문다(예전 '그룹 거래' 선택이 되살아나지 않는다).
+    server.use(http.get('*/api/groups', () => HttpResponse.json(groups)))
+    await client.invalidateQueries({ queryKey: ['groups'], exact: true })
+    await waitFor(() => expect(screen.getByRole('radio', { name: '그룹 거래' })).toBeEnabled())
+    expect(screen.getByRole('radio', { name: '내 거래' })).toBeChecked()
   })
 
   it('offers retry when loading fails', async () => {
@@ -135,12 +203,12 @@ describe('TransactionsPage', () => {
     )
     const { user } = renderPage(<TransactionsPage today={today} />, { groups })
 
-    await user.click(await screen.findByRole('button', { name: '그룹 거래' }))
+    await user.click(await screen.findByRole('radio', { name: '그룹 거래' }))
     expect(await screen.findByText('멤버 목록을 불러오지 못했습니다.')).toBeInTheDocument()
     fail = false
     await user.click(screen.getByRole('button', { name: '멤버 목록 다시 시도' }))
 
-    expect(await screen.findByRole('combobox', { name: '멤버' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: '전체 멤버' })).toBeInTheDocument()
   })
 
   it('opens the detail panel for a row and the add form from the button', async () => {
@@ -148,12 +216,71 @@ describe('TransactionsPage', () => {
     server.use(http.get('*/api/transactions/:id/audits', () => HttpResponse.json([])))
     const { user } = renderPage(<TransactionsPage today={today} />, { groups })
 
-    await user.click(await screen.findByRole('button', { name: /김밥/ }))
+    await user.click(await screen.findByRole('row', { name: /김밥/ }))
     const detail = screen.getByRole('complementary', { name: '거래 상세' })
     expect(within(detail).getByRole('heading', { name: '김밥' })).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: '거래 추가' }))
     expect(within(detail).getByRole('heading', { name: '거래 추가 (수동)' })).toBeInTheDocument()
+  })
+
+  it('opens detail in a full-height sheet on a narrow screen', async () => {
+    mockViewport(true)
+    mineHandler([{ ...base }])
+    server.use(http.get('*/api/transactions/:id/audits', () => HttpResponse.json([])))
+    const { user } = renderPage(<TransactionsPage today={today} />, { groups })
+
+    await user.click(await screen.findByRole('row', { name: /김밥/ }))
+    const sheet = screen.getByRole('dialog', { name: '김밥' })
+    expect(within(sheet).getByRole('button', { name: '닫기' })).toBeInTheDocument()
+    expect(within(sheet).getByLabelText('메모')).toBeInTheDocument()
+    expect(screen.queryByRole('complementary')).not.toBeInTheDocument()
+  })
+
+  it('opens the add form in a sheet on a narrow screen', async () => {
+    mockViewport(true)
+    mineHandler([])
+    const { user } = renderPage(<TransactionsPage today={today} />, { groups })
+
+    await user.click(await screen.findByRole('button', { name: '거래 추가' }))
+    expect(within(screen.getByRole('dialog', { name: '거래 추가 (수동)' })).getByLabelText('내용')).toBeInTheDocument()
+  })
+
+  it('moves focus to the list heading after deleting a transaction', async () => {
+    let deleted = false
+    server.use(
+      http.get('*/api/me/transactions', () => HttpResponse.json(deleted ? [] : [{ ...base, source: 'MANUAL' }])),
+      http.delete('*/api/transactions/:id', () => { deleted = true; return new HttpResponse(null, { status: 204 }) }),
+      http.get('*/api/transactions/:id/audits', () => HttpResponse.json([])),
+    )
+    const { user } = renderPage(<TransactionsPage today={today} />, { groups })
+
+    await user.click(await screen.findByRole('row', { name: /김밥/ }))
+    await user.click(screen.getByRole('button', { name: '삭제' }))
+    await user.click(screen.getByRole('button', { name: '삭제 확인' }))
+
+    await waitFor(() => expect(screen.queryByRole('complementary', { name: '거래 상세' })).not.toBeInTheDocument())
+    await waitFor(() => expect(screen.getByRole('heading', { name: '거래 목록', level: 2 })).toHaveFocus())
+  })
+
+  it('closes a group transaction panel when the scope falls back to my transactions', async () => {
+    mineHandler([{ ...base, id: 6, description: '커피' }])
+    server.use(
+      http.get('*/api/groups/10', () => HttpResponse.json({ groupId: 10, name: '우리집', myRole: 'ADMIN', members: [] })),
+      http.get('*/api/groups/10/transactions', () => HttpResponse.json([{ ...base, id: 6, description: '커피' }])),
+      http.get('*/api/transactions/:id/audits', () => HttpResponse.json([])),
+    )
+    const { user, client } = renderPage(<TransactionsPage today={today} />, { groups })
+
+    await user.click(await screen.findByRole('radio', { name: '그룹 거래' }))
+    await user.click(await screen.findByRole('row', { name: /커피/ }))
+    expect(screen.getByRole('complementary', { name: '거래 상세' })).toBeInTheDocument()
+
+    server.use(http.get('*/api/groups', () => HttpResponse.json([])))
+    await client.invalidateQueries({ queryKey: ['groups'], exact: true })
+
+    await waitFor(() => expect(screen.getByRole('radio', { name: '내 거래' })).toBeChecked())
+    expect(screen.queryByRole('complementary', { name: '거래 상세' })).not.toBeInTheDocument()
   })
 
   it('closes the panel when the selected transaction is no longer in the visible list', async () => {
@@ -164,7 +291,7 @@ describe('TransactionsPage', () => {
     )
     const { user } = renderPage(<TransactionsPage today={today} />, { groups })
 
-    await user.click(await screen.findByRole('button', { name: /김밥/ }))
+    await user.click(await screen.findByRole('row', { name: /김밥/ }))
     expect(screen.getByRole('complementary', { name: '거래 상세' })).toBeInTheDocument()
 
     fireEvent.change(screen.getByLabelText('월'), { target: { value: '2026-09' } })
@@ -173,12 +300,122 @@ describe('TransactionsPage', () => {
     expect(screen.queryByRole('complementary', { name: '거래 상세' })).not.toBeInTheDocument()
   })
 
+  it('clears the selection when the month changes', async () => {
+    server.use(
+      http.get('*/api/me/transactions', ({ request }) => HttpResponse.json(
+        new URL(request.url).searchParams.get('month') === '2026-10' ? [{ ...base }] : [])),
+      http.get('*/api/transactions/:id/audits', () => HttpResponse.json([])),
+    )
+    const { user } = renderPage(<TransactionsPage today={today} />, { groups })
+
+    await user.click(await screen.findByRole('row', { name: /김밥/ }))
+    expect(screen.getByRole('complementary', { name: '거래 상세' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '이전 달' }))
+    expect(await screen.findByText('이 달에 거래가 없습니다.')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '다음 달' }))
+
+    expect(await screen.findByRole('row', { name: /김밥/ })).toBeInTheDocument()
+    expect(screen.queryByRole('complementary', { name: '거래 상세' })).not.toBeInTheDocument()
+  })
+
+  it('keeps the sheet open while the month of a newly added transaction loads', async () => {
+    mockViewport(true)
+    const created: TransactionView = {
+      ...base, id: 20, occurredAt: '2026-09-05T13:30:00', description: '9월 간식', source: 'MANUAL', amount: -3000,
+    }
+    let added = false
+    let releaseSeptember: () => void = () => {}
+    server.use(
+      http.get('*/api/me/transactions', async ({ request }) => {
+        if (added && new URL(request.url).searchParams.get('month') === '2026-09') {
+          // 새 달 목록을 붙잡아 두고, 그 사이 시트가 닫히지 않는지 본다.
+          await new Promise<void>((resolve) => { releaseSeptember = resolve })
+          return HttpResponse.json([created])
+        }
+        return HttpResponse.json([])
+      }),
+      http.post('*/api/me/transactions', () => {
+        added = true
+        return HttpResponse.json(created, { status: 201 })
+      }),
+      http.get('*/api/transactions/:id/audits', () => HttpResponse.json([])),
+    )
+    const { user } = renderPage(<TransactionsPage today={today} />, { groups })
+
+    await screen.findByText('이 달에 거래가 없습니다.')
+    await user.click(screen.getByRole('button', { name: '거래 추가' }))
+    await typeDateTime(user, '202609051330')
+    await user.type(screen.getByRole('combobox', { name: '대분류' }), '식비')
+    await user.type(screen.getByLabelText('내용'), '9월 간식')
+    await user.type(screen.getByLabelText('금액 (원)'), '3000')
+    const sheet = screen.getByRole('dialog', { name: '거래 추가 (수동)' })
+    await user.click(within(sheet).getByRole('button', { name: '추가' }))
+
+    try {
+      await waitFor(() => expect(screen.getByLabelText('월')).toHaveValue('2026-09'))
+      // 닫히는 시트도 jsdom DOM에는 남으므로 퇴장 상태를 확인한다.
+      expect(sheet.parentElement).not.toHaveAttribute('data-exiting', 'true')
+      expect(screen.getByRole('dialog')).toBe(sheet.closest('[role="dialog"]'))
+    } finally {
+      releaseSeptember()
+    }
+    expect(await screen.findByRole('dialog', { name: '9월 간식' })).toBeInTheDocument()
+  })
+
+  it('keeps the sheet open when the month of a newly added transaction is cached', async () => {
+    mockViewport(true)
+    const created: TransactionView = {
+      ...base, id: 20, occurredAt: '2026-09-05T13:30:00', description: '9월 간식', source: 'MANUAL', amount: -3000,
+    }
+    let added = false
+    let releaseSeptember: () => void = () => {}
+    server.use(
+      http.get('*/api/me/transactions', async ({ request }) => {
+        if (added && new URL(request.url).searchParams.get('month') === '2026-09') {
+          await new Promise<void>((resolve) => { releaseSeptember = resolve })
+          return HttpResponse.json([created])
+        }
+        return HttpResponse.json([])
+      }),
+      http.post('*/api/me/transactions', () => {
+        added = true
+        return HttpResponse.json(created, { status: 201 })
+      }),
+      http.get('*/api/transactions/:id/audits', () => HttpResponse.json([])),
+    )
+    const { user } = renderPage(<TransactionsPage today={today} />, { groups })
+
+    await screen.findByText('이 달에 거래가 없습니다.')
+    await user.click(screen.getByRole('button', { name: '이전 달' }))
+    await waitFor(() => expect(screen.getByLabelText('월')).toHaveValue('2026-09'))
+    await screen.findByText('이 달에 거래가 없습니다.')
+    await user.click(screen.getByRole('button', { name: '다음 달' }))
+    await waitFor(() => expect(screen.getByLabelText('월')).toHaveValue('2026-10'))
+    await user.click(screen.getByRole('button', { name: '거래 추가' }))
+    await typeDateTime(user, '202609051330')
+    await user.type(screen.getByRole('combobox', { name: '대분류' }), '식비')
+    await user.type(screen.getByLabelText('내용'), '9월 간식')
+    await user.type(screen.getByLabelText('금액 (원)'), '3000')
+    const sheet = screen.getByRole('dialog', { name: '거래 추가 (수동)' })
+    await user.click(within(sheet).getByRole('button', { name: '추가' }))
+
+    try {
+      await waitFor(() => expect(screen.getByLabelText('월')).toHaveValue('2026-09'))
+      expect(sheet.parentElement).not.toHaveAttribute('data-exiting', 'true')
+      expect(within(sheet).getByRole('button', { name: '추가' })).toBeDisabled()
+    } finally {
+      releaseSeptember()
+    }
+    expect(await screen.findByRole('dialog', { name: '9월 간식' })).toBeInTheDocument()
+  })
+
   it('moves focus to the panel heading and to the add form heading, not on re-render', async () => {
     mineHandler([{ ...base }])
     server.use(http.get('*/api/transactions/:id/audits', () => HttpResponse.json([])))
     const { user } = renderPage(<TransactionsPage today={today} />, { groups })
 
-    await user.click(await screen.findByRole('button', { name: /김밥/ }))
+    await user.click(await screen.findByRole('row', { name: /김밥/ }))
     const heading = screen.getByRole('heading', { name: '김밥' })
     expect(heading).toHaveFocus()
 
@@ -196,7 +433,7 @@ describe('TransactionsPage', () => {
     const { user } = renderPage(<TransactionsPage today={today} />, { groups })
 
     await screen.findByText('김밥')
-    await user.type(screen.getByLabelText('검색'), '없는말')
+    await user.type(screen.getByRole('searchbox', { name: '검색' }), '없는말')
 
     expect(screen.getByText('검색 결과가 없습니다.')).toBeInTheDocument()
     expect(screen.queryByText('이 달에 거래가 없습니다.')).not.toBeInTheDocument()
@@ -220,8 +457,8 @@ describe('TransactionsPage', () => {
 
     await screen.findByText('이 달에 거래가 없습니다.')
     await user.click(screen.getByRole('button', { name: '거래 추가' }))
-    fireEvent.change(screen.getByLabelText('일시'), { target: { value: '2026-09-05T13:30' } })
-    await user.type(screen.getByLabelText('대분류'), '식비')
+    await typeDateTime(user, '202609051330')
+    await user.type(screen.getByRole('combobox', { name: '대분류' }), '식비')
     await user.type(screen.getByLabelText('내용'), '9월 간식')
     await user.type(screen.getByLabelText('금액 (원)'), '3000')
     await user.click(screen.getByRole('button', { name: '추가' }))

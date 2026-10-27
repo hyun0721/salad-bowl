@@ -4,8 +4,10 @@ import com.saladbowl.api.common.ErrorCode;
 import com.saladbowl.api.common.ErrorResponse;
 import jakarta.servlet.DispatcherType;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.Ordered;
 import org.springframework.http.MediaType;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -19,11 +21,37 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import tools.jackson.databind.ObjectMapper;
 
+import java.time.Clock;
 import java.util.Arrays;
 import java.util.List;
 
 @Configuration
 public class SecurityConfig {
+
+    // 로그인 제한의 15분 창을 테스트에서 조작할 수 있도록 Clock을 빈으로 둔다.
+    @Bean
+    public Clock clock() {
+        return Clock.systemUTC();
+    }
+
+    // Spring Security 체인(-100)보다 먼저 돌려 직접 호출을 인증 전에 막는다.
+    @Bean
+    public FilterRegistrationBean<ProxySecretFilter> proxySecretFilter(
+            @Value("${app.security.proxy-secret:}") String secret, ObjectMapper objectMapper,
+            org.springframework.core.env.Environment environment) {
+        requireProxySecret(environment.matchesProfiles("prod"), secret);
+        FilterRegistrationBean<ProxySecretFilter> bean =
+                new FilterRegistrationBean<>(new ProxySecretFilter(secret.trim(), objectMapper));
+        bean.setOrder(Ordered.HIGHEST_PRECEDENCE);
+        return bean;
+    }
+
+    // 빈 값이면 검사가 꺼지므로, 운영에서는 빈 값·짧은 값으로 뜨지 않게 막는다(sync-config도 32자 이상을 확인한다).
+    static void requireProxySecret(boolean prod, String secret) {
+        if (prod && (secret == null || secret.trim().length() < 32)) {
+            throw new IllegalStateException("PROXY_SECRET must be set to at least 32 characters in prod");
+        }
+    }
 
     @Bean
     public PasswordEncoder passwordEncoder(@Value("${app.security.bcrypt-strength:10}") int strength) {

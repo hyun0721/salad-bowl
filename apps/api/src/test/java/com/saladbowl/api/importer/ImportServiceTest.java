@@ -6,6 +6,7 @@ import com.saladbowl.api.importer.ImportDtos.ImportResult;
 import com.saladbowl.api.support.BanksaladWorkbook;
 import com.saladbowl.api.support.IntegrationTest;
 import com.saladbowl.api.transaction.Category;
+import com.saladbowl.api.transaction.LedgerLock;
 import com.saladbowl.api.transaction.LedgerTransaction;
 import com.saladbowl.api.transaction.LedgerTransactionRepository;
 import com.saladbowl.api.user.User;
@@ -52,6 +53,9 @@ class ImportServiceTest extends IntegrationTest {
 
     @Autowired
     PlatformTransactionManager transactionManager;
+
+    @Autowired
+    LedgerLock ledgerLock;
 
     long ownerId;
 
@@ -208,7 +212,7 @@ class ImportServiceTest extends IntegrationTest {
                 return super.parse(in);
             }
         };
-        ImportService service = new ImportService(probe, mergeService, batches, transactionManager);
+        ImportService service = new ImportService(probe, mergeService, batches, transactionManager, ledgerLock);
         byte[] bytes = BanksaladWorkbook.create()
                 .row("2026-09-01", "09:00:00", "지출", "식비", "카페", "테스트카페", -4500, "테스트카드", null)
                 .toBytes();
@@ -237,7 +241,7 @@ class ImportServiceTest extends IntegrationTest {
                 return super.parse(in);
             }
         };
-        ImportService service = new ImportService(blocking, mergeService, batches, transactionManager,
+        ImportService service = new ImportService(blocking, mergeService, batches, transactionManager, ledgerLock,
                 Duration.ofMillis(100));
         byte[] bytes = september().toBytes();
 
@@ -264,6 +268,7 @@ class ImportServiceTest extends IntegrationTest {
     @Test
     void theSlotIsReleasedAfterAFailingImport() {
         ImportService service = new ImportService(new BanksaladParser(), mergeService, batches, transactionManager,
+                ledgerLock,
                 Duration.ofMillis(100));
         byte[] tooLong = BanksaladWorkbook.create()
                 .row("2026-07-01", "09:00:00", "지출", "식비", "카페", "첫날", -1000, "테스트카드", null)

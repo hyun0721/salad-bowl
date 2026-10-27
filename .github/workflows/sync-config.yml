@@ -1,5 +1,5 @@
 # GitHub Environment `production`(Secrets·Variables)을 배포 플랫폼에 넣는다. 플랫폼을 바꾸면 아래 두 단계만 바꾼다.
-# 수동 실행: Actions → sync-config → Run workflow. dry_run이면 값의 존재만 확인하고 API를 부르지 않는다.
+# 수동 실행: Actions → sync-config → Run workflow. dry_run이면 값과 최소 길이를 확인하고 API를 부르지 않는다.
 name: sync-config
 
 on:
@@ -12,7 +12,7 @@ on:
       deploy:
         description: "Render 재배포까지 요청한다"
         type: boolean
-        default: true
+        default: false
 
 permissions:
   contents: read
@@ -37,6 +37,7 @@ jobs:
       DB_USERNAME: ${{ secrets.DB_USERNAME }}
       DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
       JWT_SECRET: ${{ secrets.JWT_SECRET }}
+      PROXY_SECRET: ${{ secrets.PROXY_SECRET }}
       API_ORIGIN: ${{ vars.API_ORIGIN }}
       # 선택: 비어 있으면 구글 로그인이 꺼진다. 클라이언트 ID는 공개값이라 Variable로 둔다.
       GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_CLIENT_ID }}
@@ -45,10 +46,11 @@ jobs:
         run: |
           missing=0
           for name in RENDER_API_KEY RENDER_SERVICE_ID CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID CLOUDFLARE_PAGES_PROJECT \
-                      DB_URL DB_USERNAME DB_PASSWORD JWT_SECRET API_ORIGIN; do
+                      DB_URL DB_USERNAME DB_PASSWORD JWT_SECRET PROXY_SECRET API_ORIGIN; do
             if [ -z "${!name}" ]; then echo "::error::$name is not set in environment 'production'"; missing=1; fi
           done
           if [ "${#JWT_SECRET}" -lt 32 ]; then echo "::error::JWT_SECRET must be at least 32 characters"; missing=1; fi
+          if [ "${#PROXY_SECRET}" -lt 32 ]; then echo "::error::PROXY_SECRET must be at least 32 characters"; missing=1; fi
           case "$API_ORIGIN" in https://*) ;; *) echo "::error::API_ORIGIN must start with https://"; missing=1 ;; esac
           case "$DB_URL" in
             jdbc:postgresql://*sslmode=require*) ;;
@@ -71,15 +73,17 @@ jobs:
             if [ "$code" -ge 300 ]; then echo "::error::Render $key -> HTTP $code"; exit 1; fi
             echo "Render: $key updated"
           }
-          for key in DB_URL DB_USERNAME DB_PASSWORD JWT_SECRET; do put "$key"; done
+          for key in DB_URL DB_USERNAME DB_PASSWORD JWT_SECRET PROXY_SECRET; do put "$key"; done
           if [ -n "$GOOGLE_CLIENT_ID" ]; then put GOOGLE_CLIENT_ID; fi
 
       - name: Cloudflare Pages environment variables
         if: ${{ !inputs.dry_run }}
         run: |
           set -euo pipefail
-          jq -n --arg origin "$API_ORIGIN" --arg google "$GOOGLE_CLIENT_ID" '
-            {API_ORIGIN: {type: "plain_text", value: $origin}, NODE_VERSION: {type: "plain_text", value: "22"}}
+          jq -n --arg origin "$API_ORIGIN" --arg secret "$PROXY_SECRET" --arg google "$GOOGLE_CLIENT_ID" '
+            {API_ORIGIN: {type: "plain_text", value: $origin},
+             PROXY_SECRET: {type: "secret_text", value: $secret},
+             NODE_VERSION: {type: "plain_text", value: "22"}}
             + (if $google != "" then {VITE_GOOGLE_CLIENT_ID: {type: "plain_text", value: $google}} else {} end) as $vars
             | {deployment_configs: {production: {env_vars: $vars}, preview: {env_vars: $vars}}}' > "$RUNNER_TEMP/pages.json"
           code=$(curl -sS --max-time 60 -o /dev/null -w '%{http_code}' -X PATCH \
@@ -88,7 +92,7 @@ jobs:
             --data @"$RUNNER_TEMP/pages.json")
           rm -f "$RUNNER_TEMP/pages.json"
           if [ "$code" -ge 300 ]; then echo "::error::Cloudflare Pages -> HTTP $code"; exit 1; fi
-          echo "Cloudflare Pages: API_ORIGIN, NODE_VERSION updated (applies to the next Pages deployment)"
+          echo "Cloudflare Pages: API_ORIGIN, PROXY_SECRET, NODE_VERSION updated (applies to the next Pages deployment)"
 
       - name: Trigger Render deploy
         if: ${{ !inputs.dry_run && inputs.deploy }}
@@ -107,5 +111,5 @@ jobs:
           {
             echo "### sync-config"
             echo "- dry_run: ${{ inputs.dry_run }}, deploy: ${{ inputs.deploy }}"
-            echo "- Pages 환경변수는 다음 Pages 배포부터 적용된다. 바로 적용하려면 Pages의 최신 배포를 Retry 한다."
+            echo "- Pages 환경변수는 다음 Pages 배포부터 적용된다. Pages 최신 배포를 Retry 한 뒤 API를 배포한다."
           } >> "$GITHUB_STEP_SUMMARY"

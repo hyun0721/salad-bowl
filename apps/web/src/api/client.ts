@@ -5,12 +5,26 @@ const SLOW_MS = 3000
 
 let accessToken: string | null = null
 let refreshing: Promise<string | null> | null = null
+// 세션이 바뀐 뒤 이전 요청의 응답이 새 로그인 세션의 토큰이나 화면에 반영되지 못하게 한다.
+let authEpoch = 0
 const authLostListeners = new Set<() => void>()
 const slowListeners = new Set<(slow: boolean) => void>()
 let slowCount = 0
 
 export function setAccessToken(token: string | null) {
   accessToken = token
+}
+
+export function startSession(token: string): void {
+  authEpoch++
+  refreshing = null
+  accessToken = token
+}
+
+export function clearSession(): void {
+  accessToken = null
+  authEpoch++
+  refreshing = null
 }
 
 export function getAccessToken(): string | null {
@@ -38,7 +52,21 @@ export function apiUrl(path: string): string {
 
 const FAILED_MESSAGE = '요청을 처리하지 못했습니다.'
 
-type ApiInit = RequestInit & { json?: unknown; auth?: boolean }
+function tokenSubject(token: string | null): string | null {
+  if (!token) return null
+  const parts = token.split('.')
+  if (parts.length !== 3) return null
+  try {
+    // 계정 비교에만 쓰며, 토큰의 서명과 권한은 API가 검증한다.
+    const encoded = parts[1].replaceAll('-', '+').replaceAll('_', '/')
+    const payload = JSON.parse(atob(encoded.padEnd(Math.ceil(encoded.length / 4) * 4, '='))) as { sub?: unknown }
+    return typeof payload?.sub === 'string' && payload.sub.length > 0 ? payload.sub : null
+  } catch {
+    return null
+  }
+}
+
+type ApiInit = RequestInit & { json?: unknown; auth?: boolean; trackSlow?: boolean }
 
 /**
  * refresh 쿠키로 새 access 토큰을 받는다. 동시에 불려도 요청은 하나만 보낸다.
@@ -47,8 +75,11 @@ type ApiInit = RequestInit & { json?: unknown; auth?: boolean }
  */
 export function refreshAccessToken(): Promise<string | null> {
   if (!refreshing) {
-    refreshing = rawFetch('/auth/refresh', { method: 'POST' })
+    const epoch = authEpoch
+    const subject = tokenSubject(accessToken)
+    const request = rawFetch('/auth/refresh', { method: 'POST' })
       .then(async (res) => {
+        if (epoch !== authEpoch) return null
         if (res.status === 401 || res.status === 403) {
           const hadSession = accessToken !== null
           setAccessToken(null)
@@ -57,53 +88,93 @@ export function refreshAccessToken(): Promise<string | null> {
         }
         if (!res.ok) throw await toError(res)
         const body = await readJson<{ accessToken?: unknown }>(res)
+        if (epoch !== authEpoch) return null
         if (typeof body.accessToken !== 'string') {
           throw new ApiError(res.status, 'REQUEST_FAILED', FAILED_MESSAGE)
+        }
+        if (subject !== null && tokenSubject(body.accessToken) !== subject) {
+          clearSession()
+          authLostListeners.forEach((listener) => listener())
+          return null
         }
         setAccessToken(body.accessToken)
         return body.accessToken
       })
       .finally(() => {
-        refreshing = null
+        if (refreshing === request) refreshing = null
       })
+    refreshing = request
   }
   return refreshing
 }
 
 export async function apiFetch<T>(path: string, init: ApiInit = {}): Promise<T> {
-  const { json, auth = true, ...rest } = init
+  const epoch = authEpoch
+  const subject = tokenSubject(accessToken)
+  const assertCurrent = () => {
+    if (epoch !== authEpoch) throw new ApiError(401, 'UNAUTHORIZED', '다시 로그인해 주세요.')
+  }
+  const { json, auth = true, trackSlow = true, ...rest } = init
   const send = () => {
     const headers = new Headers(rest.headers)
     if (json !== undefined) headers.set('Content-Type', 'application/json')
     if (auth && accessToken) headers.set('Authorization', `Bearer ${accessToken}`)
-    return rawFetch(path, { ...rest, headers, body: json !== undefined ? JSON.stringify(json) : rest.body })
+    return rawFetch(path, { ...rest, headers, body: json !== undefined ? JSON.stringify(json) : rest.body }, trackSlow)
   }
 
   let res = await send()
+  assertCurrent()
+  // 토큰 없이 시작한 변경 요청은 누구의 요청인지 알 수 없어, 그 사이 다른 탭이 다른 계정으로 바꾼 쿠키로 재전송하지 않는다.
+  const method = (rest.method ?? 'GET').toUpperCase()
+  const replayable = subject !== null || method === 'GET' || method === 'HEAD'
+  if (res.status === 401 && auth && !replayable) throw await toError(res)
   if (res.status === 401 && auth) {
     // 일시적인 refresh 실패는 여기서 그대로 throw된다(세션 유지).
-    const token = await refreshAccessToken()
-    if (!token) throw await toError(res)
+    let token: string | null
+    try {
+      token = await refreshAccessToken()
+    } catch (error) {
+      assertCurrent()
+      throw error
+    }
+    assertCurrent()
+    if (token && subject !== null && tokenSubject(token) !== subject) {
+      clearSession()
+      authLostListeners.forEach((listener) => listener())
+      throw new ApiError(401, 'UNAUTHORIZED', '다시 로그인해 주세요.')
+    }
+    if (!token) {
+      const error = await toError(res)
+      assertCurrent()
+      throw error
+    }
     res = await send()
+    assertCurrent()
   }
-  if (!res.ok) throw await toError(res)
+  if (!res.ok) {
+    const error = await toError(res)
+    assertCurrent()
+    throw error
+  }
   if (res.status === 204) return undefined as T
-  return readJson<T>(res)
+  const body = await readJson<T>(res)
+  assertCurrent()
+  return body
 }
 
-/** 요청 하나. 3초가 지나도 끝나지 않으면 느린 요청으로 세고, 끝나면 뺀다. */
-async function rawFetch(path: string, init: RequestInit): Promise<Response> {
+/** 업로드처럼 원래 오래 걸리고 자체 진행 표시가 있는 요청은 "서버 깨우는 중"으로 세지 않는다. */
+async function rawFetch(path: string, init: RequestInit, trackSlow = true): Promise<Response> {
   let slow = false
-  const timer = setTimeout(() => {
+  const timer = trackSlow ? setTimeout(() => {
     slow = true
     markSlow(1)
-  }, SLOW_MS)
+  }, SLOW_MS) : undefined
   try {
     return await fetch(apiUrl(path), { ...init, credentials: 'include' })
   } catch {
     throw new ApiError(0, 'NETWORK_ERROR', '서버에 연결하지 못했습니다.')
   } finally {
-    clearTimeout(timer)
+    if (timer !== undefined) clearTimeout(timer)
     if (slow) markSlow(-1)
   }
 }

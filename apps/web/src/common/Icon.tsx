@@ -6,6 +6,14 @@ import type { ReactNode } from 'react'
 const ICONS = {
   'chevron-down': <path d="m6 9 6 6 6-6" />,
   check: <path d="M20 6 9 17l-5-5" />,
+  calendar: (
+    <>
+      <path d="M8 2v4" />
+      <path d="M16 2v4" />
+      <rect width="18" height="18" x="3" y="4" rx="2" />
+      <path d="M3 10h18" />
+    </>
+  ),
   'chevron-left': <path d="m15 18-6-6 6-6" />,
   'chevron-right': <path d="m9 18 6-6-6-6" />,
   home: (
@@ -43,6 +51,12 @@ const ICONS = {
       <path d="M16 3.128a4 4 0 0 1 0 7.744" />
       <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
       <circle cx="9" cy="7" r="4" />
+    </>
+  ),
+  user: (
+    <>
+      <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+      <circle cx="12" cy="7" r="4" />
     </>
   ),
   plus: (

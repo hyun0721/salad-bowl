@@ -7,6 +7,8 @@ import { usePageTitle } from '../common/usePageTitle'
 import { useGroups } from '../groups/GroupProvider'
 import NoGroupNotice from '../groups/NoGroupNotice'
 import styles from './DashboardPage.module.css'
+import CategoryBreakdown from './CategoryBreakdown'
+import CategoryTrend from './CategoryTrend'
 import { dashboardApi, type MonthlySummary } from './dashboardApi'
 
 type Props = { today?: Date }
@@ -54,15 +56,16 @@ export default function DashboardPage({ today }: Props) {
           <button type="button" className={ui.button} onClick={() => void summary.refetch()}>다시 시도</button>
         </div>
       )}
-      {summary.data && <SummaryView summary={summary.data} />}
+      <SummaryView key={selectedGroupId} groupId={selectedGroupId} month={month} summary={summary.data} />
     </>
   )
 }
 
-function SummaryView({ summary }: { summary: MonthlySummary }) {
-  const empty = summary.income === 0 && summary.expense === 0
+function SummaryView({ groupId, month, summary }: { groupId: number; month: string; summary?: MonthlySummary }) {
+  const empty = summary && summary.income === 0 && summary.expense === 0
   return (
     <>
+      {summary && <>
       <div className={styles.totals}>
         <section aria-labelledby="income-title" className={ui.card}>
           <h2 id="income-title" className={styles.totalLabel}>수입</h2>
@@ -75,21 +78,7 @@ function SummaryView({ summary }: { summary: MonthlySummary }) {
       </div>
       {empty && <p className={ui.status}>이 달에 합칠 거래가 없습니다.</p>}
       <div className={styles.columns}>
-        <section aria-labelledby="category-title" className={ui.card}>
-          <h2 id="category-title">카테고리별 지출</h2>
-          {summary.byCategory.length === 0 ? <p className={ui.status}>지출이 없습니다.</p> : (
-            <ul className={styles.bars}>
-              {summary.byCategory.map((c) => (
-                <li key={c.category} className={styles.bar}>
-                  <span className={styles.barLabel}>{c.category}</span>
-                  <meter className={styles.meter} min={0} max={summary.expense} value={c.expense}
-                    aria-label={`${c.category} 지출 비율`} />
-                  <span className={styles.amount}>{formatWon(c.expense)}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
+        <CategoryBreakdown key={`${groupId}:${month}`} groupId={groupId} month={month} summary={summary} />
         <section aria-labelledby="member-title" className={ui.card}>
           <h2 id="member-title">멤버별</h2>
           {summary.byMember.length === 0 ? <p className={ui.status}>공개한 멤버가 없습니다.</p> : (
@@ -110,6 +99,8 @@ function SummaryView({ summary }: { summary: MonthlySummary }) {
           )}
         </section>
       </div>
+      </>}
+      <CategoryTrend groupId={groupId} month={month} />
     </>
   )
 }

@@ -1,7 +1,9 @@
-import { useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
+import { useState, type FormEvent } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 import { errorMessage } from '../common/errorMessage'
 import { safeNext } from '../common/safeNext'
+import Tabs from '../common/Tabs'
+import TextField from '../common/TextField'
 import GoogleSignInButton from './GoogleSignInButton'
 import { useAuth } from './AuthProvider'
 import { SignupLoginError } from './authErrors'
@@ -22,7 +24,6 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
-  const tabs = useRef<Partial<Record<Mode, HTMLButtonElement | null>>>({})
 
   const target = safeNext(params.get('next'))
 
@@ -30,20 +31,6 @@ export default function LoginPage() {
     setMode(next)
     setError(null)
     setNotice(null)
-  }
-
-  // 탭 패턴: 좌우 화살표·Home·End로 탭을 바꾸고 포커스를 옮긴다.
-  function onTabKeyDown(event: KeyboardEvent<HTMLDivElement>) {
-    const index = MODES.indexOf(mode)
-    const next = event.key === 'ArrowRight' ? MODES[(index + 1) % MODES.length]
-      : event.key === 'ArrowLeft' ? MODES[(index - 1 + MODES.length) % MODES.length]
-        : event.key === 'Home' ? MODES[0]
-          : event.key === 'End' ? MODES[MODES.length - 1]
-            : null
-    if (!next) return
-    event.preventDefault()
-    changeMode(next)
-    tabs.current[next]?.focus()
   }
 
   async function onSubmit(event: FormEvent) {
@@ -82,6 +69,24 @@ export default function LoginPage() {
     }
   }
 
+  const form = (
+    <form className={styles.form} onSubmit={onSubmit}>
+      <TextField label="이메일" type="email" autoComplete="email" isRequired
+        value={email} onChange={setEmail} className={styles.field} />
+      <TextField label={`비밀번호${mode === 'signup' ? ' (8~64자)' : ''}`} type="password" isRequired
+        minLength={mode === 'signup' ? 8 : undefined} maxLength={64}
+        autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+        value={password} onChange={setPassword} className={styles.field} />
+      {mode === 'signup' && (
+        <TextField label="닉네임 (그룹에서 보이는 이름)" isRequired maxLength={50}
+          value={nickname} onChange={setNickname} className={styles.field} />
+      )}
+      <button type="submit" className={styles.submit} disabled={busy}>
+        {mode === 'login' ? '로그인' : '가입하고 시작하기'}
+      </button>
+    </form>
+  )
+
   return (
     <div className={styles.page}>
       <main className={styles.card}>
@@ -89,41 +94,15 @@ export default function LoginPage() {
           <span className={styles.name}><img src="/logo.svg" alt="" width="36" height="36" />Salad Bowl</span>
           <p className={styles.lead}>뱅크샐러드 가계부를 가족·친구와 함께 봅니다.</p>
         </div>
-        <div role="tablist" aria-label="로그인 또는 회원가입" className={styles.tabs} onKeyDown={onTabKeyDown}>
-          {MODES.map((m) => (
-            <button key={m} ref={(el) => { tabs.current[m] = el }} type="button" role="tab" id={`auth-tab-${m}`}
-              aria-selected={mode === m} aria-controls="auth-panel" tabIndex={mode === m ? 0 : -1}
-              className={styles.tab} onClick={() => changeMode(m)}>{TAB_LABEL[m]}</button>
-          ))}
-        </div>
-        <form id="auth-panel" role="tabpanel" aria-labelledby={`auth-tab-${mode}`} className={styles.form}
-          onSubmit={onSubmit}>
-          <label className={styles.field}>
-            <span>이메일</span>
-            <input type="email" autoComplete="email" required value={email}
-              onChange={(e) => setEmail(e.target.value)} />
-          </label>
-          <label className={styles.field}>
-            <span>비밀번호{mode === 'signup' ? ' (8~64자)' : ''}</span>
-            <input type="password" required minLength={mode === 'signup' ? 8 : undefined} maxLength={64}
-              autoComplete={mode === 'login' ? 'current-password' : 'new-password'} value={password}
-              onChange={(e) => setPassword(e.target.value)} />
-          </label>
-          {mode === 'signup' && (
-            <label className={styles.field}>
-              <span>닉네임 (그룹에서 보이는 이름)</span>
-              <input type="text" required maxLength={50} value={nickname}
-                onChange={(e) => setNickname(e.target.value)} />
-            </label>
-          )}
-          <button type="submit" className={styles.submit} disabled={busy}>
-            {mode === 'login' ? '로그인' : '가입하고 시작하기'}
-          </button>
-          <p role="status" className={notice ? styles.notice : styles.noticeEmpty}>{notice}</p>
-          {error && <p role="alert" className={styles.error}>{error}</p>}
-        </form>
+        <Tabs label="로그인 또는 회원가입" tabs={MODES.map((m) => ({ id: m, label: TAB_LABEL[m] }))}
+          selectedKey={mode} onSelectionChange={(id) => changeMode(id as Mode)} className={styles.authTabs}>
+          {() => form}
+        </Tabs>
         <GoogleSignInButton onCredential={onGoogleCredential}
           onError={() => setError('Google 로그인을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.')} />
+        {/* 탭 패널은 선택된 것만 그리므로, 안내·오류는 패널 바깥에 둬서 탭이 바뀌어도 스크린리더가 읽게 한다. */}
+        <p role="status" className={notice ? styles.notice : styles.noticeEmpty}>{notice}</p>
+        {error && <p role="alert" className={styles.error}>{error}</p>}
         <p className={styles.hint}>초대 링크로 들어왔다면 로그인 후 초대 화면으로 돌아갑니다.</p>
       </main>
     </div>

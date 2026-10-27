@@ -1,6 +1,6 @@
 import { screen, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { server } from '../test/server'
 import { renderPage, testMe } from '../test/renderPage'
 import TransactionPanel from './TransactionPanel'
@@ -17,6 +17,10 @@ function auditsHandler(rows: unknown[] = []) {
 }
 
 describe('TransactionPanel', () => {
+  beforeEach(() => {
+    server.use(http.get('*/api/me/categories', () => HttpResponse.json([])))
+  })
+
   it('sends only the fields that changed', async () => {
     auditsHandler()
     let body: unknown
@@ -24,14 +28,14 @@ describe('TransactionPanel', () => {
       body = await request.json()
       return HttpResponse.json({ ...mine, categoryMajor: '외식', edited: true })
     }))
-    const { user } = renderPage(<TransactionPanel tx={mine} onClose={vi.fn()} />)
+    const { user } = renderPage(<TransactionPanel tx={mine} onDeleted={vi.fn()} />)
 
     const major = await screen.findByLabelText('대분류')
     await user.clear(major)
     await user.type(major, '외식')
     await user.click(screen.getByRole('button', { name: '저장' }))
 
-    expect(await screen.findByRole('status')).toHaveTextContent('저장했습니다.')
+    expect(await screen.findByText('저장했습니다.')).toBeInTheDocument()
     expect(body).toEqual({ categoryMajor: '외식' })
   })
 
@@ -42,12 +46,12 @@ describe('TransactionPanel', () => {
       body = await request.json()
       return HttpResponse.json(mine)
     }))
-    const { user } = renderPage(<TransactionPanel tx={{ ...mine, memo: '내 메모', edited: true }} onClose={vi.fn()} />)
+    const { user } = renderPage(<TransactionPanel tx={{ ...mine, memo: '내 메모', edited: true }} onDeleted={vi.fn()} />)
 
     await user.clear(await screen.findByLabelText('메모'))
     await user.click(screen.getByRole('button', { name: '저장' }))
 
-    await screen.findByRole('status')
+    await screen.findByText('저장했습니다.')
     expect(body).toEqual({ memo: '' })
   })
 
@@ -58,21 +62,22 @@ describe('TransactionPanel', () => {
       deleted = true
       return new HttpResponse(null, { status: 204 })
     }))
-    const onClose = vi.fn()
-    const { user } = renderPage(<TransactionPanel tx={{ ...mine, source: 'MANUAL' }} onClose={onClose} />)
+    const onDeleted = vi.fn()
+    const { user } = renderPage(<TransactionPanel tx={{ ...mine, source: 'MANUAL' }} onDeleted={onDeleted} />)
 
     expect(await screen.findByLabelText('그룹 화면에서 숨기기 (본인만)')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '삭제' }))
     expect(deleted).toBe(false)
     await user.click(screen.getByRole('button', { name: '삭제 확인' }))
 
-    await vi.waitFor(() => expect(onClose).toHaveBeenCalled())
+    await vi.waitFor(() => expect(onDeleted).toHaveBeenCalled())
     expect(deleted).toBe(true)
+    await vi.waitFor(() => expect(screen.queryByRole('dialog', { name: '거래 삭제' })).not.toBeInTheDocument())
   })
 
   it('hides owner-only controls for another member and shows read-only when not editable', async () => {
     auditsHandler()
-    renderPage(<TransactionPanel tx={{ ...mine, ownerId: 2, ownerNickname: '멤버', editable: false }} onClose={vi.fn()} />)
+    renderPage(<TransactionPanel tx={{ ...mine, ownerId: 2, ownerNickname: '멤버', editable: false }} onDeleted={vi.fn()} />)
 
     expect(await screen.findByText('다른 멤버의 거래는 볼 수만 있습니다. 관리자만 수정할 수 있습니다.')).toBeInTheDocument()
     expect(screen.queryByLabelText('그룹 화면에서 숨기기 (본인만)')).not.toBeInTheDocument()
@@ -86,7 +91,7 @@ describe('TransactionPanel', () => {
       { actorId: 1, actorNickname: '나', field: 'hidden', before: 'false', after: 'true', changedAt: '2026-10-07T10:00:00+09:00' },
     ])
 
-    renderPage(<TransactionPanel tx={mine} onClose={vi.fn()} />)
+    renderPage(<TransactionPanel tx={mine} onDeleted={vi.fn()} />)
 
     const history = await screen.findByRole('region', { name: '수정 이력' })
     const items = await within(history).findAllByRole('listitem')
@@ -98,7 +103,7 @@ describe('TransactionPanel', () => {
     auditsHandler()
     server.use(http.delete('*/api/transactions/7', () =>
       HttpResponse.json({ code: 'CANNOT_DELETE_IMPORTED', message: 'x' }, { status: 409 })))
-    const { user } = renderPage(<TransactionPanel tx={{ ...mine, source: 'MANUAL' }} onClose={vi.fn()} />)
+    const { user } = renderPage(<TransactionPanel tx={{ ...mine, source: 'MANUAL' }} onDeleted={vi.fn()} />)
 
     await user.click(await screen.findByRole('button', { name: '삭제' }))
     await user.click(screen.getByRole('button', { name: '삭제 확인' }))
@@ -113,7 +118,7 @@ describe('TransactionPanel', () => {
       : HttpResponse.json([
         { actorId: 1, actorNickname: '나', field: 'memo', before: null, after: '메모', changedAt: '2026-10-07T10:00:00+09:00' },
       ])))
-    const { user } = renderPage(<TransactionPanel tx={mine} onClose={vi.fn()} />)
+    const { user } = renderPage(<TransactionPanel tx={mine} onDeleted={vi.fn()} />)
 
     expect(await screen.findByRole('alert')).toHaveTextContent('수정 이력을 불러오지 못했습니다.')
     fail = false
@@ -126,13 +131,13 @@ describe('TransactionPanel', () => {
   it('shows the restored original value after clearing an override and saving', async () => {
     auditsHandler()
     server.use(http.patch('*/api/transactions/7', () => HttpResponse.json(mine)))
-    const { user } = renderPage(<TransactionPanel tx={{ ...mine, categoryMajor: '외식', edited: true }} onClose={vi.fn()} />)
+    const { user } = renderPage(<TransactionPanel tx={{ ...mine, categoryMajor: '외식', edited: true }} onDeleted={vi.fn()} />)
 
     const major = await screen.findByLabelText('대분류')
     await user.clear(major)
     await user.click(screen.getByRole('button', { name: '저장' }))
 
-    await screen.findByRole('status')
+    await screen.findByText('저장했습니다.')
     expect(screen.getByLabelText('대분류')).toHaveValue('식비')
   })
 
@@ -142,7 +147,7 @@ describe('TransactionPanel', () => {
       { actorId: 1, actorNickname: '나', field: 'memo', before: 'a', after: 'b', changedAt: '2026-10-19T10:00:00+09:00' },
     ])
 
-    renderPage(<TransactionPanel tx={mine} onClose={vi.fn()} />)
+    renderPage(<TransactionPanel tx={mine} onDeleted={vi.fn()} />)
 
     const items = await within(await screen.findByRole('region', { name: '수정 이력' })).findAllByRole('listitem')
     expect(items[0]).toHaveTextContent('10-19 00:30 · 나')
@@ -151,7 +156,7 @@ describe('TransactionPanel', () => {
 
   it('leaves out an empty payment method from the meta line', async () => {
     auditsHandler()
-    renderPage(<TransactionPanel tx={{ ...mine, paymentMethod: '' }} onClose={vi.fn()} />)
+    renderPage(<TransactionPanel tx={{ ...mine, paymentMethod: '' }} onDeleted={vi.fn()} />)
 
     expect(await screen.findByText('10-05 12:30 · 나 · 엑셀')).toBeInTheDocument()
   })

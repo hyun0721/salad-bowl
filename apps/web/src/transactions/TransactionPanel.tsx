@@ -1,8 +1,13 @@
+import Checkbox from '../common/Checkbox'
+import ComboBox from '../common/ComboBox'
+import { TextAreaField } from '../common/TextField'
+import { majorOptions, minorOptions, useCategories } from './categoriesApi'
 import { useQuery } from '@tanstack/react-query'
-import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
 import { useAuth } from '../auth/AuthProvider'
 import { errorMessage } from '../common/errorMessage'
-import Icon from '../common/Icon'
+import ConfirmDialog from '../common/ConfirmDialog'
+import { toast } from '../common/Toast'
 import { formatDateTime, formatInstant, formatSignedWon } from '../common/format'
 import ui from '../common/ui.module.css'
 import styles from './TransactionPanel.module.css'
@@ -26,24 +31,17 @@ function auditLine(a: AuditView): string {
   return `${formatInstant(a.changedAt)} · ${a.actorNickname} · ${label}: ${auditValue(a.field, a.before)} → ${auditValue(a.field, a.after)}`
 }
 
-type Props = { tx: TransactionView; onClose: () => void }
+type Props = { tx: TransactionView; onDeleted: () => void }
 
-export default function TransactionPanel({ tx, onClose }: Props) {
+export default function TransactionPanel({ tx, onDeleted }: Props) {
   const { me } = useAuth()
+  const list = useCategories().data ?? []
   const { update, remove } = useTransactionMutations()
   const audits = useQuery({ queryKey: ['audits', tx.id], queryFn: () => transactionsApi.audits(tx.id) })
   const [major, setMajor] = useState(tx.categoryMajor)
   const [minor, setMinor] = useState(tx.categoryMinor)
   const [memo, setMemo] = useState(tx.memo ?? '')
   const [hidden, setHidden] = useState(tx.hidden)
-  const [confirming, setConfirming] = useState(false)
-  const headingRef = useRef<HTMLHeadingElement>(null)
-
-  // 패널은 목록 아래로 밀려 화면 밖에 열릴 수 있어, 열릴 때 제목으로 포커스를 옮긴다. 다시 렌더할 때는 옮기지 않는다.
-  useEffect(() => {
-    headingRef.current?.focus()
-  }, [])
-
   const isOwner = me?.userId === tx.ownerId
   const canDelete = isOwner && tx.source === 'MANUAL'
 
@@ -62,22 +60,15 @@ export default function TransactionPanel({ tx, onClose }: Props) {
         setMinor(updated.categoryMinor)
         setMemo(updated.memo ?? '')
         setHidden(updated.hidden)
+        toast('저장했습니다.')
       },
     })
   }
 
-  function onDelete() {
-    remove.mutate(tx.id, { onSuccess: onClose })
-  }
-
-  const error = update.isError ? errorMessage(update.error) : remove.isError ? errorMessage(remove.error) : null
+  const error = update.isError ? errorMessage(update.error) : null
 
   return (
     <div className={ui.stack}>
-      <div className={styles.header}>
-        <h2 ref={headingRef} tabIndex={-1}>{tx.description}</h2>
-        <button type="button" className={ui.button} onClick={onClose}><Icon name="x" size={18} />닫기</button>
-      </div>
       <p className={styles.amount}>{formatSignedWon(tx.amount)}</p>
       <p className={ui.muted}>
         {[formatDateTime(tx.occurredAt), tx.paymentMethod, tx.ownerNickname, tx.source === 'MANUAL' ? '수동' : '엑셀']
@@ -86,39 +77,21 @@ export default function TransactionPanel({ tx, onClose }: Props) {
 
       {tx.editable ? (
         <form className={ui.stack} onSubmit={onSave}>
-          <label className={ui.field}>
-            <span>대분류</span>
-            <input className={ui.input} maxLength={100} value={major} onChange={(e) => setMajor(e.target.value)} />
-          </label>
-          <label className={ui.field}>
-            <span>소분류</span>
-            <input className={ui.input} maxLength={100} value={minor} onChange={(e) => setMinor(e.target.value)} />
-          </label>
-          <label className={ui.field}>
-            <span>메모</span>
-            <textarea className={ui.input} rows={2} maxLength={1000} value={memo} onChange={(e) => setMemo(e.target.value)} />
-          </label>
+          <ComboBox label="대분류" value={major} onChange={setMajor} options={majorOptions(list)} maxLength={100} />
+          <ComboBox label="소분류" value={minor} onChange={setMinor} options={minorOptions(list, major.trim())} maxLength={100} />
+          <TextAreaField label="메모" value={memo} onChange={setMemo} maxLength={1000} rows={2} />
           <p className={ui.muted}>비워 두고 저장하면 엑셀의 원래 값으로 돌아갑니다.</p>
           {isOwner && (
-            <label className={styles.check}>
-              <input type="checkbox" checked={hidden} onChange={(e) => setHidden(e.target.checked)} />
-              <span>그룹 화면에서 숨기기 (본인만)</span>
-            </label>
+            <Checkbox isSelected={hidden} onChange={setHidden}>그룹 화면에서 숨기기 (본인만)</Checkbox>
           )}
           <div className={styles.actions}>
-            {canDelete && !confirming && (
-              <button type="button" className={`${ui.button} ${ui.danger}`} onClick={() => setConfirming(true)}><Icon name="trash" size={18} />삭제</button>
-            )}
-            {canDelete && confirming && (
-              <span className={ui.row}>
-                <span>이 거래를 삭제할까요?</span>
-                <button type="button" className={`${ui.button} ${ui.danger}`} disabled={remove.isPending} onClick={onDelete}>삭제 확인</button>
-                <button type="button" className={ui.button} onClick={() => setConfirming(false)}>취소</button>
-              </span>
+            {canDelete && (
+              <ConfirmDialog triggerLabel="삭제" triggerIcon="trash" title="거래 삭제" description="이 거래를 삭제할까요?"
+                confirmLabel="삭제 확인" isPending={remove.isPending} error={remove.isError ? errorMessage(remove.error) : null}
+                onOpen={() => remove.reset()} onConfirm={(close) => remove.mutate(tx.id, { onSuccess: () => { close(); onDeleted() } })} />
             )}
             <button type="submit" className={`${ui.button} ${ui.primary} ${styles.save}`} disabled={update.isPending}>저장</button>
           </div>
-          {update.isSuccess && <p role="status" className={ui.status}>저장했습니다.</p>}
         </form>
       ) : (
         <p className={styles.readOnly}>다른 멤버의 거래는 볼 수만 있습니다. 관리자만 수정할 수 있습니다.</p>

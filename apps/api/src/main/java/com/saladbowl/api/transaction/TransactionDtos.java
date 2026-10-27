@@ -8,6 +8,7 @@ import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
+import java.util.List;
 
 public final class TransactionDtos {
 
@@ -57,7 +58,18 @@ public final class TransactionDtos {
                             OffsetDateTime changedAt) {
     }
 
-    /** month는 yyyy-MM. import 거래가 있는 달만 돌려준다. */
-    public record CoverageMonth(String month, long importedCount) {
+    /** month는 yyyy-MM. import 거래가 있는 달만 돌려준다. manualCount는 그 달의 직접 추가한 거래 수다. */
+    public record CoverageMonth(String month, long importedCount, long manualCount) {
+    }
+
+    /** 월 삭제 결과. 출처별로 지운 건수다. */
+    public record MonthDeleteResult(int deletedImported, int deletedManual) {
+    }
+
+    /** 내 거래에서 쓴 대분류와 그 소분류. 많이 쓴 순서다. 소분류가 비어 있는 거래는 대분류 count에만 센다. */
+    public record CategoryOption(String major, long count, List<MinorOption> minors) {
+    }
+
+    public record MinorOption(String minor, long count) {
     }
 }

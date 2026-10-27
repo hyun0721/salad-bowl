@@ -44,14 +44,22 @@ class CoverageApiTest extends IntegrationTest {
         imported(me, batchId, "2025-12-31T23:59:59");
         transactions.save(LedgerTransaction.manual(me.id(),
                 TestLedger.data(TransactionType.EXPENSE, "2026-03-01T12:00:00", "식비", "수동", -500)));
+        transactions.save(LedgerTransaction.manual(me.id(),
+                TestLedger.data(TransactionType.EXPENSE, "2026-09-10T12:00:00", "식비", "수동 9월", -700)));
+        LedgerTransaction hiddenManual = LedgerTransaction.manual(me.id(),
+                TestLedger.data(TransactionType.EXPENSE, "2026-09-11T12:00:00", "식비", "숨긴 수동", -800));
+        hiddenManual.setHidden(true);
+        transactions.save(hiddenManual);
 
         mvc.perform(get("/me/coverage").param("year", "2026").header("Authorization", me.bearer()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(2)))
                 .andExpect(jsonPath("$[0].month").value("2026-01"))
                 .andExpect(jsonPath("$[0].importedCount").value(1))
+                .andExpect(jsonPath("$[0].manualCount").value(0))
                 .andExpect(jsonPath("$[1].month").value("2026-09"))
-                .andExpect(jsonPath("$[1].importedCount").value(2));
+                .andExpect(jsonPath("$[1].importedCount").value(2))
+                .andExpect(jsonPath("$[1].manualCount").value(2));
     }
 
     @Test

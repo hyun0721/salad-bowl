@@ -40,7 +40,18 @@ export default defineConfig({
   // React Aria는 30여 개 언어의 문구를 함께 싣는다. 앱은 한국어만 쓰므로(main.tsx의 I18nProvider) 나머지는 뺀다.
   plugins: process.env.VITEST ? [react()] : [react(), pwa, { ...optimizeLocales.vite({ locales: ['ko-KR'] }), enforce: 'pre' }],
   // 번들에 포함된 의존성의 Apache-2.0/MIT 라이선스 고지 의무를 지킨다.
-  build: { license: { fileName: 'third-party-licenses.md' } },
+  build: {
+    license: { fileName: 'third-party-licenses.md' },
+    // ECharts와 그리기 엔진 zrender는 대시보드만 쓰는 큰 덩어리라 각각 떼어 둔다(합치면 500 kB 경고를 넘는다).
+    // 대시보드 코드만 바뀔 때 이 청크들의 캐시가 유지된다.
+    rolldownOptions: {
+      output: {
+        codeSplitting: {
+          groups: [{ name: 'zrender', test: /node_modules[\\/]zrender[\\/]/ }, { name: 'echarts', test: /node_modules[\\/]echarts[\\/]/ }],
+        },
+      },
+    },
+  },
   server: {
     port: 5173,
     proxy: {

@@ -3,9 +3,11 @@ import { render } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import type { ReactElement } from 'react'
+import { I18nProvider } from 'react-aria-components'
 import { MemoryRouter } from 'react-router'
 import RequireAuth from '../app/RequireAuth'
 import { AuthProvider } from '../auth/AuthProvider'
+import ToastRegion from '../common/Toast'
 import { GroupProvider } from '../groups/GroupProvider'
 import { server } from './server'
 
@@ -23,15 +25,18 @@ export function renderPage(ui: ReactElement, { groups = [], path = '/' }: Option
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
   const user = userEvent.setup()
   render(
-    <QueryClientProvider client={client}>
-      <AuthProvider>
-        <MemoryRouter initialEntries={[path]}>
-          <RequireAuth>
-            <GroupProvider>{ui}</GroupProvider>
-          </RequireAuth>
-        </MemoryRouter>
-      </AuthProvider>
-    </QueryClientProvider>,
+    <I18nProvider locale="ko-KR">
+      <QueryClientProvider client={client}>
+        <AuthProvider>
+          <MemoryRouter initialEntries={[path]}>
+            <RequireAuth>
+              <GroupProvider>{ui}</GroupProvider>
+            </RequireAuth>
+            <ToastRegion />
+          </MemoryRouter>
+        </AuthProvider>
+      </QueryClientProvider>
+    </I18nProvider>,
   )
   return { client, user }
 }

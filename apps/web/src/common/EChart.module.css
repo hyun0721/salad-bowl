@@ -1,0 +1,7 @@
+.chart {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  /* ECharts 툴팁의 z-index 9999999가 모달·시트 배경 위로 올라오지 않게 차트 안에 가둔다. */
+  isolation: isolate;
+}

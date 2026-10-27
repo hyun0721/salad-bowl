@@ -2,10 +2,12 @@ import { onlineManager, QueryClient, QueryClientProvider } from '@tanstack/react
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { delay, http, HttpResponse } from 'msw'
+import { I18nProvider } from 'react-aria-components'
 import { MemoryRouter } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { setAccessToken } from '../api/client'
 import { AuthProvider } from '../auth/AuthProvider'
+import { mockViewport } from '../test/mockViewport'
 import { server } from '../test/server'
 import AppRoutes from './AppRoutes'
 
@@ -14,13 +16,15 @@ const me = { userId: 1, email: 'me@test.com', nickname: '나' }
 function renderApp(path: string) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   render(
-    <QueryClientProvider client={client}>
-      <AuthProvider>
-        <MemoryRouter initialEntries={[path]}>
-          <AppRoutes />
-        </MemoryRouter>
-      </AuthProvider>
-    </QueryClientProvider>,
+    <I18nProvider locale="ko-KR">
+      <QueryClientProvider client={client}>
+        <AuthProvider>
+          <MemoryRouter initialEntries={[path]}>
+            <AppRoutes />
+          </MemoryRouter>
+        </AuthProvider>
+      </QueryClientProvider>
+    </I18nProvider>,
   )
   return client
 }
@@ -159,10 +163,24 @@ describe('AppRoutes', () => {
 
     renderApp('/')
 
-    expect(await screen.findByText(/서버를 깨우는 중입니다/, {}, { timeout: 5000 })).toBeInTheDocument()
+    expect(await screen.findByText('오래 쓰지 않았다면 서버가 깨어나는 데 최대 4분쯤 걸려요', {}, { timeout: 5000 })).toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     // 요청이 끝날 때까지 기다려 느린 요청 상태가 다른 테스트로 새지 않게 한다.
     expect(await screen.findByRole('heading', { name: '내 가계부' }, { timeout: 5000 })).toBeInTheDocument()
   }, 15000)
+
+  it('shows the salad bowl on the login route while the session is restored', async () => {
+    server.use(
+      http.post('*/api/auth/refresh', async () => {
+        await delay(300)
+        return HttpResponse.json({ code: 'INVALID_TOKEN', message: 'no session' }, { status: 401 })
+      }),
+    )
+    renderApp('/login')
+    expect(await screen.findByText('신선한 재료 찾는 중이에요')).toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: '로그인' }, { timeout: 3000 })).toBeInTheDocument()
+  })
 
   it('tells loading, failed and empty groups apart and can retry', async () => {
     let fail = true
@@ -298,6 +316,19 @@ describe('AppRoutes', () => {
     await waitFor(() => expect(heading).toHaveFocus())
   })
 
+  it('keeps the menu visible through a lazy page transition', async () => {
+    signedIn([])
+    server.use(http.get('*/api/me/categories', () => HttpResponse.json([])))
+    renderApp('/')
+    const user = userEvent.setup()
+
+    await screen.findByRole('heading', { level: 1, name: '내 가계부' })
+    await user.click(screen.getByRole('link', { name: '거래 목록' }))
+
+    expect(screen.getByRole('navigation', { name: '주 메뉴' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { level: 1, name: '거래 목록' })).toHaveFocus()
+  })
+
   it('shows groups as loading, not missing, while offline', async () => {
     signedIn([])
     onlineManager.setOnline(false)
@@ -309,5 +340,68 @@ describe('AppRoutes', () => {
     } finally {
       onlineManager.setOnline(true)
     }
+  })
+})
+
+describe('AppRoutes on a narrow screen', () => {
+  beforeEach(() => { mockViewport(true) })
+
+  it('shows the bottom tab bar instead of the sidebar', async () => {
+    signedIn([{ groupId: 10, name: '우리집', myRole: 'ADMIN', memberCount: 3 }])
+    renderApp('/')
+
+    const navs = await screen.findAllByRole('navigation', { name: '주 메뉴' })
+    expect(navs).toHaveLength(1)
+    const names = within(navs[0]).getAllByRole('link').map((link) => link.textContent)
+    expect(names).toEqual(['홈', '대시보드', '거래', '업로드', '그룹'])
+    expect(within(navs[0]).getByRole('link', { name: '홈' })).toHaveAttribute('aria-current', 'page')
+    // 닉네임과 로그아웃은 상단 바에 없고 계정 시트 안에 있다.
+    expect(screen.queryByRole('button', { name: '로그아웃' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '계정' })).toBeInTheDocument()
+  })
+
+  it('moves focus to the new screen title after switching tabs', async () => {
+    signedIn([])
+    renderApp('/')
+    const user = userEvent.setup()
+
+    const nav = await screen.findByRole('navigation', { name: '주 메뉴' })
+    await user.click(within(nav).getByRole('link', { name: '그룹' }))
+
+    expect(await screen.findByRole('heading', { level: 1, name: '그룹 관리' })).toHaveFocus()
+  })
+
+  it('signs out from the account sheet', async () => {
+    signedIn([])
+    server.use(http.post('*/api/auth/logout', () => new HttpResponse(null, { status: 204 })))
+    renderApp('/')
+    const user = userEvent.setup()
+
+    await user.click(await screen.findByRole('button', { name: '계정' }))
+    const sheet = await screen.findByRole('dialog', { name: '계정' })
+    expect(sheet).toHaveTextContent('나')
+    await user.click(within(sheet).getByRole('button', { name: '로그아웃' }))
+
+    expect(await screen.findByRole('button', { name: '로그인' })).toBeInTheDocument()
+  })
+
+  it('keeps the sheet open with an alert when logout fails', async () => {
+    signedIn([])
+    server.use(http.post('*/api/auth/logout', () =>
+      HttpResponse.json({ code: 'INTERNAL', message: 'x' }, { status: 500 })))
+    renderApp('/')
+    const user = userEvent.setup()
+
+    await user.click(await screen.findByRole('button', { name: '계정' }))
+    const sheet = await screen.findByRole('dialog', { name: '계정' })
+    await user.click(within(sheet).getByRole('button', { name: '로그아웃' }))
+
+    expect(await within(sheet).findByRole('alert')).toHaveTextContent('로그아웃하지 못했습니다. 잠시 후 다시 시도해 주세요.')
+
+    // 닫았다 다시 열면 지난 실패 문구는 사라진다.
+    await user.keyboard('{Escape}')
+    await user.click(screen.getByRole('button', { name: '계정' }))
+    const reopened = screen.getAllByRole('dialog', { name: '계정' }).at(-1)!
+    await waitFor(() => expect(within(reopened).queryByRole('alert')).not.toBeInTheDocument())
   })
 })
