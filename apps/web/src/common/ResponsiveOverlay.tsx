@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useId, type ReactNode } from 'react'
 import { Dialog, Heading, Popover } from 'react-aria-components'
 import styles from './Overlay.module.css'
 
@@ -8,10 +8,11 @@ import styles from './Overlay.module.css'
  */
 // Modal은 닫힌 상태에서 Select가 컬렉션을 수집하지 못하므로 모바일도 Popover를 쓴다.
 export function ResponsiveOverlay({ mobile, title, children, dialog = true }: { mobile: boolean; title: string; children: ReactNode; dialog?: boolean }) {
+  const titleId = useId()
   return mobile ? (
     <Popover placement="bottom start" className={styles.sheet}>
-      <Dialog aria-label={title} className={styles.dialog}>
-        <Heading slot="title" className={styles.title}>{title}</Heading>
+      <Dialog aria-labelledby={titleId} className={styles.dialog}>
+        <Heading id={titleId} slot="title" className={styles.title}>{title}</Heading>
         {children}
       </Dialog>
     </Popover>

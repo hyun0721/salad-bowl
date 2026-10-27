@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { I18nProvider } from 'react-aria-components'
 import { describe, expect, it, vi } from 'vitest'
+import { mockViewport } from '../test/mockViewport'
 import DateTimePicker from './DateTimePicker'
 
 function Controlled({ onValue, initial = '' }: { onValue: (v: string) => void; initial?: string }) {
@@ -36,5 +37,16 @@ describe('DateTimePicker', () => {
     await user.click(screen.getByRole('button', { name: /달력/ }))
 
     expect(await screen.findByRole('grid')).toBeInTheDocument()
+  })
+
+  it('names the mobile calendar sheet by its visible title without warnings', async () => {
+    mockViewport(true)
+    const spies = [vi.spyOn(console, 'warn'), vi.spyOn(console, 'error')]
+    const { user } = renderPicker()
+    await user.click(screen.getByRole('button', { name: /달력/ }))
+    const dialog = await screen.findByRole('dialog', { name: '일시' })
+    expect(within(dialog).getByRole('heading', { name: '일시' })).toBeInTheDocument()
+    expect(spies.flatMap((spy) => spy.mock.calls)).toEqual([])
+    spies.forEach((spy) => spy.mockRestore())
   })
 })
