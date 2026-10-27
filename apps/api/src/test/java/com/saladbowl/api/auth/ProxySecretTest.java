@@ -42,6 +42,12 @@ class ProxySecretTest extends IntegrationTest {
     }
 
     @Test
+    void onlyTheExactHealthPathSkipsTheSecret() throws Exception {
+        mvc.perform(get("/actuator/health/liveness")).andExpect(status().isForbidden());
+        mvc.perform(get("/actuator/healthz")).andExpect(status().isForbidden());
+    }
+
+    @Test
     void clientIpHeaderIsOnlyTrustedWithSecretAndValidFormat() {
         MockHttpServletRequest req = new MockHttpServletRequest();
         req.setRemoteAddr("9.9.9.9");

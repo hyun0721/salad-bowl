@@ -83,11 +83,16 @@ Settings → Secrets and variables → Actions → **Variables(저장소)**에 `
 
 ### 인증 보강(Plan 12)을 이미 운영 중인 서비스에 배포할 때
 
-1. **머지 전에** GitHub Environment `production`에 `PROXY_SECRET`(32자 이상, JWT와 다른 값)을 추가한다.
-2. **머지 전에** `sync-config`를 `dry_run=true`로, 이어서 `dry_run=false`, `deploy=false`로 실행해 Render와 Pages에 값을 넣는다. 지금 돌고 있는 옛 API·옛 프록시는 이 값을 쓰지 않으므로 영향이 없다.
+1. **머지 전에** `openssl rand -base64 32`로 `PROXY_SECRET`(32자 이상, JWT와 다른 값)을 만들어 GitHub Environment `production`에 추가한다.
+2. **머지 전에** 같은 값을 플랫폼에 직접 넣는다. 지금 `main`의 `sync-config`에는 아직 `PROXY_SECRET` 단계가 없기 때문이다(이 PR이 더한다).
+   - Render: 서비스 → Environment → `PROXY_SECRET` 추가. 저장 때 재배포를 묻으면 **저장만** 한다(옛 API는 이 값을 쓰지 않는다).
+   - Cloudflare Pages: 프로젝트 → Settings → Variables and Secrets → production과 preview 모두 `PROXY_SECRET`을 **Secret(암호화)**으로 추가.
+   - 머지 뒤부터는 `sync-config`가 두 곳을 GitHub 값으로 맞춘다.
 3. PR을 머지한다. Pages는 새 프록시를 빌드하고(이때부터 `X-Proxy-Secret`을 붙인다), Render는 api-ci 통과 뒤 새 API를 자동 배포한다(`autoDeployTrigger: checksPass`). 수동 Retry·Manual Deploy는 필요 없다.
 4. Pages 빌드가 먼저 끝나면 옛 API는 헤더를 무시하므로 문제가 없다. Render가 먼저 끝나면 Pages 빌드가 끝날 때까지 1~2분 동안 API 요청이 403이 된다.
-5. `PROXY_SECRET`이 없거나 32자 미만이면 새 API는 기동하지 않고 Render는 이전 배포를 유지한다. 이때는 1~2단계를 고친 뒤 Render를 Manual Deploy한다.
+5. `PROXY_SECRET`이 없거나 32자 미만이면 새 API는 기동하지 않고 Render는 이전 배포를 유지한다. 이때는 1~2단계를 고친 뒤 Render를 Manual Deploy한다. Pages와 Render의 값이 다르면 health 외 모든 요청이 403이다.
+
+미리보기(PR별 `*.pages.dev`)도 운영 `PROXY_SECRET`을 받아 운영 API를 쓴다. 미리보기는 저장소에 push할 수 있는 사람의 브랜치만 빌드되므로 지금(혼자 쓰는 저장소)은 받아들인다. 쓰기 권한을 가진 사람이 늘면 미리보기용 API·비밀값을 분리한다(이 비밀값으로 얻는 것은 IP 헤더 위조이고, 사용자 인증은 우회하지 못한다).
 6. 6장의 확인(health, 로그인)을 한다.
 
 기존 refresh 쿠키에는 `ver`가 없으므로 이 배포 뒤 기존 세션은 한 번 로그아웃된다. 새 로그인 이후 refresh 쿠키의 만료는 로그인 시점부터 14일로 고정되며, refresh 요청은 쿠키를 갱신하지 않는다.

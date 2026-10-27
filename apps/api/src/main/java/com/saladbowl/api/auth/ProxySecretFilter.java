@@ -48,7 +48,8 @@ public class ProxySecretFilter extends OncePerRequestFilter {
         chain.doFilter(request, response);
     }
 
+    // 예외는 Render 헬스체크 한 경로만 둔다(접두사로 두면 /actuator/health 아래 다른 경로까지 열린다).
     private static boolean isHealth(HttpServletRequest request) {
-        return request.getRequestURI().startsWith("/actuator/health");
+        return "GET".equals(request.getMethod()) && "/actuator/health".equals(request.getRequestURI());
     }
 }
