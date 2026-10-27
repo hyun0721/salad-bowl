@@ -11,7 +11,8 @@ export function useAppUpdate() {
     // shortcut: 등록 콜백의 타이머와 리스너는 앱 수명 동안 하나뿐이라 해제하지 않는다. 등록이 여러 번 일어나면 해제를 넣는다.
     onRegisteredSW(_url, registration) {
       if (!registration) return
-      const check = () => { void registration.update() }
+      // 오프라인이면 확인이 실패한다. 다음 확인 때 다시 시도하면 되므로 무시한다.
+      const check = () => { registration.update().catch(() => {}) }
       setInterval(check, CHECK_MS)
       document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') check() })
     },
