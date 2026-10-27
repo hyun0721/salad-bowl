@@ -1,0 +1,20 @@
+.loader { display: flex; flex-direction: column; align-items: center; gap: var(--space-3); text-align: center; }
+/* 재료가 viewBox 위에서 떨어져 들어오므로 잘리지 않게 한다. */
+.svg { overflow: visible; }
+.scene, .drop { transform-box: fill-box; }
+.scene { transform-origin: 50% 100%; }
+.drop { animation: drop 600ms cubic-bezier(0.3, 1.35, 0.5, 1) both; }
+.pour path { stroke-dasharray: 1; animation: pour 700ms ease-out both; }
+.stir { animation: stir 700ms ease-in-out; }
+.wait { animation: stir 2400ms ease-in-out infinite; }
+.text { display: flex; flex-direction: column; gap: var(--space-1); }
+.message { margin: 0; font-weight: 600; color: var(--ink); }
+.hint { margin: 0; font-size: 13px; color: var(--ink-muted); }
+@keyframes drop { from { transform: translateY(-140px); opacity: 0; } 40% { opacity: 1; } to { transform: none; opacity: 1; } }
+@keyframes pour { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+@keyframes stir { 0%, 100% { transform: rotate(0deg); } 25% { transform: rotate(-4deg); } 75% { transform: rotate(4deg); } }
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .drop, .pour path { animation: fade 150ms ease-out both; }
+  .stir, .wait { animation: none; }
+}
