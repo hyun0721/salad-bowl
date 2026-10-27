@@ -17,3 +17,7 @@ apps/web/dist/
 .env
 .env.*
 !.env.example
+
+# Local Graphify environment and generated graph/cache
+.venv-graphify/
+graphify-out/
