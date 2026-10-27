@@ -20,6 +20,15 @@ function handlers(coverage: CoverageMonth[]) {
 }
 
 describe('HomePage', () => {
+  it('draws the year buttons as icons', async () => {
+    handlers([])
+    renderPage(<HomePage today={today} />)
+    const prev = await screen.findByRole('button', { name: '이전 연도' })
+    expect(prev.querySelector('svg')).not.toBeNull()
+    expect(prev).not.toHaveTextContent('‹')
+    expect(screen.getByRole('button', { name: '다음 연도' }).querySelector('svg')).not.toBeNull()
+  })
+
   it('shows registered, missing and upcoming months for the year', async () => {
     handlers([{ month: '2026-01', importedCount: 120, manualCount: 0 }, { month: '2026-09', importedCount: 168, manualCount: 0 }])
 
@@ -33,6 +42,15 @@ describe('HomePage', () => {
     expect(within(calendar).queryByRole('button', { name: /2026년 11월/ })).not.toBeInTheDocument()
     expect(within(calendar).getAllByText('예정')).toHaveLength(2)
     expect(document.title).toBe('내 가계부 · Salad Bowl')
+  })
+
+  it('splits the missing-month text so the upload hint can hide in narrow cells', async () => {
+    handlers([])
+    renderPage(<HomePage today={today} />)
+    const calendar = await screen.findByRole('region', { name: '월별 등록 현황' })
+    const cell = await within(calendar).findByRole('button', { name: '2026년 1월 미등록, 업로드하기' })
+    expect(cell).toHaveTextContent('미등록 · 업로드하기')
+    expect(within(cell).getByText(/업로드하기/)).toBeInTheDocument()
   })
 
   it('starts in January on last year, where last month is', async () => {

@@ -30,7 +30,7 @@ describe('donutStartAngle', () => {
 
 describe('centerValueSize', () => {
   it('keeps the base size for short amounts and shrinks long ones to fit the hole', () => {
-    expect(centerValueSize('₩ 950,000', 12, false)).toBe(18)
+    expect(centerValueSize('₩ 950,000', 12, false)).toBe(17)
     expect(centerValueSize('₩ 21,480,000', 12, false)).toBeLessThan(18)
     expect(centerValueSize('₩ 2,500,000', 3, true)).toBeLessThan(12)
     expect(centerValueSize('₩ 123,456,789,000', 1, true)).toBe(9)
@@ -80,10 +80,10 @@ describe('buildDonutOption', () => {
 })
 
 it('grows donut height with category count up to the cap', () => {
-  expect(donutHeight(3, false)).toBe(260)
-  expect(donutHeight(3, true)).toBe(220)
-  expect(donutHeight(12, false)).toBe(332)
-  expect(donutHeight(12, true)).toBe(292)
+  expect(donutHeight(3, false)).toBe(240)
+  expect(donutHeight(3, true)).toBe(200)
+  expect(donutHeight(12, false)).toBe(312)
+  expect(donutHeight(12, true)).toBe(272)
   expect(donutHeight(40, false)).toBe(380)
 })
 it('cycles slots and preserves pattern tiers', () => {
@@ -99,7 +99,7 @@ const props = { slices, ...opts, activeId: null as string | null, onActiveChange
 it('hides the container and connects selection and hover handlers', () => {
   const { container } = render(<DonutChart {...props} />)
   expect(container.firstChild).toHaveAttribute('aria-hidden', 'true')
-  expect(container.firstChild).toHaveStyle({ height: '260px' })
+  expect(container.firstChild).toHaveStyle({ height: '240px' })
   const handler = (event: string) => chart.on.mock.calls.find(([name]) => name === event)![1]
   handler('click')({ name: '식비' })
   expect(props.onSelect).toHaveBeenCalledWith('식비')

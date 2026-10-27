@@ -5,15 +5,18 @@ body {
   background: var(--surface-100);
   color: var(--ink);
   font-family: var(--font-sans);
-  font-size: 15px;
+  font-size: var(--text-base);
   line-height: 24px;
 }
-h1 { margin: 0; font-size: 28px; line-height: 36px; font-weight: 700; }
-h2 { margin: 0; font-size: 18px; line-height: 26px; font-weight: 700; }
+h1 { margin: 0; font-size: var(--text-2xl); line-height: 36px; font-weight: 700; }
+h2 { margin: 0; font-size: var(--text-md); line-height: 26px; font-weight: 700; }
 a { color: var(--brand); }
 button, input, select, textarea { font: inherit; color: inherit; }
 :focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
 [tabindex="-1"]:focus:not(:focus-visible) { outline: none; }
+/* 화면 전환 때 프로그램으로 포커스하는 제목(AppLayout). 누를 수 있는 요소가 아니라 테두리가 필요 없고,
+   iOS Safari는 이 포커스를 :focus-visible로 보아 하단 탭으로 이동한 뒤 제목에 테두리를 그린다. */
+h1[tabindex="-1"]:focus { outline: none; }
 .num { font-variant-numeric: tabular-nums; }
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }

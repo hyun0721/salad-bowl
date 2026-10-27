@@ -1,11 +1,11 @@
-.search { flex: 1 1 200px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.search { flex: 1 1 200px; display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
 .layout { display: flex; flex-wrap: wrap; gap: var(--space-4); align-items: flex-start; }
 .listCard { flex: 999 1 560px; padding: 0; overflow-x: auto; gap: 0; }
 .listCard > :is(p, div[class]:not([role="grid"])) { margin: var(--space-4); }
 /* 표가 좁아지면 열이 뭉개지므로 넓은 화면 카드 안에서 가로로 스크롤한다. */
 .listCard table { min-width: 720px; }
 .cardTop { display: flex; justify-content: space-between; gap: var(--space-3); font-weight: 600; }
-.cardMeta { font-size: 13px; color: var(--ink-muted); }
+.cardMeta { font-size: var(--text-sm); color: var(--ink-muted); }
 .when, .amount { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .amount { text-align: right; }
 .visuallyHidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }

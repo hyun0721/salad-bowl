@@ -17,6 +17,6 @@
 .summary { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
 .cardTop { display: flex; justify-content: space-between; gap: var(--space-3); font-weight: 600; }
 .cardTop span:last-child { white-space: nowrap; font-variant-numeric: tabular-nums; }
-.cardMeta { color: var(--ink-muted); font-size: 13px; }
+.cardMeta { color: var(--ink-muted); font-size: var(--text-sm); }
 .txAmount { white-space: nowrap; font-variant-numeric: tabular-nums; }
 

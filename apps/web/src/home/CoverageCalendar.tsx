@@ -45,7 +45,7 @@ export default function CoverageCalendar({ year, today, coverage, onPickMissing,
                 aria-label={`${year}년 ${label} 미등록, 업로드하기`}
                 onClick={() => onPickMissing(month)}>
                 <span className={styles.month}>{label}</span>
-                <span className={styles.state}>미등록 · 업로드하기</span>
+                <span className={styles.state}>미등록<span className={styles.uploadHint}> · 업로드하기</span></span>
               </button>
             )}
           </li>

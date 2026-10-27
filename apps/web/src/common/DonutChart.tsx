@@ -26,7 +26,7 @@ export function sliceStyle(index: number): { slot: number; pattern: 'solid' | 'd
 
 // oxlint-disable-next-line react/only-export-components
 export function donutHeight(count: number, compact: boolean): number {
-  const base = compact ? 220 : 260
+  const base = compact ? 200 : 240
   return Math.min(base + Math.max(0, count - 6) * 12, 380)
 }
 

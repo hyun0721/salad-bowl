@@ -2,18 +2,19 @@
 .stack { display: flex; flex-direction: column; gap: var(--space-3); }
 .row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); }
 .pageHeader { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-3); }
-.button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; padding: 0 var(--space-4); border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface-000); color: var(--ink); cursor: pointer; }
-.button:disabled { opacity: 0.6; cursor: default; }
+.button { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2); min-height: 40px; padding: 0 var(--space-4); border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface-000); color: var(--ink); cursor: pointer; }
+.button:disabled { background: var(--surface-100); color: var(--ink-muted); border-color: var(--line); opacity: 1; cursor: not-allowed; }
 .primary { min-height: 44px; border: 0; background: var(--brand); color: var(--on-brand); font-weight: 700; }
+.primary:disabled { background: var(--line); color: var(--ink-muted); }
 .danger { border-color: var(--danger); color: var(--danger); }
-.field { display: flex; flex-direction: column; gap: 4px; }
-.field > span { font-size: 13px; line-height: 18px; font-weight: 500; color: var(--ink-muted); }
+.field { display: flex; flex-direction: column; gap: var(--space-1); }
+.field > span { font-size: var(--text-sm); line-height: 18px; font-weight: 500; color: var(--ink-muted); }
 .input { min-height: 40px; padding: 0 var(--space-3); border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface-000); }
 textarea.input { padding: var(--space-2) var(--space-3); }
 .alert { margin: 0; padding: var(--space-3); border-radius: var(--radius-sm); color: var(--danger); background: var(--surface-100); }
 .status { margin: 0; color: var(--ink-muted); }
-.muted { margin: 0; color: var(--ink-muted); font-size: 13px; line-height: 18px; }
-.badge { display: inline-block; margin-left: 6px; font-size: 12px; line-height: 16px; color: var(--ink-muted); }
+.muted { margin: 0; color: var(--ink-muted); font-size: var(--text-sm); line-height: 18px; }
+.badge { display: inline-block; margin-left: var(--space-2); font-size: var(--text-xs); line-height: 16px; color: var(--ink-muted); }
 .badgePending { color: var(--pending); }
 .linkButton { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
 

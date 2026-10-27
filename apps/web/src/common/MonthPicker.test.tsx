@@ -4,6 +4,18 @@ import { describe, expect, it, vi } from 'vitest'
 import MonthPicker from './MonthPicker'
 
 describe('MonthPicker', () => {
+  it('names the step buttons after a custom label', () => {
+    render(<MonthPicker label="시작 월" month="2026-10" onChange={() => {}} />)
+    expect(screen.getByRole('button', { name: '시작 월 이전 달' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '시작 월 다음 달' })).toBeInTheDocument()
+  })
+
+  it('keeps the plain names with the default label', () => {
+    render(<MonthPicker month="2026-10" onChange={() => {}} />)
+    expect(screen.getByRole('button', { name: '이전 달' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '다음 달' })).toBeInTheDocument()
+  })
+
   it('moves one month back and forth', async () => {
     const onChange = vi.fn()
     render(<MonthPicker month="2026-12" onChange={onChange} />)

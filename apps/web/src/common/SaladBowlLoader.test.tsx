@@ -23,6 +23,20 @@ it('advances the message and fills the bowl over time', () => {
   expect(pieces(container)).toBe(4)
 })
 
+it('repeats each stage motion while it lasts and stops while finishing', () => {
+  const { container, rerender } = render(<SaladBowlLoader />)
+  const scene = () => container.querySelector('[data-motion]')?.getAttribute('data-motion')
+  expect(scene()).toBe('seek')
+  act(() => { vi.advanceTimersByTime(8_000) })
+  expect(scene()).toBe('stir')
+  act(() => { vi.advanceTimersByTime(22_000) })
+  expect(scene()).toBe('dress')
+  act(() => { vi.advanceTimersByTime(60_000) })
+  expect(scene()).toBe('wait')
+  rerender(<SaladBowlLoader done />)
+  expect(scene()).toBeUndefined()
+})
+
 it('hides the drawing and shows the wake-up hint only when slow', () => {
   const { container, rerender } = render(<SaladBowlLoader />)
   expect(container.querySelector('svg')).toHaveAttribute('aria-hidden', 'true')
@@ -44,6 +58,24 @@ it('fills the rest, keeps the message, then calls onFinished when done', () => {
   // 완료 중에는 시간 단계가 더 오르지 않는다.
   act(() => { vi.advanceTimersByTime(8_000) })
   expect(screen.getByRole('status')).toHaveTextContent('신선한 재료 찾는 중이에요')
+})
+
+it('lines the message up with the bowl when reactivated while finishing', () => {
+  const onFinished = vi.fn()
+  const { container, rerender } = render(<SaladBowlLoader onFinished={onFinished} />)
+  rerender(<SaladBowlLoader done onFinished={onFinished} />)
+  for (let step = 0; step < 2; step++) act(() => { vi.advanceTimersByTime(120) })
+  expect(pieces(container)).toBe(3)
+  rerender(<SaladBowlLoader onFinished={onFinished} />)
+  expect(pieces(container)).toBe(3)
+  expect(screen.getByRole('status')).toHaveTextContent('드레싱 넣는 중이에요')
+  act(() => { vi.advanceTimersByTime(1_000) })
+  expect(onFinished).not.toHaveBeenCalled()
+})
+
+it('uses the given id for the status region', () => {
+  render(<SaladBowlLoader statusId="loader-status" />)
+  expect(screen.getByRole('status')).toHaveAttribute('id', 'loader-status')
 })
 
 it('finishes at once with reduced motion', () => {
