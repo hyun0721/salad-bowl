@@ -103,6 +103,8 @@ it('hides the container and connects selection and hover handlers', () => {
   const handler = (event: string) => chart.on.mock.calls.find(([name]) => name === event)![1]
   handler('click')({ name: '식비' })
   expect(props.onSelect).toHaveBeenCalledWith('식비')
+  // 터치에는 mouseout이 없어 툴팁이 열린 모달 위에 남는다.
+  expect(chart.dispatchAction).toHaveBeenCalledWith({ type: 'hideTip' })
   handler('mouseover')({ name: '식비' })
   expect(props.onActiveChange).toHaveBeenLastCalledWith('식비')
   handler('mouseout')({ name: '식비' })
