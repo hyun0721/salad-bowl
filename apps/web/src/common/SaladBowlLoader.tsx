@@ -22,14 +22,19 @@ const PIECES: { id: string; step: number; pour?: boolean; node: ReactNode }[] = 
 ]
 const LAST = STAGES.length - 1
 
-type Props = { slow?: boolean; done?: boolean; onFinished?: () => void }
+type Props = { slow?: boolean; done?: boolean; statusId?: string; onFinished?: () => void }
 
-export default function SaladBowlLoader({ slow = false, done = false, onFinished }: Props) {
+export default function SaladBowlLoader({ slow = false, done = false, statusId, onFinished }: Props) {
   const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
   const [stage, setStage] = useState(0)
   // 완료 때 마저 담은 재료 수. 멘트는 시간 단계만 따른다(완료 중 멘트가 빠르게 바뀌지 않게).
   const [extra, setExtra] = useState(0)
   const filled = Math.min(LAST, stage + extra)
+  if (!done && extra > 0) {
+    // 닫히는 중 다시 켜지면 담긴 볼은 그대로 두고 멘트를 볼에 맞춘다.
+    setStage(filled)
+    setExtra(0)
+  }
 
   useEffect(() => {
     if (done) return
@@ -58,7 +63,7 @@ export default function SaladBowlLoader({ slow = false, done = false, onFinished
           <rect x="200" y="384" width="112" height="24" rx="12" fill="#ffffff" stroke="var(--line)" strokeWidth="6" />
         </g>
       </svg>
-      <div role="status" className={styles.text}>
+      <div role="status" id={statusId} className={styles.text}>
         <p className={styles.message}>{STAGES[stage].message}</p>
         {slow && <p className={styles.hint}>오래 쓰지 않았다면 서버가 깨어나는 데 최대 4분쯤 걸려요</p>}
       </div>

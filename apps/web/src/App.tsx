@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router'
 import { createQueryClient } from './api/queryClient'
 import ErrorBoundary from './app/ErrorBoundary'
 import AppRoutes from './app/AppRoutes'
+import SlowServerOverlay from './app/SlowServerOverlay'
 import { AuthProvider } from './auth/AuthProvider'
 import ToastRegion from './common/Toast'
 
@@ -16,6 +17,7 @@ export default function App() {
           <ErrorBoundary>
             <AppRoutes />
           </ErrorBoundary>
+          <SlowServerOverlay />
           <ToastRegion />
         </BrowserRouter>
       </AuthProvider>

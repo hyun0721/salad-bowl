@@ -169,6 +169,19 @@ describe('AppRoutes', () => {
     expect(await screen.findByRole('heading', { name: '내 가계부' }, { timeout: 5000 })).toBeInTheDocument()
   }, 15000)
 
+  it('shows the salad bowl on the login route while the session is restored', async () => {
+    server.use(
+      http.post('*/api/auth/refresh', async () => {
+        await delay(300)
+        return HttpResponse.json({ code: 'INVALID_TOKEN', message: 'no session' }, { status: 401 })
+      }),
+    )
+    renderApp('/login')
+    expect(await screen.findByText('신선한 재료 찾는 중이에요')).toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: '로그인' }, { timeout: 3000 })).toBeInTheDocument()
+  })
+
   it('tells loading, failed and empty groups apart and can retry', async () => {
     let fail = true
     server.use(
