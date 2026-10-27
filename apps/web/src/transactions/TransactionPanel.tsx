@@ -3,7 +3,7 @@ import ComboBox from '../common/ComboBox'
 import { TextAreaField } from '../common/TextField'
 import { majorOptions, minorOptions, useCategories } from './categoriesApi'
 import { useQuery } from '@tanstack/react-query'
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { useAuth } from '../auth/AuthProvider'
 import { errorMessage } from '../common/errorMessage'
 import ConfirmDialog from '../common/ConfirmDialog'
@@ -31,17 +31,21 @@ function auditLine(a: AuditView): string {
   return `${formatInstant(a.changedAt)} · ${a.actorNickname} · ${label}: ${auditValue(a.field, a.before)} → ${auditValue(a.field, a.after)}`
 }
 
-type Props = { tx: TransactionView; onDeleted: () => void }
+/** 저장하지 않은 입력. 모달↔사이드바를 바꿔 다시 그려져도 페이지가 보관했다가 돌려준다. */
+export type EditDraft = { major: string; minor: string; memo: string; hidden: boolean }
 
-export default function TransactionPanel({ tx, onDeleted }: Props) {
+type Props = { tx: TransactionView; onDeleted: () => void; loadDraft?: () => EditDraft | undefined; onDraftChange?: (draft: EditDraft) => void }
+
+export default function TransactionPanel({ tx, onDeleted, loadDraft, onDraftChange }: Props) {
   const { me } = useAuth()
   const list = useCategories().data ?? []
   const { update, remove } = useTransactionMutations()
   const audits = useQuery({ queryKey: ['audits', tx.id], queryFn: () => transactionsApi.audits(tx.id) })
-  const [major, setMajor] = useState(tx.categoryMajor)
-  const [minor, setMinor] = useState(tx.categoryMinor)
-  const [memo, setMemo] = useState(tx.memo ?? '')
-  const [hidden, setHidden] = useState(tx.hidden)
+  const [values, setValues] = useState<EditDraft>(() => loadDraft?.()
+    ?? { major: tx.categoryMajor, minor: tx.categoryMinor, memo: tx.memo ?? '', hidden: tx.hidden })
+  const { major, minor, memo, hidden } = values
+  const change = (patch: Partial<EditDraft>) => setValues((prev) => ({ ...prev, ...patch }))
+  useEffect(() => { onDraftChange?.(values) }, [values, onDraftChange])
   const isOwner = me?.userId === tx.ownerId
   const canDelete = isOwner && tx.source === 'MANUAL'
 
@@ -56,10 +60,7 @@ export default function TransactionPanel({ tx, onDeleted }: Props) {
     update.mutate({ id: tx.id, patch }, {
       // 비워서 저장하면 서버가 원본 값을 돌려준다. 입력칸도 그 값으로 맞춘다.
       onSuccess: (updated) => {
-        setMajor(updated.categoryMajor)
-        setMinor(updated.categoryMinor)
-        setMemo(updated.memo ?? '')
-        setHidden(updated.hidden)
+        change({ major: updated.categoryMajor, minor: updated.categoryMinor, memo: updated.memo ?? '', hidden: updated.hidden })
         toast('저장했습니다.')
       },
     })
@@ -77,12 +78,12 @@ export default function TransactionPanel({ tx, onDeleted }: Props) {
 
       {tx.editable ? (
         <form className={ui.stack} onSubmit={onSave}>
-          <ComboBox label="대분류" value={major} onChange={setMajor} options={majorOptions(list)} maxLength={100} />
-          <ComboBox label="소분류" value={minor} onChange={setMinor} options={minorOptions(list, major.trim())} maxLength={100} />
-          <TextAreaField label="메모" value={memo} onChange={setMemo} maxLength={1000} rows={2} />
+          <ComboBox label="대분류" value={major} onChange={(v) => change({ major: v })} options={majorOptions(list)} maxLength={100} />
+          <ComboBox label="소분류" value={minor} onChange={(v) => change({ minor: v })} options={minorOptions(list, major.trim())} maxLength={100} />
+          <TextAreaField label="메모" value={memo} onChange={(v) => change({ memo: v })} maxLength={1000} rows={2} />
           <p className={ui.muted}>비워 두고 저장하면 엑셀의 원래 값으로 돌아갑니다.</p>
           {isOwner && (
-            <Checkbox isSelected={hidden} onChange={setHidden}>그룹 화면에서 숨기기 (본인만)</Checkbox>
+            <Checkbox isSelected={hidden} onChange={(v) => change({ hidden: v })}>그룹 화면에서 숨기기 (본인만)</Checkbox>
           )}
           <div className={styles.actions}>
             {canDelete && (

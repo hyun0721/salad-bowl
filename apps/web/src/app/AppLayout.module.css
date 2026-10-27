@@ -21,3 +21,9 @@
 .groupSlot { flex: 1; min-width: 0; display: flex; }
 /* 하단 탭 바(56px)와 안전 영역만큼 본문 끝을 띄워 마지막 내용이 가려지지 않게 한다. */
 .withTabBar { padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px) + var(--space-4)); }
+/* 넓은 화면은 창 높이에 맞추고 본문 안에서 스크롤한다. 거래 목록처럼 표가 긴 화면이 남은 높이를 채울 수 있다. */
+@media (min-width: 821px) {
+  /* 줄바꿈하면 줄 높이가 내용만큼 늘어나 본문이 창 높이를 넘는다. */
+  .shell { height: 100vh; height: 100dvh; flex-wrap: nowrap; }
+  .content { flex: 1; min-height: 0; overflow-y: auto; }
+}
