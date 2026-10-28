@@ -25,3 +25,27 @@ h1[tabindex="-1"]:focus { outline: none; }
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
 }
+
+/* 모바일은 문서 스크롤을 유지하고 바깥 스크롤바만 숨긴다. 목록·시트의 스크롤바는 유지한다. */
+@media (max-width: 820px) {
+  html, body { scrollbar-width: none; }
+  html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
+}
+
+.pwa-status-bar-surface { display: none; }
+@media (display-mode: standalone) {
+  @supports (-webkit-touch-callout: none) and ((background-clip: text) or (-webkit-background-clip: text)) {
+    /* shortcut: iOS PWA 상단 흐림의 비공식 우회, WebKit 변경 시 실기기로 재검증한다. 11px는 배경 판정의 10px 기준을 넘긴다. */
+    .pwa-status-bar-surface {
+      display: block;
+      position: fixed;
+      inset: 0 0 auto;
+      height: 11px;
+      z-index: 41;
+      pointer-events: none;
+      background: var(--status-bar);
+      -webkit-background-clip: text;
+      background-clip: text;
+    }
+  }
+}
