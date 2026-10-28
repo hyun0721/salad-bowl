@@ -156,6 +156,33 @@ public class SummaryService {
                 owner -> editable.computeIfAbsent(owner, id -> access.canEditOwnedBy(userId, id)));
     }
 
+    /** 선택 월까지 최근 6개월의 소분류별 순지출. 거래가 없는 월은 화면에서 0으로 채운다. */
+    @Transactional(readOnly = true)
+    public List<SummaryDtos.SubcategoryMonth> subcategories(long groupId, long userId, YearMonth month) {
+        access.requireMember(groupId, userId);
+        TransactionService.monthRange(month);
+        YearMonth from = month.minusMonths(5);
+        TransactionService.monthRange(from);
+        List<Long> owners = access.sharedOwnerIds(groupId);
+        if (owners.isEmpty()) return List.of();
+        record Key(String month, String major, String minor) {}
+        Map<Key, BigDecimal> totals = new LinkedHashMap<>();
+        for (LedgerTransaction tx : summaryTransactions(owners, from, month)) {
+            if (tx.getType() != TransactionType.EXPENSE) continue;
+            Category category = tx.displayCategory();
+            Key key = new Key(YearMonth.from(tx.getOccurredAt()).toString(), majorLabel(tx),
+                    category.minor() == null || category.minor().isBlank() ? UNCATEGORIZED : category.minor());
+            totals.merge(key, tx.getAmount().negate(), BigDecimal::add);
+        }
+        return totals.entrySet().stream()
+                .map(e -> new SummaryDtos.SubcategoryMonth(
+                        e.getKey().month(), e.getKey().major(), e.getKey().minor(), e.getValue()))
+                .sorted(Comparator.comparing(SummaryDtos.SubcategoryMonth::month)
+                        .thenComparing(SummaryDtos.SubcategoryMonth::major)
+                        .thenComparing(SummaryDtos.SubcategoryMonth::minor))
+                .toList();
+    }
+
     private static BigDecimal sum(List<LedgerTransaction> txs, TransactionType type) {
         return txs.stream()
                 .filter(tx -> tx.getType() == type)
