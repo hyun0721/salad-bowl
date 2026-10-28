@@ -56,24 +56,37 @@ describe('CategoryBreakdown', () => {
   })
 
   it('highlights the matching chart slice on row hover', async () => {
-    renderPage(<CategoryBreakdown groupId={10} month="2026-10" summary={summary} />)
+    const { user } = renderPage(<CategoryBreakdown groupId={10} month="2026-10" summary={summary} />)
     const row = await screen.findByRole('button', { name: '식비 80% ₩ 200,000' })
     // 첫 setOption 효과는 버튼이 보인 뒤에 실행될 수 있다(느린 CI). 끝난 뒤에 기록을 지운다.
     await waitFor(() => expect(chart.setOption).toHaveBeenCalled())
     chart.setOption.mockClear()
     chart.on.mockClear()
     chart.off.mockClear()
-    fireEvent.pointerOver(row)
+    fireEvent.pointerOver(row, { pointerType: 'mouse' })
     expect(chart.dispatchAction).toHaveBeenLastCalledWith({ type: 'highlight', seriesIndex: 0, name: '식비' })
-    fireEvent.pointerOut(row)
+    fireEvent.pointerOut(row, { pointerType: 'mouse' })
     expect(chart.dispatchAction).toHaveBeenLastCalledWith({ type: 'downplay', seriesIndex: 0, name: '식비' })
-    fireEvent.focus(row)
+    await user.tab()
+    expect(row).toHaveFocus()
     expect(chart.dispatchAction).toHaveBeenLastCalledWith({ type: 'highlight', seriesIndex: 0, name: '식비' })
     expect(chart.setOption).not.toHaveBeenCalled()
     expect(chart.on).not.toHaveBeenCalled()
     expect(chart.off).not.toHaveBeenCalled()
     fireEvent.blur(row)
     expect(chart.dispatchAction).toHaveBeenLastCalledWith({ type: 'downplay', seriesIndex: 0, name: '식비' })
+  })
+
+  it('does not highlight on touch or on focus that is not keyboard focus', async () => {
+    renderPage(<CategoryBreakdown groupId={10} month="2026-10" summary={summary} />)
+    const row = await screen.findByRole('button', { name: '식비 80% ₩ 200,000' })
+    await waitFor(() => expect(chart.setOption).toHaveBeenCalled())
+    chart.dispatchAction.mockClear()
+    fireEvent.pointerOver(row, { pointerType: 'touch' })
+    // 대화상자가 닫히며 터치로 연 행에 포커스를 돌려주는 경우처럼 :focus-visible이 아닌 포커스.
+    vi.spyOn(row, 'matches').mockReturnValue(false)
+    fireEvent.focus(row)
+    expect(chart.dispatchAction).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'highlight' }))
   })
 })
 

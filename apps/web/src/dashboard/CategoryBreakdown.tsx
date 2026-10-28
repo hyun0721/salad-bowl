@@ -39,8 +39,9 @@ export default function CategoryBreakdown({ groupId, month, summary }: Props) {
                 <li key={item.category}>
                   <button type="button" className={styles.row}
                     aria-label={`${item.category} ${percent(item.expense, total)} ${formatWon(item.expense)}`}
-                    onPointerEnter={() => setActiveId(item.category)} onPointerLeave={() => setActiveId(null)}
-                    onFocus={() => setActiveId(item.category)} onBlur={() => setActiveId(null)}
+                    // 대화상자가 닫히며 터치로 연 행에 포커스가 돌아와도 강조가 남지 않게, 마우스 호버와 키보드 포커스만 강조한다.
+                    onPointerEnter={(e) => { if (e.pointerType === 'mouse') setActiveId(item.category) }} onPointerLeave={() => setActiveId(null)}
+                    onFocus={(e) => { if (e.currentTarget.matches(':focus-visible')) setActiveId(item.category) }} onBlur={() => setActiveId(null)}
                     onClick={() => setCategory(item.category)}>
                     <span aria-hidden="true" className={swatch.pattern === 'solid' ? styles.swatch : `${styles.swatch} ${styles[swatch.pattern]}`}
                       style={{ '--swatch-color': `var(--chart-${swatch.slot})` } as React.CSSProperties} />

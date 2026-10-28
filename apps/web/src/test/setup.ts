@@ -33,12 +33,6 @@ if (typeof window !== 'undefined') {
       takeRecords() { return [] }
     } as unknown as typeof IntersectionObserver
   }
-  if (!Element.prototype.scrollTo) {
-    // RAC Sheet가 진입 완료를 기다리지 않도록 scrollend를 보낸다.
-    Element.prototype.scrollTo = function scrollTo(this: Element) {
-      setTimeout(() => this.dispatchEvent(new Event('scrollend')), 0)
-    }
-  }
   if (!Element.prototype.getAnimations) Element.prototype.getAnimations = () => []
 }
 
