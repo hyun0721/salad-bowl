@@ -5,6 +5,7 @@ import { renderPage } from '../test/renderPage'
 import { mockViewport } from '../test/mockViewport'
 import { server } from '../test/server'
 import CategoryTrend from './CategoryTrend'
+import styles from './CategoryTrend.module.css'
 
 const chart = vi.hoisted(() => ({ setOption: vi.fn(), on: vi.fn(), off: vi.fn(), resize: vi.fn(), dispose: vi.fn(), isDisposed: vi.fn(() => false), dispatchAction: vi.fn() }))
 vi.mock('../common/echarts', () => ({ echarts: { init: () => chart } }))
@@ -120,6 +121,45 @@ describe('CategoryTrend', () => {
     const table = screen.getByRole('table', { name: '대분류별 월 지출' })
     expect(within(table).getByRole('row', { name: /2026년 2월/ })).toHaveTextContent('₩ 7,000')
     expect(within(table).getByRole('row', { name: /2026년 3월/ })).toHaveTextContent('₩ 8,000')
+  })
+
+  it('orders months newest first and highlights changes against the chronological previous month', async () => {
+    const months = ['2025-12', '2026-01', '2026-02', '2026-03']
+    setup({ months, categories: [{ category: '식비', expenses: [1000, 3000, 3000, 2000], total: 9000 }] })
+    const { user } = renderPage(<CategoryTrend groupId={10} month="2026-03" />)
+    await screen.findByRole('button', { name: '식비' })
+    await user.click(screen.getByText('표로 보기'))
+    const table = screen.getByRole('table', { name: '대분류별 월 지출' })
+    const rows = within(table).getAllByRole('row').slice(1)
+    expect(rows.map((row) => within(row).getByRole('rowheader').textContent)).toEqual([
+      '2026년 3월', '2026년 2월', '2026년 1월', '2025년 12월',
+    ])
+    const cells = rows.map((row) => within(row).getByRole('cell'))
+    expect(cells[0]).toHaveTextContent('₩ 2,000')
+    expect(cells[0]).toHaveClass(styles.expenseDecrease)
+    expect(within(cells[0]).getByLabelText('전월 대비 감소')).toHaveTextContent('↓')
+    expect(cells[2]).toHaveClass(styles.expenseIncrease)
+    expect(within(cells[2]).getByLabelText('전월 대비 증가')).toHaveTextContent('↑')
+    expect(cells[1]).toHaveAttribute('title', '전월과 동일')
+    expect(cells[3]).toHaveAttribute('title', '전월 비교 없음')
+    for (const cell of [cells[1], cells[3]]) {
+      expect(cell).not.toHaveClass(styles.expenseIncrease)
+      expect(cell).not.toHaveClass(styles.expenseDecrease)
+    }
+  })
+
+  it('compares zero expense and net refunds without losing the amount sign', async () => {
+    setup({ months: ['2026-01', '2026-02', '2026-03'], categories: [
+      { category: '식비', expenses: [3000, 0, -1000], total: 2000 },
+    ] })
+    const { user } = renderPage(<CategoryTrend groupId={10} month="2026-03" />)
+    await screen.findByRole('button', { name: '식비' })
+    await user.click(screen.getByText('표로 보기'))
+    const table = screen.getByRole('table', { name: '대분류별 월 지출' })
+    const refund = within(within(table).getByRole('row', { name: /2026년 3월/ })).getByRole('cell')
+    expect(refund).toHaveTextContent('-₩ 1,000')
+    expect(refund).toHaveClass(styles.expenseDecrease)
+    expect(within(within(table).getByRole('row', { name: /2026년 2월/ })).getByRole('cell')).toHaveClass(styles.expenseDecrease)
   })
 
   it('shows an empty state', async () => {
