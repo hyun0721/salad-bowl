@@ -467,7 +467,6 @@ describe('TransactionsPage', () => {
 
     try {
       await waitFor(() => expect(screen.getByLabelText('월')).toHaveValue('2026-09'))
-      // 닫히는 시트도 jsdom DOM에는 남으므로 퇴장 상태를 확인한다.
       expect(sheet.parentElement).not.toHaveAttribute('data-exiting', 'true')
       expect(screen.getByRole('dialog')).toBe(sheet.closest('[role="dialog"]'))
     } finally {

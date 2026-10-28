@@ -45,9 +45,12 @@ describe('CategoryTransactionsDialog', () => {
     }
     const { user } = renderPage(<Harness />)
     expect(await screen.findByText('1건 · 합계 ₩ 10,000')).toBeInTheDocument()
+    // 닫힘 애니메이션이 끝나지 않은 상태를 만든다. jsdom에는 CSS 애니메이션이 없다.
+    const animations = vi.spyOn(Element.prototype, 'getAnimations').mockReturnValue([{ playState: 'running', finished: new Promise(() => {}) } as unknown as Animation])
     await user.click(screen.getByRole('button', { name: '닫기' }))
     expect(screen.getByRole('dialog', { name: '식비' })).toHaveTextContent('1건 · 합계 ₩ 10,000')
     expect(screen.queryByText('불러오는 중입니다.')).not.toBeInTheDocument()
+    animations.mockRestore()
   })
 
   it('retries a failed request', async () => {
