@@ -21,6 +21,12 @@ public class SummaryController {
         this.summaryService = summaryService;
     }
 
+    @GetMapping("/groups/{groupId}/summary/subcategories")
+    public List<SummaryDtos.SubcategoryMonth> subcategories(
+            @CurrentUser Long userId, @PathVariable long groupId, @RequestParam YearMonth month) {
+        return summaryService.subcategories(groupId, userId, month);
+    }
+
     @GetMapping("/groups/{groupId}/summary")
     public MonthlySummary monthly(@CurrentUser Long userId, @PathVariable long groupId,
                                   @RequestParam YearMonth month) {

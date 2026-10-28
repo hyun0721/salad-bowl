@@ -16,7 +16,11 @@ export type CategoryTrend = {
   categories: { category: string; expenses: number[]; total: number }[]
 }
 
+export type SubcategoryMonth = { month: string; major: string; minor: string; expense: number }
+
 export const dashboardApi = {
+  subcategories: (groupId: number, month: string) =>
+    apiFetch<SubcategoryMonth[]>(`/groups/${groupId}/summary/subcategories?month=${month}`),
   summary: (groupId: number, month: string) =>
     apiFetch<MonthlySummary>(`/groups/${groupId}/summary?month=${month}`),
   categoryTransactions: (groupId: number, month: string, category: string) =>

@@ -23,6 +23,9 @@ public final class SummaryDtos {
     public record CategoryTrendSeries(String category, List<BigDecimal> expenses, BigDecimal total) {
     }
 
+    public record SubcategoryMonth(String month, String major, String minor, BigDecimal expense) {
+    }
+
     public record MemberTotal(long userId, String nickname, BigDecimal income, BigDecimal expense) {
     }
 }

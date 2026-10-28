@@ -22,6 +22,7 @@ const summary = {
 }
 
 beforeEach(() => {
+  server.use(http.get('*/api/groups/10/summary/subcategories', () => HttpResponse.json([])))
   try { window.localStorage.clear() } catch { /* storage may be unavailable */ }
   server.use(http.get('*/api/groups/10/summary/trend', () => HttpResponse.json({ months: [], categories: [] })))
 })

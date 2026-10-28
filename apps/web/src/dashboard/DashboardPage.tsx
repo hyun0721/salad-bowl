@@ -9,6 +9,7 @@ import NoGroupNotice from '../groups/NoGroupNotice'
 import styles from './DashboardPage.module.css'
 import CategoryBreakdown from './CategoryBreakdown'
 import CategoryTrend from './CategoryTrend'
+import SubcategoryTrends from './SubcategoryTrends'
 import { dashboardApi, type MonthlySummary } from './dashboardApi'
 import MemberTotalsDialog, { type TotalKind } from './MemberTotalsDialog'
 
@@ -82,6 +83,7 @@ function SummaryView({ groupId, month, summary }: { groupId: number; month: stri
       <MemberTotalsDialog kind={kind} summary={summary} onClose={() => setKind(null)} />
       </>}
       <CategoryTrend groupId={groupId} month={month} />
+      <SubcategoryTrends groupId={groupId} month={month} />
     </>
   )
 }
