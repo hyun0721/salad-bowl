@@ -29,16 +29,18 @@ export default function SubcategoryTrends({ groupId, month }: { groupId: number;
 
   return (
     <section aria-labelledby="subcategory-title" className={ui.card}>
-      <div className={ui.pageHeader}>
+      <div className={`${ui.pageHeader} ${styles.header}`}>
         <h2 id="subcategory-title">소분류 추이·분포</h2>
-        <Select label="대분류" selectedKey={major} variant="field"
-          items={[{ id: '', label: '대분류를 선택하세요' }, ...majors.map((name) => ({ id: name, label: name }))]}
-          onSelectionChange={(key) => setSelected(String(key ?? ''))} />
+        {query.isSuccess && majors.length > 0 && <div className={styles.categorySelect}>
+          <Select label="대분류 (필수)" selectedKey={major} variant="field"
+            items={[{ id: '', label: '대분류를 선택하세요' }, ...majors.map((name) => ({ id: name, label: name }))]}
+            onSelectionChange={(key) => setSelected(String(key ?? ''))} />
+        </div>}
       </div>
       <p className={ui.muted}>{formatMonthLabel(month)}까지 최근 6개월 · 지출에서 환불을 차감합니다.</p>
-      {query.isPending && <p className={ui.status}>소분류를 불러오는 중입니다.</p>}
+      {query.isPending && <p role="status" className={ui.status}>대분류 목록을 불러오는 중입니다.</p>}
       {query.isError && <div className={ui.row}>
-        <p role="alert" className={ui.alert}>소분류를 불러오지 못했습니다.</p>
+        <p role="alert" className={ui.alert}>대분류 목록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</p>
         <button type="button" className={ui.button} onClick={() => void query.refetch()}>소분류 다시 시도</button>
       </div>}
       {query.isSuccess && (majors.length === 0

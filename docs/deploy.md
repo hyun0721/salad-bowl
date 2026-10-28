@@ -244,3 +244,9 @@ Render·Pages 대시보드에 값을 직접 넣었다면 3~4단계 대신 Render
 ### 11.6 로컬 개발
 
 `apps/web/.env.local`에 `VITE_GOOGLE_CLIENT_ID=<클라이언트 ID>`, API 실행 환경에 `GOOGLE_CLIENT_ID=<같은 값>`을 설정한다. 원본 목록에 `http://localhost:5173`이 있어야 한다.
+
+## 12. 새 API를 사용하는 웹 기능 배포
+
+Pages와 Render의 자동 배포는 동시에 완료되지 않는다. 새 엔드포인트를 사용하는 기능은 서버를 먼저 배포하는 두 단계 변경으로 진행한다. Render에서 해당 커밋의 배포가 Live인지 확인하고, 테스트 계정으로 실제 엔드포인트가 정상 응답하는지 확인한 뒤 웹 변경을 공개한다. `/actuator/health`의 UP만으로 새 엔드포인트 반영을 판단하지 않는다.
+
+서버·웹 변경을 함께 배포했다면 양쪽 완료 후 첫 조회와 오류 화면의 재시도 복구를 확인한다. 2026-10-28 소분류 기능에서는 웹과 API 반영에 약 4분 차이가 있었다. 분석과 UI 조치는 [소분류 초기 조회 분석](superpowers/plans/2026-10-28-subcategory-loading-review.md)에 기록했다.
