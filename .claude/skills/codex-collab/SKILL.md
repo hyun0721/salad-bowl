@@ -28,7 +28,9 @@ Claude는 플러그인 명령(`/codex:*`)이 아니라 이 폴더의 래퍼 스�
 C=.claude/skills/codex-collab/codex-run.sh
 $C read   <prompt-file> <out-file> [effort]              # 읽기 전용: 리뷰·진단·계획 검토
 $C write  <prompt-file> <out-file> [effort]              # 작업 폴더 쓰기: 구현·수정
+$C api    <prompt-file> <out-file> [effort]              # write + 네트워크·~/.gradle: apps/api 구현·수정
 $C resume <session-id> <prompt-file> <out-file> [effort] # 같은 Codex 작업 이어 하기(수정 라운드)
+$C resume-api <session-id> <prompt-file> <out-file> [effort] # api 작업 이어 하기
 $C review <base-ref> <out-file> [effort]                 # Codex 기본 리뷰어로 브랜치 리뷰
 ```
 
@@ -40,18 +42,21 @@ $C review <base-ref> <out-file> [effort]                 # Codex 기본 리뷰�
 
 ## 2. 샌드박스 관찰 기록과 현재 환경 확인
 
-아래는 **2026-10-20의 위임 환경에서 관찰한 결과**다. 현재 환경에서도
+아래는 **`write`는 2026-10-20, `api`는 2026-10-29 위임 환경에서 관찰한 결과**다. 현재 환경에서도
 같다고 가정하지 않는다. brief에 위임 범위와 커밋·테스트 책임을 명시한다.
 
-| 작업 | Codex(`write`) 안에서 |
-|---|---|
-| `apps/web`의 `npm test`·`typecheck`·`lint`·`build` | 된다 |
-| `git add`·`git commit` | **안 된다**(`.git`은 쓰기 금지 — `index.lock` 생성 거부, 2026-10-20 확인) |
-| Docker(Testcontainers), `./gradlew` | **안 된다**(Docker 소켓·Gradle 데몬 차단) |
+| 작업 | `write` | `api` (2026-10-29 확인, codex-cli 0.155.0) |
+|---|---|---|
+| `apps/web`의 `npm test`·`typecheck`·`lint`·`build` | 된다 | 확인 안 함(쓸 일 없음) |
+| `git add`·`git commit` | **안 된다**(worktree의 `.git`이 작업 폴더 밖 — `.lock` 생성 거부) | **안 된다**(일부러 열지 않음) |
+| Docker(Testcontainers), `./gradlew` | **안 된다**(Docker 소켓 `connect: operation not permitted`) | 된다(`ApiApplicationTests`가 Testcontainers Postgres로 통과) |
 
-현재 Codex 위임 환경에서 JDK·Docker·Gradle 검증이 불가능하면 `apps/api` Task는
-검증 가능한 Claude 구현자에게 맡긴다. 검증 가능한 Codex 환경이면 API 구현도 가능하다.
-실행하지 못한 검증은 명시하고, 읽기 전용 리뷰는 환경과 무관하게 맡길 수 있다.
+`api` 모드는 샌드박스를 유지한 채 네트워크와 `~/.gradle` 쓰기만 연다. `.git`은 모든 worktree가
+함께 쓰는 폴더라 열지 않고, 커밋은 컨트롤러가 한다. 네트워크는 목적지 제한 없이 열리므로 push·임의 HTTP 전송을,
+`~/.gradle` 쓰기는 이후 모든 빌드에 영향을 주는 Gradle 설정 변경을 막을 수 없다. 이를 막는 것은 공통 규칙뿐이므로
+`api`는 `apps/api` Task에만 쓰고, 끝난 뒤 `git status`와 함께 `~/.gradle/init.d`·`gradle.properties`가 바뀌지 않았는지 본다.
+환경이 바뀌어 `api` 모드에서도 JDK·Docker·Gradle 검증이 안 되면 `apps/api` Task는 Claude 구현자에게
+맡기고, 실행하지 못한 검증을 명시한다. 읽기 전용 리뷰는 환경과 무관하게 맡길 수 있다.
 
 위임 brief에서 커밋을 컨트롤러가 맡기로 했으면, Codex가 구현을 끝낸 뒤 **컨트롤러가 보고와 코드, 검증 결과를 확인하고 필요한 검증을 수행한 뒤** `Co-Authored-By: Codex (<쓴 모델>) <noreply@openai.com>`로 커밋한다(코드를 고치지는 않는다). 리뷰 패키지는 그 커밋으로 만든다.
 
@@ -63,11 +68,11 @@ $C review <base-ref> <out-file> [effort]                 # Codex 기본 리뷰�
 | 문서 갱신, 번들 기록, 기계적 수정 | Codex | `gpt-6-luna` / `low` | `write`, 템플릿 B |
 | `apps/web` 일반 구현(화면 수정) | Codex | `gpt-6-sol` / `medium` | `write`, 템플릿 B |
 | `apps/web` 공용 부품(`common/`)·설계 판단이 큰 구현 | Codex | `gpt-6-astra` / `medium` | `write`, 템플릿 B |
-| `apps/api`(Java) 구현 | 검증 가능한 구현자(기본 Claude) | 현재 환경에 맞춤 | JDK·Docker·Gradle 검증 가능 여부로 결정 |
+| `apps/api`(Java) 구현 | Codex | `gpt-6-sol` / `medium` (설계 판단이 크면 `gpt-6-astra`) | `api`, 템플릿 B(API 검증 명령으로 바꿔서). 수정 라운드는 `resume-api` |
 | Task 리뷰: Codex가 구현한 Task | Claude | sonnet | SDD 리뷰어 |
 | Task 리뷰: Claude가 구현한 Task | Codex | `gpt-6-sol` / `high` | `read`, 템플릿 C |
-| 수정 라운드 1~3 | 원래 구현자 | 같은 모델 | Codex면 `resume <session-id>` + 템플릿 D, Claude면 SendMessage |
-| 수정 라운드 4~5 | 같은 쪽, 한 단계 위 모델 | luna→sol→astra, sonnet→opus | Codex는 새 `write`, Claude는 새 서브에이전트 |
+| 수정 라운드 1~3 | 원래 구현자 | 같은 모델 | Codex면 `resume <session-id>`(apps/api면 `resume-api`) + 템플릿 D, Claude면 SendMessage |
+| 수정 라운드 4~5 | 같은 쪽, 한 단계 위 모델 | luna→sol→astra, sonnet→opus | Codex는 새 `write`(apps/api면 `api`), Claude는 새 서브에이전트 |
 | 원인을 모르는 실패 | Codex 진단 | `gpt-6-astra` / `high` | `read`, 템플릿 E. 고치지 않고 원인과 근거만 받는다 |
 | 계획 작성 | 컨트롤러 | (이 세션 모델) | writing-plans |
 | 계획 검토 | 따로 두지 않는다 | — | 컨트롤러의 자체 점검과 SDD 사전 점검으로 대신한다. 템플릿 A는 사용자가 요청할 때만 |
@@ -86,6 +91,7 @@ $C review <base-ref> <out-file> [effort]                 # Codex 기본 리뷰�
 ```text
 공통 규칙:
 - 저장소 밖의 파일을 읽지 않는다. 실제 뱅크샐러드 파일이나 개인 데이터를 찾거나 만들지 않는다.
+  (`api` 모드에서 `./gradlew`·Testcontainers가 `~/.gradle`과 Docker 소켓을 쓰는 것은 예외다. 직접 열거나 고치지는 않는다.)
 - 브랜치를 바꾸거나 push하지 않는다. 새 패키지를 설치하지 않는다(브리프가 명시한 경우만 예외).
 - 답은 한국어로, 아래 "보고 형식"을 지킨다.
 ```
@@ -104,6 +110,7 @@ docs/superpowers/plans/<plan>.md 를 검토한다. 코드는 바꾸지 않는다
 계획 전체 규칙: <workspace>/constraints.md
 브리프의 TDD 단계를 따른다: 실패하는 테스트 → 실패 확인 → 구현 → 통과 확인.
 apps/web에서 `npm run typecheck && npm test && npm run lint && npm run build`를 마지막에 한 번 돌린다.
+(apps/api Task면 대신 apps/api에서 `./gradlew test`, 업로드 한도·파서·메모리 관련이면 `./gradlew memoryTest`도 돌린다.)
 이 위임에서는 커밋을 컨트롤러가 맡는다. 커밋하지 않고 바꾼 파일을 작업 트리에 둔다.
 전체 보고를 <report 경로>에 쓴다: 구현 내용, RED/GREEN 명령과 출력, 바꾼 파일, 자체 점검, 걱정되는 점.
 막히면 추측하지 말고 보고 파일에 BLOCKED/NEEDS_CONTEXT와 이유를 쓰고 멈춘다.
