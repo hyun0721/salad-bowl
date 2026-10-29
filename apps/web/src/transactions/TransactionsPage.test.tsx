@@ -168,6 +168,7 @@ describe('TransactionsPage', () => {
     mineHandler([
       { ...base, edited: true, memo: '회사 앞 김밥' },
       { ...base, id: 2, description: '커피', categoryMinor: '', memo: '   ' },
+      { ...base, id: 3, description: '간식', categoryMajor: '', categoryMinor: '', memo: '메모만' },
     ])
     renderPage(<TransactionsPage today={today} />, { groups })
 
@@ -178,6 +179,9 @@ describe('TransactionsPage', () => {
     const plain = within(list).getByRole('row', { name: /커피/ })
     expect(plain).toHaveTextContent(/식비10-05 12:30$/)
     expect(plain).not.toHaveTextContent('|')
+    const memoOnly = within(list).getByRole('row', { name: /간식/ })
+    expect(memoOnly).toHaveTextContent('메모만')
+    expect(memoOnly).not.toHaveTextContent('|')
     expect(within(list).queryByRole('columnheader')).not.toBeInTheDocument()
   })
 
@@ -236,7 +240,7 @@ describe('TransactionsPage', () => {
     expect(heading.closest('[data-fit-viewport]')).not.toBeNull()
   })
 
-  it('keeps long unbroken descriptions and categories readable in mobile cards', async () => {
+  it('keeps long unbroken description and category text in mobile cards', async () => {
     mockViewport(true)
     const description = 'PAYMENT_REFERENCE_'.repeat(25)
     const categoryMinor = 'CATEGORY_'.repeat(10)

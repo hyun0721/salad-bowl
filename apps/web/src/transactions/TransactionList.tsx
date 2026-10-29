@@ -32,7 +32,10 @@ export default function TransactionList({ items, showOwner, selectedId, onSelect
   const cards = (
     <CardList label="거래 목록" items={items.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)} textValue={(tx) => tx.description} currentId={selectedId}
       onAction={(id) => onSelect(Number(id))}>
-      {(tx) => (
+      {(tx) => {
+        const info = [tx.categoryMajor, tx.categoryMinor, showOwner ? tx.ownerNickname : null].filter(Boolean).join(' · ')
+        const memo = memoOf(tx)
+        return (
         <>
           <div className={styles.cardTop}>
             <span>{tx.description}{hiddenBadge(tx)}</span>
@@ -40,14 +43,15 @@ export default function TransactionList({ items, showOwner, selectedId, onSelect
           </div>
           <div className={styles.cardMeta}>
             <span className={styles.cardInfo}>
-              {[tx.categoryMajor, tx.categoryMinor, showOwner ? tx.ownerNickname : null].filter(Boolean).join(' · ')}
-              {memoOf(tx) && <>{' '}<span aria-hidden="true">|</span>{' '}{memoOf(tx)}</>}
+              {info}
+              {memo && (info ? <>{' '}<span aria-hidden="true">|</span>{' '}{memo}</> : memo)}
             </span>
             {editedBadge(tx)}
             <span className={styles.when}>{formatDateTime(tx.occurredAt)}</span>
           </div>
         </>
-      )}
+        )
+      }}
     </CardList>
   )
   const columns: DataColumn<TransactionView>[] = [
