@@ -402,4 +402,56 @@ class SummaryApiTest extends IntegrationTest {
                     .andExpect(status().isBadRequest());
         }
     }
+
+    private org.springframework.test.web.servlet.ResultActions subcategories(String month, String from)
+            throws Exception {
+        var request = get("/groups/" + groupId + "/summary/subcategories").param("month", month)
+                .header("Authorization", admin.bearer());
+        if (from != null) request.param("from", from);
+        return mvc.perform(request);
+    }
+
+    @Test
+    void subcategoriesFromWidensRangeAndMatchesDefaultOnOverlappingMonths() throws Exception {
+        save(admin, TransactionType.EXPENSE, "2026-01-15T12:00:00", "식비", -1_000);
+        save(admin, TransactionType.EXPENSE, "2026-04-15T12:00:00", "식비", -2_000);
+        save(member, TransactionType.EXPENSE, "2026-09-15T12:00:00", "교통", -3_000);
+        save(admin, TransactionType.EXPENSE, "2025-12-31T23:59:59", "범위 밖", -99_000);
+
+        subcategories("2026-09", null).andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(2)))
+                .andExpect(jsonPath("$[0].month").value("2026-04"))
+                .andExpect(jsonPath("$[0].expense").value(2_000))
+                .andExpect(jsonPath("$[1].month").value("2026-09"))
+                .andExpect(jsonPath("$[1].major").value("교통"))
+                .andExpect(jsonPath("$[1].expense").value(3_000));
+
+        subcategories("2026-09", "2026-01").andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(3)))
+                .andExpect(jsonPath("$[0].month").value("2026-01"))
+                .andExpect(jsonPath("$[0].major").value("식비"))
+                .andExpect(jsonPath("$[0].minor").value("미분류"))
+                .andExpect(jsonPath("$[0].expense").value(1_000))
+                .andExpect(jsonPath("$[1].month").value("2026-04"))
+                .andExpect(jsonPath("$[1].expense").value(2_000))
+                .andExpect(jsonPath("$[2].month").value("2026-09"))
+                .andExpect(jsonPath("$[2].expense").value(3_000));
+
+        subcategories("2026-09", "2026-09").andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].month").value("2026-09"));
+    }
+
+    @Test
+    void subcategoriesFromFollowsTrendRangeRules() throws Exception {
+        subcategories("2026-09", "2025-10").andExpect(status().isOk());
+        subcategories("2026-09", "2025-09").andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+        subcategories("2026-09", "2026-10").andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+        subcategories("2026-09", "2026-13").andExpect(status().isBadRequest());
+        subcategories("2026-09", "bad").andExpect(status().isBadRequest());
+        subcategories("0000-02", "0000-01").andExpect(status().isBadRequest());
+        subcategories("9999-12", "9999-01").andExpect(status().isOk());
+    }
 }
