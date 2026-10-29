@@ -73,13 +73,13 @@ export default function DashboardPage({ today }: Props) {
         </div>
       )}
       <SummaryView key={selectedGroupId} groupId={selectedGroupId} month={month} summary={summary.data}
-        level={level} view={params.view as View | undefined} narrow={narrow} />
+        level={level} view={params.view as View | undefined} narrow={narrow} major={search.get('major') ?? undefined} />
     </>
   )
 }
 
-function SummaryView({ groupId, month, summary, level, view, narrow }: {
-  groupId: number; month: string; summary?: MonthlySummary; level: Level; view?: View; narrow: boolean
+function SummaryView({ groupId, month, summary, level, view, narrow, major }: {
+  groupId: number; month: string; summary?: MonthlySummary; level: Level; view?: View; narrow: boolean; major?: string
 }) {
   const [kind, setKind] = useState<TotalKind | null>(null)
   const empty = summary && summary.income === 0 && summary.expense === 0
@@ -113,7 +113,7 @@ function SummaryView({ groupId, month, summary, level, view, narrow }: {
       {narrow && <DashboardMenu level={level} />}
       {level === 'minor' ? (
         // shortcut: 16d 전까지 소분류는 main의 카드를 그대로 보여준다. 16d에서 소분류 분포·추이로 바꾼다.
-        <SubcategoryTrends groupId={groupId} month={month} />
+        <SubcategoryTrends groupId={groupId} month={month} initialMajor={major} />
       ) : (
         <>
           <div id="dashboard-share">

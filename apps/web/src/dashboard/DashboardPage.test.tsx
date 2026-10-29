@@ -46,6 +46,42 @@ beforeEach(() => {
 })
 
 describe('DashboardPage', () => {
+  it('opens the minor screen for a category from its transactions dialog', async () => {
+    server.use(
+      http.get('*/api/groups/10/summary', () => HttpResponse.json(summary)),
+      http.get('*/api/groups/10/summary/transactions', () => HttpResponse.json([])),
+      http.get('*/api/groups/10/summary/subcategories', () => HttpResponse.json([
+        { month: '2026-10', major: '교통', minor: '택시', expense: 5000 },
+        { month: '2026-10', major: '식비', minor: '외식', expense: 30000 },
+      ])),
+    )
+    const { user } = renderDashboard('/dashboard/major?month=2026-10')
+    await user.click(await screen.findByRole('button', { name: '식비 80% ₩ 200,000' }))
+    const dialog = await screen.findByRole('dialog', { name: '식비' })
+    await user.click(within(dialog).getByRole('button', { name: '식비 소분류 보기' }))
+
+    await waitFor(() => expect(screen.getByRole('status', { name: '현재 주소' })).toHaveTextContent(/^\/dashboard\/minor\?/))
+    const url = new URL(screen.getByRole('status', { name: '현재 주소' }).textContent!, 'http://test')
+    expect(url.searchParams.get('month')).toBe('2026-10')
+    expect(url.searchParams.get('major')).toBe('식비')
+    expect(screen.getByRole('status', { name: '이동 방식' })).toHaveTextContent('PUSH')
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    const section = await screen.findByRole('region', { name: '소분류 추이·분포' })
+    expect(await within(section).findByRole('heading', { name: '식비 소분류 월별 추이' })).toBeInTheDocument()
+  })
+
+  it('shows member totals with an icon close button', async () => {
+    server.use(http.get('*/api/groups/10/summary', () => HttpResponse.json(summary)))
+    const { user } = renderDashboard('/dashboard/major?month=2026-10')
+    await user.click(await screen.findByRole('button', { name: '수입 ₩ 3,000,000' }))
+    const dialog = await screen.findByRole('dialog', { name: '멤버별 수입' })
+    const close = within(dialog).getByRole('button', { name: '닫기' })
+    expect(close).toHaveTextContent(/^$/)
+    expect(close.querySelector('svg[aria-hidden="true"]')).not.toBeNull()
+    await user.click(close)
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  })
+
   it('shows the selected group summary for this month', async () => {
     const months: string[] = []
     server.use(http.get('*/api/groups/10/summary', ({ request }) => {

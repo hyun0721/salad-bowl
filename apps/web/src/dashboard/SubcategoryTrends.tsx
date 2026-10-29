@@ -6,8 +6,8 @@ import ui from '../common/ui.module.css'
 import { dashboardApi } from './dashboardApi'
 import styles from './SubcategoryTrends.module.css'
 
-export default function SubcategoryTrends({ groupId, month }: { groupId: number; month: string }) {
-  const [selected, setSelected] = useState('')
+export default function SubcategoryTrends({ groupId, month, initialMajor }: { groupId: number; month: string; initialMajor?: string }) {
+  const [selected, setSelected] = useState(initialMajor ?? '')
   const query = useQuery({
     queryKey: ['summary', groupId, month, 'subcategories'],
     queryFn: () => dashboardApi.subcategories(groupId, month),

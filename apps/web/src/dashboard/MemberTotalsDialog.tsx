@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { DialogFrame } from '../common/Dialog'
 import { formatWon } from '../common/format'
+import Icon from '../common/Icon'
 import ui from '../common/ui.module.css'
 import type { MonthlySummary } from './dashboardApi'
 import styles from './DashboardPage.module.css'
@@ -19,7 +20,11 @@ export default function MemberTotalsDialog({ kind, summary, onClose }: Props) {
 
   return (
     <DialogFrame isOpen={kind !== null} title={`멤버별 ${LABELS[shown]}`} onOpenChange={(open) => { if (!open) onClose() }}
-      closeOnOutsideClick headerAction={<button type="button" className={ui.button} onClick={onClose}>닫기</button>}>
+      closeOnOutsideClick headerAction={
+        <button type="button" className={`${ui.button} ${ui.iconButton}`} aria-label="닫기" onClick={onClose}>
+          <Icon name="x" />
+        </button>
+      }>
       {() => rows.length === 0 ? <p className={ui.status}>공개한 멤버가 없습니다.</p> : (
         <table className={styles.table}>
           <thead>
