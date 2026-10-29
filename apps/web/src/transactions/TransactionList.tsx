@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import CardList from '../common/CardList'
+import Icon from '../common/Icon'
 import DataTable, { type DataColumn } from '../common/DataTable'
 import { formatDateTime, formatSignedWon } from '../common/format'
 import ui from '../common/ui.module.css'
@@ -19,6 +20,7 @@ const PAGE_SIZE = 500
 const category = (tx: TransactionView) => `${tx.categoryMajor}${tx.categoryMinor ? ` · ${tx.categoryMinor}` : ''}`
 const editedBadge = (tx: TransactionView) => tx.edited && <span className={`${ui.badge} ${ui.badgePending}`}>수정됨</span>
 const hiddenBadge = (tx: TransactionView) => tx.hidden && <span className={ui.badge}>숨김</span>
+const memoOf = (tx: TransactionView) => tx.memo?.trim() || null
 
 export default function TransactionList({ items, showOwner, selectedId, onSelect }: Props) {
   const narrow = useMediaQuery(NARROW)
@@ -30,18 +32,26 @@ export default function TransactionList({ items, showOwner, selectedId, onSelect
   const cards = (
     <CardList label="거래 목록" items={items.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)} textValue={(tx) => tx.description} currentId={selectedId}
       onAction={(id) => onSelect(Number(id))}>
-      {(tx) => (
+      {(tx) => {
+        const info = [tx.categoryMajor, tx.categoryMinor, showOwner ? tx.ownerNickname : null].filter(Boolean).join(' · ')
+        const memo = memoOf(tx)
+        return (
         <>
           <div className={styles.cardTop}>
             <span>{tx.description}{hiddenBadge(tx)}</span>
             <span className={styles.amount}>{formatSignedWon(tx.amount)}</span>
           </div>
           <div className={styles.cardMeta}>
-            {[formatDateTime(tx.occurredAt), category(tx), showOwner ? tx.ownerNickname : null].filter(Boolean).join(' · ')}
+            <span className={styles.cardInfo}>
+              {info}
+              {memo && (info ? <>{' '}<span aria-hidden="true">|</span>{' '}{memo}</> : memo)}
+            </span>
             {editedBadge(tx)}
+            <span className={styles.when}>{formatDateTime(tx.occurredAt)}</span>
           </div>
         </>
-      )}
+        )
+      }}
     </CardList>
   )
   const columns: DataColumn<TransactionView>[] = [
@@ -62,12 +72,14 @@ export default function TransactionList({ items, showOwner, selectedId, onSelect
           currentId={selectedId} onRowAction={(id) => onSelect(Number(id))} />}
       </div>
       <nav aria-label="거래 목록 페이지" className={styles.pagination}>
-        <span role="status">{page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, items.length)} / {items.length}건</span>
-        <div className={ui.row}>
-          <button type="button" className={ui.button} disabled={page === 0} onClick={() => setPage(page - 1)}>이전 페이지</button>
-          <span>{page + 1} / {pageCount}</span>
-          <button type="button" className={ui.button} disabled={page + 1 >= pageCount} onClick={() => setPage(page + 1)}>다음 페이지</button>
-        </div>
+        <span role="status">
+          {page + 1} / {pageCount}
+          <span className={styles.visuallyHidden}>, {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, items.length)} / {items.length}건</span>
+        </span>
+        <button type="button" className={`${ui.button} ${styles.pageStep}`} aria-label="이전 페이지"
+          disabled={page === 0} onClick={() => setPage(page - 1)}><Icon name="chevron-left" size={18} /></button>
+        <button type="button" className={`${ui.button} ${styles.pageStep}`} aria-label="다음 페이지"
+          disabled={page + 1 >= pageCount} onClick={() => setPage(page + 1)}><Icon name="chevron-right" size={18} /></button>
       </nav>
     </>
   )

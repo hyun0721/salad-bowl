@@ -1,8 +1,10 @@
-/* 넓은 화면에서 본문의 남은 높이를 채우고, 목록은 카드 안에서 가로·세로로 스크롤한다. */
+/* 본문의 남은 높이를 채우고, 목록은 카드 안에서 가로·세로로 스크롤한다. */
 .page { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: var(--space-4); }
 .search { flex: 1 1 200px; min-width: 0; }
-.layout { flex: 1; min-height: 0; display: flex; gap: var(--space-3); }
-.listCard { flex: 1 1 0; padding: 0; min-height: 0; overflow: hidden; gap: 0; }
+/* 목록과 오른쪽 패널을 본문 여백 밖까지 늘려 전체 너비로 둔다. 여백 식은 AppLayout .content와 같아야 한다. */
+.layout { flex: 1; min-height: 0; display: flex; margin: 0 calc(-1 * max(var(--space-5), env(safe-area-inset-right, 0px))) calc(-1 * var(--space-6)) calc(-1 * max(var(--space-5), env(safe-area-inset-left, 0px))); }
+/* 음수 여백으로 상자는 화면 끝까지 나가므로, 가로 모드 노치만큼 안쪽 여백으로 글자를 비킨다. */
+.listCard { flex: 1 1 0; padding: 0 env(safe-area-inset-right, 0px) 0 env(safe-area-inset-left, 0px); min-height: 0; overflow: hidden; gap: 0; border-width: 1px 0 0; border-radius: 0; }
 .listCard > p, .listCard > div:not(.listScroll) { margin: var(--space-4); }
 /* 칸 안에서 줄바꿈하지 않고 표 전체를 가로로 스크롤한다. */
 .listCard table { min-width: 720px; }
@@ -10,20 +12,24 @@
 .listCard thead th { position: sticky; top: 0; z-index: 1; background: var(--surface-000); box-shadow: inset 0 -1px var(--line); }
 .cardTop { display: flex; justify-content: space-between; gap: var(--space-3); font-weight: 600; }
 .cardTop > :first-child { min-width: 0; overflow-wrap: anywhere; }
-.cardMeta { font-size: var(--text-sm); color: var(--ink-muted); overflow-wrap: anywhere; }
+.cardMeta { display: flex; align-items: center; gap: var(--space-3); font-size: var(--text-sm); color: var(--ink-muted); }
+/* 분류 | 메모는 한 줄로 두고 넘치면 말줄임한다. 메모 전문은 상세 창에서 본다. */
+.cardInfo { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cardMeta .when { flex: none; margin-left: auto; }
 .when, .amount { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .amount { flex-shrink: 0; text-align: right; }
 .visuallyHidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-.panel { flex: 0 0 360px; overflow-y: auto; }
-/* 사이드바를 연 채 창을 좁히면 열린 동안은 넓은 화면 모양을 유지한다. 목록이 눌리지 않게 패널을 아래로 내린다. */
+.panel { position: relative; flex: 0 0 360px; overflow-y: auto; padding-left: calc(var(--space-5) + env(safe-area-inset-left, 0px)); padding-right: calc(var(--space-5) + env(safe-area-inset-right, 0px)); border-width: 1px 0 0 1px; border-radius: 0; }
 @media (max-width: 820px) {
-  .layout { flex-wrap: wrap; }
-  .panel { flex: 1 1 100%; }
+  /* 좁은 화면은 아래 여백이 탭 바 자리라 좌우만 늘린다. 첫 줄은 월 선택만 둔다. */
+  .layout { margin: 0 calc(-1 * max(var(--space-4), env(safe-area-inset-right, 0px))) 0 calc(-1 * max(var(--space-4), env(safe-area-inset-left, 0px))); }
+  .filters > :first-child { flex: 1 1 100%; }
+  /* 사이드바를 연 채 창을 좁히면 목록과 패널을 세로로 배치한다. */
+  .layout:has(> .panel) { flex-direction: column; }
+  /* 목록이 남은 높이를 갖고, 패널은 내용만큼(최대 60%) 차지하며 안에서 스크롤한다. */
+  .panel { flex: 0 1 auto; max-height: 60%; border-width: 1px 0 0; }
 }
 
 .listScroll { flex: 1; min-height: 0; overflow: auto; }
-.pagination { flex: none; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-3) var(--space-4); border-top: 1px solid var(--line); }
-/* 모바일은 페이지 스크롤과 하단 탭을 유지하고 카드 영역의 길이만 제한한다. */
-@media (max-width: 820px) {
-  .listScroll { flex: auto; max-height: 60vh; max-height: 60dvh; }
-}
+.pagination { flex: none; display: flex; align-items: center; justify-content: flex-end; gap: var(--space-3); padding: var(--space-3) var(--space-4); border-top: 1px solid var(--line); }
+.pageStep { width: var(--control-height); padding: 0; }

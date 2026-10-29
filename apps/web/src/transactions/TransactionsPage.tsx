@@ -199,16 +199,16 @@ export default function TransactionsPage({ today }: Props) {
   }
 
   return (
-    <div className={styles.page}>
+    <div className={styles.page} data-fit-viewport="">
       <div className={ui.pageHeader}>
         <h1>거래 목록</h1>
-        <button type="button" className={`${ui.button} ${ui.primary}`}
-          onClick={() => { setAdding(true); setSelectedId(null) }}><Icon name="plus" />거래 추가</button>
+        <button type="button" className={`${ui.button} ${ui.primary}`} aria-label="거래 추가"
+          onClick={() => { setAdding(true); setSelectedId(null) }}><Icon name="plus" />추가</button>
       </div>
-      <div className={ui.row}>
+      <div className={`${ui.row} ${styles.filters}`}>
+        <MonthPicker month={month} onChange={changeMonth} />
         <SegmentedControl label="범위" items={[{ id: 'mine', label: '내 거래' }, { id: 'group', label: '그룹 거래', isDisabled: selectedGroupId === null }]}
           selectedKey={inGroup ? 'group' : 'mine'} onSelectionChange={(id) => changeScope(id as Scope)} />
-        <MonthPicker month={month} onChange={changeMonth} />
         {inGroup && detail.data && (
           <Select label="멤버"
             items={[{ id: 'all', label: '전체' }, ...detail.data.members.map((m) => ({ id: m.userId, label: m.nickname }))]}
