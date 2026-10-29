@@ -37,7 +37,7 @@ describe('CategoryTrend', () => {
     expect(within(region).getByRole('button', { name: '여행' })).toHaveAttribute('aria-pressed', 'false')
     const chips = within(region).getByRole('group', { name: '대분류 선택' })
     const food = within(chips).getByRole('button', { name: '식비' })
-    expect(food).toContainElement(within(food).getByText('✓'))
+    expect(food).not.toHaveTextContent('✓')
     expect(within(chips).getByRole('button', { name: '교육' })).not.toHaveTextContent('✓')
   })
 

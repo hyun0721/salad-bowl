@@ -14,3 +14,13 @@ it('keeps the PWA sampling surface empty and outside the React application', () 
   expect(surface.hasAttribute('tabindex')).toBe(false)
   expect(document.querySelector('#root')?.contains(surface)).toBe(false)
 })
+
+
+it('starts at a fixed touch scale without removing safe-area support', () => {
+  const html = readFileSync(resolve(process.cwd(), 'index.html'), 'utf8')
+  const document = new DOMParser().parseFromString(html, 'text/html')
+  const viewport = document.querySelector('meta[name="viewport"]')?.getAttribute('content') ?? ''
+  for (const setting of ['width=device-width', 'initial-scale=1.0', 'minimum-scale=1.0', 'maximum-scale=1.0', 'user-scalable=no', 'viewport-fit=cover']) {
+    expect(viewport).toContain(setting)
+  }
+})

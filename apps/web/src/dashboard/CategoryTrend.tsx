@@ -98,7 +98,6 @@ export default function CategoryTrend({ groupId, month }: Props) {
               return (
                 <button key={item.category} type="button" className={styles.chip}
                   aria-pressed={pressed} onClick={() => toggle(item.category)}>
-                  {pressed && <span aria-hidden="true" className={styles.check}>✓</span>}
                   <span aria-hidden="true" className={styles.marker}
                     style={{ '--marker-color': `var(--chart-${slot})`, '--marker-style': dash } as React.CSSProperties} />
                   {item.category}

@@ -41,7 +41,7 @@ type TooltipItem = { dataIndex?: number; seriesName?: string; value?: number; ma
 // oxlint-disable-next-line react/only-export-components
 export function buildLineOption(series: LineSeries[], months: string[], { theme, compact }: { theme: ChartTheme; compact: boolean }) {
   return {
-    textStyle: { fontFamily: theme.font, color: theme.ink },
+    textStyle: { fontFamily: theme.font, color: theme.ink, fontSize: 11 },
     grid: compact ? { left: 32, right: 8, top: 12, bottom: 24 } : { left: 48, right: 16, top: 16, bottom: 32 },
     xAxis: {
       type: 'category', data: monthLabels(months),
@@ -56,7 +56,7 @@ export function buildLineOption(series: LineSeries[], months: string[], { theme,
     },
     tooltip: {
       trigger: 'axis', backgroundColor: theme.surface, borderColor: theme.line,
-      textStyle: { color: theme.ink, fontFamily: theme.font },
+      textStyle: { color: theme.ink, fontFamily: theme.font, fontSize: 12 },
       formatter: (params: TooltipItem[]) => {
         const month = months[params[0]?.dataIndex ?? -1]
         if (!month) return ''
