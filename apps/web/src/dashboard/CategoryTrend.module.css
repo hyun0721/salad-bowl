@@ -5,12 +5,11 @@
 .range > * { min-width: 0; }
 .chips { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 .chip { display: inline-flex; align-items: center; gap: var(--space-2); min-height: 44px; max-width: 100%; padding: var(--space-2) var(--space-3); border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface-000); color: var(--ink); cursor: pointer; overflow-wrap: anywhere; }
-.chip[aria-pressed="true"] { background: var(--surface-100); font-weight: 700; }
+.chip[aria-pressed="true"] { background: var(--surface-100); border-color: var(--ink-muted); font-weight: 700; }
 .chip[aria-pressed="false"] { color: var(--ink-muted); }
 .chip[aria-pressed="false"] .marker { opacity: 0.4; }
 .chip:hover, .chip:focus-visible { background: var(--surface-100); }
 .chip:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
-.check { font-weight: 700; }
 .marker { width: 18px; flex: 0 0 18px; border-top: 3px var(--marker-style) var(--marker-color); }
 .chart { width: 100%; min-width: 0; }
 .stale { opacity: 0.5; }
@@ -24,6 +23,11 @@
 .table th:first-child { text-align: left; }
 .table td { text-align: right; font-variant-numeric: tabular-nums; }
 @media (max-width: 820px) { .presetScroll button { padding-inline: var(--space-2); white-space: nowrap; } }
+@media (max-width: 820px) {
+  .chip { min-height: 36px; padding: var(--space-1) var(--space-2); gap: var(--space-1); }
+  .chip, .chip[aria-pressed="true"] { font-weight: 500; }
+  .marker { width: 14px; flex-basis: 14px; }
+}
 
 .expenseIncrease { color: var(--danger); font-weight: 600; }
 .expenseDecrease { color: light-dark(#1d4ed8, #93c5fd); font-weight: 600; }
