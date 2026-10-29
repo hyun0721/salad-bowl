@@ -158,8 +158,13 @@ export default function TransactionsPage({ today }: Props) {
       void navigate(location, { state: { ...(location.state as object | null), txModal: true } })
     } else if (!modalOpen && atModalEntry) {
       // 닫기·저장·삭제·월 변경 등으로 닫혔으면 쌓은 항목을 걷어 다음 뒤로가기가 이전 화면으로 가게 한다.
-      pushedModalEntry.current = false
-      void navigate(-1)
+      // 직접 쌓지 않은 항목(앞으로가기·재마운트)은 되돌아가지 않고 표시만 지운다.
+      if (pushedModalEntry.current) {
+        pushedModalEntry.current = false
+        void navigate(-1)
+      } else {
+        void navigate(location, { replace: true, state: { ...(location.state as object), txModal: false } })
+      }
     }
   }, [modalOpen, atModalEntry, location, navigate])
   const focusListAfterDelete = useRef(false)
