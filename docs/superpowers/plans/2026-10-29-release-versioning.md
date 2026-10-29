@@ -30,7 +30,7 @@
 - [x] Gradle processResources로 version.properties를 JAR에 복사한다. 로컬은 dev를 생성하고 운영은 Docker가 생성한 파일을 전달한다.
 - [x] API는 classpath의 불변 메타데이터를 읽어 GET /version에서 반환한다. 기존 anyRequest 인증과 프록시 보호를 유지하며 no-store를 설정한다.
 - [x] Render context를 저장소 루트로 맞추고 Docker build 단계에서만 Git·Python으로 번호를 계산한다. 최종 JRE에는 JAR만 복사한다. 필요 파일만 COPY하며 비밀값을 빌드 인자로 읽지 않는다.
-- [x] `./gradlew test` 및 `docker build --build-arg RENDER_GIT_COMMIT=<검증할 SHA> --build-arg RENDER_GIT_BRANCH=main -f apps/api/Dockerfile .`로 API와 빌드 산출물을 검증한다.
+- [x] `./gradlew test`, `docker build -f apps/api/Dockerfile .`로 API와 Docker 산출물을 검증한다. 운영 메타데이터는 공용 계산기로 생성한 뒤 `bootJar -PreleaseMetadataFile=<생성 파일>`로 실제 JAR에 넣어 검증한다. Render 자체 운영 빌드는 배포 시 별도로 확인한다.
 
 ### Task 3: 도움말
 
@@ -62,3 +62,7 @@
 - 이 작업은 업로드·파서·메모리 동작을 바꾸지 않아 별도 memoryTest는 실행하지 않았다. 기존 CI의 memoryTest는 유지했다.
 - 실제 Pages·Render 설정 변경, 운영 배포·롤백, iOS 설치형 PWA 실기기 업데이트는 수행하지 않았다.
 - 검증은 현재 세션의 자체 점검이다. 독립 리뷰로 표현하지 않는다.
+
+- Playwright 실제 브라우저에서 데스크톱 도움말 모달과 390×844 모바일 계정 → 도움말 전환을 확인했다. 가짜 API 응답만 사용했다.
+- Pages 운영 환경변수를 재현한 빌드에서 웹 JS 번들에 `0.1.1`과 구현 커밋 SHA가 포함되는 것을 확인했다. API도 같은 메타데이터를 실제 JAR에 패키징해 동일한 내용을 확인했다.
+- 실제 Render의 운영 모드 Docker 빌드는 원격 main에 구현이 반영된 뒤 확인해야 한다. 로컬 Docker 빌드와 운영 메타데이터 패키징 검증을 그 결과로 대신 표현하지 않는다.
