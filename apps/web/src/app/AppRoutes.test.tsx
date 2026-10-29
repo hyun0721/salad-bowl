@@ -76,6 +76,16 @@ describe('AppRoutes', () => {
     expect(select).toHaveTextContent('우리집')
   })
 
+  it('shows dashboard sub-links under the dashboard menu', async () => {
+    signedIn([{ groupId: 10, name: '우리집', myRole: 'ADMIN', memberCount: 3 }])
+    renderApp('/')
+    const nav = await screen.findByRole('navigation', { name: '주 메뉴' })
+    expect(within(nav).getAllByRole('link').map((l) => l.textContent))
+      .toEqual(['홈', '그룹 대시보드', '대분류', '소분류', '거래 목록', '업로드', '그룹 관리'])
+    expect(within(nav).getByRole('link', { name: '대분류' })).toHaveAttribute('href', '/dashboard/major')
+    expect(within(nav).getByRole('link', { name: '소분류' })).toHaveAttribute('href', '/dashboard/minor')
+  })
+
   it('remembers the selected group', async () => {
     signedIn([
       { groupId: 10, name: '우리집', myRole: 'ADMIN', memberCount: 3 },

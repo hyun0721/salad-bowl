@@ -3,6 +3,7 @@
 .logo { display: flex; align-items: center; gap: var(--space-2); font-size: var(--text-lg); font-weight: 700; padding: var(--space-1) var(--space-3) var(--space-3); }
 .link { display: flex; align-items: center; gap: var(--space-2); min-height: 40px; padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm); color: var(--ink); text-decoration: none; }
 .link:hover { background: var(--surface-100); }
+.subLink { padding-left: calc(var(--space-3) + 20px + var(--space-2)); font-size: var(--text-sm); }
 .active { background: var(--brand-tint); color: var(--brand); font-weight: 700; }
 .main { flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column; }
 .header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-3) max(var(--space-5), env(safe-area-inset-right, 0px)) var(--space-3) max(var(--space-5), env(safe-area-inset-left, 0px)); background: var(--surface-000); border-bottom: 1px solid var(--line); }
