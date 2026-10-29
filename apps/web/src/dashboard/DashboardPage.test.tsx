@@ -67,6 +67,7 @@ describe('DashboardPage', () => {
     expect(screen.getByRole('status', { name: '이동 방식' })).toHaveTextContent('PUSH')
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     const section = await screen.findByRole('region', { name: '소분류 추이·분포' })
+    expect(within(section).getByRole('heading', { name: '소분류 추이·분포' })).toHaveFocus()
     expect(await within(section).findByRole('heading', { name: '식비 소분류 월별 추이' })).toBeInTheDocument()
   })
 

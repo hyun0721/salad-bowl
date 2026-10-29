@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useLocation } from 'react-router'
 import { formatMonthLabel, formatWon, shiftMonth } from '../common/format'
 import Select from '../common/Select'
 import ui from '../common/ui.module.css'
@@ -7,6 +8,11 @@ import { dashboardApi } from './dashboardApi'
 import styles from './SubcategoryTrends.module.css'
 
 export default function SubcategoryTrends({ groupId, month, initialMajor }: { groupId: number; month: string; initialMajor?: string }) {
+  const focusSubcategories = useLocation().state?.focusSubcategories === true
+  const titleRef = useRef<HTMLHeadingElement>(null)
+  useEffect(() => {
+    if (focusSubcategories) titleRef.current?.focus()
+  }, [focusSubcategories])
   const [selected, setSelected] = useState(initialMajor ?? '')
   const query = useQuery({
     queryKey: ['summary', groupId, month, 'subcategories'],
@@ -30,7 +36,7 @@ export default function SubcategoryTrends({ groupId, month, initialMajor }: { gr
   return (
     <section aria-labelledby="subcategory-title" className={ui.card}>
       <div className={`${ui.pageHeader} ${styles.header}`}>
-        <h2 id="subcategory-title">소분류 추이·분포</h2>
+        <h2 id="subcategory-title" ref={titleRef} tabIndex={-1}>소분류 추이·분포</h2>
         {query.isSuccess && majors.length > 0 && <div className={styles.categorySelect}>
           <Select label="대분류 (필수)" selectedKey={major} variant="field"
             items={[{ id: '', label: '대분류를 선택하세요' }, ...majors.map((name) => ({ id: name, label: name }))]}

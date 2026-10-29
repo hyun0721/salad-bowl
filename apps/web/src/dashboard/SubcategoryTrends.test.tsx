@@ -21,7 +21,7 @@ beforeEach(() => {
   server.use(http.get('*/api/groups/10/summary/trend', () => HttpResponse.json({ months: [], categories: [] })))
 })
 describe('SubcategoryTrends', () => {
-  it('starts from the major given by the address and falls back when it is missing', async () => {
+  it('starts from the major given by the address', async () => {
     server.use(http.get('*/api/groups/10/summary/subcategories', () => HttpResponse.json([
       { month: '2026-10', major: '식비', minor: '외식', expense: 30000 },
       { month: '2026-10', major: '교통', minor: '택시', expense: 50000 },
@@ -29,6 +29,7 @@ describe('SubcategoryTrends', () => {
     renderPage(<SubcategoryTrends groupId={10} month="2026-10" initialMajor="식비" />)
     const section = await screen.findByRole('region', { name: '소분류 추이·분포' })
     expect(await within(section).findByRole('heading', { name: '식비 소분류 월별 추이' })).toBeInTheDocument()
+    expect(within(section).getByRole('heading', { name: '소분류 추이·분포' })).not.toHaveFocus()
   })
 
   it('shows the selection hint when the address names an unknown major', async () => {

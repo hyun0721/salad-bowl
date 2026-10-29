@@ -39,7 +39,7 @@ export default function CategoryTransactionsDialog({ groupId, month, category, o
   // 대분류에서 한 단계 들어가는 이동이라 push한다. 뒤로가기로 대분류 화면에 돌아온다.
   const showMinors = () => {
     onClose()
-    navigate(`/dashboard/minor?${new URLSearchParams({ month, major: displayedCategory ?? '' })}`)
+    navigate(`/dashboard/minor?${new URLSearchParams({ month, major: displayedCategory ?? '' })}`, { state: { focusSubcategories: true } })
   }
 
   return (

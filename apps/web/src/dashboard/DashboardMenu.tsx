@@ -3,6 +3,7 @@ import type { Level } from './dashboardRoute'
 import styles from './DashboardMenu.module.css'
 
 const LEVELS: [Level, string][] = [['major', '대분류'], ['minor', '소분류']]
+
 /** 화면을 바꾸는 형제 링크이므로 replace로 이동한다. */
 export default function DashboardMenu({ level }: { level: Level }) {
   const { search } = useLocation()
