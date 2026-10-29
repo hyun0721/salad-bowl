@@ -16,8 +16,8 @@ describe('design tokens', () => {
   it('defines the shared spacing and type scale once in the root theme', () => {
     const tokens = read('styles/tokens.css');
     for (const [name, value] of Object.entries({
-      'space-1': 4, 'text-xs': 11, 'text-sm': 12, 'text-base': 13,
-      'text-md': 15, 'text-lg': 18, 'text-xl': 20, 'text-2xl': 24, 'text-input': 16,
+      'space-1': 3, 'text-xs': 11, 'text-sm': 12, 'text-base': 12,
+      'text-md': 13, 'text-lg': 15, 'text-xl': 16, 'text-2xl': 18, 'text-input': 16,
     })) {
       expect(tokens.match(new RegExp(`--${name}: ${value}px;`, 'g'))).toHaveLength(1);
     }

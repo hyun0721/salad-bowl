@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { Route, Routes } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -93,8 +93,8 @@ describe('SubcategoryTrends', () => {
     await user.click(screen.getByRole('option', { name: '교통' }))
     expect(within(section).getByRole('row', { name: /택시/ })).toBeInTheDocument()
     expect(within(section).queryByText('외식')).not.toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: '이전 달' }))
-    await waitFor(() => expect(requests).toEqual(['2026-10', '2026-09']))
+    expect(screen.queryByRole('button', { name: '이전 달' })).not.toBeInTheDocument()
+    expect(requests).toEqual(['2026-10'])
   })
 
   it('retries failed subcategories independently', async () => {
