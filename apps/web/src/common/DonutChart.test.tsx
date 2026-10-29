@@ -30,8 +30,8 @@ describe('donutStartAngle', () => {
 
 describe('centerValueSize', () => {
   it('keeps the base size for short amounts and shrinks long ones to fit the hole', () => {
-    expect(centerValueSize('₩ 950,000', 12, false)).toBe(18)
-    expect(centerValueSize('₩ 21,480,000', 12, false)).toBeLessThan(18)
+    expect(centerValueSize('₩ 950,000', 12, false)).toBe(15)
+    expect(centerValueSize('₩ 123,456,789,000', 12, false)).toBeLessThan(15)
     expect(centerValueSize('₩ 2,500,000', 3, true)).toBeLessThan(12)
     expect(centerValueSize('₩ 123,456,789,000', 1, true)).toBe(9)
   })
@@ -42,7 +42,7 @@ describe('buildDonutOption', () => {
     const option = buildDonutOption(slices, opts)
     expect(option.series[0]).toMatchObject({
       type: 'pie', radius: ['34%', '52%'], center: ['50%', '50%'], avoidLabelOverlap: true,
-      label: { alignTo: 'none', bleedMargin: 4, rich: { name: { width: 84, fontSize: 13, color: theme.ink, overflow: 'truncate' }, pct: { fontSize: 11, color: theme.inkMuted } } },
+      label: { alignTo: 'none', bleedMargin: 4, rich: { name: { width: 84, fontSize: 12, color: theme.ink, overflow: 'truncate' }, pct: { fontSize: 10, color: theme.inkMuted } } },
       labelLine: { length: 10, length2: 8, maxSurfaceAngle: 80, lineStyle: { color: theme.inkMuted } },
       itemStyle: { borderColor: theme.surface, borderWidth: 2 },
       emphasis: { scale: true, scaleSize: 6, focus: 'self', label: { rich: { name: { fontWeight: 'bold' } } } },
@@ -51,7 +51,7 @@ describe('buildDonutOption', () => {
     slices.forEach((slice, i) => expect(option.series[0].data[i]).toMatchObject({ name: slice.id, value: slice.value, label: { formatter: `{name|${slice.label}}\n{pct|${slice.detail}}` }, itemStyle: { color: theme.chart[i] } }))
     expect(option.graphic[0]).toMatchObject({ type: 'group', left: 'center', top: 'middle' })
     const [label, value] = option.graphic[0].children
-    expect(label.style).toMatchObject({ text: opts.centerLabel, fill: theme.inkMuted, fontSize: 13 })
+    expect(label.style).toMatchObject({ text: opts.centerLabel, fill: theme.inkMuted, fontSize: 12 })
     expect(value.style).toMatchObject({ text: opts.centerValue, fill: theme.ink, fontSize: centerValueSize(opts.centerValue, slices.length, false), fontWeight: 'bold' })
     expect(label.y + label.style.fontSize / 2).toBeLessThan(value.y - value.style.fontSize / 2)
     expect(option.series[0].labelLine).not.toHaveProperty('minTurnAngle')
@@ -60,7 +60,7 @@ describe('buildDonutOption', () => {
     const option = buildDonutOption([slices[0]], { ...opts, compact: true })
     expect(option.series[0].data).toHaveLength(1)
     expect(option.series[0].radius).toEqual(['30%', '46%'])
-    expect(option.series[0].label.rich.name).toMatchObject({ width: 56, fontSize: 12 })
+    expect(option.series[0].label.rich.name).toMatchObject({ width: 56, fontSize: 11 })
     expect(option.graphic[0].children[0].style.fontSize).toBe(10)
     expect(option.graphic[0].children[1].style.fontSize).toBe(centerValueSize(opts.centerValue, 1, true))
   })

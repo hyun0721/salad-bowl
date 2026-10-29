@@ -1,7 +1,5 @@
 import type { ReactNode } from 'react'
-import {
-  Dialog as AriaDialog, Heading, Modal, ModalOverlay, Sheet, SheetBackdrop, SheetContent, SheetOverlay,
-} from 'react-aria-components'
+import { Dialog as AriaDialog, Heading, Modal, ModalOverlay } from 'react-aria-components'
 import { useNarrowWhileOpen } from './useMediaQuery'
 import styles from './Overlay.module.css'
 import ui from './ui.module.css'
@@ -32,23 +30,14 @@ export function DialogFrame(props: FrameProps) {
       {children({ close })}
     </>
   )
-  if (narrow) {
-    return (
-      <SheetOverlay isOpen={isOpen} onOpenChange={onOpenChange} preventDismissal={closeDisabled}
-        // 입력이 있는 대화상자는 바깥을 실수로 눌러 입력을 잃지 않게 한다(넓은 화면 모달과 같은 규칙).
-        shouldCloseOnInteractOutside={() => closeOnOutsideClick}
-        className={styles.sheetOverlay}>
-        <SheetBackdrop className={styles.sheetBackdrop} />
-        <Sheet className={fullHeight ? `${styles.modalSheet} ${styles.fullSheet}` : styles.modalSheet}>
-          <SheetContent className={styles.content}>{({ close }) => body(close)}</SheetContent>
-        </Sheet>
-      </SheetOverlay>
-    )
-  }
+  // RAC Sheet는 닫힘을 IntersectionObserver로만 기다려, 안드로이드에서 시트가 화면 끝에 걸치면 배경이 남아 탭을 막는다.
+  // 좁은 화면도 같은 ModalOverlay에 CSS 애니메이션을 달아 애니메이션이 끝나면 닫히게 한다.
+  const sheetClass = fullHeight ? `${styles.modalSheet} ${styles.fullSheet}` : styles.modalSheet
+  const modalClass = wide ? `${styles.modal} ${styles.wide}` : styles.modal
   return (
     <ModalOverlay isOpen={isOpen} onOpenChange={onOpenChange} isDismissable={closeOnOutsideClick && !closeDisabled}
-      isKeyboardDismissDisabled={closeDisabled} className={styles.backdrop}>
-      <Modal className={wide ? `${styles.modal} ${styles.wide}` : styles.modal}>
+      isKeyboardDismissDisabled={closeDisabled} className={narrow ? styles.sheetBackdrop : styles.backdrop}>
+      <Modal className={narrow ? sheetClass : modalClass}>
         <AriaDialog className={styles.content}>{({ close }) => body(close)}</AriaDialog>
       </Modal>
     </ModalOverlay>

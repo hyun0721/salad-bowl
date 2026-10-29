@@ -76,6 +76,32 @@ describe('AppRoutes', () => {
     expect(select).toHaveTextContent('우리집')
   })
 
+  it('shows dashboard sub-links under the dashboard menu', async () => {
+    signedIn([{ groupId: 10, name: '우리집', myRole: 'ADMIN', memberCount: 3 }])
+    renderApp('/')
+    const nav = await screen.findByRole('navigation', { name: '주 메뉴' })
+    expect(within(nav).getAllByRole('link').map((l) => l.textContent))
+      .toEqual(['홈', '그룹 대시보드', '대분류', '소분류', '거래 목록', '업로드', '그룹 관리'])
+    expect(within(nav).getByRole('link', { name: '대분류' })).toHaveAttribute('href', '/dashboard/major')
+    expect(within(nav).getByRole('link', { name: '소분류' })).toHaveAttribute('href', '/dashboard/minor')
+    expect(within(nav).getByRole('link', { name: '그룹 대시보드' })).not.toHaveAttribute('aria-current')
+  })
+
+  it('marks only the current dashboard sub-link as the page', async () => {
+    mockViewport(false)
+    signedIn([{ groupId: 10, name: '우리집', myRole: 'ADMIN', memberCount: 3 }])
+    server.use(
+      http.get('*/api/groups/10/summary', () => HttpResponse.json({ month: '2026-10', income: 0, expense: 0, byCategory: [], byMember: [] })),
+      http.get('*/api/groups/10/summary/trend', () => HttpResponse.json({ months: [], categories: [] })),
+    )
+    renderApp('/dashboard/major')
+
+    const nav = await screen.findByRole('navigation', { name: '주 메뉴' })
+    expect(within(nav).getAllByRole('link').filter((link) => link.getAttribute('aria-current') === 'page'))
+      .toEqual([within(nav).getByRole('link', { name: '대분류' })])
+    expect(within(nav).getByRole('link', { name: '그룹 대시보드' })).toHaveAttribute('aria-current', 'true')
+  })
+
   it('remembers the selected group', async () => {
     signedIn([
       { groupId: 10, name: '우리집', myRole: 'ADMIN', memberCount: 3 },
@@ -345,6 +371,21 @@ describe('AppRoutes', () => {
 
 describe('AppRoutes on a narrow screen', () => {
   beforeEach(() => { mockViewport(true) })
+
+  it('keeps focus on the dashboard menu link when switching sub-screens', async () => {
+    signedIn([{ groupId: 10, name: '우리집', myRole: 'ADMIN', memberCount: 3 }])
+    server.use(
+      http.get('*/api/groups/10/summary', () => HttpResponse.json({ month: '2026-10', income: 0, expense: 0, byCategory: [], byMember: [] })),
+      http.get('*/api/groups/10/summary/trend', () => HttpResponse.json({ months: [], categories: [] })),
+      http.get('*/api/groups/10/summary/subcategories', () => HttpResponse.json([])),
+    )
+    renderApp('/dashboard/major/share')
+    const user = userEvent.setup()
+    const menu = await screen.findByRole('navigation', { name: '대시보드 메뉴' })
+    await user.click(within(menu).getByRole('link', { name: '소분류' }))
+    await waitFor(() => expect(within(screen.getByRole('navigation', { name: '대시보드 메뉴' })).getByRole('link', { name: '소분류' })).toHaveFocus())
+    expect(screen.getByRole('heading', { level: 1 })).not.toHaveFocus()
+  })
 
   it('shows the bottom tab bar instead of the sidebar', async () => {
     signedIn([{ groupId: 10, name: '우리집', myRole: 'ADMIN', memberCount: 3 }])

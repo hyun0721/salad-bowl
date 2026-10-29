@@ -1,12 +1,28 @@
-.search { flex: 1 1 200px; display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
-.layout { display: flex; flex-wrap: wrap; gap: var(--space-4); align-items: flex-start; }
-.listCard { flex: 999 1 560px; padding: 0; overflow-x: auto; gap: 0; }
-.listCard > :is(p, div[class]:not([role="grid"])) { margin: var(--space-4); }
-/* 표가 좁아지면 열이 뭉개지므로 넓은 화면 카드 안에서 가로로 스크롤한다. */
+/* 넓은 화면에서 본문의 남은 높이를 채우고, 목록은 카드 안에서 가로·세로로 스크롤한다. */
+.page { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: var(--space-4); }
+.search { flex: 1 1 200px; min-width: 0; }
+.layout { flex: 1; min-height: 0; display: flex; gap: var(--space-3); }
+.listCard { flex: 1 1 0; padding: 0; min-height: 0; overflow: hidden; gap: 0; }
+.listCard > p, .listCard > div:not(.listScroll) { margin: var(--space-4); }
+/* 칸 안에서 줄바꿈하지 않고 표 전체를 가로로 스크롤한다. */
 .listCard table { min-width: 720px; }
+.listCard :is(th, td) { white-space: nowrap; }
+.listCard thead th { position: sticky; top: 0; z-index: 1; background: var(--surface-000); box-shadow: inset 0 -1px var(--line); }
 .cardTop { display: flex; justify-content: space-between; gap: var(--space-3); font-weight: 600; }
 .cardMeta { font-size: var(--text-sm); color: var(--ink-muted); }
 .when, .amount { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .amount { text-align: right; }
 .visuallyHidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-.panel { flex: 1 1 320px; max-width: 400px; }
+.panel { flex: 0 0 360px; overflow-y: auto; }
+/* 사이드바를 연 채 창을 좁히면 열린 동안은 넓은 화면 모양을 유지한다. 목록이 눌리지 않게 패널을 아래로 내린다. */
+@media (max-width: 820px) {
+  .layout { flex-wrap: wrap; }
+  .panel { flex: 1 1 100%; }
+}
+
+.listScroll { flex: 1; min-height: 0; overflow: auto; }
+.pagination { flex: none; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-3) var(--space-4); border-top: 1px solid var(--line); }
+/* 모바일은 페이지 스크롤과 하단 탭을 유지하고 카드 영역의 길이만 제한한다. */
+@media (max-width: 820px) {
+  .listScroll { flex: auto; max-height: 60vh; max-height: 60dvh; }
+}

@@ -21,6 +21,13 @@ public class SummaryController {
         this.summaryService = summaryService;
     }
 
+    @GetMapping("/groups/{groupId}/summary/subcategories")
+    public List<SummaryDtos.SubcategoryMonth> subcategories(
+            @CurrentUser Long userId, @PathVariable long groupId, @RequestParam YearMonth month,
+            @RequestParam(required = false) YearMonth from) {
+        return summaryService.subcategories(groupId, userId, month, from);
+    }
+
     @GetMapping("/groups/{groupId}/summary")
     public MonthlySummary monthly(@CurrentUser Long userId, @PathVariable long groupId,
                                   @RequestParam YearMonth month) {
@@ -36,7 +43,8 @@ public class SummaryController {
     @GetMapping("/groups/{groupId}/summary/transactions")
     public List<TransactionView> categoryTransactions(@CurrentUser Long userId, @PathVariable long groupId,
                                                       @RequestParam YearMonth month,
-                                                      @RequestParam String category) {
-        return summaryService.categoryTransactions(groupId, userId, month, category);
+                                                      @RequestParam String category,
+                                                      @RequestParam(required = false) String minor) {
+        return summaryService.categoryTransactions(groupId, userId, month, category, minor);
     }
 }

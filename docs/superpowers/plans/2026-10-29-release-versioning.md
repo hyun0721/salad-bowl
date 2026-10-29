@@ -66,3 +66,11 @@
 - Playwright 실제 브라우저에서 데스크톱 도움말 모달과 390×844 모바일 계정 → 도움말 전환을 확인했다. 가짜 API 응답만 사용했다.
 - Pages 운영 환경변수를 재현한 빌드에서 웹 JS 번들에 `0.1.1`과 구현 커밋 SHA가 포함되는 것을 확인했다. API도 같은 메타데이터를 실제 JAR에 패키징해 동일한 내용을 확인했다.
 - 실제 Render의 운영 모드 Docker 빌드는 원격 main에 구현이 반영된 뒤 확인해야 한다. 로컬 Docker 빌드와 운영 메타데이터 패키징 검증을 그 결과로 대신 표현하지 않는다.
+
+
+## PR 준비 (2026-10-30)
+
+- origin/main `cfe8d64`를 반영했다. BottomSheet 충돌은 main의 ModalOverlay 기반 안드로이드 수정과 이번 buttonRef를 함께 유지해 해결했다. `.gitignore`는 양쪽 항목을 보존했다.
+- 병합 상태에서 Node 22.22.0 웹 typecheck·테스트 422개·lint·build와 JDK 21 API 테스트 242개, 공용 정책 테스트 10개를 확인했다.
+- 웹 lint는 성공했으며 main에서 반영된 `CoverageSection.tsx:32`의 기존 set-state-in-effect 경고 1개가 남아 있다. 이 PR 변경 밖의 동작은 수정하지 않았다.
+- Cloudflare와 Render 공식 문서를 대조해 `docs/deploy.md`의 대시보드 경로·필드값·적용 순서·최초 배포 실패 재시도를 보강했다. 대시보드의 실제 설정 변경과 운영 배포는 수행하지 않았다.

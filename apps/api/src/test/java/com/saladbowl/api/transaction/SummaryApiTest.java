@@ -125,6 +125,49 @@ class SummaryApiTest extends IntegrationTest {
                 .param("category", category).header("Authorization", who.bearer()));
     }
 
+    private LedgerTransaction saveMinor(AuthedUser owner, String dateTime, String major, String minor,
+                                        long amount) {
+        return transactions.save(LedgerTransaction.manual(owner.id(), new TransactionData(
+                java.time.LocalDateTime.parse(dateTime), TransactionType.EXPENSE, major, minor,
+                major + "/" + minor + " 거래", BigDecimal.valueOf(amount).setScale(2), "KRW", "카드", null)));
+    }
+
+    private org.springframework.test.web.servlet.ResultActions minorTxs(String category, String minor)
+            throws Exception {
+        return mvc.perform(get("/groups/" + groupId + "/summary/transactions").param("month", "2026-09")
+                .param("category", category).param("minor", minor).header("Authorization", admin.bearer()));
+    }
+
+    @Test
+    void categoryTransactionsFilterByMinorWithSubcategoryKeys() throws Exception {
+        saveMinor(admin, "2026-09-01T12:00:00", "식비", "외식", -10_000);
+        saveMinor(member, "2026-09-02T12:00:00", "식비", "외식", 2_000);
+        LedgerTransaction moved = saveMinor(member, "2026-09-03T12:00:00", "원본", "원본", -3_000);
+        moved.setCategoryMajorOverride("식비");
+        moved.setCategoryMinorOverride("외식");
+        transactions.save(moved);
+        saveMinor(admin, "2026-09-04T12:00:00", "식비", "장보기", -5_000);
+        saveMinor(admin, "2026-09-05T12:00:00", "식비", "  ", -1_000);
+        saveMinor(admin, "2026-09-06T12:00:00", "카페", "외식", -4_000);
+        saveMinor(admin, "2026-10-01T12:00:00", "식비", "외식", -99_000);
+
+        minorTxs("식비", "외식").andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(3)))
+                .andExpect(jsonPath("$[0].amount").value(-3_000.0))
+                .andExpect(jsonPath("$[1].amount").value(2_000.0))
+                .andExpect(jsonPath("$[2].amount").value(-10_000.0));
+        minorTxs("식비", "미분류").andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].amount").value(-1_000.0));
+        minorTxs("카페", "외식").andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].amount").value(-4_000.0));
+        minorTxs("식비", "없는소분류").andExpect(jsonPath("$", hasSize(0)));
+        categoryTxs(admin, "식비").andExpect(jsonPath("$", hasSize(5)));
+
+        subcategories("2026-09", "2026-09")
+                .andExpect(jsonPath("$[?(@.major == '식비' && @.minor == '외식')]", hasSize(1)))
+                .andExpect(jsonPath("$[?(@.major == '식비' && @.minor == '외식')].expense").value(11_000.0));
+    }
+
     @Test
     void categoryTransactionsMatchSummaryAndApplySummaryRules() throws Exception {
         save(admin, TransactionType.EXPENSE, "2026-09-01T12:00:00", "식비", -10_000);
@@ -346,5 +389,112 @@ class SummaryApiTest extends IntegrationTest {
         AuthedUser outsider = TestAuth.signupAndLogin(mvc, "out@test.com", "외부인");
 
         trend(outsider, "2026-09", "2026-10").andExpect(status().isNotFound());
+    }
+
+    @Test
+    void subcategoriesUseSixMonthsAndDisplayCategories() throws Exception {
+        save(admin, TransactionType.EXPENSE, "2026-04-01T00:00:00", "식비", -10_000);
+        LedgerTransaction dinner = save(member, TransactionType.EXPENSE, "2026-09-30T23:59:59", "원본", -20_000);
+        dinner.setCategoryMajorOverride("식비");
+        dinner.setCategoryMinorOverride("외식");
+        transactions.save(dinner);
+        LedgerTransaction refund = save(member, TransactionType.EXPENSE, "2026-09-02T12:00:00", "식비", 3_000);
+        refund.setCategoryMinorOverride("외식");
+        transactions.save(refund);
+        save(admin, TransactionType.EXPENSE, "2026-03-31T23:59:59", "범위 밖", -99_000);
+        save(admin, TransactionType.EXPENSE, "2026-10-01T00:00:00", "다음 달", -99_000);
+        save(admin, TransactionType.INCOME, "2026-09-01T12:00:00", "급여", 99_000);
+        save(admin, TransactionType.TRANSFER, "2026-09-01T12:00:00", "이체", -99_000);
+        LedgerTransaction hidden = save(admin, TransactionType.EXPENSE, "2026-09-01T12:00:00", "숨김", -99_000);
+        hidden.setHidden(true);
+        transactions.save(hidden);
+        transactions.save(LedgerTransaction.manual(member.id(), new TransactionData(
+                java.time.LocalDateTime.parse("2026-09-02T12:00:00"), TransactionType.EXPENSE, "여행", "호텔", "호텔",
+                new BigDecimal("-120.00"), "USD", "카드", null)));
+
+        mvc.perform(get("/groups/" + groupId + "/summary/subcategories").param("month", "2026-09")
+                        .header("Authorization", member.bearer()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(2)))
+                .andExpect(jsonPath("$[0].month").value("2026-04"))
+                .andExpect(jsonPath("$[0].expense").value(10_000))
+                .andExpect(jsonPath("$[1].month").value("2026-09"))
+                .andExpect(jsonPath("$[1].major").value("식비"))
+                .andExpect(jsonPath("$[1].minor").value("외식"))
+                .andExpect(jsonPath("$[1].expense").value(17_000));
+
+        mvc.perform(put("/groups/" + groupId + "/share").header("Authorization", member.bearer())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"enabled\":false}"))
+                .andExpect(status().isOk());
+        mvc.perform(get("/groups/" + groupId + "/summary/subcategories").param("month", "2026-09")
+                        .header("Authorization", admin.bearer()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].month").value("2026-04"));
+    }
+
+    @Test
+    void subcategoriesValidateMonthAndMembership() throws Exception {
+        AuthedUser outsider = TestAuth.signupAndLogin(mvc, "sub-out@test.com", "외부인");
+        mvc.perform(get("/groups/" + groupId + "/summary/subcategories").param("month", "2026-09")
+                        .header("Authorization", outsider.bearer()))
+                .andExpect(status().isNotFound());
+        for (String month : java.util.List.of("0000-01", "+10000-01", "2026-13", "bad")) {
+            mvc.perform(get("/groups/" + groupId + "/summary/subcategories").param("month", month)
+                            .header("Authorization", admin.bearer()))
+                    .andExpect(status().isBadRequest());
+        }
+    }
+
+    private org.springframework.test.web.servlet.ResultActions subcategories(String month, String from)
+            throws Exception {
+        var request = get("/groups/" + groupId + "/summary/subcategories").param("month", month)
+                .header("Authorization", admin.bearer());
+        if (from != null) request.param("from", from);
+        return mvc.perform(request);
+    }
+
+    @Test
+    void subcategoriesFromWidensRangeAndMatchesDefaultOnOverlappingMonths() throws Exception {
+        save(admin, TransactionType.EXPENSE, "2026-01-15T12:00:00", "식비", -1_000);
+        save(admin, TransactionType.EXPENSE, "2026-04-15T12:00:00", "식비", -2_000);
+        save(member, TransactionType.EXPENSE, "2026-09-15T12:00:00", "교통", -3_000);
+        save(admin, TransactionType.EXPENSE, "2025-12-31T23:59:59", "범위 밖", -99_000);
+
+        subcategories("2026-09", null).andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(2)))
+                .andExpect(jsonPath("$[0].month").value("2026-04"))
+                .andExpect(jsonPath("$[0].expense").value(2_000))
+                .andExpect(jsonPath("$[1].month").value("2026-09"))
+                .andExpect(jsonPath("$[1].major").value("교통"))
+                .andExpect(jsonPath("$[1].expense").value(3_000));
+
+        subcategories("2026-09", "2026-01").andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(3)))
+                .andExpect(jsonPath("$[0].month").value("2026-01"))
+                .andExpect(jsonPath("$[0].major").value("식비"))
+                .andExpect(jsonPath("$[0].minor").value("미분류"))
+                .andExpect(jsonPath("$[0].expense").value(1_000))
+                .andExpect(jsonPath("$[1].month").value("2026-04"))
+                .andExpect(jsonPath("$[1].expense").value(2_000))
+                .andExpect(jsonPath("$[2].month").value("2026-09"))
+                .andExpect(jsonPath("$[2].expense").value(3_000));
+
+        subcategories("2026-09", "2026-09").andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].month").value("2026-09"));
+    }
+
+    @Test
+    void subcategoriesFromFollowsTrendRangeRules() throws Exception {
+        subcategories("2026-09", "2025-10").andExpect(status().isOk());
+        subcategories("2026-09", "2025-09").andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+        subcategories("2026-09", "2026-10").andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+        subcategories("2026-09", "2026-13").andExpect(status().isBadRequest());
+        subcategories("2026-09", "bad").andExpect(status().isBadRequest());
+        subcategories("0000-02", "0000-01").andExpect(status().isBadRequest());
+        subcategories("9999-12", "9999-01").andExpect(status().isOk());
     }
 }

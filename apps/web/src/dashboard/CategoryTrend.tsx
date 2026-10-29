@@ -98,7 +98,6 @@ export default function CategoryTrend({ groupId, month }: Props) {
               return (
                 <button key={item.category} type="button" className={styles.chip}
                   aria-pressed={pressed} onClick={() => toggle(item.category)}>
-                  {pressed && <span aria-hidden="true" className={styles.check}>✓</span>}
                   <span aria-hidden="true" className={styles.marker}
                     style={{ '--marker-color': `var(--chart-${slot})`, '--marker-style': dash } as React.CSSProperties} />
                   {item.category}
@@ -115,10 +114,19 @@ export default function CategoryTrend({ groupId, month }: Props) {
               <table className={styles.table}>
                 <caption>대분류별 월 지출</caption>
                 <thead><tr><th scope="col">월</th>{visible.map(({ item }) => <th scope="col" key={item.category}>{item.category}</th>)}</tr></thead>
-                <tbody>{trend.data.months.map((rowMonth, monthIndex) => (
+                <tbody>{trend.data.months.map((rowMonth, monthIndex) => ({ rowMonth, monthIndex })).reverse().map(({ rowMonth, monthIndex }) => (
                   <tr key={rowMonth}>
                     <th scope="row">{formatMonthLabel(rowMonth)}</th>
-                    {visible.map(({ item }) => <td key={item.category}>{formatWon(item.expenses[monthIndex] ?? 0)}</td>)}
+                    {visible.map(({ item }) => {
+                      const value = item.expenses[monthIndex] ?? 0
+                      const change = monthIndex === 0 ? 0 : value - (item.expenses[monthIndex - 1] ?? 0)
+                      const comparison = monthIndex === 0 ? '전월 비교 없음' : change > 0 ? '전월 대비 증가' : change < 0 ? '전월 대비 감소' : '전월과 동일'
+                      return <td key={item.category} title={comparison}
+                        className={change > 0 ? styles.expenseIncrease : change < 0 ? styles.expenseDecrease : undefined}>
+                        {value < 0 ? '-' : ''}{formatWon(value)}
+                        {change !== 0 && <span aria-label={comparison}> {change > 0 ? '↑' : '↓'}</span>}
+                      </td>
+                    })}
                   </tr>
                 ))}</tbody>
               </table>

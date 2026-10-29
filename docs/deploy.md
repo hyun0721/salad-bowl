@@ -188,14 +188,71 @@ SHA·기준 이력이 없거나 조회에 실패하면 운영 빌드는 실패�
 
 ### 7.2 이 변경을 기존 서비스에 적용할 때
 
-1. PR의 웹·API CI가 통과한 뒤 머지한다.
-2. Render Blueprint의 sync 결과에서 Root Directory `.`, Dockerfile Path
-   `./apps/api/Dockerfile`, Docker Build Context `.`인지 확인한다.
-   Dashboard에서 관리한다면 같은 값으로 변경한 뒤 재배포한다.
-3. Pages Build watch paths Include를 4장의 경로 목록으로 갱신한다.
-   기존 `apps/web/*`만 두면 공용 버전 계산기를 바꿔도 웹이 재빌드되지 않는다.
-4. 각 플랫폼 배포가 완료되면 7.1의 도움말·SHA 대조를 한다.
-5. PWA를 이전 버전으로 열어 새 버전 알림 후 새로고침한 경우 번호가 바뀌는지 확인한다.
+Cloudflare Pages와 Render에 아래 변경이 필요하다. 새 Secret이나 버전 환경변수를
+직접 추가할 필요는 없다. 플랫폼이 제공하는 SHA·브랜치 정보를 빌드에서 사용한다.
+아래는 적용 안내이며, 이 문서가 대시보드의 실제 설정 변경 완료를 뜻하지 않는다.
+
+**Cloudflare Pages — 머지 전에 설정해도 된다.**
+
+1. Cloudflare Dashboard → Workers & Pages → 해당 Pages 프로젝트 →
+   Settings → Build → Build watch paths로 이동한다.
+2. Include에 아래 다섯 항목을 각각 입력하고 저장한다. 기존 `*`가 있다면
+   이 목록으로 교체한다. Exclude가 이 경로를 막고 있지 않은지도 확인한다.
+
+   ```text
+   apps/web/*
+   scripts/release/*
+   release-version.json
+   render.yaml
+   .dockerignore
+   ```
+
+3. Production branch `main`, Root directory `apps/web`, Build command
+   `npm run build`, Output directory `dist`는 유지한다.
+   Pages는 단일 `*`로 하위 디렉터리까지 일치시킨다.
+
+**Render — 머지 후 새 render.yaml과 함께 적용한다.**
+
+1. PR의 웹·API CI가 통과한 뒤 main에 머지한다.
+2. Blueprint로 관리하면 해당 Blueprint의 Sync 결과에서 아래 값이 적용됐는지
+   확인한다. 자동 Sync를 사용하지 않으면 수동 Sync를 실행한다.
+3. 대시보드에서 직접 관리하는 서비스라면 `salad-bowl-api` → Settings →
+   Build & Deploy에서 아래 세 경로를 함께 수정한다. Root Directory를 저장할 때
+   다른 필드의 상대 경로를 확인하는 창이 나오면 아래 값을 맞춘 뒤 Update Fields한다.
+
+   | 항목 | 값 |
+   |---|---|
+   | Root Directory | 저장소 루트 (`.`; UI가 빈 값으로 루트를 표현하면 비움) |
+   | Dockerfile Path | `./apps/api/Dockerfile` |
+   | Docker Build Context Directory | `.` |
+   | Auto-Deploy | 검사 통과 후 배포 (`After CI Checks Pass`) |
+
+4. Build Filters → Included Paths에 다음 다섯 항목을 설정한다.
+   Ignored Paths가 이 경로를 막지 않는지도 확인한다.
+
+   ```text
+   apps/api/**
+   scripts/release/**
+   release-version.json
+   render.yaml
+   .dockerignore
+   ```
+
+5. API CI가 통과한 main 커밋의 배포가 성공했는지 확인한다.
+   최초 자동 배포가 이전 경로 설정으로 실패했거나 설정 저장만 했다면,
+   경로 수정 후 Manual Deploy → Deploy latest commit으로 다시 배포한다.
+   API의 `/actuator/health`와 Pages를 거친 health가 모두 UP인지 확인한다.
+
+**배포 후 확인**
+
+- 로그인 후 데스크톱 도움말 / 모바일 계정 → 도움말에서 앱·서버 버전과
+  각 플랫폼 배포의 커밋 SHA를 대조한다. 번호가 항상 같을 필요는 없다.
+- 웹이 먼저 배포되고 API가 아직 이전 버전이면 서버 버전 조회가 실패할 수 있다.
+  API 배포 완료 후 다시 시도한다.
+- 기존 PWA에서 새 버전 알림 후 새로고침해 앱 버전이 바뀌는지 확인한다.
+
+공식 설정 안내: [Pages Build watch paths](https://developers.cloudflare.com/pages/configuration/build-watch-paths/),
+[Render monorepo 설정](https://render.com/docs/monorepo-support).
 
 로컬 Docker 빌드는 저장소 루트에서 실행한다. 기본값은 `dev`다.
 
@@ -290,3 +347,9 @@ Render·Pages 대시보드에 값을 직접 넣었다면 3~4단계 대신 Render
 ### 11.6 로컬 개발
 
 `apps/web/.env.local`에 `VITE_GOOGLE_CLIENT_ID=<클라이언트 ID>`, API 실행 환경에 `GOOGLE_CLIENT_ID=<같은 값>`을 설정한다. 원본 목록에 `http://localhost:5173`이 있어야 한다.
+
+## 12. 새 API를 사용하는 웹 기능 배포
+
+Pages와 Render의 자동 배포는 동시에 완료되지 않는다. 새 엔드포인트를 사용하는 기능은 서버를 먼저 배포하는 두 단계 변경으로 진행한다. Render에서 해당 커밋의 배포가 Live인지 확인하고, 테스트 계정으로 실제 엔드포인트가 정상 응답하는지 확인한 뒤 웹 변경을 공개한다. `/actuator/health`의 UP만으로 새 엔드포인트 반영을 판단하지 않는다.
+
+서버·웹 변경을 함께 배포했다면 양쪽 완료 후 첫 조회와 오류 화면의 재시도 복구를 확인한다. 2026-10-28 소분류 기능에서는 웹과 API 반영에 약 4분 차이가 있었다. 분석과 UI 조치는 [소분류 초기 조회 분석](superpowers/plans/2026-10-28-subcategory-loading-review.md)에 기록했다.

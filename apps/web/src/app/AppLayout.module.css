@@ -3,12 +3,13 @@
 .logo { display: flex; align-items: center; gap: var(--space-2); font-size: var(--text-lg); font-weight: 700; padding: var(--space-1) var(--space-3) var(--space-3); }
 .link { display: flex; align-items: center; gap: var(--space-2); min-height: 40px; padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm); color: var(--ink); text-decoration: none; }
 .link:hover { background: var(--surface-100); }
+.subLink { padding-left: calc(var(--space-3) + 20px + var(--space-2)); font-size: var(--text-sm); }
 .active { background: var(--brand-tint); color: var(--brand); font-weight: 700; }
 .main { flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column; }
 .header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-3) max(var(--space-5), env(safe-area-inset-right, 0px)) var(--space-3) max(var(--space-5), env(safe-area-inset-left, 0px)); background: var(--surface-000); border-bottom: 1px solid var(--line); }
 .user { display: flex; align-items: center; gap: var(--space-3); }
 .logout { display: inline-flex; align-items: center; gap: var(--space-2); min-height: 40px; padding: 0 var(--space-3); border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface-000); cursor: pointer; }
-.content { padding: var(--space-5) max(var(--space-5), env(safe-area-inset-right, 0px)) var(--space-6) max(var(--space-5), env(safe-area-inset-left, 0px)); display: flex; flex-direction: column; gap: var(--space-4); }
+.content { padding: var(--space-5) max(var(--space-5), env(safe-area-inset-right, 0px)) var(--space-6) max(var(--space-5), env(safe-area-inset-left, 0px)); display: flex; flex-direction: column; gap: var(--space-3); }
 @media (max-width: 820px) {
   .header { flex-wrap: nowrap; padding-top: var(--space-3); padding-bottom: var(--space-3); }
   .header, .content { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
@@ -21,3 +22,9 @@
 .groupSlot { flex: 1; min-width: 0; display: flex; }
 /* 하단 탭 바(56px)와 안전 영역만큼 본문 끝을 띄워 마지막 내용이 가려지지 않게 한다. */
 .withTabBar { padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px) + var(--space-4)); }
+/* 넓은 화면은 창 높이에 맞추고 본문 안에서 스크롤한다. 거래 목록처럼 표가 긴 화면이 남은 높이를 채울 수 있다. */
+@media (min-width: 821px) {
+  /* 줄바꿈하면 줄 높이가 내용만큼 늘어나 본문이 창 높이를 넘는다. */
+  .shell { height: 100vh; height: 100dvh; flex-wrap: nowrap; }
+  .content { flex: 1; min-height: 0; overflow-y: auto; }
+}

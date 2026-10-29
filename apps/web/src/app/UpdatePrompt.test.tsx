@@ -1,10 +1,10 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, expect, it } from 'vitest'
+import { afterEach, expect, it, vi } from 'vitest'
 import { stubRegister } from '../test/pwaRegisterStub'
 import UpdatePrompt from './UpdatePrompt'
 
-afterEach(() => { stubRegister.needRefresh = false; stubRegister.updateServiceWorker.mockClear() })
+afterEach(() => { stubRegister.needRefresh = false; vi.restoreAllMocks() })
 
 it('shows nothing without a new version', () => {
   render(<UpdatePrompt />)
@@ -12,11 +12,13 @@ it('shows nothing without a new version', () => {
 })
 
 it('offers a reload when a new version is waiting', async () => {
+  const reload = vi.fn()
+  vi.spyOn(window, 'location', 'get').mockReturnValue({ ...window.location, reload } as Location)
   stubRegister.needRefresh = true
   render(<UpdatePrompt />)
   expect(screen.getByRole('status')).toHaveTextContent('새 버전이 있어요')
   await userEvent.click(screen.getByRole('button', { name: '새로고침' }))
-  expect(stubRegister.updateServiceWorker).toHaveBeenCalledWith(true)
+  expect(reload).toHaveBeenCalled()
 })
 
 it('hides until the next version when dismissed', async () => {

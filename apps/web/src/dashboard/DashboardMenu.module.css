@@ -1,0 +1,5 @@
+.menu { display: grid; gap: var(--space-2); }
+.group { display: flex; border: 1px solid var(--line); border-radius: var(--radius-sm); overflow: hidden; }
+.link { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 var(--space-4); background: var(--surface-000); color: var(--ink); text-decoration: none; }
+.link[aria-current='page'] { background: var(--brand); color: var(--on-brand); font-weight: 700; }
+.link:focus-visible { outline: 2px solid var(--brand); outline-offset: -4px; }

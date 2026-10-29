@@ -59,7 +59,7 @@ export function donutStartAngle(slices: DonutSlice[]): number {
 export function centerValueSize(text: string, count: number, compact: boolean): number {
   const inner = (compact ? 0.3 : 0.34) * donutHeight(count, compact)
   const fit = Math.floor((inner * 0.9) / (Array.from(text).length * 0.6))
-  return Math.max(9, Math.min(compact ? 12 : 18, fit))
+  return Math.max(9, Math.min(compact ? 11 : 15, fit))
 }
 
 // oxlint-disable-next-line react/only-export-components
@@ -67,9 +67,10 @@ export function buildDonutOption(slices: DonutSlice[], { centerLabel, centerValu
   centerLabel: string; centerValue: string; compact: boolean; theme: ChartTheme
 }) {
   return {
-    textStyle: { fontFamily: theme.font },
+    textStyle: { fontFamily: theme.font, fontSize: 11 },
     tooltip: {
       trigger: 'item',
+      textStyle: { fontSize: 12 },
       formatter: (params: { name?: string; dataIndex?: number }) => {
         const slice = slices.find((item) => item.id === params.name)
         return slice ? `${escapeHtml(slice.label)}<br/>${formatWon(slice.value)}${slice.detail ? ` · ${escapeHtml(slice.detail)}` : ''}` : ''
@@ -80,7 +81,7 @@ export function buildDonutOption(slices: DonutSlice[], { centerLabel, centerValu
       type: 'group', silent: true, left: 'center', top: 'middle',
       children: [
         { type: 'text', y: -10,
-          style: { text: centerLabel, align: 'center', verticalAlign: 'middle', fill: theme.inkMuted, fontFamily: theme.font, fontSize: compact ? 10 : 13 } },
+          style: { text: centerLabel, align: 'center', verticalAlign: 'middle', fill: theme.inkMuted, fontFamily: theme.font, fontSize: compact ? 10 : 12 } },
         { type: 'text', y: 12,
           style: { text: centerValue, align: 'center', verticalAlign: 'middle', fill: theme.ink, fontFamily: theme.font, fontSize: centerValueSize(centerValue, slices.length, compact), fontWeight: 'bold' } },
       ],
@@ -105,8 +106,8 @@ export function buildDonutOption(slices: DonutSlice[], { centerLabel, centerValu
       label: {
         alignTo: 'none', bleedMargin: 4,
         rich: {
-          name: { fontSize: compact ? 12 : 13, color: theme.ink, width: compact ? 56 : 84, overflow: 'truncate' },
-          pct: { fontSize: 11, color: theme.inkMuted },
+          name: { fontSize: compact ? 11 : 12, color: theme.ink, width: compact ? 56 : 84, overflow: 'truncate' },
+          pct: { fontSize: 10, color: theme.inkMuted },
         },
       },
       labelLine: { length: 10, length2: 8, maxSurfaceAngle: 80, lineStyle: { color: theme.inkMuted } },

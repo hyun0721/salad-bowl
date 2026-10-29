@@ -1,4 +1,4 @@
-/* Salad Bowl design tokens — copied from the Claude Design System "Salad Bowl" (tokens.json). */
+/* Salad Bowl design tokens — based on the Claude Design System "Salad Bowl"; app type scale is one step smaller. */
 :root {
   color-scheme: light;
   --surface-100: #f4f4f0;
@@ -33,13 +33,14 @@
   --space-6: 24px;
   --space-8: 32px;
 
-  --text-xs: 12px;
-  --text-sm: 13px;
-  --text-base: 15px;
-  --text-md: 18px;
-  --text-lg: 20px;
-  --text-xl: 24px;
-  --text-2xl: 28px;
+  --text-xs: 11px;
+  --text-sm: 12px;
+  --text-base: 13px;
+  --text-md: 15px;
+  --text-lg: 18px;
+  --text-xl: 20px;
+  --text-2xl: 24px;
+  --text-input: 16px;
 
   --radius-sm: 8px;
   --radius-md: 12px;
