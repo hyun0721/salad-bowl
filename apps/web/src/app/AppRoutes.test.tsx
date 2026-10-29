@@ -84,6 +84,22 @@ describe('AppRoutes', () => {
       .toEqual(['홈', '그룹 대시보드', '대분류', '소분류', '거래 목록', '업로드', '그룹 관리'])
     expect(within(nav).getByRole('link', { name: '대분류' })).toHaveAttribute('href', '/dashboard/major')
     expect(within(nav).getByRole('link', { name: '소분류' })).toHaveAttribute('href', '/dashboard/minor')
+    expect(within(nav).getByRole('link', { name: '그룹 대시보드' })).not.toHaveAttribute('aria-current')
+  })
+
+  it('marks only the current dashboard sub-link as the page', async () => {
+    mockViewport(false)
+    signedIn([{ groupId: 10, name: '우리집', myRole: 'ADMIN', memberCount: 3 }])
+    server.use(
+      http.get('*/api/groups/10/summary', () => HttpResponse.json({ month: '2026-10', income: 0, expense: 0, byCategory: [], byMember: [] })),
+      http.get('*/api/groups/10/summary/trend', () => HttpResponse.json({ months: [], categories: [] })),
+    )
+    renderApp('/dashboard/major')
+
+    const nav = await screen.findByRole('navigation', { name: '주 메뉴' })
+    expect(within(nav).getAllByRole('link').filter((link) => link.getAttribute('aria-current') === 'page'))
+      .toEqual([within(nav).getByRole('link', { name: '대분류' })])
+    expect(within(nav).getByRole('link', { name: '그룹 대시보드' })).toHaveAttribute('aria-current', 'true')
   })
 
   it('remembers the selected group', async () => {

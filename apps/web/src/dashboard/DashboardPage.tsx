@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Navigate, useLocation, useParams, useSearchParams } from 'react-router'
 import MonthPicker from '../common/MonthPicker'
 import ui from '../common/ui.module.css'
@@ -86,9 +86,13 @@ function SummaryView({ groupId, month, summary, level, view, narrow }: {
   const empty = summary && summary.income === 0 && summary.expense === 0
   const hasSummary = summary !== undefined
   const shownView = view ?? 'share'
+  const scrolledWithSummary = useRef<string | null>(null)
   useEffect(() => {
     if (narrow || !view) return
+    const key = `${level}/${view}`
+    if (scrolledWithSummary.current === key) return
     document.getElementById(`dashboard-${view}`)?.scrollIntoView?.({ block: 'start' })
+    if (hasSummary) scrolledWithSummary.current = key
   }, [narrow, view, level, hasSummary])
   return (
     <>

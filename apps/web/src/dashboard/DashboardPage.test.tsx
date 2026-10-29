@@ -218,6 +218,30 @@ describe('DashboardPage', () => {
       else Reflect.deleteProperty(Element.prototype, 'scrollIntoView')
     }
   })
+
+  it('does not scroll to the view card again when the month changes', async () => {
+    mockViewport(false)
+    server.use(http.get('*/api/groups/10/summary', ({ request }) => {
+      const month = new URL(request.url).searchParams.get('month')!
+      return HttpResponse.json({ ...summary, month, income: month === '2026-09' ? 2000000 : 3000000 })
+    }))
+    const original = Object.getOwnPropertyDescriptor(Element.prototype, 'scrollIntoView')
+    const scroll = vi.fn()
+    Object.defineProperty(Element.prototype, 'scrollIntoView', { configurable: true, value: scroll })
+    try {
+      const { user } = renderDashboard('/dashboard/major/trend?month=2026-10')
+      await screen.findByRole('button', { name: '수입 ₩ 3,000,000' })
+      await waitFor(() => expect(scroll).toHaveBeenCalledTimes(2))
+      const calls = scroll.mock.calls.length
+
+      await user.click(screen.getByRole('button', { name: '이전 달' }))
+      await screen.findByRole('button', { name: '수입 ₩ 2,000,000' })
+      expect(scroll).toHaveBeenCalledTimes(calls)
+    } finally {
+      if (original) Object.defineProperty(Element.prototype, 'scrollIntoView', original)
+      else Reflect.deleteProperty(Element.prototype, 'scrollIntoView')
+    }
+  })
 })
 
 describe('DashboardPage on a narrow screen', () => {

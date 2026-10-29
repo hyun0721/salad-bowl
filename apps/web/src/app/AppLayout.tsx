@@ -31,7 +31,7 @@ function FocusHeadingOnRouteChange({ mainRef }: { mainRef: RefObject<HTMLElement
 
 export default function AppLayout() {
   const location = useLocation()
-  const inDashboard = location.pathname.startsWith('/dashboard')
+  const inDashboard = firstSegment(location.pathname) === 'dashboard'
   const { me, logout } = useAuth()
   const narrow = useMediaQuery('(max-width: 820px)')
   const { groups, selectedGroupId, selectGroup, isLoading, isError, retry } = useGroups()
@@ -71,7 +71,7 @@ export default function AppLayout() {
           <span className={styles.logo}><img src="/logo.svg" alt="" width="28" height="28" />Salad Bowl</span>
           {MENU.map((item) => (
             <Fragment key={item.to}>
-              <NavLink to={item.to} end={item.end}
+              <NavLink to={item.to} end={item.end} aria-current={item.children ? 'true' : undefined}
                 className={({ isActive }) => (isActive ? `${styles.link} ${styles.active}` : styles.link)}>
                 <Icon name={item.icon} />{item.label}
               </NavLink>
