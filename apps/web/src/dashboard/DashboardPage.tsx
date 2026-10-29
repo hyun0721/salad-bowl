@@ -14,6 +14,7 @@ import CategoryTrend from './CategoryTrend'
 import SubcategoryTrends from './SubcategoryTrends'
 import { dashboardApi, type MonthlySummary } from './dashboardApi'
 import { dashboardRedirect, dashboardTitle, type Level, type View } from './dashboardRoute'
+import DashboardMenu from './DashboardMenu'
 import MemberTotalsDialog, { type TotalKind } from './MemberTotalsDialog'
 
 type Props = { today?: Date }
@@ -103,7 +104,7 @@ function SummaryView({ groupId, month, summary, level, view, narrow }: {
       {empty && <p className={ui.status}>이 달에 합칠 거래가 없습니다.</p>}
       <MemberTotalsDialog kind={kind} summary={summary} onClose={() => setKind(null)} />
       </>}
-      {/* Task 3: 좁은 화면 메뉴 자리 */}
+      {narrow && <DashboardMenu level={level} view={view ?? 'share'} />}
       {level === 'minor' ? (
         // shortcut: 16d 전까지 소분류는 main의 카드를 그대로 보여준다. 16d에서 소분류 분포·추이로 바꾼다.
         <SubcategoryTrends groupId={groupId} month={month} />

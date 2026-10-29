@@ -1,6 +1,6 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { Route, Routes, useLocation } from 'react-router'
+import { Route, Routes, useLocation, useNavigationType } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { mockViewport } from '../test/mockViewport'
 import { renderPage } from '../test/renderPage'
@@ -28,10 +28,12 @@ function Where() {
   return <output aria-label="현재 주소">{pathname + search}</output>
 }
 
+function NavType() { return <output aria-label="이동 방식">{useNavigationType()}</output> }
+
 function renderDashboard(path = '/dashboard/major') {
   return renderPage(
     <Routes>
-      <Route path="/dashboard/:level?/:view?" element={<><DashboardPage today={today} /><Where /></>} />
+      <Route path="/dashboard/:level?/:view?" element={<><DashboardPage today={today} /><Where /><NavType /></>} />
     </Routes>,
     { groups: [group], path },
   )
@@ -196,6 +198,18 @@ describe('DashboardPage', () => {
 
 describe('DashboardPage on a narrow screen', () => {
   beforeEach(() => { mockViewport(true) })
+
+  it('switches sub-screens in place, keeps the month and leaves focus on the link', async () => {
+    server.use(http.get('*/api/groups/10/summary', () => HttpResponse.json(summary)))
+    const { user } = renderDashboard('/dashboard/major/share?month=2026-10')
+    const nav = await screen.findByRole('navigation', { name: '대시보드 메뉴' })
+    const trend = within(nav).getByRole('link', { name: '추이' })
+    await user.click(trend)
+    await waitFor(() => expect(screen.getByRole('status', { name: '현재 주소' })).toHaveTextContent('/dashboard/major/trend?month=2026-10'))
+    expect(screen.getByRole('status', { name: '이동 방식' })).toHaveTextContent('REPLACE')
+    expect(within(screen.getByRole('navigation', { name: '대시보드 메뉴' })).getByRole('link', { name: '추이' })).toHaveFocus()
+    expect(await screen.findByRole('region', { name: '대분류별 추이' })).toBeInTheDocument()
+  })
 
   it('redirects a level address to its share screen', async () => {
     server.use(http.get('*/api/groups/10/summary', () => HttpResponse.json(summary)))

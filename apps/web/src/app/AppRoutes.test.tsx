@@ -356,6 +356,21 @@ describe('AppRoutes', () => {
 describe('AppRoutes on a narrow screen', () => {
   beforeEach(() => { mockViewport(true) })
 
+  it('keeps focus on the dashboard menu link when switching sub-screens', async () => {
+    signedIn([{ groupId: 10, name: '우리집', myRole: 'ADMIN', memberCount: 3 }])
+    server.use(
+      http.get('*/api/groups/10/summary', () => HttpResponse.json({ month: '2026-10', income: 0, expense: 0, byCategory: [], byMember: [] })),
+      http.get('*/api/groups/10/summary/trend', () => HttpResponse.json({ months: [], categories: [] })),
+      http.get('*/api/groups/10/summary/subcategories', () => HttpResponse.json([])),
+    )
+    renderApp('/dashboard/major/share')
+    const user = userEvent.setup()
+    const menu = await screen.findByRole('navigation', { name: '대시보드 메뉴' })
+    await user.click(within(menu).getByRole('link', { name: '소분류' }))
+    await waitFor(() => expect(within(screen.getByRole('navigation', { name: '대시보드 메뉴' })).getByRole('link', { name: '소분류' })).toHaveFocus())
+    expect(screen.getByRole('heading', { level: 1 })).not.toHaveFocus()
+  })
+
   it('shows the bottom tab bar instead of the sidebar', async () => {
     signedIn([{ groupId: 10, name: '우리집', myRole: 'ADMIN', memberCount: 3 }])
     renderApp('/')
