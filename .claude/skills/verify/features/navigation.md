@@ -1,6 +1,6 @@
 # Navigation shell
 
-Every signed-in page shares one shell. Wide screens get a left sidebar and a header with the group selector, nickname, and logout. Narrow screens (≤820px) get a bottom tab bar, a one-line header with the logo, the group selector, and an `계정` button that opens a bottom sheet with the nickname and logout. Changing the top-level menu (the first path segment) moves focus to the new page's `h1`; moving within the same segment, such as between dashboard sub-screens, leaves focus on the clicked link.
+Every signed-in page shares one shell. Wide screens get a left sidebar and a header with the group selector, nickname, and logout. Narrow screens (≤820px) get a bottom tab bar, a one-line header with the logo, the group selector, and an `계정` button that opens a bottom sheet with the nickname and logout. Changing the top-level menu (the first path segment) moves focus to the new page's `h1`; moving within the same segment, such as between dashboard sub-screens, leaves focus on the clicked link. The one exception is the dashboard drill-down button `<대분류> 소분류 보기`, which moves focus to the 소분류 card heading (see dashboard.md).
 
 ## Sub-features
 
