@@ -42,4 +42,4 @@ Preconditions:
 - Narrow screens keep the unselected card mounted with `hidden`, so `find` can still return its heading even though it is not shown. Use a screenshot or `read_page` to judge what is visible.
 - The trend range follows the page month only when the preset is relative. `직접 지정` keeps its own months.
 - A short page cannot scroll the trend card all the way to the top; "scrolled" means it moved up, not that its top is 0.
-- On a wide screen the `:view` scroll happens once per sub-screen (on entry and once more when the first summary arrives). Changing the month afterwards does not scroll.
+- On a wide screen the `:view` scroll happens on entry, and once more when the summary arrives if it was still loading. Changing the month afterwards does not scroll. Switching from narrow to wide counts as an entry and scrolls once.
