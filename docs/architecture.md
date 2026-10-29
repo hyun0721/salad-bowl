@@ -48,9 +48,23 @@
 
 | 워크플로 | 실행 시점 | 역할 |
 |---|---|---|
-| `api-ci` | `apps/api/**` 또는 이 워크플로 파일 변경 시 PR·`main` push | `./gradlew test memoryTest` |
-| `web-ci` | `apps/web/**` 또는 이 워크플로 파일 변경 시 PR·`main` push | lint·typecheck·test·build |
+| `api-ci` | `apps/api/**` 또는 이 워크플로 파일 변경 시 PR·`main` push | 공용 버전 테스트 + `./gradlew test memoryTest` |
+| `web-ci` | `apps/web/**` 또는 이 워크플로 파일 변경 시 PR·`main` push | 공용 버전 테스트 + lint·typecheck·test·build |
 | `sync-config` | 수동 | 설정값 검증과 Render·Pages 반영, Render 재배포 |
 | `keepalive` | 10분마다·수동 | Pages를 거쳐 API health를 호출해 sleep과 DB 일시정지를 줄인다. |
 
 `main`에 머지하면 Pages는 `apps/web` 변경을 바로 배포하고, Render는 api-ci가 통과한 커밋만 배포한다. 절차는 [배포 절차서](deploy.md)를 따른다.
+
+
+## 실행 버전
+
+`release-version.json`과 `scripts/release/version.py`가 main의 배포 관련
+first-parent 변경을 세어 `0.1.N`을 만든다. 공용 파일·스크립트와 Render 빌드 설정은
+두 CI 및 배포 필터에 포함한다. 웹은 Vite define으로, API는 JAR의
+`version.properties`로 `{version, commit}`을 빌드에 고정한다.
+Docker context는 저장소 루트이며 Git·Python은 빌드 단계에서만 쓴다.
+
+웹·PWA는 도움말에서만 현재 번들의 버전을 표시하고, 인증된 `/api/version`으로
+API의 현재 버전을 조회한다. 서버 응답은 no-store이고 버전 조회는 도움말을 열 때만
+수행한다. 서로 다른 실행 버전은 독립 배포와 PWA 업데이트 지연으로 발생할 수 있다.
+번호 정책·초기 플랫폼 설정 변경은 [배포 절차서](deploy.md#71-자동-버전과-도움말)를 따른다.

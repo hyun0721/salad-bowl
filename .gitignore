@@ -21,3 +21,6 @@ apps/web/dist/
 # Local Graphify environment and generated graph/cache
 .venv-graphify/
 graphify-out/
+
+# Python release tooling
+__pycache__/

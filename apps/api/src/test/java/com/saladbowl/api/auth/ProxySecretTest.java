@@ -25,6 +25,7 @@ class ProxySecretTest extends IntegrationTest {
                 .andExpect(jsonPath("$.code").value("FORBIDDEN"));
         mvc.perform(post("/auth/refresh").header("X-Proxy-Secret", "nope"))
                 .andExpect(status().isForbidden());
+        mvc.perform(get("/version")).andExpect(status().isForbidden());
         mvc.perform(get("/me/transactions"))
                 .andExpect(status().isForbidden());
     }

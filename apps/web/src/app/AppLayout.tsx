@@ -6,6 +6,7 @@ import Icon from '../common/Icon'
 import Select from '../common/Select'
 import { useMediaQuery } from '../common/useMediaQuery'
 import AccountSheet from './AccountSheet'
+import HelpDialog from './HelpDialog'
 import BottomTabBar from './BottomTabBar'
 import PageLoading from './PageLoading'
 import styles from './AppLayout.module.css'
@@ -34,6 +35,7 @@ export default function AppLayout() {
   const navigate = useNavigate()
   const mainRef = useRef<HTMLElement>(null)
 
+  const [helpOpen, setHelpOpen] = useState(false)
   const [logoutError, setLogoutError] = useState(false)
 
   async function onLogout() {
@@ -82,6 +84,7 @@ export default function AppLayout() {
           ) : (
             <div className={styles.user}>
               <span>{me?.nickname}</span>
+              <button type="button" className={styles.logout} onClick={() => setHelpOpen(true)}>도움말</button>
               <button type="button" className={styles.logout} onClick={onLogout}><Icon name="log-out" size={18} />로그아웃</button>
             </div>
           )}
@@ -97,6 +100,7 @@ export default function AppLayout() {
         </main>
       </div>
       {narrow && <BottomTabBar />}
+      {helpOpen && <HelpDialog onClose={() => setHelpOpen(false)} />}
     </div>
   )
 }

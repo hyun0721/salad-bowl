@@ -1,4 +1,5 @@
 import { fileURLToPath } from 'node:url'
+import { execFileSync } from 'node:child_process'
 import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
@@ -37,7 +38,13 @@ const pwa = VitePWA({
 
 // 로컬 개발: 브라우저는 /api/* 를 호출하고, dev server가 API(8080)로 접두어를 떼고 전달한다.
 // 배포(Cloudflare Pages Functions)도 같은 규칙이라 쿠키 Path(/api/auth)가 두 환경에서 같다.
+const appVersion: unknown = JSON.parse(execFileSync('python3', [
+  fileURLToPath(new URL('../../scripts/release/version.py', import.meta.url)),
+  ...(process.env.VITEST ? ['--mode', 'dev'] : []),
+], { encoding: 'utf8' }))
+
 export default defineConfig({
+  define: { __APP_VERSION__: JSON.stringify(appVersion) },
   // 테스트에서는 서비스 워커를 만들 필요가 없다.
   // React Aria는 30여 개 언어의 문구를 함께 싣는다. 앱은 한국어만 쓰므로(main.tsx의 I18nProvider) 나머지는 뺀다.
   plugins: process.env.VITEST ? [react()] : [react(), pwa, { ...optimizeLocales.vite({ locales: ['ko-KR'] }), enforce: 'pre' }],
