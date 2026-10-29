@@ -247,32 +247,50 @@ describe('DashboardPage', () => {
 describe('DashboardPage on a narrow screen', () => {
   beforeEach(() => { mockViewport(true) })
 
-  it('switches sub-screens in place, keeps the month and leaves focus on the link', async () => {
+  it('switches levels in place, keeps the month and leaves focus on the link', async () => {
     server.use(http.get('*/api/groups/10/summary', () => HttpResponse.json(summary)))
-    const { user } = renderDashboard('/dashboard/major/share?month=2026-10')
+    const { user } = renderDashboard('/dashboard/major?month=2026-10')
     const nav = await screen.findByRole('navigation', { name: '대시보드 메뉴' })
-    const trend = within(nav).getByRole('link', { name: '추이' })
-    await user.click(trend)
-    await waitFor(() => expect(screen.getByRole('status', { name: '현재 주소' })).toHaveTextContent('/dashboard/major/trend?month=2026-10'))
+    expect(within(nav).getAllByRole('link').map((link) => link.textContent)).toEqual(['대분류', '소분류'])
+    await user.click(within(nav).getByRole('link', { name: '소분류' }))
+    await waitFor(() => expect(screen.getByRole('status', { name: '현재 주소' })).toHaveTextContent('/dashboard/minor?month=2026-10'))
     expect(screen.getByRole('status', { name: '이동 방식' })).toHaveTextContent('REPLACE')
-    expect(within(screen.getByRole('navigation', { name: '대시보드 메뉴' })).getByRole('link', { name: '추이' })).toHaveFocus()
-    expect(await screen.findByRole('region', { name: '대분류별 추이' })).toBeInTheDocument()
+    expect(within(screen.getByRole('navigation', { name: '대시보드 메뉴' })).getByRole('link', { name: '소분류' })).toHaveFocus()
+    expect(await screen.findByRole('region', { name: '소분류 추이·분포' })).toBeInTheDocument()
+    expect(document.title).toBe('그룹 대시보드 · 소분류 · Salad Bowl')
   })
 
-  it('redirects a level address to its share screen', async () => {
+  it('redirects /dashboard to the major screen and shows both cards', async () => {
     server.use(http.get('*/api/groups/10/summary', () => HttpResponse.json(summary)))
-    renderDashboard('/dashboard/major?month=2026-10')
-    await waitFor(() => expect(screen.getByRole('status', { name: '현재 주소' })).toHaveTextContent('/dashboard/major/share?month=2026-10'))
+    renderDashboard('/dashboard?month=2026-10')
+    await waitFor(() => expect(screen.getByRole('status', { name: '현재 주소' })).toHaveTextContent('/dashboard/major?month=2026-10'))
     expect(await screen.findByRole('region', { name: '카테고리별 지출' })).toBeVisible()
-    expect(screen.queryByRole('region', { name: '대분류별 추이' })).not.toBeInTheDocument()
-    expect(document.title).toBe('그룹 대시보드 · 대분류 분포 · Salad Bowl')
+    expect(screen.getByRole('region', { name: '대분류별 추이' })).toBeVisible()
+    expect(document.title).toBe('그룹 대시보드 · 대분류 · Salad Bowl')
   })
 
-  it('shows only the trend card on the trend screen', async () => {
+  it('redirects an unknown address to the major screen and keeps the search', async () => {
     server.use(http.get('*/api/groups/10/summary', () => HttpResponse.json(summary)))
-    renderDashboard('/dashboard/major/trend')
-    expect(await screen.findByRole('region', { name: '대분류별 추이' })).toBeInTheDocument()
-    expect(screen.queryByRole('region', { name: '카테고리별 지출' })).not.toBeInTheDocument()
-    expect(await screen.findByRole('button', { name: /^지출/ })).toBeInTheDocument()
+    renderDashboard('/dashboard/oops/trend?month=2026-10&major=x')
+    await waitFor(() => expect(screen.getByRole('status', { name: '현재 주소' })).toHaveTextContent('/dashboard/major?month=2026-10&major=x'))
+    expect(screen.getByRole('status', { name: '이동 방식' })).toHaveTextContent('REPLACE')
+  })
+
+  it('keeps an old view address and scrolls to that card', async () => {
+    server.use(http.get('*/api/groups/10/summary', () => HttpResponse.json(summary)))
+    const original = Object.getOwnPropertyDescriptor(Element.prototype, 'scrollIntoView')
+    const scroll = vi.fn()
+    Object.defineProperty(Element.prototype, 'scrollIntoView', { configurable: true, value: scroll })
+    try {
+      renderDashboard('/dashboard/major/trend?month=2026-10')
+      expect(await screen.findByRole('region', { name: '카테고리별 지출' })).toBeVisible()
+      expect(screen.getByRole('region', { name: '대분류별 추이' })).toBeVisible()
+      expect(screen.getByRole('status', { name: '현재 주소' })).toHaveTextContent('/dashboard/major/trend?month=2026-10')
+      await waitFor(() => expect(scroll).toHaveBeenCalled())
+      expect(scroll.mock.contexts.at(-1)).toBe(document.getElementById('dashboard-trend'))
+    } finally {
+      if (original) Object.defineProperty(Element.prototype, 'scrollIntoView', original)
+      else Reflect.deleteProperty(Element.prototype, 'scrollIntoView')
+    }
   })
 })

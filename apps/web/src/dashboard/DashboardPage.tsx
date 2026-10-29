@@ -24,13 +24,12 @@ export default function DashboardPage({ today }: Props) {
   const [search, setSearch] = useSearchParams()
   const { search: rawSearch } = useLocation()
   const narrow = useMediaQuery(NARROW)
-  const redirect = dashboardRedirect(params.level, params.view, narrow)
+  const redirect = dashboardRedirect(params.level, params.view)
   const level = (params.level ?? 'major') as Level
-  const view = (params.view ?? 'share') as View
   const requested = search.get('month')
   const [fallbackMonth] = useState(() => defaultYearMonth(today ?? new Date()))
   const month = isYearMonth(requested) ? requested : fallbackMonth
-  usePageTitle(dashboardTitle(level, view, narrow))
+  usePageTitle(dashboardTitle(level))
   const { groups, selectedGroupId, isLoading, isError, retry } = useGroups()
   const summary = useQuery({
     queryKey: ['summary', selectedGroupId, month],
@@ -85,15 +84,17 @@ function SummaryView({ groupId, month, summary, level, view, narrow }: {
   const [kind, setKind] = useState<TotalKind | null>(null)
   const empty = summary && summary.income === 0 && summary.expense === 0
   const hasSummary = summary !== undefined
-  const shownView = view ?? 'share'
   const scrolledWithSummary = useRef<string | null>(null)
   useEffect(() => {
-    if (narrow || !view) return
+    if (!view) return
     const key = `${level}/${view}`
     if (scrolledWithSummary.current === key) return
-    document.getElementById(`dashboard-${view}`)?.scrollIntoView?.({ block: 'start' })
+    // shortcut: 소분류 임시 카드는 분포·추이가 한 카드라 대상이 없다. 16d에서 카드를 나눌 때 같은 id를 붙인다.
+    const target = document.getElementById(`dashboard-${view}`)
+    if (!target) return
+    target.scrollIntoView?.({ block: 'start' })
     if (hasSummary) scrolledWithSummary.current = key
-  }, [narrow, view, level, hasSummary])
+  }, [view, level, hasSummary])
   return (
     <>
       {summary && <>
@@ -109,16 +110,16 @@ function SummaryView({ groupId, month, summary, level, view, narrow }: {
       {empty && <p className={ui.status}>이 달에 합칠 거래가 없습니다.</p>}
       <MemberTotalsDialog kind={kind} summary={summary} onClose={() => setKind(null)} />
       </>}
-      {narrow && <DashboardMenu level={level} view={view ?? 'share'} />}
+      {narrow && <DashboardMenu level={level} />}
       {level === 'minor' ? (
         // shortcut: 16d 전까지 소분류는 main의 카드를 그대로 보여준다. 16d에서 소분류 분포·추이로 바꾼다.
         <SubcategoryTrends groupId={groupId} month={month} />
       ) : (
         <>
-          <div id="dashboard-share" hidden={narrow && shownView !== 'share'}>
+          <div id="dashboard-share">
             {summary && <CategoryBreakdown key={`${groupId}:${month}`} groupId={groupId} month={month} summary={summary} />}
           </div>
-          <div id="dashboard-trend" hidden={narrow && shownView !== 'trend'}>
+          <div id="dashboard-trend">
             <CategoryTrend groupId={groupId} month={month} />
           </div>
         </>
