@@ -15,14 +15,15 @@
 .when, .amount { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .amount { flex-shrink: 0; text-align: right; }
 .visuallyHidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-.panel { flex: 0 0 360px; overflow-y: auto; border-width: 1px 0 0 1px; border-radius: 0; }
+.panel { position: relative; flex: 0 0 360px; overflow-y: auto; border-width: 1px 0 0 1px; border-radius: 0; }
 @media (max-width: 820px) {
   /* 좁은 화면은 아래 여백이 탭 바 자리라 좌우만 늘린다. 첫 줄은 월 선택만 둔다. */
   .layout { margin: 0 calc(-1 * max(var(--space-4), env(safe-area-inset-right, 0px))) 0 calc(-1 * max(var(--space-4), env(safe-area-inset-left, 0px))); }
   .filters > :first-child { flex: 1 1 100%; }
-  /* 사이드바를 연 채 창을 좁히면 열린 동안은 넓은 화면 모양을 유지한다. 목록이 눌리지 않게 패널을 아래로 내린다. */
-  .layout:has(> .panel) { flex-wrap: wrap; }
-  .panel { flex: 1 1 100%; }
+  /* 사이드바를 연 채 창을 좁히면 목록과 패널을 세로로 배치한다. */
+  .layout:has(> .panel) { flex-direction: column; }
+  /* 목록이 남은 높이를 갖고, 패널은 내용만큼(최대 60%) 차지하며 안에서 스크롤한다. */
+  .panel { flex: 0 1 auto; max-height: 60%; border-width: 1px 0 0; }
 }
 
 .listScroll { flex: 1; min-height: 0; overflow: auto; }
