@@ -1,13 +1,24 @@
 import { useQuery } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router'
 import { formatMonthLabel, formatWon, shiftMonth } from '../common/format'
 import Select from '../common/Select'
 import ui from '../common/ui.module.css'
 import { dashboardApi } from './dashboardApi'
 import styles from './SubcategoryTrends.module.css'
 
-export default function SubcategoryTrends({ groupId, month }: { groupId: number; month: string }) {
-  const [selected, setSelected] = useState('')
+export default function SubcategoryTrends({ groupId, month, initialMajor }: { groupId: number; month: string; initialMajor?: string }) {
+  const { pathname, search, state } = useLocation()
+  const navigate = useNavigate()
+  const focusSubcategories = state?.focusSubcategories === true
+  const titleRef = useRef<HTMLHeadingElement>(null)
+  useEffect(() => {
+    if (!focusSubcategories) return
+    titleRef.current?.focus()
+    // router state는 history 항목에 남아 새로고침·뒤로/앞으로에서 포커스가 또 옮겨지므로 한 번 쓰고 비운다.
+    navigate(pathname + search, { replace: true, state: null })
+  }, [focusSubcategories, navigate, pathname, search])
+  const [selected, setSelected] = useState(initialMajor ?? '')
   const query = useQuery({
     queryKey: ['summary', groupId, month, 'subcategories'],
     queryFn: () => dashboardApi.subcategories(groupId, month),
@@ -30,7 +41,7 @@ export default function SubcategoryTrends({ groupId, month }: { groupId: number;
   return (
     <section aria-labelledby="subcategory-title" className={ui.card}>
       <div className={`${ui.pageHeader} ${styles.header}`}>
-        <h2 id="subcategory-title">소분류 추이·분포</h2>
+        <h2 id="subcategory-title" ref={titleRef} tabIndex={-1}>소분류 추이·분포</h2>
         {query.isSuccess && majors.length > 0 && <div className={styles.categorySelect}>
           <Select label="대분류 (필수)" selectedKey={major} variant="field"
             items={[{ id: '', label: '대분류를 선택하세요' }, ...majors.map((name) => ({ id: name, label: name }))]}

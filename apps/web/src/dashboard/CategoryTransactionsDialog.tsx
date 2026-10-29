@@ -1,9 +1,11 @@
 import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
+import { useNavigate } from 'react-router'
 import CardList from '../common/CardList'
 import DataTable, { type DataColumn } from '../common/DataTable'
 import { DialogFrame } from '../common/Dialog'
 import { formatDateTime, formatSignedWon, formatWon } from '../common/format'
+import Icon from '../common/Icon'
 import ui from '../common/ui.module.css'
 import { NARROW, useMediaQuery } from '../common/useMediaQuery'
 import type { TransactionView } from '../transactions/transactionsApi'
@@ -22,6 +24,7 @@ const columns: DataColumn<TransactionView>[] = [
 ]
 
 export default function CategoryTransactionsDialog({ groupId, month, category, onClose }: Props) {
+  const navigate = useNavigate()
   const narrow = useMediaQuery(NARROW)
   const [lastCategory, setLastCategory] = useState(category)
   if (category !== null && lastCategory !== category) setLastCategory(category)
@@ -33,10 +36,24 @@ export default function CategoryTransactionsDialog({ groupId, month, category, o
   })
   const items = transactions.data ?? []
   const total = -items.reduce((sum, tx) => sum + tx.amount, 0)
+  // 대분류에서 한 단계 들어가는 이동이라 push한다. 뒤로가기로 대분류 화면에 돌아온다.
+  const showMinors = () => {
+    onClose()
+    navigate(`/dashboard/minor?${new URLSearchParams({ month, major: displayedCategory ?? '' })}`, { state: { focusSubcategories: true } })
+  }
 
   return (
     <DialogFrame isOpen={category !== null} title={displayedCategory ?? ''} onOpenChange={(open) => { if (!open) onClose() }}
-      closeOnOutsideClick wide headerAction={<button type="button" className={ui.button} onClick={onClose}>닫기</button>}>
+      closeOnOutsideClick wide headerAction={
+        <div className={ui.row}>
+          <button type="button" className={`${ui.button} ${ui.iconButton}`} aria-label={`${displayedCategory} 소분류 보기`} onClick={showMinors}>
+            <Icon name="chart" />
+          </button>
+          <button type="button" className={`${ui.button} ${ui.iconButton}`} aria-label="닫기" onClick={onClose}>
+            <Icon name="x" />
+          </button>
+        </div>
+      }>
       {() => (
         <div className={styles.dialogBody}>
           {transactions.isPending && <p className={ui.status}>불러오는 중입니다.</p>}

@@ -3,25 +3,22 @@ import { dashboardRedirect, dashboardTitle } from './dashboardRoute'
 
 describe('dashboardRedirect', () => {
   it.each([
-    [undefined, undefined, false, '/dashboard/major'],
-    [undefined, undefined, true, '/dashboard/major/share'],
-    ['major', undefined, false, null],
-    ['minor', undefined, true, '/dashboard/minor/share'],
-    ['major', 'trend', false, null],
-    ['minor', 'share', true, null],
-    ['oops', undefined, false, '/dashboard/major'],
-    ['major', 'oops', true, '/dashboard/major/share'],
-    ['oops', 'trend', false, '/dashboard/major'],
-  ] as const)('%s/%s narrow=%s → %s', (level, view, narrow, expected) => {
-    expect(dashboardRedirect(level, view, narrow)).toBe(expected)
+    [undefined, undefined, '/dashboard/major'],
+    ['major', undefined, null],
+    ['minor', undefined, null],
+    ['major', 'trend', null],
+    ['minor', 'share', null],
+    ['oops', undefined, '/dashboard/major'],
+    ['major', 'oops', '/dashboard/major'],
+    ['oops', 'trend', '/dashboard/major'],
+  ] as const)('%s/%s → %s', (level, view, expected) => {
+    expect(dashboardRedirect(level, view)).toBe(expected)
   })
 })
 
 describe('dashboardTitle', () => {
-  it('names the sub-screen', () => {
-    expect(dashboardTitle('major', 'share', true)).toBe('그룹 대시보드 · 대분류 분포')
-    expect(dashboardTitle('minor', 'trend', true)).toBe('그룹 대시보드 · 소분류 추이')
-    expect(dashboardTitle('major', 'trend', false)).toBe('그룹 대시보드 · 대분류')
-    expect(dashboardTitle('minor', 'share', false)).toBe('그룹 대시보드 · 소분류')
+  it('names the level', () => {
+    expect(dashboardTitle('major')).toBe('그룹 대시보드 · 대분류')
+    expect(dashboardTitle('minor')).toBe('그룹 대시보드 · 소분류')
   })
 })

@@ -16,6 +16,22 @@ const tx = (id: number, amount: number): TransactionView => ({
 })
 
 describe('CategoryTransactionsDialog', () => {
+  it('shows icon buttons for the minor screen and closing', async () => {
+    const onClose = vi.fn()
+    server.use(http.get('*/api/groups/10/summary/transactions', () => HttpResponse.json([tx(1, -10000)])))
+    const { user } = renderPage(<CategoryTransactionsDialog groupId={10} month="2026-10" category="식비" onClose={onClose} />)
+    const dialog = await screen.findByRole('dialog', { name: '식비' })
+    const minors = within(dialog).getByRole('button', { name: '식비 소분류 보기' })
+    const close = within(dialog).getByRole('button', { name: '닫기' })
+    expect(minors).toHaveTextContent(/^$/)
+    expect(close).toHaveTextContent(/^$/)
+    expect(minors.querySelector('svg[aria-hidden="true"]')).not.toBeNull()
+    expect(close.querySelector('svg[aria-hidden="true"]')).not.toBeNull()
+    expect(minors.compareDocumentPosition(close) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    await user.click(close)
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
   it('shows a desktop grid and the refund-adjusted total', async () => {
     server.use(http.get('*/api/groups/10/summary/transactions', () => HttpResponse.json([tx(1, -10000), tx(2, -20000), tx(3, 3000)])))
     renderPage(<CategoryTransactionsDialog groupId={10} month="2026-10" category="식비" onClose={() => {}} />)
