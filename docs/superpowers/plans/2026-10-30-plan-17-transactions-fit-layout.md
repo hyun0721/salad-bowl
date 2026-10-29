@@ -130,9 +130,9 @@ Expected: 위 세 테스트가 FAIL(`1 / 2`로 시작하지 않음, 버튼에 �
   /* 좁은 화면은 아래 여백이 탭 바 자리라 좌우만 늘린다. 첫 줄은 월 선택만 둔다. */
   .layout { margin: 0 calc(-1 * max(var(--space-4), env(safe-area-inset-right, 0px))) 0 calc(-1 * max(var(--space-4), env(safe-area-inset-left, 0px))); }
   .filters > :first-child { flex: 1 1 100%; }
-  /* 사이드바를 연 채 창을 좁히면 열린 동안은 넓은 화면 모양을 유지한다. 목록이 눌리지 않게 패널을 아래로 내린다. */
-  .layout:has(> .panel) { flex-wrap: wrap; }
-  .panel { flex: 1 1 100%; }
+  /* 사이드바를 연 채 창을 좁히면 목록과 패널을 세로로 배치한다. (리뷰 뒤 4fe70ed에서 wrap 대신 이 규칙으로 바뀜) */
+  .layout:has(> .panel) { flex-direction: column; }
+  .panel { flex: 0 1 auto; max-height: 60%; border-width: 1px 0 0; }
 }
 .pagination { flex: none; display: flex; align-items: center; justify-content: flex-end; gap: var(--space-3); padding: var(--space-3) var(--space-4); border-top: 1px solid var(--line); }
 .pageStep { width: var(--control-height); padding: 0; }

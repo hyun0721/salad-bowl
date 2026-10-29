@@ -23,7 +23,7 @@ Preconditions:
 - **List.** Open from the menu. With `내 거래` selected, the list shows seeded rows such as `김밥`.
 - **Search.** Type `택시` into `검색`. Only the 3 taxi rows remain.
 - **Detail.** Click a row. A panel named after the description opens with the category fields.
-- **Narrow layout.** At 375×812 the page fits the viewport: `document.documentElement.scrollHeight` equals `innerHeight`, the list scrolls inside its own box, the list spans the full screen width, and the pager sits just above the tab bar. Other narrow pages (home, dashboard) still scroll the page.
+- **Narrow layout.** At 375×812 the page fits the viewport: `document.documentElement.scrollHeight` equals `innerHeight`, the list scrolls inside its own box, the list spans the full screen width, and the pager sits just above the tab bar. Other narrow pages keep the page-scroll layout (`main` stays `overflow: visible`); the dashboard is long enough to show it (`scrollHeight` > `innerHeight`).
 - **Cards (narrow).** Line 1 is description and amount. Line 2 is `대분류 · 소분류` (plus `· 멤버` in group scope), then ` | 메모` when there is a memo, and the time on the right under the amount. Long text ends with an ellipsis.
 - **Pager.** The footer `nav "거래 목록 페이지"` shows only `현재 / 전체` next to icon buttons `이전 페이지` and `다음 페이지`. Its `status` also reads the hidden range such as `1–11 / 11건`.
 
