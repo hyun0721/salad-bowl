@@ -1,14 +1,11 @@
 # Home
 
-Home (`/`, heading `내 가계부`) shows which months of the year have uploaded data, a summary of last month's own income and expense, and the 3 most recent uploads. Tapping an unregistered month opens an upload dialog. Tapping a registered month opens a dialog to re-upload or delete that month.
+Home (`/`, heading `내 가계부`) shows last month's upload status and a summary of the user's income and expenses for that month.
 
 ## Sub-features
 
-- `home-coverage` shows the 12-month calendar `월별 등록 현황` with each month as 등록됨 · N건, 미등록 · 업로드하기, or 예정 (future). Year arrows `이전 연도` / `다음 연도` change the year.
-- `home-upload-missing` opens the dialog `<YYYY년 M월> 데이터 업로드` with the upload form when you click a missing month.
-- `home-month-manage` opens the dialog `<label> 데이터` with `다시 업로드` and delete when you click a registered month.
-- `home-summary` shows `지난달 내 요약 (<month>)` with 수입 and 지출, plus the link `내 거래 보기`.
-- `home-recent` shows `최근 업로드` (top 3) and the link `업로드 이력 전체` to `/upload`.
+- `home-upload-status` shows the `지난달 업로드` card as `<YYYY년 M월> 데이터 등록됨 · <count>건`, or `<YYYY년 M월> 데이터가 아직 없습니다.` with `업로드하기`, which opens `/upload?month=<YYYY-MM>` and the upload dialog for that month.
+- `home-summary` shows last month's income and expense summary and the link `내 거래 보기`.
 
 ## How to get to it (user POV)
 
@@ -21,14 +18,11 @@ Preconditions:
 
 - Baseline seed: the 3 months before today are registered with 6 rows each.
 
-- **Coverage.** Open `/`. Run `find "등록됨"`. The last 3 months each have a button labelled `<YYYY>년 <M>월 등록됨 6건, 데이터 관리`. Earlier months in that year show `미등록`.
-- **Summary.** `get_page_text` contains `지난달 내 요약` with 수입 `₩ 3,000,000` and 지출 `₩ 71,500`.
-- **Recent uploads.** The `최근 업로드` section lists `seed.xlsx` with `신규 18`.
-- **Missing month.** Click a `미등록, 업로드하기` button. A dialog titled `… 데이터 업로드` opens and contains `파일 선택`. Close it.
-- **Manage month.** Click a `등록됨` button. The dialog shows `다시 업로드` and a delete button. Do not confirm the delete unless the journey restores data afterwards.
+- **Upload status (registered).** Open `/`. The `지난달 업로드` card reads `<YYYY년 M월> 데이터 등록됨 · 6건` for last month. The home page has no `월별 등록 현황` or `최근 업로드` section.
+- **Upload status (missing).** Remove last month's data from the upload calendar, confirming the month in the deletion prompt, then return home. The card reads `<YYYY년 M월> 데이터가 아직 없습니다.` and has the link `업로드하기`. Click it; `/upload` opens with the `<YYYY년 M월> 데이터 업로드` dialog.
+- **Summary.** The last-month summary shows income and expense, with `내 거래 보기`.
 
 ## Gotchas
 
-- If today is in January or February, some seeded months fall in the previous year. Use `이전 연도` to see them.
-- Coverage counts transactions by transaction date, not by upload date.
-- Deleting a month changes the summary and the dashboard. Relaunch to restore.
+- The baseline seed registers the last three months, so the missing state requires deleting last month's data first. Restore it before another journey that expects the seed.
+- The `업로드하기` link is a deep link to `/upload?month=YYYY-MM`; after the dialog opens, the address becomes `/upload`.

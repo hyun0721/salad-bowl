@@ -29,8 +29,8 @@ Each feature file starts with an H1 title and one paragraph describing the user-
 ## Features
 
 - [Navigation shell](./navigation.md): sidebar or bottom tabs, account sheet, group selector.
-- [Home](./home.md): yearly upload coverage calendar, last month's summary, recent uploads.
+- [Home](./home.md): last month's upload status and summary.
 - [Group dashboard](./dashboard.md): monthly totals, category donut, per-member table, category trend.
-- [Upload](./upload.md): Banksalad xlsx upload and upload history.
+- [Upload](./upload.md): monthly upload coverage, Banksalad xlsx upload, and upload history.
 - [Transactions](./transactions.md): my or group transaction list, search, detail, manual add.
 - [Groups](./groups.md): create, rename, invite link, members, bans.
