@@ -2,10 +2,9 @@ import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Link } from 'react-router'
 import ui from '../common/ui.module.css'
-import { defaultYearMonth, formatInstant, formatMonthLabel, formatWon } from '../common/format'
+import { defaultYearMonth, formatMonthLabel, formatWon } from '../common/format'
 import { usePageTitle } from '../common/usePageTitle'
-import { importsApi } from '../imports/importsApi'
-import CoverageSection from '../imports/CoverageSection'
+import { coverageApi } from '../imports/coverageApi'
 import { summarize } from '../transactions/summary'
 import { transactionsApi } from '../transactions/transactionsApi'
 import styles from './HomePage.module.css'
@@ -17,17 +16,36 @@ export default function HomePage({ today: todayProp }: Props) {
   const [mountedAt] = useState(() => new Date())
   const today = todayProp ?? mountedAt
   const month = defaultYearMonth(today)
+  // 1월에는 지난달이 작년이므로 지난달이 속한 연도의 등록 현황을 본다.
+  const year = Number(month.slice(0, 4))
+
+  const coverage = useQuery({ queryKey: ['coverage', year], queryFn: () => coverageApi.get(year) })
   const mine = useQuery({ queryKey: ['transactions', 'mine', month], queryFn: () => transactionsApi.mine(month) })
-  const imports = useQuery({ queryKey: ['imports'], queryFn: importsApi.history })
   const totals = mine.data ? summarize(mine.data) : null
+  const entry = coverage.data?.find((c) => c.month === month)
 
   return (
     <>
       <h1>내 가계부</h1>
 
-      <CoverageSection today={today} />
-
       <div className={styles.twoColumns}>
+        <section aria-labelledby="upload-status-title" className={ui.card}>
+          <h2 id="upload-status-title">지난달 업로드</h2>
+          {coverage.isPending && <p className={ui.status}>불러오는 중입니다.</p>}
+          {coverage.isError && (
+            <div className={ui.row}>
+              <p role="alert" className={ui.alert}>업로드 현황을 불러오지 못했습니다.</p>
+              <button type="button" className={ui.button} aria-label="업로드 현황 다시 시도" onClick={() => void coverage.refetch()}>다시 시도</button>
+            </div>
+          )}
+          {coverage.data && (entry
+            ? <p>{formatMonthLabel(month)} 데이터 등록됨 · {entry.importedCount}건</p>
+            : <>
+              <p>{formatMonthLabel(month)} 데이터가 아직 없습니다.</p>
+              <Link to={`/upload?month=${month}`}>업로드하기</Link>
+            </>)}
+        </section>
+
         <section aria-labelledby="summary-title" className={ui.card}>
           <h2 id="summary-title">지난달 내 요약 ({formatMonthLabel(month)})</h2>
           {mine.isPending && <p className={ui.status}>불러오는 중입니다.</p>}
@@ -44,29 +62,6 @@ export default function HomePage({ today: todayProp }: Props) {
             </dl>
           )}
           <Link to="/transactions">내 거래 보기</Link>
-        </section>
-
-        <section aria-labelledby="recent-title" className={ui.card}>
-          <h2 id="recent-title">최근 업로드</h2>
-          {imports.isPending && <p className={ui.status}>불러오는 중입니다.</p>}
-          {imports.isError && (
-            <div className={ui.row}>
-              <p role="alert" className={ui.alert}>업로드 이력을 불러오지 못했습니다.</p>
-              <button type="button" className={ui.button} aria-label="업로드 이력 다시 시도" onClick={() => void imports.refetch()}>다시 시도</button>
-            </div>
-          )}
-          {imports.data && imports.data.length === 0 && <p className={ui.status}>아직 올린 파일이 없습니다.</p>}
-          {imports.data && imports.data.length > 0 && (
-            <ul className={ui.stack}>
-              {imports.data.slice(0, 3).map((batch) => (
-                <li key={batch.batchId} className={ui.row}>
-                  <span>{batch.fileName}</span>
-                  <span className={ui.muted}>{formatInstant(batch.importedAt)} · 신규 {batch.createdRows}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-          <Link to="/upload">업로드 이력 전체</Link>
         </section>
       </div>
     </>
