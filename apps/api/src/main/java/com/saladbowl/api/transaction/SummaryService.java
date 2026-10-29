@@ -70,6 +70,12 @@ public class SummaryService {
         return major == null || major.isBlank() ? UNCATEGORIZED : major;
     }
 
+    /** 집계와 거래 목록에서 빈 소분류를 같은 키로 취급한다. */
+    static String minorLabel(LedgerTransaction tx) {
+        String minor = tx.displayCategory().minor();
+        return minor == null || minor.isBlank() ? UNCATEGORIZED : minor;
+    }
+
     @Transactional(readOnly = true)
     public MonthlySummary monthly(long groupId, long userId, YearMonth month) {
         access.requireMember(groupId, userId);
@@ -108,13 +114,7 @@ public class SummaryService {
     @Transactional(readOnly = true)
     public CategoryTrend trend(long groupId, long userId, YearMonth from, YearMonth to) {
         access.requireMember(groupId, userId);
-        // 연도 범위를 먼저 확인하고, 12개월 검사는 넘침 없는 월 차이로 한다(plusMonths는 최댓값 근처에서 예외).
-        TransactionService.monthRange(from);
-        TransactionService.monthRange(to);
-        if (from.isAfter(to) || from.until(to, java.time.temporal.ChronoUnit.MONTHS) >= MAX_TREND_MONTHS) {
-            throw new ApiException(ErrorCode.VALIDATION_FAILED,
-                    "from must not be after to, and the range is at most " + MAX_TREND_MONTHS + " months");
-        }
+        requireRange(from, to);
         List<YearMonth> months = new ArrayList<>();
         for (YearMonth m = from; !m.isAfter(to); m = m.plusMonths(1)) {
             months.add(m);
@@ -137,41 +137,55 @@ public class SummaryService {
         return new CategoryTrend(months.stream().map(YearMonth::toString).toList(), categories);
     }
 
+    /** trend와 subcategories가 같은 기간 규칙을 쓴다. 연도 범위를 먼저 보고, 12개월 검사는 넘침 없는 월 차이로 한다. */
+    private static void requireRange(YearMonth from, YearMonth to) {
+        TransactionService.monthRange(from);
+        TransactionService.monthRange(to);
+        if (from.isAfter(to) || from.until(to, java.time.temporal.ChronoUnit.MONTHS) >= MAX_TREND_MONTHS) {
+            throw new ApiException(ErrorCode.VALIDATION_FAILED,
+                    "from must not be after to, and the range is at most " + MAX_TREND_MONTHS + " months");
+        }
+    }
+
     private static BigDecimal[] zeros(int n) {
         BigDecimal[] row = new BigDecimal[n];
         java.util.Arrays.fill(row, BigDecimal.ZERO);
         return row;
     }
 
-    /** 요약의 대분류 조각 하나를 이루는 거래. 환불(양수 지출)도 넣어야 합계가 조각과 같다. */
+    /** 요약의 대분류(선택 시 소분류) 조각을 이루는 거래. 환불도 넣어야 합계가 같다. */
     @Transactional(readOnly = true)
-    public List<TransactionView> categoryTransactions(long groupId, long userId, YearMonth month, String category) {
+    public List<TransactionView> categoryTransactions(long groupId, long userId, YearMonth month, String category,
+                                                      String minor) {
         access.requireMember(groupId, userId);
         List<LedgerTransaction> matched = summaryTransactions(access.sharedOwnerIds(groupId), month).stream()
                 .filter(tx -> tx.getType() == TransactionType.EXPENSE)
                 .filter(tx -> majorLabel(tx).equals(category))
+                .filter(tx -> minor == null || minorLabel(tx).equals(minor))
                 .toList();
         Map<Long, Boolean> editable = new HashMap<>();
         return views.toViews(matched,
                 owner -> editable.computeIfAbsent(owner, id -> access.canEditOwnedBy(userId, id)));
     }
 
-    /** 선택 월까지 최근 6개월의 소분류별 순지출. 거래가 없는 월은 화면에서 0으로 채운다. */
+    /** from(없으면 month - 5)~month의 소분류별 순지출. 거래가 없는 월은 화면에서 0으로 채운다. */
     @Transactional(readOnly = true)
-    public List<SummaryDtos.SubcategoryMonth> subcategories(long groupId, long userId, YearMonth month) {
+    public List<SummaryDtos.SubcategoryMonth> subcategories(long groupId, long userId, YearMonth month,
+                                                            YearMonth from) {
         access.requireMember(groupId, userId);
-        TransactionService.monthRange(month);
-        YearMonth from = month.minusMonths(5);
-        TransactionService.monthRange(from);
+        if (from == null) {
+            // 기본 6개월은 검사 전에 month - 5를 계산하므로 month의 연도 범위를 먼저 본다.
+            TransactionService.monthRange(month);
+            from = month.minusMonths(5);
+        }
+        requireRange(from, month);
         List<Long> owners = access.sharedOwnerIds(groupId);
         if (owners.isEmpty()) return List.of();
         record Key(String month, String major, String minor) {}
         Map<Key, BigDecimal> totals = new LinkedHashMap<>();
         for (LedgerTransaction tx : summaryTransactions(owners, from, month)) {
             if (tx.getType() != TransactionType.EXPENSE) continue;
-            Category category = tx.displayCategory();
-            Key key = new Key(YearMonth.from(tx.getOccurredAt()).toString(), majorLabel(tx),
-                    category.minor() == null || category.minor().isBlank() ? UNCATEGORIZED : category.minor());
+            Key key = new Key(YearMonth.from(tx.getOccurredAt()).toString(), majorLabel(tx), minorLabel(tx));
             totals.merge(key, tx.getAmount().negate(), BigDecimal::add);
         }
         return totals.entrySet().stream()
