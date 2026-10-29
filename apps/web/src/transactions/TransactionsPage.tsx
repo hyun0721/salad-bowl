@@ -3,6 +3,7 @@ import SearchField from '../common/SearchField'
 import Select from '../common/Select'
 import { useIsMutating, useQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useLocation, useNavigate } from 'react-router'
 import Icon from '../common/Icon'
 import { DialogFrame } from '../common/Dialog'
 import { useNarrowWhileOpen } from '../common/useMediaQuery'
@@ -139,6 +140,33 @@ export default function TransactionsPage({ today }: Props) {
       ;(row ?? listHeadingRef.current)?.focus()
     })
   }, [open, shownId])
+  // 모달이 열린 동안 같은 주소에 히스토리 항목을 하나 쌓아, 뒤로가기가 이전 화면 대신 모달만 닫게 한다.
+  const location = useLocation()
+  const navigate = useNavigate()
+  const modalOpen = open && !inSidebar
+  const atModalEntry = (location.state as { txModal?: boolean } | null)?.txModal === true
+  const pushedModalEntry = useRef(false)
+  useEffect(() => {
+    if (modalOpen && !atModalEntry) {
+      // 쌓은 항목에서 벗어났다면 뒤로가기다.
+      if (pushedModalEntry.current) {
+        pushedModalEntry.current = false
+        closePanel()
+        return
+      }
+      pushedModalEntry.current = true
+      void navigate(location, { state: { ...(location.state as object | null), txModal: true } })
+    } else if (!modalOpen && atModalEntry) {
+      // 닫기·저장·삭제·월 변경 등으로 닫혔으면 쌓은 항목을 걷어 다음 뒤로가기가 이전 화면으로 가게 한다.
+      // 직접 쌓지 않은 항목(앞으로가기·재마운트)은 되돌아가지 않고 표시만 지운다.
+      if (pushedModalEntry.current) {
+        pushedModalEntry.current = false
+        void navigate(-1)
+      } else {
+        void navigate(location, { replace: true, state: { ...(location.state as object), txModal: false } })
+      }
+    }
+  }, [modalOpen, atModalEntry, location, navigate])
   const focusListAfterDelete = useRef(false)
   useEffect(() => {
     // 삭제한 행이 사라진 뒤 목록 제목으로 포커스를 옮긴다.
