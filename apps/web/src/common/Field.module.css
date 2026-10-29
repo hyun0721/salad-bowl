@@ -1,6 +1,6 @@
 .field { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
 .label { font-size: var(--text-sm); line-height: 18px; font-weight: 500; color: var(--ink-muted); }
-.input { min-height: 40px; padding: 0 var(--space-3); border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface-000); color: var(--ink); font: inherit; }
+.input { min-height: 40px; padding: 0 var(--space-3); border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface-000); color: var(--ink); font: inherit; min-width: 0; }
 textarea.input { padding: var(--space-2) var(--space-3); resize: vertical; }
 .input[data-focused], .input:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
 .input[data-invalid] { border-color: var(--danger); }
@@ -18,7 +18,7 @@ textarea.input { padding: var(--space-2) var(--space-3); resize: vertical; }
 .check[data-selected] .thumb { translate: 16px 0; }
 .check[data-focus-visible] .box, .check[data-focus-visible] .track { outline: 2px solid var(--brand); outline-offset: 2px; }
 .search { position: relative; display: flex; align-items: center; }
-.search .input { flex: 1; min-width: 0; padding-left: 38px; padding-right: 40px; }
+.search .input { flex: 1; padding-left: 38px; padding-right: 40px; }
 .searchIcon { position: absolute; left: var(--space-3); display: inline-flex; color: var(--ink-muted); pointer-events: none; }
 .srOnly { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .search .input::-webkit-search-cancel-button { display: none; }

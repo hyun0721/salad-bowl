@@ -1,4 +1,6 @@
-import { fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { Route, Routes, useLocation, useNavigate, type NavigateFunction } from 'react-router'
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { useEffect } from 'react'
 import { http, HttpResponse } from 'msw'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { typeDateTime } from '../test/typeDateTime'
@@ -26,10 +28,95 @@ function mineHandler(items: TransactionView[]) {
   server.use(http.get('*/api/me/transactions', () => HttpResponse.json(items)))
 }
 
+function renderHistoryPage() {
+  const router: { navigate?: NavigateFunction; pathname?: string } = {}
+  function HistoryPage() {
+    const navigate = useNavigate()
+    const { pathname } = useLocation()
+    useEffect(() => { router.navigate = navigate; router.pathname = pathname })
+    return <Routes>
+      <Route path="/" element={<button onClick={() => navigate('/transactions')}>거래로 이동</button>} />
+      <Route path="/transactions" element={<TransactionsPage today={today} />} />
+    </Routes>
+  }
+  const result = renderPage(<HistoryPage />, { groups })
+  return { ...result, back: () => act(() => { void router.navigate?.(-1) }), pathname: () => router.pathname }
+}
+
 describe('TransactionsPage', () => {
   beforeEach(() => {
     try { window.localStorage.clear() } catch { /* storage may be unavailable */ }
     server.use(http.get('*/api/me/categories', () => HttpResponse.json([])))
+  })
+
+  it.each([false, true])('back closes only the modal and keeps the route (narrow: %s)', async (narrow) => {
+    mockViewport(narrow)
+    mineHandler([{ ...base }])
+    server.use(http.get('*/api/transactions/:id/audits', () => HttpResponse.json([])))
+    const history = renderHistoryPage()
+    await history.user.click(await screen.findByRole('button', { name: '거래로 이동' }))
+    await history.user.click(await screen.findByRole('row', { name: /김밥/ }))
+    expect(screen.getByRole('dialog', { name: '김밥' })).toBeInTheDocument()
+
+    await history.back()
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(history.pathname()).toBe('/transactions')
+    await history.back()
+    expect(history.pathname()).toBe('/')
+  })
+
+  it.each([false, true])('closing the modal leaves one back to the previous route (narrow: %s)', async (narrow) => {
+    mockViewport(narrow)
+    mineHandler([{ ...base }])
+    server.use(http.get('*/api/transactions/:id/audits', () => HttpResponse.json([])))
+    const history = renderHistoryPage()
+    await history.user.click(await screen.findByRole('button', { name: '거래로 이동' }))
+    await history.user.click(await screen.findByRole('row', { name: /김밥/ }))
+    await history.user.click(within(screen.getByRole('dialog')).getByRole('button', { name: '닫기' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(history.pathname()).toBe('/transactions')
+
+    await history.back()
+    expect(history.pathname()).toBe('/')
+  })
+
+  it('keeps one history entry from the add form to the added transaction', async () => {
+    mockViewport(true)
+    const created: TransactionView = { ...base, id: 20, description: '간식', source: 'MANUAL', amount: -3000 }
+    let added = false
+    server.use(
+      http.get('*/api/me/transactions', () => HttpResponse.json(added ? [created] : [])),
+      http.post('*/api/me/transactions', () => { added = true; return HttpResponse.json(created, { status: 201 }) }),
+      http.get('*/api/transactions/:id/audits', () => HttpResponse.json([])),
+    )
+    const history = renderHistoryPage()
+    await history.user.click(await screen.findByRole('button', { name: '거래로 이동' }))
+    await history.user.click(await screen.findByRole('button', { name: '거래 추가' }))
+    await typeDateTime(history.user, '202610051330')
+    await history.user.type(screen.getByRole('combobox', { name: '대분류' }), '식비')
+    await history.user.type(screen.getByLabelText('내용'), '간식')
+    await history.user.type(screen.getByLabelText('금액 (원)'), '3000')
+    await history.user.click(within(screen.getByRole('dialog')).getByRole('button', { name: '추가' }))
+    expect(await screen.findByRole('dialog', { name: '간식' })).toBeInTheDocument()
+
+    await history.back()
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(history.pathname()).toBe('/transactions')
+    await history.back()
+    expect(history.pathname()).toBe('/')
+  })
+
+  it('leaves back to the router when detail is in the side panel', async () => {
+    preferSidebar()
+    mineHandler([{ ...base }])
+    server.use(http.get('*/api/transactions/:id/audits', () => HttpResponse.json([])))
+    const history = renderHistoryPage()
+    await history.user.click(await screen.findByRole('button', { name: '거래로 이동' }))
+    await history.user.click(await screen.findByRole('row', { name: /김밥/ }))
+    expect(screen.getByRole('complementary', { name: '거래 상세' })).toBeInTheDocument()
+
+    await history.back()
+    expect(history.pathname()).toBe('/')
   })
 
   it('lists my transactions for the current month with signed amounts and badges', async () => {
