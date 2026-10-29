@@ -30,6 +30,26 @@ describe('UploadPage', () => {
     await waitFor(() => expect(screen.getByRole('status', { name: '주소 검색어', hidden: true })).toBeEmptyDOMElement())
   })
 
+  it('keeps the requested month after a coverage failure and opens it on retry', async () => {
+    server.use(
+      http.get('*/api/imports', () => HttpResponse.json([])),
+      http.get('*/api/me/coverage', () => new HttpResponse(null, { status: 500 })),
+    )
+
+    const { user } = renderPage(<><UploadPage today={today} /><Search /></>, { path: '/upload?month=2026-09' })
+    const coverage = await screen.findByRole('region', { name: '월별 등록 현황' })
+
+    await within(coverage).findByRole('alert')
+    expect(screen.getByRole('status', { name: '주소 검색어' })).toHaveTextContent('?month=2026-09')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+
+    server.use(http.get('*/api/me/coverage', () => HttpResponse.json([])))
+    await user.click(within(coverage).getByRole('button', { name: '다시 시도' }))
+
+    expect(await screen.findByRole('dialog', { name: '2026년 9월 데이터 업로드' })).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByRole('status', { name: '주소 검색어', hidden: true })).toBeEmptyDOMElement())
+  })
+
   it('opens the month dialog for a registered month', async () => {
     coverageByYear({ '2026': [{ month: '2026-09', importedCount: 168, manualCount: 0 }] })
 
