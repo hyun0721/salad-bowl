@@ -7,6 +7,7 @@ import { I18nProvider } from 'react-aria-components'
 import { MemoryRouter } from 'react-router'
 import RequireAuth from '../app/RequireAuth'
 import { AuthProvider } from '../auth/AuthProvider'
+import { DialogHistoryProvider } from '../common/DialogHistory'
 import ToastRegion from '../common/Toast'
 import { GroupProvider } from '../groups/GroupProvider'
 import { server } from './server'
@@ -29,10 +30,12 @@ export function renderPage(ui: ReactElement, { groups = [], path = '/' }: Option
       <QueryClientProvider client={client}>
         <AuthProvider>
           <MemoryRouter initialEntries={[path]}>
-            <RequireAuth>
-              <GroupProvider>{ui}</GroupProvider>
-            </RequireAuth>
-            <ToastRegion />
+            <DialogHistoryProvider>
+              <RequireAuth>
+                <GroupProvider>{ui}</GroupProvider>
+              </RequireAuth>
+              <ToastRegion />
+            </DialogHistoryProvider>
           </MemoryRouter>
         </AuthProvider>
       </QueryClientProvider>
