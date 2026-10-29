@@ -68,10 +68,20 @@ describe('UploadPage', () => {
     expect(screen.getByText('2025년')).toBeInTheDocument()
   })
 
-  it('ignores a malformed or future month and clears it', async () => {
+  it('ignores a future month and clears it', async () => {
     coverageByYear({})
 
     renderPage(<><UploadPage today={today} /><Search /></>, { path: '/upload?month=2026-12' })
+
+    await screen.findByText('12월')
+    await waitFor(() => expect(screen.getByRole('status', { name: '주소 검색어' })).toBeEmptyDOMElement())
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('ignores an invalid month and clears it', async () => {
+    coverageByYear({})
+
+    renderPage(<><UploadPage today={today} /><Search /></>, { path: '/upload?month=2026-13' })
 
     await screen.findByText('12월')
     await waitFor(() => expect(screen.getByRole('status', { name: '주소 검색어' })).toBeEmptyDOMElement())

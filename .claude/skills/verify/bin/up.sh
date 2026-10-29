@@ -10,7 +10,11 @@ done
 docker run -d --rm --name $PG_NAME -e POSTGRES_DB=saladbowl -e POSTGRES_USER=saladbowl -e POSTGRES_PASSWORD=saladbowl \
   -p $PG_PORT:5432 postgres:16-alpine >/dev/null
 # 초기화 중인 Postgres는 유닉스 소켓만 열므로 TCP로 확인해야 실제로 쓸 수 있는 상태다.
-until docker exec $PG_NAME pg_isready -h 127.0.0.1 -U saladbowl -d saladbowl >/dev/null 2>&1; do sleep 1; done
+for attempt in $(seq 60); do
+  if docker exec $PG_NAME pg_isready -h 127.0.0.1 -U saladbowl -d saladbowl >/dev/null 2>&1; then break; fi
+  if (( attempt == 60 )); then echo "postgres not ready after 60s; see docker logs $PG_NAME" >&2; exit 1; fi
+  sleep 1
+done
 
 (cd "$ROOT/apps/api" && ./gradlew -q bootJar)
 JAR=$(ls "$ROOT"/apps/api/build/libs/*.jar | grep -v -- -plain | head -1)

@@ -58,6 +58,8 @@ Put the proof for each run in `.verify-artifacts/<feature-id>-<yyyymmdd-hhmm>/`.
 
 ## Cleanup
 
+`$TMPDIR/salad-verify` 상태 폴더는 워크트리끼리 공유하므로 다른 워크트리의 검증 스택이 떠 있으면 먼저 그쪽에서 `down.sh`를 돌린다.
+
 ```bash
 .claude/skills/verify/bin/down.sh
 ```

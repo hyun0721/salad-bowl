@@ -22,7 +22,7 @@ export default function HomePage({ today: todayProp }: Props) {
   const coverage = useQuery({ queryKey: ['coverage', year], queryFn: () => coverageApi.get(year) })
   const mine = useQuery({ queryKey: ['transactions', 'mine', month], queryFn: () => transactionsApi.mine(month) })
   const totals = mine.data ? summarize(mine.data) : null
-  const entry = coverage.data?.find((c) => c.month === month)
+  const entry = coverage.data?.find((c) => c.month === month && c.importedCount > 0)
 
   return (
     <>

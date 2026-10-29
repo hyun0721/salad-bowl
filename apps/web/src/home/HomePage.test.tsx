@@ -37,6 +37,16 @@ describe('HomePage', () => {
     expect(within(card).getByRole('link', { name: '업로드하기' })).toHaveAttribute('href', '/upload?month=2026-09')
   })
 
+  it('treats a month with only manual transactions as not uploaded', async () => {
+    handlers({ coverage: { '2026': [{ month: '2026-09', importedCount: 0, manualCount: 3 }] } })
+
+    renderPage(<HomePage today={today} />)
+
+    const card = await screen.findByRole('region', { name: '지난달 업로드' })
+    expect(await within(card).findByText('2026년 9월 데이터가 아직 없습니다.')).toBeInTheDocument()
+    expect(within(card).getByRole('link', { name: '업로드하기' })).toHaveAttribute('href', '/upload?month=2026-09')
+  })
+
   it('looks up last year in January', async () => {
     handlers({ coverage: { '2025': [{ month: '2025-12', importedCount: 7, manualCount: 0 }] } })
 
