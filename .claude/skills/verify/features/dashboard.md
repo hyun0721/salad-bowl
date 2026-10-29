@@ -34,7 +34,7 @@ Preconditions:
 - **Month in the address.** Click `이전 달`. The address gains `?month=<previous month>` and `history.length` stays the same. The `소분류` link's `href` now ends with that `?month=`.
 - **Minor.** Click `소분류`. The address becomes `/dashboard/minor/trend?month=…` and the card `소분류 추이·분포` shows `대분류(필수)`.
 - **Back.** Use `navigate` `back`. You land on the page you were on before entering the dashboard (`/`), not on a dashboard sub-screen.
-- **Wide.** Set width 1280, go to `/dashboard/major/trend?month=<month>`. The sidebar marks `그룹 대시보드` and `대분류` current, both cards show, and after load `#dashboard-trend` sits near the top of the scrolled area (`getBoundingClientRect().top` well below its unscrolled ~690px).
+- **Wide.** Set width 1280, go to `/dashboard/major/trend?month=<month>`. The sidebar highlights `그룹 대시보드` and `대분류`; only `대분류` has `aria-current="page"` (the parent has `aria-current="true"`), both cards show, and after load `#dashboard-trend` sits near the top of the scrolled area (`getBoundingClientRect().top` well below its unscrolled ~690px).
 - **Trend range.** In `대분류별 추이`, pick `3개월`. The chart and `표로 보기` table show 3 months, each with 식비 ₩ 30,500.
 
 ## Gotchas
@@ -42,4 +42,4 @@ Preconditions:
 - Narrow screens keep the unselected card mounted with `hidden`, so `find` can still return its heading even though it is not shown. Use a screenshot or `read_page` to judge what is visible.
 - The trend range follows the page month only when the preset is relative. `직접 지정` keeps its own months.
 - A short page cannot scroll the trend card all the way to the top; "scrolled" means it moved up, not that its top is 0.
-- On a wide screen with a `:view` in the address, changing the month re-scrolls to that card after the new summary arrives.
+- On a wide screen the `:view` scroll happens once per sub-screen (on entry and once more when the first summary arrives). Changing the month afterwards does not scroll.
