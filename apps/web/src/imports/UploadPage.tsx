@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
+import { useSearchParams } from 'react-router'
 import ui from '../common/ui.module.css'
 import { formatInstant } from '../common/format'
 import { usePageTitle } from '../common/usePageTitle'
@@ -13,12 +14,14 @@ export default function UploadPage({ today: todayProp }: Props) {
   usePageTitle('업로드')
   const [mountedAt] = useState(() => new Date())
   const today = todayProp ?? mountedAt
+  const [params, setParams] = useSearchParams()
   const history = useQuery({ queryKey: ['imports'], queryFn: importsApi.history })
 
   return (
     <>
       <h1>뱅크샐러드 엑셀 업로드</h1>
-      <CoverageSection today={today} />
+      <CoverageSection today={today} initialMonth={params.get('month')}
+        onInitialMonthHandled={() => setParams((p) => { p.delete('month'); return p }, { replace: true })} />
       <section aria-labelledby="upload-title" className={ui.card}>
         <h2 id="upload-title">파일 올리기</h2>
         <ol className={ui.stack}>
