@@ -30,6 +30,9 @@ export function DialogHistoryProvider({ children }: { children: ReactNode }) {
   })
   useLayoutEffect(() => {
     reconcile.current = () => {
+      // BrowserRouter의 push는 history부터 바꾼다. transition 커밋 전에는 이전 위치로 닫힘을 판단하지 않는다.
+      const browserKey: unknown = window.history.state?.key
+      if (typeof browserKey === 'string' && browserKey !== location.key) return
       // navigate의 transition이 커밋되기 전 재렌더를 뒤로가기로 오인하지 않는다.
       if (pendingLocation.current === location) return
       pendingLocation.current = null
