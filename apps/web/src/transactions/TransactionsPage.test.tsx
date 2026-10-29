@@ -118,6 +118,20 @@ describe('TransactionsPage', () => {
     expect(screen.getByRole('button', { name: '다음 페이지' })).toBeDisabled()
   }, 20000)
 
+  it('keeps long unbroken descriptions and categories readable in mobile cards', async () => {
+    mockViewport(true)
+    const description = 'PAYMENT_REFERENCE_'.repeat(25)
+    const categoryMinor = 'CATEGORY_'.repeat(10)
+    mineHandler([{ ...base, description, categoryMinor, amount: -123456789012 }])
+    renderPage(<TransactionsPage today={today} />, { groups })
+
+    const list = await screen.findByRole('grid', { name: '거래 목록' })
+    const card = within(list).getByRole('row', { name: description })
+    expect(within(card).getByText(description, { exact: true })).toBeVisible()
+    expect(card).toHaveTextContent(categoryMinor)
+    expect(card).toHaveTextContent('-₩ 123,456,789,012')
+  })
+
   it('switches to group transactions with owner names and filters by member', async () => {
     mineHandler([])
     const calls: string[] = []
