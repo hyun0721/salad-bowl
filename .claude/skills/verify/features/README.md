@@ -30,7 +30,7 @@ Each feature file starts with an H1 title and one paragraph describing the user-
 
 - [Navigation shell](./navigation.md): sidebar or bottom tabs, account sheet, group selector.
 - [Home](./home.md): last month's upload status and summary.
-- [Group dashboard](./dashboard.md): monthly totals, category donut, per-member table, category trend.
+- [Group dashboard](./dashboard.md): sub-routes for 대분류·소분류 × 분포·추이, month in the address, totals with per-member dialog, category donut and trend.
 - [Upload](./upload.md): monthly upload coverage, Banksalad xlsx upload, and upload history.
 - [Transactions](./transactions.md): my or group transaction list, search, detail, manual add.
 - [Groups](./groups.md): create, rename, invite link, members, bans.

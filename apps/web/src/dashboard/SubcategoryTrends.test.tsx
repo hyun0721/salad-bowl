@@ -1,5 +1,6 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
+import { Route, Routes } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderPage } from '../test/renderPage'
 import { server } from '../test/server'
@@ -11,6 +12,10 @@ vi.mock('../common/echarts', () => ({ echarts: { init: () => ({ setOption: vi.fn
 const today = new Date(2026, 10, 19)
 const group = { groupId: 10, name: '우리집', myRole: 'ADMIN', memberCount: 2 }
 const summary = { month: '2026-10', income: 0, expense: 0, byCategory: [], byMember: [] }
+function renderMinorDashboard() {
+  return renderPage(<Routes><Route path="/dashboard/:level?/:view?" element={<DashboardPage today={today} />} /></Routes>,
+    { groups: [group], path: '/dashboard/minor' })
+}
 beforeEach(() => {
   window.localStorage.clear()
   server.use(http.get('*/api/groups/10/summary/trend', () => HttpResponse.json({ months: [], categories: [] })))
@@ -31,7 +36,7 @@ describe('SubcategoryTrends', () => {
         ])
       }),
     )
-    const { user } = renderPage(<DashboardPage today={today} />, { groups: [group] })
+    const { user } = renderMinorDashboard()
     const section = await screen.findByRole('region', { name: '소분류 추이·분포' })
     await within(section).findByText('대분류 하나를 선택하면 하위 소분류를 볼 수 있습니다.')
     expect(within(section).queryByRole('table')).not.toBeInTheDocument()
@@ -79,7 +84,7 @@ describe('SubcategoryTrends', () => {
       http.get('*/api/groups/10/summary/subcategories', () => fail
         ? HttpResponse.json({}, { status: 500 }) : HttpResponse.json([])),
     )
-    const { user } = renderPage(<DashboardPage today={today} />, { groups: [group] })
+    const { user } = renderMinorDashboard()
     expect(await screen.findByText('대분류 목록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.')).toBeInTheDocument()
     fail = false
     await user.click(screen.getByRole('button', { name: '소분류 다시 시도' }))

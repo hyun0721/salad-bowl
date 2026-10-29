@@ -39,6 +39,10 @@ export function formatMonthLabel(month: string): string {
   return `${year}년 ${Number(m)}월`
 }
 
+export function isYearMonth(value: string | null | undefined): value is string {
+  return value != null && /^\d{4}-(0[1-9]|1[0-2])$/.test(value)
+}
+
 export function currentYearMonth(today: Date = new Date()): string {
   return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`
 }

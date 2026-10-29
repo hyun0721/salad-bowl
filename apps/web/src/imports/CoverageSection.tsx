@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import Dialog from '../common/Dialog'
 import Icon from '../common/Icon'
 import ui from '../common/ui.module.css'
-import { currentYearMonth, defaultYearMonth, formatMonthLabel } from '../common/format'
+import { currentYearMonth, defaultYearMonth, formatMonthLabel, isYearMonth } from '../common/format'
 import CoverageCalendar from './CoverageCalendar'
 import { coverageApi, type CoverageMonth } from './coverageApi'
 import MonthDataDialog from './MonthDataDialog'
@@ -12,11 +12,9 @@ import styles from './CoverageSection.module.css'
 
 type Props = { today: Date; initialMonth?: string | null; onInitialMonthHandled?: () => void }
 
-const MONTH = /^\d{4}-(0[1-9]|1[0-2])$/
-
 /** 한 해의 월별 등록 현황. 미등록 월은 업로드 창, 등록된 월은 데이터 관리 창을 연다. initialMonth가 있으면 그 달 창을 연다. */
 export default function CoverageSection({ today, initialMonth, onInitialMonthHandled }: Props) {
-  const requested = initialMonth && MONTH.test(initialMonth) && initialMonth <= currentYearMonth(today) ? initialMonth : null
+  const requested = isYearMonth(initialMonth) && initialMonth <= currentYearMonth(today) ? initialMonth : null
   // 1월에는 지난달이 작년이므로, 달력도 지난달이 있는 연도부터 보여준다.
   const [year, setYear] = useState(() => Number((requested ?? defaultYearMonth(today)).slice(0, 4)))
   const [uploadMonth, setUploadMonth] = useState<string | null>(null)
