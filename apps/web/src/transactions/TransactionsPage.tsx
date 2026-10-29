@@ -230,8 +230,8 @@ export default function TransactionsPage({ today }: Props) {
     <div className={styles.page} data-fit-viewport="">
       <div className={ui.pageHeader}>
         <h1>거래 목록</h1>
-        <button type="button" className={`${ui.button} ${ui.primary}`}
-          onClick={() => { setAdding(true); setSelectedId(null) }}><Icon name="plus" />거래 추가</button>
+        <button type="button" className={`${ui.button} ${ui.primary}`} aria-label="거래 추가"
+          onClick={() => { setAdding(true); setSelectedId(null) }}><Icon name="plus" />추가</button>
       </div>
       <div className={`${ui.row} ${styles.filters}`}>
         <MonthPicker month={month} onChange={changeMonth} />

@@ -20,6 +20,7 @@ const PAGE_SIZE = 500
 const category = (tx: TransactionView) => `${tx.categoryMajor}${tx.categoryMinor ? ` · ${tx.categoryMinor}` : ''}`
 const editedBadge = (tx: TransactionView) => tx.edited && <span className={`${ui.badge} ${ui.badgePending}`}>수정됨</span>
 const hiddenBadge = (tx: TransactionView) => tx.hidden && <span className={ui.badge}>숨김</span>
+const memoOf = (tx: TransactionView) => tx.memo?.trim() || null
 
 export default function TransactionList({ items, showOwner, selectedId, onSelect }: Props) {
   const narrow = useMediaQuery(NARROW)
@@ -38,8 +39,12 @@ export default function TransactionList({ items, showOwner, selectedId, onSelect
             <span className={styles.amount}>{formatSignedWon(tx.amount)}</span>
           </div>
           <div className={styles.cardMeta}>
-            {[formatDateTime(tx.occurredAt), category(tx), showOwner ? tx.ownerNickname : null].filter(Boolean).join(' · ')}
+            <span className={styles.cardInfo}>
+              {[tx.categoryMajor, tx.categoryMinor, showOwner ? tx.ownerNickname : null].filter(Boolean).join(' · ')}
+              {memoOf(tx) && <>{' '}<span aria-hidden="true">|</span>{' '}{memoOf(tx)}</>}
+            </span>
             {editedBadge(tx)}
+            <span className={styles.when}>{formatDateTime(tx.occurredAt)}</span>
           </div>
         </>
       )}

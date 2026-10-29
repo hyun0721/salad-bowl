@@ -163,18 +163,29 @@ describe('TransactionsPage', () => {
     expect(within(detail).getByRole('heading', { name: '김밥' })).toBeInTheDocument()
   })
 
-  it('shows cards with description, amount and details on a narrow screen', async () => {
+  it('shows cards with category | memo and the time under the amount on a narrow screen', async () => {
     mockViewport(true)
-    mineHandler([{ ...base, edited: true }])
+    mineHandler([
+      { ...base, edited: true, memo: '회사 앞 김밥' },
+      { ...base, id: 2, description: '커피', categoryMinor: '', memo: '   ' },
+    ])
     renderPage(<TransactionsPage today={today} />, { groups })
 
     const list = await screen.findByRole('grid', { name: '거래 목록' })
     const card = within(list).getByRole('row', { name: /김밥/ })
-    expect(card).toHaveTextContent('-₩ 4,000')
-    expect(card).toHaveTextContent('10-05 12:30')
-    expect(card).toHaveTextContent('식비 · 점심')
-    expect(card).toHaveTextContent('수정됨')
+    expect(card).toHaveTextContent(/김밥.*-₩ 4,000.*식비 · 점심 \| 회사 앞 김밥.*수정됨.*10-05 12:30/)
+    expect(within(card).getByText('|')).toHaveAttribute('aria-hidden', 'true')
+    const plain = within(list).getByRole('row', { name: /커피/ })
+    expect(plain).toHaveTextContent(/식비10-05 12:30$/)
+    expect(plain).not.toHaveTextContent('|')
     expect(within(list).queryByRole('columnheader')).not.toBeInTheDocument()
+  })
+
+  it('labels the add button 추가 while keeping its accessible name', async () => {
+    mineHandler([])
+    renderPage(<TransactionsPage today={today} />, { groups })
+    const add = await screen.findByRole('button', { name: '거래 추가' })
+    expect(add).toHaveTextContent(/^추가$/)
   })
 
   it.each([false, true])('pages 500 transactions and searches the whole month (narrow: %s)', async (narrow) => {
