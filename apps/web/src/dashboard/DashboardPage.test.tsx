@@ -1,5 +1,6 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
+import { useEffect } from 'react'
 import { Route, Routes, useLocation, useNavigate, useNavigationType } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { mockViewport } from '../test/mockViewport'
@@ -30,7 +31,12 @@ function Where() {
 
 function LocState() { return <output aria-label="이동 state">{String(useLocation().state?.focusSubcategories ?? null)}</output> }
 
-function Back() { const navigate = useNavigate(); return <button type="button" onClick={() => navigate(-1)}>뒤로 테스트</button> }
+let navigateBack: () => void
+function Back() {
+  const navigate = useNavigate()
+  useEffect(() => { navigateBack = () => { void navigate(-1) } }, [navigate])
+  return <button type="button" onClick={() => navigate(-1)}>뒤로 테스트</button>
+}
 
 function NavType() { return <output aria-label="이동 방식">{useNavigationType()}</output> }
 
@@ -53,6 +59,18 @@ beforeEach(() => {
 })
 
 describe('DashboardPage', () => {
+  it('back closes category transactions without leaving the dashboard', async () => {
+    server.use(
+      http.get('*/api/groups/10/summary', () => HttpResponse.json(summary)),
+      http.get('*/api/groups/10/summary/transactions', () => HttpResponse.json([])),
+    )
+    const { user } = renderDashboard('/dashboard/major?month=2026-10')
+    await user.click(await screen.findByRole('button', { name: '식비 80% ₩ 200,000' }))
+    await act(async () => navigateBack())
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(screen.getByRole('status', { name: '현재 주소' })).toHaveTextContent('/dashboard/major?month=2026-10')
+  })
+
   it('puts the month picker below the classification tabs and before the totals', async () => {
     mockViewport(true)
     server.use(http.get('*/api/groups/10/summary', () => HttpResponse.json(summary)))
@@ -115,6 +133,7 @@ describe('DashboardPage', () => {
     // 차트 이동은 push이므로 뒤로 가면 대분류 화면으로 돌아온다.
     await user.click(screen.getByRole('button', { name: '뒤로 테스트' }))
     await waitFor(() => expect(screen.getByRole('status', { name: '현재 주소' })).toHaveTextContent('/dashboard/major?month=2026-10'))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
   it('shows member totals with an icon close button', async () => {

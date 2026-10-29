@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { Dialog as AriaDialog, Heading, Modal, ModalOverlay } from 'react-aria-components'
 import { useNarrowWhileOpen } from './useMediaQuery'
+import { useDialogHistory } from './DialogHistory'
 import styles from './Overlay.module.css'
 import ui from './ui.module.css'
 
@@ -20,6 +21,7 @@ type FrameProps = {
 export function DialogFrame(props: FrameProps) {
   const { isOpen, onOpenChange, title, closeDisabled = false, closeOnOutsideClick = false, fullHeight = false, wide = false, headerAction, children } = props
   const narrow = useNarrowWhileOpen(isOpen)
+  useDialogHistory(isOpen, closeDisabled, onOpenChange)
 
   const body = (close: () => void) => (
     <>

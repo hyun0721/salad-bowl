@@ -7,6 +7,7 @@ import AppRoutes from './app/AppRoutes'
 import SlowServerOverlay from './app/SlowServerOverlay'
 import UpdatePrompt from './app/UpdatePrompt'
 import { AuthProvider } from './auth/AuthProvider'
+import { DialogHistoryProvider } from './common/DialogHistory'
 import ToastRegion from './common/Toast'
 
 export default function App() {
@@ -15,12 +16,14 @@ export default function App() {
     <QueryClientProvider client={client}>
       <AuthProvider>
         <BrowserRouter>
-          <ErrorBoundary>
-            <AppRoutes />
-          </ErrorBoundary>
-          <SlowServerOverlay />
-          <UpdatePrompt />
-          <ToastRegion />
+          <DialogHistoryProvider>
+            <ErrorBoundary>
+              <AppRoutes />
+            </ErrorBoundary>
+            <SlowServerOverlay />
+            <UpdatePrompt />
+            <ToastRegion />
+          </DialogHistoryProvider>
         </BrowserRouter>
       </AuthProvider>
     </QueryClientProvider>
