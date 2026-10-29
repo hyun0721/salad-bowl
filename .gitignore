@@ -21,3 +21,6 @@ apps/web/dist/
 # Local Graphify environment and generated graph/cache
 .venv-graphify/
 graphify-out/
+
+# 검증 스킬 증거
+.verify-artifacts/
