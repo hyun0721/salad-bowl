@@ -70,6 +70,12 @@ public class SummaryService {
         return major == null || major.isBlank() ? UNCATEGORIZED : major;
     }
 
+    /** 집계와 거래 목록에서 빈 소분류를 같은 키로 취급한다. */
+    static String minorLabel(LedgerTransaction tx) {
+        String minor = tx.displayCategory().minor();
+        return minor == null || minor.isBlank() ? UNCATEGORIZED : minor;
+    }
+
     @Transactional(readOnly = true)
     public MonthlySummary monthly(long groupId, long userId, YearMonth month) {
         access.requireMember(groupId, userId);
@@ -147,13 +153,15 @@ public class SummaryService {
         return row;
     }
 
-    /** 요약의 대분류 조각 하나를 이루는 거래. 환불(양수 지출)도 넣어야 합계가 조각과 같다. */
+    /** 요약의 대분류(선택 시 소분류) 조각을 이루는 거래. 환불도 넣어야 합계가 같다. */
     @Transactional(readOnly = true)
-    public List<TransactionView> categoryTransactions(long groupId, long userId, YearMonth month, String category) {
+    public List<TransactionView> categoryTransactions(long groupId, long userId, YearMonth month, String category,
+                                                      String minor) {
         access.requireMember(groupId, userId);
         List<LedgerTransaction> matched = summaryTransactions(access.sharedOwnerIds(groupId), month).stream()
                 .filter(tx -> tx.getType() == TransactionType.EXPENSE)
                 .filter(tx -> majorLabel(tx).equals(category))
+                .filter(tx -> minor == null || minorLabel(tx).equals(minor))
                 .toList();
         Map<Long, Boolean> editable = new HashMap<>();
         return views.toViews(matched,
@@ -177,9 +185,7 @@ public class SummaryService {
         Map<Key, BigDecimal> totals = new LinkedHashMap<>();
         for (LedgerTransaction tx : summaryTransactions(owners, from, month)) {
             if (tx.getType() != TransactionType.EXPENSE) continue;
-            Category category = tx.displayCategory();
-            Key key = new Key(YearMonth.from(tx.getOccurredAt()).toString(), majorLabel(tx),
-                    category.minor() == null || category.minor().isBlank() ? UNCATEGORIZED : category.minor());
+            Key key = new Key(YearMonth.from(tx.getOccurredAt()).toString(), majorLabel(tx), minorLabel(tx));
             totals.merge(key, tx.getAmount().negate(), BigDecimal::add);
         }
         return totals.entrySet().stream()

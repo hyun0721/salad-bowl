@@ -125,6 +125,49 @@ class SummaryApiTest extends IntegrationTest {
                 .param("category", category).header("Authorization", who.bearer()));
     }
 
+    private LedgerTransaction saveMinor(AuthedUser owner, String dateTime, String major, String minor,
+                                        long amount) {
+        return transactions.save(LedgerTransaction.manual(owner.id(), new TransactionData(
+                java.time.LocalDateTime.parse(dateTime), TransactionType.EXPENSE, major, minor,
+                major + "/" + minor + " 거래", BigDecimal.valueOf(amount).setScale(2), "KRW", "카드", null)));
+    }
+
+    private org.springframework.test.web.servlet.ResultActions minorTxs(String category, String minor)
+            throws Exception {
+        return mvc.perform(get("/groups/" + groupId + "/summary/transactions").param("month", "2026-09")
+                .param("category", category).param("minor", minor).header("Authorization", admin.bearer()));
+    }
+
+    @Test
+    void categoryTransactionsFilterByMinorWithSubcategoryKeys() throws Exception {
+        saveMinor(admin, "2026-09-01T12:00:00", "식비", "외식", -10_000);
+        saveMinor(member, "2026-09-02T12:00:00", "식비", "외식", 2_000);
+        LedgerTransaction moved = saveMinor(member, "2026-09-03T12:00:00", "원본", "원본", -3_000);
+        moved.setCategoryMajorOverride("식비");
+        moved.setCategoryMinorOverride("외식");
+        transactions.save(moved);
+        saveMinor(admin, "2026-09-04T12:00:00", "식비", "장보기", -5_000);
+        saveMinor(admin, "2026-09-05T12:00:00", "식비", "  ", -1_000);
+        saveMinor(admin, "2026-09-06T12:00:00", "카페", "외식", -4_000);
+        saveMinor(admin, "2026-10-01T12:00:00", "식비", "외식", -99_000);
+
+        minorTxs("식비", "외식").andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(3)))
+                .andExpect(jsonPath("$[0].amount").value(-3_000.0))
+                .andExpect(jsonPath("$[1].amount").value(2_000.0))
+                .andExpect(jsonPath("$[2].amount").value(-10_000.0));
+        minorTxs("식비", "미분류").andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].amount").value(-1_000.0));
+        minorTxs("카페", "외식").andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].amount").value(-4_000.0));
+        minorTxs("식비", "없는소분류").andExpect(jsonPath("$", hasSize(0)));
+        categoryTxs(admin, "식비").andExpect(jsonPath("$", hasSize(5)));
+
+        subcategories("2026-09", "2026-09")
+                .andExpect(jsonPath("$[?(@.major == '식비' && @.minor == '외식')]", hasSize(1)))
+                .andExpect(jsonPath("$[?(@.major == '식비' && @.minor == '외식')].expense").value(11_000.0));
+    }
+
     @Test
     void categoryTransactionsMatchSummaryAndApplySummaryRules() throws Exception {
         save(admin, TransactionType.EXPENSE, "2026-09-01T12:00:00", "식비", -10_000);
