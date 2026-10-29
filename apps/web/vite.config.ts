@@ -58,7 +58,8 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://localhost:8080',
+        // 검증 스킬(.claude/skills/verify)은 개발 인스턴스와 겹치지 않게 다른 API 포트를 쓴다.
+        target: process.env.API_PROXY_TARGET ?? 'http://localhost:8080',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
