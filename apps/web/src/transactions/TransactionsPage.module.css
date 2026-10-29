@@ -9,9 +9,10 @@
 .listCard :is(th, td) { white-space: nowrap; }
 .listCard thead th { position: sticky; top: 0; z-index: 1; background: var(--surface-000); box-shadow: inset 0 -1px var(--line); }
 .cardTop { display: flex; justify-content: space-between; gap: var(--space-3); font-weight: 600; }
-.cardMeta { font-size: var(--text-sm); color: var(--ink-muted); }
+.cardTop > :first-child { min-width: 0; overflow-wrap: anywhere; }
+.cardMeta { font-size: var(--text-sm); color: var(--ink-muted); overflow-wrap: anywhere; }
 .when, .amount { font-variant-numeric: tabular-nums; white-space: nowrap; }
-.amount { text-align: right; }
+.amount { flex-shrink: 0; text-align: right; }
 .visuallyHidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .panel { flex: 0 0 360px; overflow-y: auto; }
 /* 사이드바를 연 채 창을 좁히면 열린 동안은 넓은 화면 모양을 유지한다. 목록이 눌리지 않게 패널을 아래로 내린다. */
