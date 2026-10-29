@@ -18,6 +18,7 @@
   - 멤버별 창에는 `닫기` 아이콘 버튼 하나만 있다.
 - 넓은 폭(1280px): 사이드바 `그룹 대시보드`(`aria-current="true"`)와 `대분류`(`page`), 좁은 화면 메뉴는 없다. 거래 창 머리 버튼은 좁은 폭과 같다.
 - 전후 스크린샷: `.verify-artifacts/preview-16e/`.
+- 마지막 포커스 수정(`b2ca16a`)은 Codex 사용량 한도로 Claude가 구현했고, 한도가 풀린 뒤 Codex가 리뷰했다(결함 없음).
 - 기능 지도 `dashboard.md`·`navigation.md`를 이 동작에 맞게 고쳤다. `/maintain-verification-skill` 전체 실행이 아니라 바뀐 기능만 고쳤다.
 
 ## 미룬 것
@@ -26,5 +27,4 @@
 - 소분류 `:view` 주소의 카드 스크롤(16d에서 카드를 나눌 때 `dashboard-share`·`dashboard-trend` id를 붙인다).
 - 소분류 화면에서 대분류를 바꿀 때 `?major=`를 주소에 쓸지(16d).
 - 좁은 화면에서 차트 이동(push) 뒤 메뉴 `대분류`(replace)를 누르면 기록이 [대분류, 대분류]가 되어 첫 뒤로가기가 같은 화면에 머문다. 형제 이동 replace 규칙대로라 그대로 둔다.
-- 마지막 포커스 수정(`b2ca16a`)은 Codex 사용량 한도로 Claude가 구현했고, Codex 리뷰는 받지 못했다.
 - 실제 스크린리더와 실제 기기(iOS·Android PWA)로는 확인하지 않았다.
