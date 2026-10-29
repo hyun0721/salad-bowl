@@ -1,8 +1,10 @@
 import { useQuery } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { Navigate, useLocation, useParams, useSearchParams } from 'react-router'
 import MonthPicker from '../common/MonthPicker'
 import ui from '../common/ui.module.css'
-import { defaultYearMonth, formatMonthLabel, formatWon } from '../common/format'
+import { defaultYearMonth, formatMonthLabel, formatWon, isYearMonth } from '../common/format'
+import { NARROW, useMediaQuery } from '../common/useMediaQuery'
 import { usePageTitle } from '../common/usePageTitle'
 import { useGroups } from '../groups/GroupProvider'
 import NoGroupNotice from '../groups/NoGroupNotice'
@@ -11,20 +13,32 @@ import CategoryBreakdown from './CategoryBreakdown'
 import CategoryTrend from './CategoryTrend'
 import SubcategoryTrends from './SubcategoryTrends'
 import { dashboardApi, type MonthlySummary } from './dashboardApi'
+import { dashboardRedirect, dashboardTitle, type Level, type View } from './dashboardRoute'
 import MemberTotalsDialog, { type TotalKind } from './MemberTotalsDialog'
 
 type Props = { today?: Date }
 
 export default function DashboardPage({ today }: Props) {
-  usePageTitle('그룹 대시보드')
+  const params = useParams()
+  const [search, setSearch] = useSearchParams()
+  const { search: rawSearch } = useLocation()
+  const narrow = useMediaQuery(NARROW)
+  const redirect = dashboardRedirect(params.level, params.view, narrow)
+  const level = (params.level ?? 'major') as Level
+  const view = (params.view ?? 'share') as View
+  const requested = search.get('month')
+  const [fallbackMonth] = useState(() => defaultYearMonth(today ?? new Date()))
+  const month = isYearMonth(requested) ? requested : fallbackMonth
+  usePageTitle(dashboardTitle(level, view, narrow))
   const { groups, selectedGroupId, isLoading, isError, retry } = useGroups()
-  const [month, setMonth] = useState(() => defaultYearMonth(today ?? new Date()))
   const summary = useQuery({
     queryKey: ['summary', selectedGroupId, month],
     queryFn: () => dashboardApi.summary(selectedGroupId!, month),
     enabled: selectedGroupId !== null,
   })
   const groupName = groups.find((g) => g.groupId === selectedGroupId)?.name
+
+  if (redirect) return <Navigate to={redirect + rawSearch} replace />
 
   if (isLoading || isError || selectedGroupId === null) {
     return (
@@ -46,7 +60,7 @@ export default function DashboardPage({ today }: Props) {
     <>
       <div className={ui.pageHeader}>
         <h1>그룹 대시보드</h1>
-        <MonthPicker month={month} onChange={setMonth} />
+        <MonthPicker month={month} onChange={(m) => setSearch((p) => { p.set('month', m); return p }, { replace: true })} />
       </div>
       <p className={ui.muted}>
         {groupName} · {formatMonthLabel(month)} · 공개를 켠 멤버의 원화 거래를 합칩니다(이체·숨긴 거래 제외).
@@ -58,14 +72,22 @@ export default function DashboardPage({ today }: Props) {
           <button type="button" className={ui.button} onClick={() => void summary.refetch()}>다시 시도</button>
         </div>
       )}
-      <SummaryView key={selectedGroupId} groupId={selectedGroupId} month={month} summary={summary.data} />
+      <SummaryView key={selectedGroupId} groupId={selectedGroupId} month={month} summary={summary.data}
+        level={level} view={params.view as View | undefined} narrow={narrow} />
     </>
   )
 }
 
-function SummaryView({ groupId, month, summary }: { groupId: number; month: string; summary?: MonthlySummary }) {
+function SummaryView({ groupId, month, summary, level, view, narrow }: {
+  groupId: number; month: string; summary?: MonthlySummary; level: Level; view?: View; narrow: boolean
+}) {
   const [kind, setKind] = useState<TotalKind | null>(null)
   const empty = summary && summary.income === 0 && summary.expense === 0
+  const shownView = view ?? 'share'
+  useEffect(() => {
+    if (narrow || !view) return
+    document.getElementById(`dashboard-${view}`)?.scrollIntoView?.({ block: 'start' })
+  }, [narrow, view, level])
   return (
     <>
       {summary && <>
@@ -79,11 +101,22 @@ function SummaryView({ groupId, month, summary }: { groupId: number; month: stri
         ))}
       </div>
       {empty && <p className={ui.status}>이 달에 합칠 거래가 없습니다.</p>}
-      <CategoryBreakdown key={`${groupId}:${month}`} groupId={groupId} month={month} summary={summary} />
       <MemberTotalsDialog kind={kind} summary={summary} onClose={() => setKind(null)} />
       </>}
-      <CategoryTrend groupId={groupId} month={month} />
-      <SubcategoryTrends groupId={groupId} month={month} />
+      {/* Task 3: 좁은 화면 메뉴 자리 */}
+      {level === 'minor' ? (
+        // shortcut: 16d 전까지 소분류는 main의 카드를 그대로 보여준다. 16d에서 소분류 분포·추이로 바꾼다.
+        <SubcategoryTrends groupId={groupId} month={month} />
+      ) : (
+        <>
+          <div id="dashboard-share" hidden={narrow && shownView !== 'share'}>
+            {summary && <CategoryBreakdown key={`${groupId}:${month}`} groupId={groupId} month={month} summary={summary} />}
+          </div>
+          <div id="dashboard-trend" hidden={narrow && shownView !== 'trend'}>
+            <CategoryTrend groupId={groupId} month={month} />
+          </div>
+        </>
+      )}
     </>
   )
 }

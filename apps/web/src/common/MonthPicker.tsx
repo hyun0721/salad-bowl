@@ -1,10 +1,8 @@
 import { useId, useState } from 'react'
-import { shiftMonth } from './format'
+import { isYearMonth, shiftMonth } from './format'
 import Icon from './Icon'
 import styles from './MonthPicker.module.css'
 import ui from './ui.module.css'
-
-const MONTH = /^\d{4}-(0[1-9]|1[0-2])$/
 
 type Props = { month: string; onChange: (month: string) => void; label?: string }
 
@@ -22,7 +20,7 @@ export default function MonthPicker({ month, onChange, label = '월' }: Props) {
     setShown(month)
     setDraft(month)
   }
-  const valid = MONTH.test(draft)
+  const valid = isYearMonth(draft)
 
   return (
     <div className={styles.picker}>
@@ -34,7 +32,7 @@ export default function MonthPicker({ month, onChange, label = '월' }: Props) {
           aria-describedby={valid ? undefined : hintId}
           onChange={(e) => {
             setDraft(e.target.value)
-            if (MONTH.test(e.target.value)) onChange(e.target.value)
+            if (isYearMonth(e.target.value)) onChange(e.target.value)
           }} />
       </label>
       <button type="button" className={`${ui.button} ${styles.step}`} aria-label={`${prefix}다음 달`}

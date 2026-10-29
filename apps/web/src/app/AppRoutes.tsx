@@ -26,7 +26,7 @@ export default function AppRoutes() {
           <Route path="/invite/:token" element={<RequireAuth><InvitePage /></RequireAuth>} />
           <Route element={<RequireAuth><GroupProvider><AppLayout /></GroupProvider></RequireAuth>}>
             <Route index element={<HomePage />} />
-            <Route path="dashboard" element={<DashboardPage />} />
+            <Route path="dashboard/:level?/:view?" element={<DashboardPage />} />
             <Route path="transactions" element={<TransactionsPage />} />
             <Route path="upload" element={<UploadPage />} />
             <Route path="groups" element={<GroupsPage />} />
