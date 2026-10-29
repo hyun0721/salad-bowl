@@ -1,18 +1,13 @@
-import { useIsMutating, useQuery } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Link } from 'react-router'
-import Dialog from '../common/Dialog'
-import Icon from '../common/Icon'
 import ui from '../common/ui.module.css'
 import { defaultYearMonth, formatInstant, formatMonthLabel, formatWon } from '../common/format'
 import { usePageTitle } from '../common/usePageTitle'
 import { importsApi } from '../imports/importsApi'
-import UploadForm from '../imports/UploadForm'
+import CoverageSection from '../imports/CoverageSection'
 import { summarize } from '../transactions/summary'
 import { transactionsApi } from '../transactions/transactionsApi'
-import CoverageCalendar from './CoverageCalendar'
-import { coverageApi, type CoverageMonth } from './coverageApi'
-import MonthDataDialog from './MonthDataDialog'
 import styles from './HomePage.module.css'
 
 type Props = { today?: Date }
@@ -22,47 +17,15 @@ export default function HomePage({ today: todayProp }: Props) {
   const [mountedAt] = useState(() => new Date())
   const today = todayProp ?? mountedAt
   const month = defaultYearMonth(today)
-  // 1월에는 지난달이 작년이므로, 달력도 지난달이 있는 연도부터 보여준다.
-  const [year, setYear] = useState(() => Number(month.slice(0, 4)))
-  const [uploadMonth, setUploadMonth] = useState<string | null>(null)
-  const [managed, setManaged] = useState<CoverageMonth | null>(null)
-  const [notice, setNotice] = useState<string | null>(null)
-  const uploading = useIsMutating({ mutationKey: ['upload'] }) > 0
-
-  const coverage = useQuery({ queryKey: ['coverage', year], queryFn: () => coverageApi.get(year) })
   const mine = useQuery({ queryKey: ['transactions', 'mine', month], queryFn: () => transactionsApi.mine(month) })
   const imports = useQuery({ queryKey: ['imports'], queryFn: importsApi.history })
   const totals = mine.data ? summarize(mine.data) : null
 
   return (
     <>
-      <div className={ui.pageHeader}>
-        <h1>내 가계부</h1>
-        <div className={ui.row}>
-          <button type="button" className={ui.button} aria-label="이전 연도" onClick={() => { setNotice(null); setYear(year - 1) }}><Icon name="chevron-left" size={18} /></button>
-          <span className={styles.year}>{year}년</span>
-          <button type="button" className={ui.button} aria-label="다음 연도" onClick={() => { setNotice(null); setYear(year + 1) }}><Icon name="chevron-right" size={18} /></button>
-        </div>
-      </div>
+      <h1>내 가계부</h1>
 
-      <section aria-labelledby="coverage-title" className={ui.card}>
-        <div className={ui.pageHeader}>
-          <h2 id="coverage-title">월별 등록 현황</h2>
-          <span className={ui.muted}>거래 일자 기준 · 미등록 월을 누르면 업로드합니다</span>
-        </div>
-        {notice && <p role="status" className={ui.status}>{notice}</p>}
-        {coverage.isPending && <p className={ui.status}>불러오는 중입니다.</p>}
-        {coverage.isError && (
-          <div className={ui.row}>
-            <p role="alert" className={ui.alert}>등록 현황을 불러오지 못했습니다.</p>
-            <button type="button" className={ui.button} onClick={() => void coverage.refetch()}>다시 시도</button>
-          </div>
-        )}
-        {coverage.data && (
-          <CoverageCalendar year={year} today={today} coverage={coverage.data} onPickMissing={(month) => { setNotice(null); setUploadMonth(month) }}
-            onPickRegistered={(entry) => { setNotice(null); setManaged(entry) }} />
-        )}
-      </section>
+      <CoverageSection today={today} />
 
       <div className={styles.twoColumns}>
         <section aria-labelledby="summary-title" className={ui.card}>
@@ -106,17 +69,6 @@ export default function HomePage({ today: todayProp }: Props) {
           <Link to="/upload">업로드 이력 전체</Link>
         </section>
       </div>
-
-      {uploadMonth && (
-        <Dialog title={`${formatMonthLabel(uploadMonth)} 데이터 업로드`} onClose={() => setUploadMonth(null)} closeDisabled={uploading}>
-          <p className={ui.status}>뱅크샐러드에서 내려받은 엑셀(.xlsx)을 올려주세요. 여러 달이 들어 있어도 거래 일자에 맞게 반영됩니다.</p>
-          <UploadForm />
-        </Dialog>
-      )}
-      {managed && (
-        <MonthDataDialog coverage={managed} onClose={() => setManaged(null)}
-          onDeleted={(message) => { setManaged(null); setNotice(message) }} />
-      )}
     </>
   )
 }

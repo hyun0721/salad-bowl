@@ -6,9 +6,9 @@ import TextField from '../common/TextField'
 import { errorMessage } from '../common/errorMessage'
 import { formatMonthLabel } from '../common/format'
 import ui from '../common/ui.module.css'
-import UploadForm from '../imports/UploadForm'
+import UploadForm from './UploadForm'
 import type { CoverageMonth } from './coverageApi'
-import styles from './HomePage.module.css'
+import styles from './MonthDataDialog.module.css'
 import { useDeleteMonth } from './useDeleteMonth'
 
 type Props = { coverage: CoverageMonth; onClose: () => void; onDeleted: (message: string) => void }
