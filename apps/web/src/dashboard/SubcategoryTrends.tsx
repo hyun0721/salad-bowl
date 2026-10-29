@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
-import { useLocation } from 'react-router'
+import { useLocation, useNavigate } from 'react-router'
 import { formatMonthLabel, formatWon, shiftMonth } from '../common/format'
 import Select from '../common/Select'
 import ui from '../common/ui.module.css'
@@ -8,11 +8,16 @@ import { dashboardApi } from './dashboardApi'
 import styles from './SubcategoryTrends.module.css'
 
 export default function SubcategoryTrends({ groupId, month, initialMajor }: { groupId: number; month: string; initialMajor?: string }) {
-  const focusSubcategories = useLocation().state?.focusSubcategories === true
+  const { pathname, search, state } = useLocation()
+  const navigate = useNavigate()
+  const focusSubcategories = state?.focusSubcategories === true
   const titleRef = useRef<HTMLHeadingElement>(null)
   useEffect(() => {
-    if (focusSubcategories) titleRef.current?.focus()
-  }, [focusSubcategories])
+    if (!focusSubcategories) return
+    titleRef.current?.focus()
+    // router state는 history 항목에 남아 새로고침·뒤로/앞으로에서 포커스가 또 옮겨지므로 한 번 쓰고 비운다.
+    navigate(pathname + search, { replace: true, state: null })
+  }, [focusSubcategories, navigate, pathname, search])
   const [selected, setSelected] = useState(initialMajor ?? '')
   const query = useQuery({
     queryKey: ['summary', groupId, month, 'subcategories'],

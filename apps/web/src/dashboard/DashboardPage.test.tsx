@@ -1,6 +1,6 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { Route, Routes, useLocation, useNavigationType } from 'react-router'
+import { Route, Routes, useLocation, useNavigate, useNavigationType } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { mockViewport } from '../test/mockViewport'
 import { renderPage } from '../test/renderPage'
@@ -28,13 +28,20 @@ function Where() {
   return <output aria-label="현재 주소">{pathname + search}</output>
 }
 
+function LocState() { return <output aria-label="이동 state">{String(useLocation().state?.focusSubcategories ?? null)}</output> }
+
+function Back() { const navigate = useNavigate(); return <button type="button" onClick={() => navigate(-1)}>뒤로 테스트</button> }
+
 function NavType() { return <output aria-label="이동 방식">{useNavigationType()}</output> }
 
 function renderDashboard(path = '/dashboard/major') {
   return renderPage(
+    <>
     <Routes>
-      <Route path="/dashboard/:level?/:view?" element={<><DashboardPage today={today} /><Where /><NavType /></>} />
-    </Routes>,
+      <Route path="/dashboard/:level?/:view?" element={<><DashboardPage today={today} /><Where /><NavType /><LocState /></>} />
+    </Routes>
+    <Back />
+    </>,
     { groups: [group], path },
   )
 }
@@ -64,11 +71,19 @@ describe('DashboardPage', () => {
     const url = new URL(screen.getByRole('status', { name: '현재 주소' }).textContent!, 'http://test')
     expect(url.searchParams.get('month')).toBe('2026-10')
     expect(url.searchParams.get('major')).toBe('식비')
-    expect(screen.getByRole('status', { name: '이동 방식' })).toHaveTextContent('PUSH')
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     const section = await screen.findByRole('region', { name: '소분류 추이·분포' })
-    expect(within(section).getByRole('heading', { name: '소분류 추이·분포' })).toHaveFocus()
+    const title = within(section).getByRole('heading', { name: '소분류 추이·분포' })
+    expect(title).toHaveFocus()
+    // 포커스 뒤 state는 소비되어(replace) 새로고침·뒤로/앞으로에서 포커스가 다시 옮겨지지 않는다.
+    await waitFor(() => expect(screen.getByRole('status', { name: '이동 state' })).toHaveTextContent('null'))
+    expect(screen.getByRole('status', { name: '이동 방식' })).toHaveTextContent('REPLACE')
+    expect(title).toHaveFocus()
+    expect(new URL(screen.getByRole('status', { name: '현재 주소' }).textContent!, 'http://test').search).toBe(url.search)
     expect(await within(section).findByRole('heading', { name: '식비 소분류 월별 추이' })).toBeInTheDocument()
+    // 차트 이동은 push이므로 뒤로 가면 대분류 화면으로 돌아온다.
+    await user.click(screen.getByRole('button', { name: '뒤로 테스트' }))
+    await waitFor(() => expect(screen.getByRole('status', { name: '현재 주소' })).toHaveTextContent('/dashboard/major?month=2026-10'))
   })
 
   it('shows member totals with an icon close button', async () => {
