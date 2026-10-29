@@ -28,3 +28,9 @@
   .shell { height: 100vh; height: 100dvh; flex-wrap: nowrap; }
   .content { flex: 1; min-height: 0; overflow-y: auto; }
 }
+/* 페이지가 data-fit-viewport를 달면 좁은 화면에서도 창 높이에 맞추고 페이지 안에서 스크롤한다. 본문 아래는 탭 바 높이만 비운다. */
+@media (max-width: 820px) {
+  .shell:has([data-fit-viewport]) { height: 100vh; height: 100dvh; flex-wrap: nowrap; }
+  .shell:has([data-fit-viewport]) .main { min-height: 0; }
+  .content:has(> [data-fit-viewport]) { flex: 1; min-height: 0; overflow: hidden; padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px)); }
+}

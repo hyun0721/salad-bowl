@@ -185,25 +185,45 @@ describe('TransactionsPage', () => {
     const { user } = renderPage(<TransactionsPage today={today} />, { groups })
     const list = await screen.findByRole('grid', { name: '거래 목록' })
     expect(within(list).getAllByRole('row')).toHaveLength(narrow ? 500 : 501)
+    expect(screen.getByRole('status')).toHaveTextContent(/^1 \/ 2/)
     expect(screen.getByRole('status')).toHaveTextContent('1–500 / 501건')
     expect(screen.getByRole('button', { name: '이전 페이지' })).toBeDisabled()
     await user.click(screen.getByRole('button', { name: '다음 페이지' }))
     expect(within(list).getAllByRole('row')).toHaveLength(narrow ? 1 : 2)
     expect(within(list).getByText('거래 501')).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent(/^2 \/ 2/)
     expect(screen.getByRole('button', { name: '다음 페이지' })).toBeDisabled()
 
     if (!narrow) {
       await user.click(within(list).getByRole('columnheader', { name: /금액/ }))
-      expect(screen.getByRole('status')).toHaveTextContent('1–500 / 501건')
+      expect(screen.getByRole('status')).toHaveTextContent(/^1 \/ 2/)
       expect(within(list).getAllByRole('row')[1]).toHaveTextContent('거래 501')
       await user.click(screen.getByRole('button', { name: '다음 페이지' }))
       expect(within(list).getByText('거래 1')).toBeInTheDocument()
     }
     fireEvent.change(screen.getByRole('searchbox', { name: '검색' }), { target: { value: '거래 501' } })
+    expect(screen.getByRole('status')).toHaveTextContent(/^1 \/ 1/)
     expect(screen.getByRole('status')).toHaveTextContent('1–1 / 1건')
     expect(within(screen.getByRole('grid', { name: '거래 목록' })).getByText('거래 501')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '다음 페이지' })).toBeDisabled()
   }, 20000)
+
+  it('shows the page footer as current / total with icon buttons', async () => {
+    mockViewport(true)
+    mineHandler([{ ...base }])
+    renderPage(<TransactionsPage today={today} />, { groups })
+    const footer = await screen.findByRole('navigation', { name: '거래 목록 페이지' })
+    expect(within(footer).getByRole('button', { name: '이전 페이지' })).toHaveTextContent(/^$/)
+    expect(within(footer).getByRole('button', { name: '다음 페이지' })).toHaveTextContent(/^$/)
+    expect(within(footer).getByRole('status')).toHaveTextContent(/^1 \/ 1/)
+  })
+
+  it('marks the page so the shell fits the viewport', async () => {
+    mineHandler([{ ...base }])
+    renderPage(<TransactionsPage today={today} />, { groups })
+    const heading = await screen.findByRole('heading', { level: 1, name: '거래 목록' })
+    expect(heading.closest('[data-fit-viewport]')).not.toBeNull()
+  })
 
   it('keeps long unbroken descriptions and categories readable in mobile cards', async () => {
     mockViewport(true)

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import CardList from '../common/CardList'
+import Icon from '../common/Icon'
 import DataTable, { type DataColumn } from '../common/DataTable'
 import { formatDateTime, formatSignedWon } from '../common/format'
 import ui from '../common/ui.module.css'
@@ -62,12 +63,14 @@ export default function TransactionList({ items, showOwner, selectedId, onSelect
           currentId={selectedId} onRowAction={(id) => onSelect(Number(id))} />}
       </div>
       <nav aria-label="거래 목록 페이지" className={styles.pagination}>
-        <span role="status">{page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, items.length)} / {items.length}건</span>
-        <div className={ui.row}>
-          <button type="button" className={ui.button} disabled={page === 0} onClick={() => setPage(page - 1)}>이전 페이지</button>
-          <span>{page + 1} / {pageCount}</span>
-          <button type="button" className={ui.button} disabled={page + 1 >= pageCount} onClick={() => setPage(page + 1)}>다음 페이지</button>
-        </div>
+        <span role="status">
+          {page + 1} / {pageCount}
+          <span className={styles.visuallyHidden}>, {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, items.length)} / {items.length}건</span>
+        </span>
+        <button type="button" className={`${ui.button} ${styles.pageStep}`} aria-label="이전 페이지"
+          disabled={page === 0} onClick={() => setPage(page - 1)}><Icon name="chevron-left" size={18} /></button>
+        <button type="button" className={`${ui.button} ${styles.pageStep}`} aria-label="다음 페이지"
+          disabled={page + 1 >= pageCount} onClick={() => setPage(page + 1)}><Icon name="chevron-right" size={18} /></button>
       </nav>
     </>
   )
