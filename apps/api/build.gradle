@@ -81,3 +81,23 @@ tasks.register('largeWorkbook', JavaExec) {
 tasks.named('jar') {
 	enabled = false
 }
+
+// 빌드 결과물에 고정한다. Docker는 공용 계산기가 만든 파일을 전달하고 로컬은 dev다.
+def releaseMetadata = providers.gradleProperty('releaseMetadataFile')
+def generateReleaseMetadata = tasks.register('generateReleaseMetadata') {
+    def output = layout.buildDirectory.file('generated/release/version.properties')
+    if (releaseMetadata.isPresent()) {
+        inputs.file(releaseMetadata)
+    }
+    outputs.file(output)
+    doLast {
+        def target = output.get().asFile
+        target.parentFile.mkdirs()
+        target.text = releaseMetadata.isPresent()
+            ? file(releaseMetadata.get()).getText('UTF-8')
+            : 'version=dev\ncommit=unknown\n'
+    }
+}
+tasks.named('processResources') {
+    from(generateReleaseMetadata)
+}

@@ -7,8 +7,8 @@ services:
     runtime: docker
     plan: free
     region: singapore
-    rootDir: apps/api
-    dockerfilePath: ./Dockerfile
+    rootDir: .
+    dockerfilePath: ./apps/api/Dockerfile
     dockerContext: .
     healthCheckPath: /actuator/health
     # GitHub 검사(api-ci)가 통과한 커밋만 배포한다.
@@ -16,3 +16,7 @@ services:
     buildFilter:
       paths:
         - apps/api/**
+        - scripts/release/**
+        - release-version.json
+        - render.yaml
+        - .dockerignore

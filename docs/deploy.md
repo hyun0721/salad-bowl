@@ -21,7 +21,7 @@
 
 1. GitHub를 연결해 계정을 생성한다.
 2. New → Blueprint에서 이 저장소를 선택한다.
-3. `render.yaml`의 서비스 `salad-bowl-api`, 무료 플랜, Singapore 지역, 루트 `apps/api`, Dockerfile `./Dockerfile`, health 경로 `/actuator/health`를 확인하고 생성한다.
+3. `render.yaml`의 서비스 `salad-bowl-api`, 무료 플랜, Singapore 지역, 루트 `.`, Dockerfile `./apps/api/Dockerfile`, Docker context `.`, health 경로 `/actuator/health`를 확인하고 생성한다.
 4. 아직 환경변수가 없으므로 첫 배포는 실패하는 것이 정상임을 확인한다. 이후 `sync-config`로 값을 반영하고 다시 배포한다.
 5. 서비스 주소 `https://<render-host>`와 서비스 ID `srv-<service-id>`를 확인한다. 서비스 ID는 대시보드 URL 또는 Settings에서 확인한다.
 6. Account Settings → API Keys에서 API 키를 생성해 비밀번호 관리자에 보관한다.
@@ -40,7 +40,7 @@
 | Root directory | `apps/web` |
 | Build command | `npm run build` |
 | Build output directory | `dist` |
-| Build watch paths → Include | `apps/web/*` |
+| Build watch paths → Include | `apps/web/*`, `scripts/release/*`, `release-version.json`, `render.yaml`, `.dockerignore` |
 
 3. 첫 배포는 `API_ORIGIN`·`PROXY_SECRET`·`NODE_VERSION`이 아직 없는 상태에서 실행한다. 빌드는 `apps/web/.nvmrc`의 Node 22를 사용하며, `sync-config` 실행과 배포 Retry 전까지 `/api`는 503 `SERVER_UNAVAILABLE`을 반환한다. 배포 후 주소 `https://<project>.pages.dev`, 프로젝트 이름, 계정 ID를 확인한다. 계정 ID는 대시보드 오른쪽 또는 URL에서 확인한다.
 4. My Profile → API Tokens에서 토큰을 만든다. 권한은 **Account · Cloudflare Pages · Edit**로 지정하고 이 계정만 대상으로 제한한다.
@@ -152,11 +152,114 @@ cd apps/api && ./gradlew largeWorkbook -Pout=/tmp/salad-large.xlsx
 
 ## 7. 이후 배포
 
-`main`에 머지하면 Pages는 `apps/web/**` 변경을, Render는 `apps/api/**` 변경을 대상으로 자동 배포한다. Pages 대시보드의 Build watch paths Include에는 앞서 안내한 `apps/web/*`를 설정한다. Render는 `render.yaml`의 `autoDeployTrigger: checksPass`로 api-ci 검사가 통과한 커밋만 배포한다.
+`main`에 머지하면 Pages는 `apps/web/**`, Render는 `apps/api/**` 변경을 대상으로 자동 배포한다. 공용 버전 계산기(`scripts/release/**`), `release-version.json`, `render.yaml`, `.dockerignore` 변경은 두 플랫폼 모두 배포 대상이다. Pages 대시보드의 Build watch paths Include에는 4장의 모든 경로를 설정한다. Render는 `render.yaml`의 `autoDeployTrigger: checksPass`로 api-ci 검사가 통과한 커밋만 배포한다.
 
 Pages는 검사를 기다리지 않으므로 **PR의 CI가 통과한 뒤에만 머지한다**. `.github/workflows/api-ci.yml`과 `.github/workflows/web-ci.yml`에는 paths 필터가 있으므로 api-ci·web-ci를 required check로 지정하지 않는다. api-ci는 `./gradlew test memoryTest`, web-ci는 lint·typecheck·test·build를 실행한다.
 
 Pages 빌드 대상 PR마다 미리보기 주소를 확인한다. 미리보기도 같은 Render API를 사용하므로 운영 데이터에 영향을 주는 작업을 주의해서 수행한다.
+
+### 7.1 자동 버전과 도움말
+
+버전은 `release-version.json`의 고정 기준 SHA 이후 main의 배포 대상 변경을
+first-parent 순서로 세어 `0.1.N`으로 만든다. PR 내부 작업 커밋 수와 무관하게
+한 번의 병합은 최대 한 번 증가한다. 문서·CI 검사만 바꾸면 증가하지 않는다.
+버전 번호는 배포 성공 횟수가 아니라 코드 식별자다. 같은 SHA 재배포는 같은 번호이고
+실패·취소된 빌드 때문에 중간 번호가 빠질 수 있다. 이전 코드를 배포하면 이전 번호다.
+기준 SHA는 이동시키거나 main 이력을 강제로 다시 쓰지 않는다.
+
+웹과 PWA는 같은 번들의 버전이다. 웹만 배포하면 API는 이전 번호를 유지하며,
+API만 배포해도 웹·PWA 버전은 그대로다. PWA가 이전 번들을 실행 중이면 도움말에
+그 이전 버전이 보이고 사용자가 업데이트한 뒤 새 번호로 바뀐다.
+운영은 `0.1.N`, PR 미리보기는 `0.1.N-preview.<shortSha>`, 로컬은 `dev`다.
+
+배포 뒤 로그인하고 데스크톱 상단 **도움말**, 모바일 **계정 → 도움말**을 연다.
+앱·서버 버전과 짧은 SHA를 각 플랫폼 배포의 커밋과 대조한다.
+서버가 시작 중이면 서버 버전 조회만 실패할 수 있으므로 다시 시도한다.
+도움말을 열기 전에는 번호를 표시하거나 버전 API를 조회하지 않는다.
+두 버전이 다르다는 이유로 강제 새로고침하거나 오류로 처리하지 않는다.
+
+Pages 빌드는 기본 제공 Python 3와 Git을 사용해 `CF_PAGES_COMMIT_SHA`를 확인한다.
+Render Docker 빌드는 `ARG RENDER`, `ARG RENDER_GIT_COMMIT`, `ARG RENDER_GIT_BRANCH`로
+플랫폼이 제공하는 값을 받아 Git 이력을 확보하고 JAR에 정보를 고정한다.
+런타임 환경변수만 바꿔도 JAR의 버전은 바뀌지 않는다.
+SHA·기준 이력이 없거나 조회에 실패하면 운영 빌드는 실패하며 기존 서비스가 유지된다.
+공개 저장소의 Git origin 접근에 의존하므로 저장소를 비공개로 바꿀 때는
+빌드 접근 방식도 바꿔야 한다. 새 토큰을 Docker ARG에 넣지 않는다.
+
+### 7.2 이 변경을 기존 서비스에 적용할 때
+
+Cloudflare Pages와 Render에 아래 변경이 필요하다. 새 Secret이나 버전 환경변수를
+직접 추가할 필요는 없다. 플랫폼이 제공하는 SHA·브랜치 정보를 빌드에서 사용한다.
+아래는 적용 안내이며, 이 문서가 대시보드의 실제 설정 변경 완료를 뜻하지 않는다.
+
+**Cloudflare Pages — 머지 전에 설정해도 된다.**
+
+1. Cloudflare Dashboard → Workers & Pages → 해당 Pages 프로젝트 →
+   Settings → Build → Build watch paths로 이동한다.
+2. Include에 아래 다섯 항목을 각각 입력하고 저장한다. 기존 `*`가 있다면
+   이 목록으로 교체한다. Exclude가 이 경로를 막고 있지 않은지도 확인한다.
+
+   ```text
+   apps/web/*
+   scripts/release/*
+   release-version.json
+   render.yaml
+   .dockerignore
+   ```
+
+3. Production branch `main`, Root directory `apps/web`, Build command
+   `npm run build`, Output directory `dist`는 유지한다.
+   Pages는 단일 `*`로 하위 디렉터리까지 일치시킨다.
+
+**Render — 머지 후 새 render.yaml과 함께 적용한다.**
+
+1. PR의 웹·API CI가 통과한 뒤 main에 머지한다.
+2. Blueprint로 관리하면 해당 Blueprint의 Sync 결과에서 아래 값이 적용됐는지
+   확인한다. 자동 Sync를 사용하지 않으면 수동 Sync를 실행한다.
+3. 대시보드에서 직접 관리하는 서비스라면 `salad-bowl-api` → Settings →
+   Build & Deploy에서 아래 세 경로를 함께 수정한다. Root Directory를 저장할 때
+   다른 필드의 상대 경로를 확인하는 창이 나오면 아래 값을 맞춘 뒤 Update Fields한다.
+
+   | 항목 | 값 |
+   |---|---|
+   | Root Directory | 저장소 루트 (`.`; UI가 빈 값으로 루트를 표현하면 비움) |
+   | Dockerfile Path | `./apps/api/Dockerfile` |
+   | Docker Build Context Directory | `.` |
+   | Auto-Deploy | 검사 통과 후 배포 (`After CI Checks Pass`) |
+
+4. Build Filters → Included Paths에 다음 다섯 항목을 설정한다.
+   Ignored Paths가 이 경로를 막지 않는지도 확인한다.
+
+   ```text
+   apps/api/**
+   scripts/release/**
+   release-version.json
+   render.yaml
+   .dockerignore
+   ```
+
+5. API CI가 통과한 main 커밋의 배포가 성공했는지 확인한다.
+   최초 자동 배포가 이전 경로 설정으로 실패했거나 설정 저장만 했다면,
+   경로 수정 후 Manual Deploy → Deploy latest commit으로 다시 배포한다.
+   API의 `/actuator/health`와 Pages를 거친 health가 모두 UP인지 확인한다.
+
+**배포 후 확인**
+
+- 로그인 후 데스크톱 도움말 / 모바일 계정 → 도움말에서 앱·서버 버전과
+  각 플랫폼 배포의 커밋 SHA를 대조한다. 번호가 항상 같을 필요는 없다.
+- 웹이 먼저 배포되고 API가 아직 이전 버전이면 서버 버전 조회가 실패할 수 있다.
+  API 배포 완료 후 다시 시도한다.
+- 기존 PWA에서 새 버전 알림 후 새로고침해 앱 버전이 바뀌는지 확인한다.
+
+공식 설정 안내: [Pages Build watch paths](https://developers.cloudflare.com/pages/configuration/build-watch-paths/),
+[Render monorepo 설정](https://render.com/docs/monorepo-support).
+
+로컬 Docker 빌드는 저장소 루트에서 실행한다. 기본값은 `dev`다.
+
+```bash
+docker build -f apps/api/Dockerfile -t salad-bowl-api .
+python3 -m unittest discover -s scripts/release -p 'test_*.py' -v
+```
 
 ## 8. 설정값 바꾸기·플랫폼 옮기기
 

@@ -3,9 +3,9 @@ name: api-ci
 on:
   push:
     branches: [main]
-    paths: ["apps/api/**", ".github/workflows/api-ci.yml"]
+    paths: ["apps/api/**", "scripts/release/**", "release-version.json", "render.yaml", ".dockerignore", ".github/workflows/api-ci.yml"]
   pull_request:
-    paths: ["apps/api/**", ".github/workflows/api-ci.yml"]
+    paths: ["apps/api/**", "scripts/release/**", "release-version.json", "render.yaml", ".dockerignore", ".github/workflows/api-ci.yml"]
 
 permissions:
   contents: read
@@ -22,6 +22,18 @@ jobs:
         working-directory: apps/api
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify release numbering and source metadata
+        working-directory: .
+        env:
+          RELEASE_MODE: ${{ github.ref == 'refs/heads/main' && 'production' || 'preview' }}
+        run: |
+          python3 -m unittest discover -s scripts/release -p 'test_*.py' -v
+          python3 scripts/release/version.py --mode "$RELEASE_MODE" --commit "$GITHUB_SHA"
       - uses: actions/setup-java@v4
         with:
           distribution: temurin

@@ -1,0 +1,16 @@
+.git
+**/.git
+**/.env*
+**/node_modules
+**/build
+**/.gradle
+**/dist
+**/out
+**/__pycache__
+.venv*
+graphify-out
+.aws
+.codex
+.agents
+.claude
+.DS_Store

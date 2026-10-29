@@ -22,5 +22,7 @@ apps/web/dist/
 .venv-graphify/
 graphify-out/
 
+# Python release tooling
+__pycache__/
 # 검증 스킬 증거
 .verify-artifacts/
