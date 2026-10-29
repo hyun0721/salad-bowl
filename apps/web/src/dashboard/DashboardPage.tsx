@@ -84,11 +84,12 @@ function SummaryView({ groupId, month, summary, level, view, narrow }: {
 }) {
   const [kind, setKind] = useState<TotalKind | null>(null)
   const empty = summary && summary.income === 0 && summary.expense === 0
+  const hasSummary = summary !== undefined
   const shownView = view ?? 'share'
   useEffect(() => {
     if (narrow || !view) return
     document.getElementById(`dashboard-${view}`)?.scrollIntoView?.({ block: 'start' })
-  }, [narrow, view, level])
+  }, [narrow, view, level, hasSummary])
   return (
     <>
       {summary && <>

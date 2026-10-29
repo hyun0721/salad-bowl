@@ -194,6 +194,30 @@ describe('DashboardPage', () => {
     expect(screen.queryByRole('region', { name: '카테고리별 지출' })).not.toBeInTheDocument()
     expect(await screen.findByRole('button', { name: /^수입/ })).toBeInTheDocument()
   })
+
+  it('scrolls to the view card again after the summary arrives', async () => {
+    let release!: () => void
+    const pending = new Promise<void>((resolve) => { release = resolve })
+    server.use(http.get('*/api/groups/10/summary', async () => {
+      await pending
+      return HttpResponse.json({ ...summary, month: '2026-08' })
+    }))
+    const original = Object.getOwnPropertyDescriptor(Element.prototype, 'scrollIntoView')
+    const scroll = vi.fn()
+    Object.defineProperty(Element.prototype, 'scrollIntoView', { configurable: true, value: scroll })
+    try {
+      renderDashboard('/dashboard/major/trend?month=2026-08')
+      await waitFor(() => expect(scroll).toHaveBeenCalledTimes(1))
+      release()
+      await screen.findByRole('region', { name: '카테고리별 지출' })
+      await waitFor(() => expect(scroll).toHaveBeenCalledTimes(2))
+      expect(scroll.mock.contexts[1]).toBe(document.getElementById('dashboard-trend'))
+    } finally {
+      release()
+      if (original) Object.defineProperty(Element.prototype, 'scrollIntoView', original)
+      else Reflect.deleteProperty(Element.prototype, 'scrollIntoView')
+    }
+  })
 })
 
 describe('DashboardPage on a narrow screen', () => {
