@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Navigate, useLocation, useParams, useSearchParams } from 'react-router'
 import MonthPicker from '../common/MonthPicker'
 import ui from '../common/ui.module.css'
-import { defaultYearMonth, formatMonthLabel, formatWon, isYearMonth } from '../common/format'
+import { defaultYearMonth, isYearMonth } from '../common/format'
 import { NARROW, useMediaQuery } from '../common/useMediaQuery'
 import { usePageTitle } from '../common/usePageTitle'
 import { useGroups } from '../groups/GroupProvider'
@@ -28,22 +28,21 @@ export default function DashboardPage({ today }: Props) {
   const level = (params.level ?? 'major') as Level
   const requested = search.get('month')
   const [fallbackMonth] = useState(() => defaultYearMonth(today ?? new Date()))
-  const month = isYearMonth(requested) ? requested : fallbackMonth
+  const month = level === 'major' && isYearMonth(requested) ? requested : fallbackMonth
   usePageTitle(dashboardTitle(level))
-  const { groups, selectedGroupId, isLoading, isError, retry } = useGroups()
+  const { selectedGroupId, isLoading, isError, retry } = useGroups()
   const summary = useQuery({
     queryKey: ['summary', selectedGroupId, month],
     queryFn: () => dashboardApi.summary(selectedGroupId!, month),
     enabled: selectedGroupId !== null,
   })
-  const groupName = groups.find((g) => g.groupId === selectedGroupId)?.name
 
   if (redirect) return <Navigate to={redirect + rawSearch} replace />
 
   if (isLoading || isError || selectedGroupId === null) {
     return (
       <>
-        <h1>그룹 대시보드</h1>
+        <h1 className={styles.visuallyHidden}>그룹 대시보드</h1>
         {isLoading && <p className={ui.status}>불러오는 중입니다.</p>}
         {isError && (
           <div className={ui.row}>
@@ -58,13 +57,11 @@ export default function DashboardPage({ today }: Props) {
 
   return (
     <>
-      <div className={ui.pageHeader}>
-        <h1>그룹 대시보드</h1>
+      <h1 className={styles.visuallyHidden}>그룹 대시보드</h1>
+      {narrow && <DashboardMenu level={level} />}
+      {level === 'major' && (
         <MonthPicker month={month} onChange={(m) => setSearch((p) => { p.set('month', m); return p }, { replace: true })} />
-      </div>
-      <p className={ui.muted}>
-        {groupName} · {formatMonthLabel(month)} · 공개를 켠 멤버의 원화 거래를 합칩니다(이체·숨긴 거래 제외).
-      </p>
+      )}
       {summary.isPending && <p className={ui.status}>불러오는 중입니다.</p>}
       {summary.isError && (
         <div className={ui.row}>
@@ -73,13 +70,13 @@ export default function DashboardPage({ today }: Props) {
         </div>
       )}
       <SummaryView key={selectedGroupId} groupId={selectedGroupId} month={month} summary={summary.data}
-        level={level} view={params.view as View | undefined} narrow={narrow} major={search.get('major') ?? undefined} />
+        level={level} view={params.view as View | undefined} major={search.get('major') ?? undefined} />
     </>
   )
 }
 
-function SummaryView({ groupId, month, summary, level, view, narrow, major }: {
-  groupId: number; month: string; summary?: MonthlySummary; level: Level; view?: View; narrow: boolean; major?: string
+function SummaryView({ groupId, month, summary, level, view, major }: {
+  groupId: number; month: string; summary?: MonthlySummary; level: Level; view?: View; major?: string
 }) {
   const [kind, setKind] = useState<TotalKind | null>(null)
   const empty = summary && summary.income === 0 && summary.expense === 0
@@ -100,17 +97,16 @@ function SummaryView({ groupId, month, summary, level, view, narrow, major }: {
       {summary && <>
       <div className={styles.totals}>
         {([['income', '수입'], ['expense', '지출']] as const).map(([k, label]) => (
-          <button key={k} type="button" aria-haspopup="dialog" aria-label={`${label} ${formatWon(summary[k])}`}
+          <button key={k} type="button" aria-haspopup="dialog" aria-label={`${label} ${summary[k].toLocaleString('ko-KR')}원`}
             className={`${ui.card} ${styles.total}`} onClick={() => setKind(k)}>
             <span className={styles.totalLabel}>{label}</span>
-            <span className={styles.totalValue}>{formatWon(summary[k])}</span>
+            <span className={`${styles.totalValue} ${styles[k]}`}>{summary[k].toLocaleString('ko-KR')} <span className={styles.totalUnit}>(원)</span></span>
           </button>
         ))}
       </div>
       {empty && <p className={ui.status}>이 달에 합칠 거래가 없습니다.</p>}
       <MemberTotalsDialog kind={kind} summary={summary} onClose={() => setKind(null)} />
       </>}
-      {narrow && <DashboardMenu level={level} />}
       {level === 'minor' ? (
         // shortcut: 16d 전까지 소분류는 main의 카드를 그대로 보여준다. 16d에서 소분류 분포·추이로 바꾼다.
         <SubcategoryTrends groupId={groupId} month={month} initialMajor={major} />
