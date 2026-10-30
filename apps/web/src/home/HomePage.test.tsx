@@ -1,6 +1,7 @@
 import { screen, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
+import { Route, Routes } from 'react-router'
 import { server } from '../test/server'
 import { renderPage } from '../test/renderPage'
 import HomePage from './HomePage'
@@ -95,6 +96,24 @@ describe('HomePage', () => {
     expect(within(summary).getByText('₩ 12,000')).toBeInTheDocument()
     expect(screen.queryByRole('region', { name: '월별 등록 현황' })).not.toBeInTheDocument()
     expect(screen.queryByRole('region', { name: '최근 업로드' })).not.toBeInTheDocument()
+    expect(within(summary).getByRole('button', { name: '수입 ₩ 3,000,000' })).toBeInTheDocument()
+    expect(within(summary).getByRole('button', { name: '지출 ₩ 12,000' })).toBeInTheDocument()
+    expect(within(summary).queryByRole('link', { name: '내 거래 보기' })).not.toBeInTheDocument()
+  })
+
+  it('opens my transactions from the summary cards', async () => {
+    server.use(
+      http.get('*/api/me/coverage', () => HttpResponse.json([])),
+      http.get('*/api/me/transactions', () => HttpResponse.json([])),
+    )
+    const { user } = renderPage(
+      <Routes>
+        <Route path="/" element={<HomePage today={today} />} />
+        <Route path="/transactions" element={<p>거래 목록 화면</p>} />
+      </Routes>,
+    )
+    await user.click(await screen.findByRole('button', { name: '지출 ₩ 0' }))
+    expect(await screen.findByText('거래 목록 화면')).toBeInTheDocument()
   })
 
   it('retries the summary on its own', async () => {

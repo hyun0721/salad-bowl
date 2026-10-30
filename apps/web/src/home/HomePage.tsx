@@ -1,10 +1,11 @@
 import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
-import { Link } from 'react-router'
+import { Link, useNavigate } from 'react-router'
 import { menuLabel } from '../app/menu'
 import PageHeader from '../common/PageHeader'
+import TotalsCards from '../common/TotalsCards'
 import ui from '../common/ui.module.css'
-import { defaultYearMonth, formatMonthLabel, formatWon } from '../common/format'
+import { defaultYearMonth, formatMonthLabel } from '../common/format'
 import { usePageTitle } from '../common/usePageTitle'
 import { coverageApi } from '../imports/coverageApi'
 import { summarize } from '../transactions/summary'
@@ -14,6 +15,7 @@ import styles from './HomePage.module.css'
 type Props = { today?: Date }
 
 export default function HomePage({ today: todayProp }: Props) {
+  const navigate = useNavigate()
   const title = menuLabel('/')
   usePageTitle(title)
   const [mountedAt] = useState(() => new Date())
@@ -58,13 +60,7 @@ export default function HomePage({ today: todayProp }: Props) {
               <button type="button" className={ui.button} aria-label="요약 다시 시도" onClick={() => void mine.refetch()}>다시 시도</button>
             </div>
           )}
-          {totals && (
-            <dl className={styles.totals}>
-              <div><dt>수입</dt><dd>{formatWon(totals.income)}</dd></div>
-              <div><dt>지출</dt><dd>{formatWon(totals.expense)}</dd></div>
-            </dl>
-          )}
-          <Link to="/transactions">내 거래 보기</Link>
+          {totals && <TotalsCards income={totals.income} expense={totals.expense} onSelect={() => navigate('/transactions')} />}
         </section>
       </div>
     </>
