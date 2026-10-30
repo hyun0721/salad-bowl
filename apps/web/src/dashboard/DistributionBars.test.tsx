@@ -10,7 +10,7 @@ it('scales the whole bar by net expense and splits positive contributions in mem
   expect(bar.firstElementChild?.children[0]).toHaveStyle({ width: '75%', background: 'var(--chart-1)' })
   expect(bar.firstElementChild?.children[1]).toHaveStyle({ width: '25%', background: 'var(--chart-2)' })
   expect(bar.firstElementChild?.children).toHaveLength(2)
-  expect(screen.getByText('셋 -₩ 60 · 환불 초과')).toBeVisible()
+  expect(screen.getByTitle('셋 -₩ 60 · 환불 초과')).toBeVisible()
 })
 it('falls back to brand without member data', () => {
   render(<DistributionBars rows={[{ id: 'food', label: '식비', value: 60 }]} positiveTotal={120} members={members} />)
@@ -19,7 +19,7 @@ it('falls back to brand without member data', () => {
 })
 it('keeps negative rows and zero totals finite, and omits zero members', () => {
   render(<DistributionBars rows={[{ id: 'refund', label: '환불', value: -10, memberExpenses: [{ userId: 1, expense: -10 }, { userId: 2, expense: 0 }] }]} positiveTotal={0} members={members} />)
-  expect(screen.getByText('-₩ 10 · 환불 초과')).toBeVisible()
+  expect(screen.getAllByText('-₩ 10 · 환불 초과')).toHaveLength(2)
   expect(screen.getByRole('img').firstElementChild).toHaveStyle({ width: '0%' })
   expect(screen.queryByText('둘 ₩ 0')).not.toBeInTheDocument()
   expect(screen.queryByRole('button')).not.toBeInTheDocument()
@@ -41,5 +41,20 @@ it('cycles the eight colors in the legend, segments and member amounts', () => {
   expect(within(legend).getByText('멤버8').firstElementChild).toHaveStyle({ background: 'var(--chart-8)' })
   expect(within(legend).getByText('멤버9').firstElementChild).toHaveStyle({ background: 'var(--chart-1)' })
   expect(screen.getByRole('img').firstElementChild?.children[8]).toHaveStyle({ background: 'var(--chart-1)' })
-  expect(screen.getByText('멤버9 ₩ 10').firstElementChild).toHaveStyle({ background: 'var(--chart-1)' })
+  expect(screen.getByTitle('멤버9 ₩ 10').firstElementChild).toHaveStyle({ background: 'var(--chart-1)' })
+})
+
+it('shows names once in the legend while keeping member amounts and accessible names', () => {
+  render(<DistributionBars rows={[
+    { id: 'food', label: '식비', value: 60, memberExpenses: [{ userId: 2, expense: 40 }, { userId: 1, expense: 20 }] },
+    { id: 'travel', label: '교통', value: 30, memberExpenses: [{ userId: 2, expense: 30 }] },
+  ]} positiveTotal={90} members={members} />)
+  const legend = screen.getByRole('group', { name: '멤버 범례' })
+  expect(within(legend).getByText('둘')).toBeVisible()
+  expect(within(legend).getByText('하나')).toBeVisible()
+  const memberAmount = screen.getByTitle('둘 ₩ 40')
+  expect(memberAmount).toHaveTextContent('둘 ₩ 40')
+  expect(within(memberAmount).getByText('둘')).toHaveClass('srOnly')
+  expect(within(memberAmount).getByText('₩ 40')).toBeVisible()
+  expect(screen.getByRole('img', { name: '교통 33.3%, 둘 ₩ 30' })).toBeInTheDocument()
 })

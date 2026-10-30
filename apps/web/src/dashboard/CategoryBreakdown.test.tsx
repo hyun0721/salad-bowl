@@ -125,7 +125,7 @@ it('switches to member bars, sums minors, and opens category transactions', asyn
   expect(client.getQueryState(['summary', 10, '2026-10', 'members'])?.fetchStatus).toBe('idle')
   expect(client.getQueryData(['summary', 10, '2026-10', 'members'])).toBeUndefined()
   await user.click(listToggle)
-  expect(await screen.findByText('하나 ₩ 200,000')).toBeVisible()
+  expect(await screen.findByTitle('하나 ₩ 200,000')).toBeVisible()
   const row = screen.getByRole('button', { name: '식비 80.0% ₩ 200,000, 하나 ₩ 200,000' })
   expect(row).toHaveAccessibleName(/하나 ₩ 200,000/)
   await user.click(row)

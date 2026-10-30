@@ -37,9 +37,10 @@ export default function DistributionBars({ rows, positiveTotal, members, onSelec
           </span>
         </span>
         <span className={styles.amount}>{amount(row.value)}{row.value < 0 ? '' : ` · ${ratio.toFixed(1)}%`}</span>
-        {hasMembers && <span className={styles.members}>{contributions.map((member) => <span key={member.userId} className={styles.member}>
+        {hasMembers && <span className={styles.members}>{contributions.map((member) => <span key={member.userId} className={styles.member}
+          title={`${member.nickname} ${amount(member.expense)}`}>
           <span aria-hidden="true" className={styles.dot} style={{ background: color(member.index) }} />
-          {member.nickname} {amount(member.expense)}
+          <span className={styles.srOnly}>{member.nickname} </span>{amount(member.expense)}
         </span>)}</span>}
       </>
       return onSelect ? <li key={row.id}><button type="button" className={`${styles.distributionBar} ${styles.button}`}
