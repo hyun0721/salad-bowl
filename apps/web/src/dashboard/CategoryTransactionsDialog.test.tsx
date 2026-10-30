@@ -23,6 +23,7 @@ describe('CategoryTransactionsDialog', () => {
     const dialog = await screen.findByRole('dialog', { name: '식비' })
     const minors = within(dialog).getByRole('button', { name: '식비 소분류 보기' })
     const close = within(dialog).getByRole('button', { name: '닫기' })
+    expect(minors).toHaveAttribute('title', '소분류 보기')
     expect(minors).toHaveTextContent(/^$/)
     expect(close).toHaveTextContent(/^$/)
     expect(minors.querySelector('svg[aria-hidden="true"]')).not.toBeNull()
@@ -75,6 +76,24 @@ describe('CategoryTransactionsDialog', () => {
     await user.click(screen.getByRole('button', { name: '닫기' }))
     expect(screen.getByRole('dialog', { name: '식비' })).toHaveTextContent('1건 · 합계 ₩ 10,000')
     expect(screen.queryByText('불러오는 중입니다.')).not.toBeInTheDocument()
+    animations.mockRestore()
+  })
+
+  it('keeps the minor title and contents during the closing animation', async () => {
+    mockViewport(true)
+    server.use(http.get('*/api/groups/10/summary/transactions', () => HttpResponse.json([tx(1, -10000)])))
+    function Harness() {
+      const [open, setOpen] = useState(true)
+      return <CategoryTransactionsDialog groupId={10} month="2026-10" category={open ? '식비' : null}
+        minor={open ? '외식' : undefined} onClose={() => setOpen(false)} />
+    }
+    const { user } = renderPage(<Harness />)
+    expect(await screen.findByText('1건 · 합계 ₩ 10,000')).toBeInTheDocument()
+    const animations = vi.spyOn(Element.prototype, 'getAnimations').mockReturnValue([{ playState: 'running', finished: new Promise(() => {}) } as unknown as Animation])
+    await user.click(screen.getByRole('button', { name: '닫기' }))
+    const dialog = screen.getByRole('dialog', { name: '식비 · 외식' })
+    expect(dialog).toHaveTextContent('1건 · 합계 ₩ 10,000')
+    expect(within(dialog).queryByRole('button', { name: /소분류 보기/ })).not.toBeInTheDocument()
     animations.mockRestore()
   })
 

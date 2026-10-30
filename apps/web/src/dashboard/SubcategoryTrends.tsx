@@ -9,13 +9,12 @@ import ui from '../common/ui.module.css'
 import DistributionBars from './DistributionBars'
 import { dashboardApi, type MemberTotal } from './dashboardApi'
 import CategoryTrend from './CategoryTrend'
+import CategoryTransactionsDialog from './CategoryTransactionsDialog'
 import ChartViewToggle from './ChartViewToggle'
 import { percent } from './percent'
 import styles from './SubcategoryTrends.module.css'
 import breakdown from './CategoryBreakdown.module.css'
 import trendStyles from './CategoryTrend.module.css'
-
-const ignoreSelect = () => {}
 
 export default function SubcategoryTrends({ groupId, month, members = [] }: { groupId: number; month: string; members?: Pick<MemberTotal, 'userId' | 'nickname'>[] }) {
   const { pathname, search, state } = useLocation()
@@ -24,6 +23,7 @@ export default function SubcategoryTrends({ groupId, month, members = [] }: { gr
   const compact = useMediaQuery(NARROW)
   const [view, setView] = useState('chart')
   const [activeId, setActiveId] = useState<string | null>(null)
+  const [transactionSelection, setTransactionSelection] = useState<{ month: string; major: string; minor: string } | null>(null)
   const focusSubcategories = state?.focusSubcategories === true
   const titleRef = useRef<HTMLHeadingElement>(null)
   useEffect(() => {
@@ -53,6 +53,8 @@ export default function SubcategoryTrends({ groupId, month, members = [] }: { gr
   const slices = data.filter((row) => row.major === major && row.month === month && row.expense > 0)
     .sort((a, b) => b.expense - a.expense || a.minor.localeCompare(b.minor))
     .map((row) => ({ id: row.minor, label: row.minor || '미분류', value: row.expense, detail: percent(row.expense, positiveTotal) }))
+
+  const showTransactions = (minor: string) => setTransactionSelection({ month, major, minor: minor || '미분류' })
 
   async function loadTrend(from: string, to: string) {
     const rows = (await dashboardApi.subcategories(groupId, to, from)).filter((row) => row.major === major)
@@ -94,24 +96,29 @@ export default function SubcategoryTrends({ groupId, month, members = [] }: { gr
           {positiveTotal === 0 && <p className={ui.status}>이 달에 비율로 표시할 지출이 없습니다.</p>}
           {view === 'chart' ? positiveTotal > 0 && <div className={breakdown.content}>
             <DonutChart compact={compact} slices={slices} centerLabel="총지출" centerValue={formatWon(positiveTotal)}
-              activeId={activeId} onActiveChange={setActiveId} onSelect={ignoreSelect} className={breakdown.chart} />
+              activeId={activeId} onActiveChange={setActiveId} onSelect={showTransactions} className={breakdown.chart} />
             <ul className={breakdown.list}>{slices.map((slice, index) => {
               const swatch = sliceStyle(index)
-              return <li key={slice.id} tabIndex={0} className={`${breakdown.row} ${styles.legendRow}`}
+              return <li key={slice.id}><button type="button" className={breakdown.row}
+                aria-haspopup="dialog" aria-label={`${slice.label} ${slice.detail} ${formatWon(slice.value)}`}
+                onClick={() => showTransactions(slice.id)}
                 onPointerEnter={(e) => { if (e.pointerType === 'mouse') setActiveId(slice.id) }} onPointerLeave={() => setActiveId(null)}
-                onFocus={() => setActiveId(slice.id)} onBlur={() => setActiveId(null)}>
+                onFocus={(e) => { if (e.currentTarget.matches(':focus-visible')) setActiveId(slice.id) }} onBlur={() => setActiveId(null)}>
                 <span aria-hidden="true" className={swatch.pattern === 'solid' ? breakdown.swatch : `${breakdown.swatch} ${breakdown[swatch.pattern]}`}
                   style={{ '--swatch-color': `var(--chart-${swatch.slot})` } as React.CSSProperties} />
                 <span className={breakdown.name}>{slice.label}</span>
                 <span className={breakdown.amount}>{formatWon(slice.value)}</span>
                 <span className={breakdown.percent}>{slice.detail}</span>
-              </li>
+              </button></li>
             })}</ul>
-          </div> : view === 'list' && <DistributionBars positiveTotal={positiveTotal} members={members}
+          </div> : view === 'list' && <DistributionBars positiveTotal={positiveTotal} members={members} onSelect={showTransactions}
             rows={minors.map(({ minor, value }) => ({ id: minor, label: minor || '미분류', value,
               memberExpenses: memberData?.filter((row) => row.major === major && row.minor === minor),
             }))} />}
         </>)}
+      <CategoryTransactionsDialog groupId={groupId} month={month}
+        category={transactionSelection?.month === month && transactionSelection.major === major ? major : null}
+        minor={transactionSelection?.minor} onClose={() => setTransactionSelection(null)} />
     </section>
     <CategoryTrend groupId={groupId} month={month} title="소분류 추이" label="소분류"
       queryKey={['summary', groupId, 'subcategory-trend', major]} load={loadTrend} enabled={!!major} ready={query.isSuccess} />

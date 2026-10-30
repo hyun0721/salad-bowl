@@ -125,7 +125,7 @@ describe('CategoryTrend', () => {
     expect(screen.queryByRole('table')).not.toBeInTheDocument()
     await user.click(screen.getByRole('radio', { name: '표로 보기' }))
     const table = screen.getByRole('table', { name: '대분류별 전월 대비 증감률' })
-    expect(within(table).getAllByRole('columnheader').map((x) => x.textContent)).toEqual(['대분류', '추이', '2026년 3월', '2026년 2월', '2026년 1월'])
+    expect(within(table).getAllByRole('columnheader').map((x) => x.textContent)).toEqual(['대분류', '추이', '3월', '2월', '1월'])
     const cells = within(within(table).getByRole('row', { name: /식비/ })).getAllByRole('cell').slice(1)
     expect(cells[0]).toHaveTextContent('-25% ↓')
     expect(cells[0]).toHaveClass(styles.expenseDecrease)

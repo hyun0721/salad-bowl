@@ -12,17 +12,21 @@ import { TransactionCard, transactionColumns } from '../transactions/transaction
 import { dashboardApi } from './dashboardApi'
 import styles from './CategoryBreakdown.module.css'
 
-type Props = { groupId: number; month: string; category: string | null; onClose: () => void }
+type Props = { groupId: number; month: string; category: string | null; minor?: string; onClose: () => void }
 
-export default function CategoryTransactionsDialog({ groupId, month, category, onClose }: Props) {
+export default function CategoryTransactionsDialog({ groupId, month, category, minor, onClose }: Props) {
   const navigate = useNavigate()
   const narrow = useMediaQuery(NARROW)
-  const [lastCategory, setLastCategory] = useState(category)
-  if (category !== null && lastCategory !== category) setLastCategory(category)
-  const displayedCategory = category ?? lastCategory
+  const [lastSelection, setLastSelection] = useState({ category, minor })
+  if (category !== null && (lastSelection.category !== category || lastSelection.minor !== minor)) {
+    setLastSelection({ category, minor })
+  }
+  const displayedCategory = category ?? lastSelection.category
+  const displayedMinor = category !== null ? minor : lastSelection.minor
+  const title = displayedMinor === undefined ? displayedCategory ?? '' : `${displayedCategory} · ${displayedMinor || '미분류'}`
   const transactions = useQuery({
-    queryKey: ['summary', groupId, month, 'transactions', displayedCategory],
-    queryFn: () => dashboardApi.categoryTransactions(groupId, month, displayedCategory!),
+    queryKey: ['summary', groupId, month, 'transactions', displayedCategory, displayedMinor],
+    queryFn: () => dashboardApi.categoryTransactions(groupId, month, displayedCategory!, displayedMinor),
     enabled: category !== null,
   })
   const items = transactions.data ?? []
@@ -34,12 +38,13 @@ export default function CategoryTransactionsDialog({ groupId, month, category, o
   }
 
   return (
-    <DialogFrame isOpen={category !== null} title={displayedCategory ?? ''} onOpenChange={(open) => { if (!open) onClose() }}
+    <DialogFrame isOpen={category !== null} title={title} onOpenChange={(open) => { if (!open) onClose() }}
       closeOnOutsideClick wide pinnedHeader headerAction={
         <div className={ui.row}>
-          <button type="button" className={`${ui.button} ${ui.iconButton}`} aria-label={`${displayedCategory} 소분류 보기`} onClick={showMinors}>
-            <Icon name="chart" />
-          </button>
+          {displayedMinor === undefined && <button type="button" className={`${ui.button} ${ui.iconButton}`}
+            aria-label={`${displayedCategory} 소분류 보기`} title="소분류 보기" onClick={showMinors}>
+            <Icon name="list-tree" />
+          </button>}
           <button type="button" className={`${ui.button} ${ui.iconButton}`} aria-label="닫기" onClick={onClose}>
             <Icon name="x" />
           </button>
