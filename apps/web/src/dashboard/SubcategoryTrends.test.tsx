@@ -1,13 +1,13 @@
-import { screen, within } from '@testing-library/react'
+import { screen, within, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { Route, Routes } from 'react-router'
+import { Route, Routes, useLocation, useNavigationType } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderPage } from '../test/renderPage'
 import { server } from '../test/server'
 import { mockViewport } from '../test/mockViewport'
 import SubcategoryTrends from './SubcategoryTrends'
 import DashboardPage from './DashboardPage'
-import styles from './SubcategoryTrends.module.css'
+
 vi.mock('../common/echarts', () => ({ echarts: { init: () => ({ setOption: vi.fn(), on: vi.fn(), off: vi.fn(), resize: vi.fn(), dispose: vi.fn(), isDisposed: vi.fn(() => false), dispatchAction: vi.fn() }) } }))
 const today = new Date(2026, 10, 19)
 const group = { groupId: 10, name: '우리집', myRole: 'ADMIN', memberCount: 2 }
@@ -21,80 +21,64 @@ beforeEach(() => {
   server.use(http.get('*/api/groups/10/summary/trend', () => HttpResponse.json({ months: [], categories: [] })))
 })
 describe('SubcategoryTrends', () => {
-  it('starts from the major given by the address', async () => {
-    server.use(http.get('*/api/groups/10/summary/subcategories', () => HttpResponse.json([
-      { month: '2026-10', major: '식비', minor: '외식', expense: 30000 },
-      { month: '2026-10', major: '교통', minor: '택시', expense: 50000 },
-    ])))
-    renderPage(<SubcategoryTrends groupId={10} month="2026-10" initialMajor="식비" />)
-    const section = await screen.findByRole('region', { name: '소분류 추이·분포' })
-    expect(await within(section).findByRole('heading', { name: '식비 소분류 월별 추이' })).toBeInTheDocument()
-    expect(within(section).getByRole('heading', { name: '소분류 추이·분포' })).not.toHaveFocus()
-  })
-
-  it('shows the selection hint when the address names an unknown major', async () => {
-    server.use(http.get('*/api/groups/10/summary/subcategories', () => HttpResponse.json([
-      { month: '2026-10', major: '식비', minor: '외식', expense: 30000 },
-    ])))
-    renderPage(<SubcategoryTrends groupId={10} month="2026-10" initialMajor="없는분류" />)
-    const section = await screen.findByRole('region', { name: '소분류 추이·분포' })
-    expect(await within(section).findByText('대분류 하나를 선택하면 하위 소분류를 볼 수 있습니다.')).toBeInTheDocument()
-  })
-
-  it('requires one major and shows only its minors with missing months filled as zero', async () => {
-    const requests: string[] = []
-    server.use(
-      http.get('*/api/groups/10/summary', () => HttpResponse.json(summary)),
-      http.get('*/api/groups/10/summary/subcategories', ({ request }) => {
-        requests.push(new URL(request.url).searchParams.get('month')!)
-        return HttpResponse.json([
-          { month: '2026-05', major: '식비', minor: '외식', expense: 10000 },
-          { month: '2026-10', major: '식비', minor: '외식', expense: 30000 },
-          { month: '2026-10', major: '식비', minor: '', expense: 10000 },
-          { month: '2026-10', major: '식비', minor: '간식', expense: -5000 },
-          { month: '2026-10', major: '교통', minor: '택시', expense: 50000 },
-        ])
-      }),
-    )
-    const { user } = renderMinorDashboard()
-    const section = await screen.findByRole('region', { name: '소분류 추이·분포' })
-    await within(section).findByText('대분류 하나를 선택하면 하위 소분류를 볼 수 있습니다.')
-    expect(within(section).queryByRole('table')).not.toBeInTheDocument()
-    await user.click(within(section).getByRole('button', { name: /대분류/ }))
-    await user.click(screen.getByRole('option', { name: '식비' }))
-    const table = within(section).getByRole('table')
-    const dining = within(table).getByRole('row', { name: /외식/ })
-    expect(within(dining).getAllByText('₩ 0')).toHaveLength(4)
-    expect(dining).toHaveTextContent('₩ 10,000')
-    expect(dining).toHaveTextContent('₩ 30,000')
-    expect(within(table).getAllByRole('columnheader').slice(2).map((cell) => cell.textContent)).toEqual([
-      '2026년 10월', '2026년 9월', '2026년 8월', '2026년 7월', '2026년 6월', '2026년 5월',
-    ])
-    const cells = within(dining).getAllByRole('cell').slice(1)
-    expect(cells[0]).toHaveTextContent('₩ 30,000')
-    expect(cells[0]).toHaveClass(styles.expenseIncrease)
-    expect(within(cells[0]).getByLabelText('전월 대비 증가')).toHaveTextContent('↑')
-    expect(cells[4]).toHaveClass(styles.expenseDecrease)
-    expect(within(cells[4]).getByLabelText('전월 대비 감소')).toHaveTextContent('↓')
-    expect(cells[1]).toHaveAttribute('title', '전월과 동일')
-    expect(cells[5]).toHaveAttribute('title', '전월 비교 없음')
-    for (const cell of [cells[1], cells[5]]) {
-      expect(cell).not.toHaveClass(styles.expenseIncrease)
-      expect(cell).not.toHaveClass(styles.expenseDecrease)
+  it('uses the address, separates cards, and requests three months only after selection', async () => {
+    const requests: URLSearchParams[] = []
+    server.use(http.get('*/api/groups/10/summary/subcategories', ({ request }) => {
+      requests.push(new URL(request.url).searchParams)
+      return HttpResponse.json([
+        { month: '2026-10', major: '식비', minor: '외식', expense: 30000 },
+        { month: '2026-10', major: '식비', minor: '', expense: 10000 },
+        { month: '2026-10', major: '식비', minor: '간식', expense: -5000 },
+      ])
+    }))
+    function Address() {
+      const location = useLocation()
+      const type = useNavigationType()
+      return <output aria-label="주소">{location.search} {type}</output>
     }
-    const refundCells = within(within(table).getByRole('row', { name: /간식/ })).getAllByRole('cell').slice(1)
-    expect(refundCells[0]).toHaveTextContent('-₩ 5,000')
-    expect(refundCells[0]).toHaveClass(styles.expenseDecrease)
-    expect(within(section).getByText('₩ 30,000 · 75.0%')).toBeInTheDocument()
-    expect(within(section).getByText('-₩ 5,000 · 환불 초과')).toBeInTheDocument()
-    expect(within(table).getByRole('row', { name: /미분류/ })).toBeInTheDocument()
-    expect(within(section).queryByText('택시')).not.toBeInTheDocument()
-    await user.click(within(section).getByRole('button', { name: /대분류/ }))
-    await user.click(screen.getByRole('option', { name: '교통' }))
-    expect(within(section).getByRole('row', { name: /택시/ })).toBeInTheDocument()
-    expect(within(section).queryByText('외식')).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '이전 달' })).toBeInTheDocument()
-    expect(requests).toEqual(['2026-10'])
+    const { user } = renderPage(<><SubcategoryTrends groupId={10} month="2026-10" /><Address /></>, { path: '/dashboard/minor?month=2026-10&other=keep' })
+    const share = await screen.findByRole('region', { name: '소분류 분포' })
+    const trend = screen.getByRole('region', { name: '소분류 추이' })
+    expect(share).toHaveAttribute('id', 'dashboard-share')
+    expect(trend).toHaveAttribute('id', 'dashboard-trend')
+    await screen.findByRole('button', { name: /대분류.*필수/ })
+    expect(requests).toHaveLength(1)
+    expect(requests[0].has('from')).toBe(false)
+    await user.click(screen.getByRole('button', { name: /대분류.*필수/ }))
+    await user.click(screen.getByRole('option', { name: '식비' }))
+    await within(trend).findByRole('button', { name: '외식' })
+    expect(requests.some((p) => p.get('from') === '2026-08' && p.get('month') === '2026-10')).toBe(true)
+    expect(screen.getByLabelText('주소')).toHaveTextContent('REPLACE')
+    expect(screen.getByLabelText('주소').textContent).toContain('major=%EC%8B%9D%EB%B9%84')
+    expect(screen.getByLabelText('주소').textContent).toContain('other=keep')
+    expect(within(share).getByRole('radiogroup', { name: '소분류 분포 보기 방식' })).toBeInTheDocument()
+    expect(within(share).getByRole('radio', { name: '차트로 보기' })).toHaveAttribute('aria-checked', 'true')
+    expect(within(share).getByText('미분류')).toBeInTheDocument()
+    expect(within(share).queryByText('간식')).not.toBeInTheDocument()
+    await user.click(within(share).getByRole('radio', { name: '목록으로 보기' }))
+    expect(within(share).getByText('-₩ 5,000 · 환불 초과')).toBeInTheDocument()
+    expect(within(trend).queryByRole('table')).not.toBeInTheDocument()
+    await user.click(within(trend).getByRole('radio', { name: '표로 보기' }))
+    const table = within(trend).getByRole('table', { name: '소분류별 전월 대비 증감률' })
+    expect(within(table).getByRole('row', { name: /외식/ })).toHaveTextContent('신규0%—')
+    expect(within(table).getByRole('cell', { name: '2026년 10월 -5,000원, 전월 비교 없음' })).toHaveTextContent('—')
+    expect(within(table).getAllByRole('rowheader').map((row) => row.textContent)).toEqual(['외식', '미분류', '간식'])
+    expect(within(table).getAllByRole('columnheader').slice(2).map((x) => x.textContent)).toEqual(['2026년 10월', '2026년 9월', '2026년 8월'])
+    await user.click(screen.getByRole('button', { name: /대분류.*필수/ }))
+    await user.click(screen.getByRole('option', { name: '대분류를 선택하세요' }))
+    await waitFor(() => expect(screen.getByLabelText('주소').textContent).not.toContain('major='))
+  })
+
+  it('shows the selection hint for an unknown major without requesting a trend', async () => {
+    const requests: string[] = []
+    server.use(http.get('*/api/groups/10/summary/subcategories', ({ request }) => {
+      requests.push(request.url)
+      return HttpResponse.json([{ month: '2026-10', major: '식비', minor: '외식', expense: 1000 }])
+    }))
+    renderPage(<SubcategoryTrends groupId={10} month="2026-10" />, { path: '/dashboard/minor?major=unknown' })
+    const share = await screen.findByRole('region', { name: '소분류 분포' })
+    expect(await within(share).findByText('대분류 하나를 선택하면 하위 소분류를 볼 수 있습니다.')).toBeInTheDocument()
+    expect(requests).toHaveLength(1)
   })
 
   it('retries failed subcategories independently', async () => {
@@ -127,7 +111,7 @@ describe('SubcategoryTrends', () => {
     await user.click(await screen.findByRole('button', { name: /대분류.*필수/ }))
     if (mobile) expect(screen.getByRole('dialog', { name: '대분류 (필수)' })).toBeInTheDocument()
     await user.click(screen.getByRole('option', { name: '식비' }))
-    expect(await screen.findByRole('row', { name: /외식/ })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: '외식' })).toBeInTheDocument()
   })
 
   it.each([404, 503])('recovers from HTTP %s without showing an empty selector', async (status) => {
@@ -143,7 +127,7 @@ describe('SubcategoryTrends', () => {
     await user.click(screen.getByRole('button', { name: '소분류 다시 시도' }))
     await user.click(await screen.findByRole('button', { name: /대분류/ }))
     await user.click(screen.getByRole('option', { name: '식비' }))
-    expect(await screen.findByRole('row', { name: /외식/ })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: '외식' })).toBeInTheDocument()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 

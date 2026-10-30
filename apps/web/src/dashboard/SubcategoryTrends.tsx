@@ -1,54 +1,83 @@
 import { useQuery } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
-import { useLocation, useNavigate } from 'react-router'
-import { formatMonthLabel, formatWon, shiftMonth } from '../common/format'
+import { useLocation, useNavigate, useSearchParams } from 'react-router'
+import { formatWon, shiftMonth } from '../common/format'
+import DonutChart, { sliceStyle } from '../common/DonutChart'
+import { NARROW, useMediaQuery } from '../common/useMediaQuery'
 import Select from '../common/Select'
 import ui from '../common/ui.module.css'
 import { dashboardApi } from './dashboardApi'
+import CategoryTrend from './CategoryTrend'
+import ChartViewToggle from './ChartViewToggle'
 import styles from './SubcategoryTrends.module.css'
+import breakdown from './CategoryBreakdown.module.css'
+import trendStyles from './CategoryTrend.module.css'
 
-export default function SubcategoryTrends({ groupId, month, initialMajor }: { groupId: number; month: string; initialMajor?: string }) {
+const ignoreSelect = () => {}
+function percent(value: number, total: number) {
+  const rounded = Math.round(value / total * 100)
+  return rounded === 0 ? '1% 미만' : `${rounded}%`
+}
+
+export default function SubcategoryTrends({ groupId, month }: { groupId: number; month: string }) {
   const { pathname, search, state } = useLocation()
+  const [params, setParams] = useSearchParams()
   const navigate = useNavigate()
+  const compact = useMediaQuery(NARROW)
+  const [view, setView] = useState('chart')
+  const [activeId, setActiveId] = useState<string | null>(null)
   const focusSubcategories = state?.focusSubcategories === true
   const titleRef = useRef<HTMLHeadingElement>(null)
   useEffect(() => {
     if (!focusSubcategories) return
     titleRef.current?.focus()
-    // router state는 history 항목에 남아 새로고침·뒤로/앞으로에서 포커스가 또 옮겨지므로 한 번 쓰고 비운다.
+    // history에 남은 state로 포커스가 다시 옮겨지지 않도록 한 번 쓰고 비운다.
     navigate(pathname + search, { replace: true, state: null })
   }, [focusSubcategories, navigate, pathname, search])
-  const [selected, setSelected] = useState(initialMajor ?? '')
   const query = useQuery({
     queryKey: ['summary', groupId, month, 'subcategories'],
     queryFn: () => dashboardApi.subcategories(groupId, month),
   })
   const data = query.data ?? []
   const majors = [...new Set(data.map((row) => row.major))].sort()
+  const selected = params.get('major') ?? ''
   const major = majors.includes(selected) ? selected : ''
-  const rows = data.filter((row) => row.major === major)
-  const months = Array.from({ length: 6 }, (_, index) => shiftMonth(month, index - 5))
-  const monthIndexes = [5, 4, 3, 2, 1, 0]
-  const minors = [...new Set(rows.map((row) => row.minor))].map((minor) => ({
-    minor,
-    values: months.map((m) => rows.find((row) => row.month === m && row.minor === minor)?.expense ?? 0),
-  })).sort((a, b) => b.values[5] - a.values[5] || a.minor.localeCompare(b.minor))
-  const positiveTotal = minors.reduce((sum, row) => sum + Math.max(0, row.values[5]), 0)
-  const min = Math.min(0, ...minors.flatMap((row) => row.values))
-  const max = Math.max(0, ...minors.flatMap((row) => row.values))
-  const y = (value: number) => 36 - (value - min) / (max - min || 1) * 32
+  const minors = [...new Set(data.filter((row) => row.major === major).map((row) => row.minor))].map((minor) => ({
+    minor, value: data.find((row) => row.major === major && row.minor === minor && row.month === month)?.expense ?? 0,
+  })).sort((a, b) => b.value - a.value || a.minor.localeCompare(b.minor))
+  const positiveTotal = minors.reduce((sum, row) => sum + Math.max(0, row.value), 0)
+  const slices = data.filter((row) => row.major === major && row.month === month && row.expense > 0)
+    .sort((a, b) => b.expense - a.expense || a.minor.localeCompare(b.minor))
+    .map((row) => ({ id: row.minor, label: row.minor || '미분류', value: row.expense, detail: percent(row.expense, positiveTotal) }))
 
-  return (
-    <section aria-labelledby="subcategory-title" className={ui.card}>
-      <div className={`${ui.pageHeader} ${styles.header}`}>
-        <h2 id="subcategory-title" ref={titleRef} tabIndex={-1}>소분류 추이·분포</h2>
-        {query.isSuccess && majors.length > 0 && <div className={styles.categorySelect}>
-          <Select label="대분류 (필수)" selectedKey={major} variant="field"
-            items={[{ id: '', label: '대분류를 선택하세요' }, ...majors.map((name) => ({ id: name, label: name }))]}
-            onSelectionChange={(key) => setSelected(String(key ?? ''))} />
-        </div>}
+  async function loadTrend(from: string, to: string) {
+    const rows = (await dashboardApi.subcategories(groupId, to, from)).filter((row) => row.major === major)
+    const months: string[] = []
+    for (let m = from; m <= to; m = shiftMonth(m, 1)) months.push(m)
+    const categories = [...new Set(rows.map((row) => row.minor || '미분류'))].map((category) => {
+      const expenses = months.map((m) => rows.filter((row) => row.month === m && (row.minor || '미분류') === category)
+        .reduce((sum, row) => sum + row.expense, 0))
+      return { category, expenses, total: expenses.reduce((sum, value) => sum + value, 0) }
+    }).sort((a, b) => b.total - a.total || a.category.localeCompare(b.category))
+    return { months, categories }
+  }
+
+  return <>
+    {query.isSuccess && majors.length > 0 && <div className={styles.categorySelect}>
+      <Select label="대분류 (필수)" selectedKey={major} variant="field"
+        items={[{ id: '', label: '대분류를 선택하세요' }, ...majors.map((name) => ({ id: name, label: name }))]}
+        onSelectionChange={(key) => setParams((current) => {
+          const next = new URLSearchParams(current)
+          if (key) next.set('major', String(key))
+          else next.delete('major')
+          return next
+        }, { replace: true })} />
+    </div>}
+    <section id="dashboard-share" aria-labelledby="subcategory-title" className={`${ui.card} ${breakdown.card}`}>
+      <div className={trendStyles.header}>
+        <h2 id="subcategory-title" ref={titleRef} tabIndex={-1}>소분류 분포</h2>
+        <ChartViewToggle title="소분류 분포" value={view} onChange={setView} />
       </div>
-      <p className={ui.muted}>{formatMonthLabel(month)}까지 최근 6개월 · 지출에서 환불을 차감합니다.</p>
       {query.isPending && <p role="status" className={ui.status}>대분류 목록을 불러오는 중입니다.</p>}
       {query.isError && <div className={ui.row}>
         <p role="alert" className={ui.alert}>대분류 목록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</p>
@@ -58,47 +87,33 @@ export default function SubcategoryTrends({ groupId, month, initialMajor }: { gr
         ? <p className={ui.status}>최근 6개월에 공개된 지출이 없습니다.</p>
         : !major ? <p className={ui.status}>대분류 하나를 선택하면 하위 소분류를 볼 수 있습니다.</p>
         : <>
-          <h3>{major} 소분류 월별 추이</h3>
-          <div className={styles.tableScroll}>
-            <table className={`${styles.table} ${styles.trendTable}`}>
-              <caption className={ui.muted}>거래가 없는 달은 0원입니다. 전월 대비 증가: 빨강 ↑ · 감소: 파랑 ↓</caption>
-              <thead><tr><th scope="col">소분류</th><th scope="col">추이</th>
-                {monthIndexes.map((index) => <th scope="col" key={months[index]}>{formatMonthLabel(months[index])}</th>)}
-              </tr></thead>
-              <tbody>{minors.map(({ minor, values }) => <tr key={minor}>
-                <th scope="row">{minor || '미분류'}</th>
-                <td><svg width="120" height="40" viewBox="0 0 120 40" aria-hidden="true">
-                  <line x1="4" x2="116" y1={y(0)} y2={y(0)} stroke="var(--line)" />
-                  <polyline fill="none" stroke="var(--brand)" strokeWidth="2"
-                    points={values.map((v, i) => `${4 + i * 22.4},${y(v)}`).join(' ')} />
-                </svg></td>
-                {monthIndexes.map((index) => {
-                  const value = values[index]
-                  const change = index === 0 ? 0 : value - values[index - 1]
-                  const comparison = index === 0 ? '전월 비교 없음' : change > 0 ? '전월 대비 증가' : change < 0 ? '전월 대비 감소' : '전월과 동일'
-                  return <td key={months[index]} title={comparison}
-                    className={change > 0 ? styles.expenseIncrease : change < 0 ? styles.expenseDecrease : undefined}>
-                    {value < 0 ? '-' : ''}{formatWon(value)}
-                    {change !== 0 && <span aria-label={comparison}> {change > 0 ? '↑' : '↓'}</span>}
-                  </td>
-                })}
-              </tr>)}</tbody>
-            </table>
-          </div>
-          <h3>{formatMonthLabel(month)} 소분류 분포</h3>
-          <p className={ui.muted}>비율은 환불 차감 후 양수인 소분류 지출의 합계 기준입니다.</p>
           {positiveTotal === 0 && <p className={ui.status}>이 달에 비율로 표시할 지출이 없습니다.</p>}
-          <ul className={styles.bars}>{minors.map(({ minor, values }) => {
-            const value = values[5]
-            const percent = positiveTotal > 0 && value > 0 ? value / positiveTotal * 100 : 0
+          {view === 'chart' ? positiveTotal > 0 && <div className={breakdown.content}>
+            <DonutChart compact={compact} slices={slices} centerLabel="총지출" centerValue={formatWon(positiveTotal)}
+              activeId={activeId} onActiveChange={setActiveId} onSelect={ignoreSelect} className={breakdown.chart} />
+            <ul className={breakdown.list}>{slices.map((slice, index) => {
+              const swatch = sliceStyle(index)
+              return <li key={slice.id} tabIndex={0} className={`${breakdown.row} ${styles.legendRow}`}
+                onPointerEnter={(e) => { if (e.pointerType === 'mouse') setActiveId(slice.id) }} onPointerLeave={() => setActiveId(null)}
+                onFocus={() => setActiveId(slice.id)} onBlur={() => setActiveId(null)}>
+                <span aria-hidden="true" className={swatch.pattern === 'solid' ? breakdown.swatch : `${breakdown.swatch} ${breakdown[swatch.pattern]}`}
+                  style={{ '--swatch-color': `var(--chart-${swatch.slot})` } as React.CSSProperties} />
+                <span className={breakdown.name}>{slice.label}</span>
+                <span className={breakdown.amount}>{formatWon(slice.value)}</span>
+                <span className={breakdown.percent}>{slice.detail}</span>
+              </li>
+            })}</ul>
+          </div> : view === 'list' && <ul className={styles.bars}>{minors.map(({ minor, value }) => {
+            const ratio = positiveTotal > 0 && value > 0 ? value / positiveTotal * 100 : 0
             return <li key={minor} className={styles.distributionBar}>
               <span className={styles.barLabel} title={minor || '미분류'}>{minor || '미분류'}</span>
-              <meter className={styles.meter} min={0} max={100} value={percent}
-                aria-label={`${minor || '미분류'} 지출 비율`} />
-              <span className={styles.amount}>{value < 0 ? '-' : ''}{formatWon(value)} · {value < 0 ? '환불 초과' : `${percent.toFixed(1)}%`}</span>
+              <meter className={styles.meter} min={0} max={100} value={ratio} aria-label={`${minor || '미분류'} 지출 비율`} />
+              <span className={styles.amount}>{value < 0 ? '-' : ''}{formatWon(value)} · {value < 0 ? '환불 초과' : `${ratio.toFixed(1)}%`}</span>
             </li>
-          })}</ul>
+          })}</ul>}
         </>)}
     </section>
-  )
+    <CategoryTrend groupId={groupId} month={month} title="소분류 추이" label="소분류"
+      queryKey={['summary', groupId, 'subcategory-trend', major]} load={loadTrend} enabled={!!major} />
+  </>
 }

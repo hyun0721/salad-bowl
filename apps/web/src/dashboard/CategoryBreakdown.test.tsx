@@ -26,7 +26,7 @@ const summary: MonthlySummary = {
 describe('CategoryBreakdown', () => {
   it('shows positive expenses and their accessible percentages with a hidden chart', async () => {
     renderPage(<CategoryBreakdown groupId={10} month="2026-10" summary={summary} />)
-    const region = await screen.findByRole('region', { name: '카테고리별 지출' })
+    const region = await screen.findByRole('region', { name: '대분류 분포' })
     expect(within(region).getByRole('button', { name: '식비 80% ₩ 200,000' })).toBeInTheDocument()
     expect(within(region).getByRole('button', { name: '기타 1% 미만 ₩ 1' })).toBeInTheDocument()
     expect(within(region).queryByText('환불')).not.toBeInTheDocument()
@@ -94,7 +94,7 @@ describe('CategoryBreakdown', () => {
 it('uses compact chart height and keeps the full accessible name on narrow screens', async () => {
   mockViewport(true)
   renderPage(<CategoryBreakdown groupId={10} month="2026-10" summary={{ ...summary, byCategory: [{ category: '아주긴카테고리', expense: 1 }] }} />)
-  const region = await screen.findByRole('region', { name: '카테고리별 지출' })
+  const region = await screen.findByRole('region', { name: '대분류 분포' })
   expect(region.querySelector('div[aria-hidden="true"]')).toHaveStyle({ height: '200px' })
   expect(within(region).getByRole('button', { name: '아주긴카테고리 100% ₩ 1' })).toBeInTheDocument()
 })
@@ -105,7 +105,7 @@ it('keeps all twelve category controls accessible on narrow screens', async () =
     category: `긴 카테고리 이름 ${index + 1}`, expense: expense * 10000,
   }))
   renderPage(<CategoryBreakdown groupId={10} month="2026-10" summary={{ ...summary, byCategory }} />)
-  const region = await screen.findByRole('region', { name: '카테고리별 지출' })
+  const region = await screen.findByRole('region', { name: '대분류 분포' })
   expect(within(region).getAllByRole('button')).toHaveLength(12)
   expect(within(region).getByRole('button', { name: /긴 카테고리 이름 12.*₩ 10,000/ })).toBeInTheDocument()
   expect(region.querySelector('div[aria-hidden="true"]')).toHaveStyle({ height: '272px' })
