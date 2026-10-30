@@ -68,6 +68,7 @@ describe('CategoryBreakdown', () => {
     fireEvent.pointerOut(row, { pointerType: 'mouse' })
     expect(chart.dispatchAction).toHaveBeenLastCalledWith({ type: 'downplay', seriesIndex: 0, name: '식비' })
     await user.tab()
+    await user.tab()
     expect(row).toHaveFocus()
     expect(chart.dispatchAction).toHaveBeenLastCalledWith({ type: 'highlight', seriesIndex: 0, name: '식비' })
     expect(chart.setOption).not.toHaveBeenCalled()
@@ -109,4 +110,43 @@ it('keeps all twelve category controls accessible on narrow screens', async () =
   expect(within(region).getAllByRole('button')).toHaveLength(12)
   expect(within(region).getByRole('button', { name: /긴 카테고리 이름 12.*₩ 10,000/ })).toBeInTheDocument()
   expect(region.querySelector('div[aria-hidden="true"]')).toHaveStyle({ height: '272px' })
+})
+
+it('switches to member bars, sums minors, and opens category transactions', async () => {
+  server.use(
+    http.get('*/api/groups/10/summary/members', ({ request }) => {
+      expect(new URL(request.url).searchParams.get('month')).toBe('2026-10')
+      return HttpResponse.json([{ major: '식비', minor: '외식', userId: 1, expense: 120000 }, { major: '식비', minor: '간식', userId: 1, expense: 80000 }])
+    }),
+    http.get('*/api/groups/10/summary/transactions', () => HttpResponse.json([])),
+  )
+  const { user, client } = renderPage(<CategoryBreakdown groupId={10} month="2026-10" summary={{ ...summary, byMember: [{ userId: 1, nickname: '하나', income: 0, expense: 200000 }] }} />)
+  const listToggle = await screen.findByRole('radio', { name: '목록으로 보기' })
+  expect(client.getQueryState(['summary', 10, '2026-10', 'members'])?.fetchStatus).toBe('idle')
+  expect(client.getQueryData(['summary', 10, '2026-10', 'members'])).toBeUndefined()
+  await user.click(listToggle)
+  expect(await screen.findByText('하나 ₩ 200,000')).toBeVisible()
+  const row = screen.getByRole('button', { name: '식비 80.0% ₩ 200,000, 하나 ₩ 200,000' })
+  expect(row).toHaveAccessibleName(/하나 ₩ 200,000/)
+  await user.click(row)
+  expect(await screen.findByRole('dialog', { name: '식비' })).toBeVisible()
+})
+
+it('keeps list bars usable while member data loads and after it fails', async () => {
+  let release!: () => void
+  const pending = new Promise<void>((resolve) => { release = resolve })
+  server.use(http.get('*/api/groups/10/summary/members', async () => {
+    await pending
+    return HttpResponse.json({}, { status: 503 })
+  }))
+  const { user, client: queryClient } = renderPage(<CategoryBreakdown groupId={10} month="2026-10" summary={{ ...summary, byMember: [{ userId: 1, nickname: '하나', income: 0, expense: 200000 }] }} />)
+  await user.click(await screen.findByRole('radio', { name: '목록으로 보기' }))
+  try {
+    expect(screen.getByRole('img', { name: '식비 80.0%' }).firstElementChild).toHaveStyle({ background: 'var(--brand)' })
+    expect(screen.queryByText('하나')).not.toBeInTheDocument()
+  } finally { release() }
+  await waitFor(() => expect(queryClient.getQueryState(['summary', 10, '2026-10', 'members'])?.status).toBe('error'))
+  expect(screen.getByRole('img', { name: '식비 80.0%' }).firstElementChild).toHaveStyle({ background: 'var(--brand)' })
+  expect(screen.getByText('-₩ 1 · 환불 초과')).toBeVisible()
+  expect(screen.queryByText('하나')).not.toBeInTheDocument()
 })

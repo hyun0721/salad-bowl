@@ -1,3 +1,4 @@
+import { useQuery } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import DonutChart, { sliceStyle } from '../common/DonutChart'
 import { NARROW, useMediaQuery } from '../common/useMediaQuery'
@@ -6,11 +7,21 @@ import ui from '../common/ui.module.css'
 import { percent } from './percent'
 import styles from './CategoryBreakdown.module.css'
 import CategoryTransactionsDialog from './CategoryTransactionsDialog'
-import type { MonthlySummary } from './dashboardApi'
+import { dashboardApi, type MonthlySummary } from './dashboardApi'
+import DistributionBars from './DistributionBars'
+import ChartViewToggle from './ChartViewToggle'
+import trendStyles from './CategoryTrend.module.css'
 
 type Props = { groupId: number; month: string; summary: MonthlySummary }
 
 export default function CategoryBreakdown({ groupId, month, summary }: Props) {
+  const [view, setView] = useState('chart')
+  const memberQuery = useQuery({
+    queryKey: ['summary', groupId, month, 'members'],
+    queryFn: () => dashboardApi.memberCategories(groupId, month),
+    enabled: view === 'list',
+  })
+  const memberData = memberQuery.isSuccess ? memberQuery.data : undefined
   const compact = useMediaQuery(NARROW)
   const [activeId, setActiveId] = useState<string | null>(null)
   const [category, setCategory] = useState<string | null>(null)
@@ -22,8 +33,17 @@ export default function CategoryBreakdown({ groupId, month, summary }: Props) {
 
   return (
     <section aria-labelledby="category-title" className={`${ui.card} ${styles.card}`}>
-      <h2 id="category-title">대분류 분포</h2>
-      {items.length === 0 ? <p className={ui.status}>지출이 없습니다.</p> : (
+      <div className={trendStyles.header}>
+        <h2 id="category-title">대분류 분포</h2>
+        <ChartViewToggle title="대분류 분포" value={view} onChange={setView} />
+      </div>
+      {view === 'list' && summary.byCategory.length > 0 ? <DistributionBars positiveTotal={total} members={summary.byMember} onSelect={setCategory}
+        rows={summary.byCategory.map((item) => ({ id: item.category, label: item.category, value: item.expense,
+          memberExpenses: memberData && summary.byMember.map((member) => ({ userId: member.userId,
+            expense: memberData.filter((row) => row.major === item.category && row.userId === member.userId)
+              .reduce((sum, row) => sum + row.expense, 0),
+          })),
+        }))} /> : items.length === 0 ? <p className={ui.status}>지출이 없습니다.</p> : (
         <div className={styles.content}>
           <DonutChart compact={compact} slices={slices}
             centerLabel="총지출" centerValue={formatWon(summary.expense)} activeId={activeId}

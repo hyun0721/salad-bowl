@@ -99,7 +99,7 @@ function SummaryView({ groupId, month, summary, level, view }: {
   return (
     <>
       {level === 'minor' ? (
-        <SubcategoryTrends groupId={groupId} month={month} />
+        <SubcategoryTrends groupId={groupId} month={month} members={summary?.byMember} />
       ) : (
         <>
           <div id="dashboard-share">

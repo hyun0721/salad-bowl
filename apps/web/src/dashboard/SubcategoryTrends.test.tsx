@@ -171,3 +171,17 @@ describe('SubcategoryTrends', () => {
   })
 
 })
+
+it('shows selected major member amounts in the monthly minor list', async () => {
+  server.use(
+    http.get('*/api/groups/10/summary/subcategories', () => HttpResponse.json([{ month: '2026-10', major: '식비', minor: '외식', expense: 100 }])),
+    http.get('*/api/groups/10/summary/members', () => HttpResponse.json([{ major: '식비', minor: '외식', userId: 1, expense: 100 }, { major: '여가', minor: '외식', userId: 1, expense: 999 }])),
+  )
+  const { user, client } = renderPage(<SubcategoryTrends groupId={10} month="2026-10" members={[{ userId: 1, nickname: '하나' }]} />, { path: '/dashboard/minor?major=식비' })
+  const region = await screen.findByRole('region', { name: '소분류 분포' })
+  expect(client.getQueryState(['summary', 10, '2026-10', 'members'])?.fetchStatus).toBe('idle')
+  expect(client.getQueryData(['summary', 10, '2026-10', 'members'])).toBeUndefined()
+  await user.click(within(region).getByRole('radio', { name: '목록으로 보기' }))
+  expect(await within(region).findByText('하나 ₩ 100')).toBeVisible()
+  expect(within(region).queryByText(/999/)).not.toBeInTheDocument()
+})
