@@ -19,7 +19,9 @@ GitHub Pages 사용 가능 여부는 저장소 공개 범위와 계정 플랜에
 홈 `docs/site/index.html`에서 시작하기·시스템 구조·배포·운영·인증과 권한 가이드를 연결한다.
 가이드는 `development.html`, `architecture.html`, `deploy.html`, `auth.html`이며
 공통 스타일은 `guide.css`다. 외부 폰트·스크립트나 별도 빌드 없이 정적 HTML로 제공한다.
-기존 `pr38-update.html`은 당시 설명 기록으로 유지한다.
+`pr38-update.html`은 기존 URL을 유지한 버전 관리·PWA 업데이트 가이드다.
+Archify 다이어그램은 `diagrams/`에, 본문용 정적 이미지는 `images/`에 둔다.
+작은 화면에서는 그림을 가로로 스크롤하거나 확대·상호작용 보기 링크를 사용한다.
 
 가이드 본문은 게시용 HTML에서 직접 관리한다. 기존 Markdown은 상세 절차와 참조 문서이며
 자동으로 HTML에 동기화되지 않는다. 동작을 바꿀 때 해당 가이드와 관련 Markdown을 함께

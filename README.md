@@ -17,7 +17,8 @@
 [시작하기](https://hyun0721.github.io/salad-bowl/development.html) ·
 [시스템 구조](https://hyun0721.github.io/salad-bowl/architecture.html) ·
 [배포·운영](https://hyun0721.github.io/salad-bowl/deploy.html) ·
-[인증과 권한](https://hyun0721.github.io/salad-bowl/auth.html)을 읽을 수 있다.
+[인증과 권한](https://hyun0721.github.io/salad-bowl/auth.html) ·
+[버전 관리](https://hyun0721.github.io/salad-bowl/pr38-update.html)를 읽을 수 있다.
 새 문서는 main 반영 후 게시된다.
 
 | 문서 | 내용 |
