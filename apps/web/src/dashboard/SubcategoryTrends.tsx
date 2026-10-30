@@ -6,7 +6,8 @@ import DonutChart, { sliceStyle } from '../common/DonutChart'
 import { NARROW, useMediaQuery } from '../common/useMediaQuery'
 import Select from '../common/Select'
 import ui from '../common/ui.module.css'
-import { dashboardApi } from './dashboardApi'
+import DistributionBars from './DistributionBars'
+import { dashboardApi, type MemberTotal } from './dashboardApi'
 import CategoryTrend from './CategoryTrend'
 import ChartViewToggle from './ChartViewToggle'
 import { percent } from './percent'
@@ -16,7 +17,7 @@ import trendStyles from './CategoryTrend.module.css'
 
 const ignoreSelect = () => {}
 
-export default function SubcategoryTrends({ groupId, month }: { groupId: number; month: string }) {
+export default function SubcategoryTrends({ groupId, month, members = [] }: { groupId: number; month: string; members?: Pick<MemberTotal, 'userId' | 'nickname'>[] }) {
   const { pathname, search, state } = useLocation()
   const [params, setParams] = useSearchParams()
   const navigate = useNavigate()
@@ -35,6 +36,12 @@ export default function SubcategoryTrends({ groupId, month }: { groupId: number;
     queryKey: ['summary', groupId, month, 'subcategories'],
     queryFn: () => dashboardApi.subcategories(groupId, month),
   })
+  const memberQuery = useQuery({
+    queryKey: ['summary', groupId, month, 'members'],
+    queryFn: () => dashboardApi.memberCategories(groupId, month),
+    enabled: view === 'list',
+  })
+  const memberData = memberQuery.isSuccess ? memberQuery.data : undefined
   const data = query.data ?? []
   const majors = [...new Set(data.map((row) => row.major))].sort()
   const selected = params.get('major') ?? ''
@@ -100,14 +107,10 @@ export default function SubcategoryTrends({ groupId, month }: { groupId: number;
                 <span className={breakdown.percent}>{slice.detail}</span>
               </li>
             })}</ul>
-          </div> : view === 'list' && <ul className={styles.bars}>{minors.map(({ minor, value }) => {
-            const ratio = positiveTotal > 0 && value > 0 ? value / positiveTotal * 100 : 0
-            return <li key={minor} className={styles.distributionBar}>
-              <span className={styles.barLabel} title={minor || '미분류'}>{minor || '미분류'}</span>
-              <meter className={styles.meter} min={0} max={100} value={ratio} aria-label={`${minor || '미분류'} 지출 비율`} />
-              <span className={styles.amount}>{value < 0 ? '-' : ''}{formatWon(value)} · {value < 0 ? '환불 초과' : `${ratio.toFixed(1)}%`}</span>
-            </li>
-          })}</ul>}
+          </div> : view === 'list' && <DistributionBars positiveTotal={positiveTotal} members={members}
+            rows={minors.map(({ minor, value }) => ({ id: minor, label: minor || '미분류', value,
+              memberExpenses: memberData?.filter((row) => row.major === major && row.minor === minor),
+            }))} />}
         </>)}
     </section>
     <CategoryTrend groupId={groupId} month={month} title="소분류 추이" label="소분류"
