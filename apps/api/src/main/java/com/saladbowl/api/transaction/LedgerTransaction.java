@@ -134,6 +134,10 @@ public class LedgerTransaction {
                 || !Objects.equals(originalMemo, data.memo());
         if (changed) {
             applyNonKeyFields(data);
+            // 원본이 바꾼 타입을 따라잡으면 override는 더 할 일이 없다.
+            if (typeOverride == type) {
+                typeOverride = null;
+            }
         }
         return changed;
     }

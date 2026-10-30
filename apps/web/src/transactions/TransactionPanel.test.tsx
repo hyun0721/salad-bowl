@@ -58,6 +58,16 @@ describe('TransactionPanel', () => {
     expect(client.getQueryState(['summary', 1, '2026-10'])?.isInvalidated).toBe(true)
   })
 
+  it('offers income only for a positive amount', async () => {
+    auditsHandler()
+    const { user } = renderPage(<TransactionPanel tx={mine} onDeleted={vi.fn()} />)
+
+    await user.click(await screen.findByRole('button', { name: /타입/ }))
+
+    expect(await screen.findByRole('option', { name: '이체' })).toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: '수입' })).not.toBeInTheDocument()
+  })
+
   it('clears an override by saving an empty field', async () => {
     auditsHandler()
     let body: unknown

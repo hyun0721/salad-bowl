@@ -85,7 +85,8 @@ export default function TransactionPanel({ tx, onDeleted, loadDraft, onDraftChan
 
       {tx.editable ? (
         <form className={ui.stack} onSubmit={onSave}>
-          <Select variant="field" label="타입" items={TYPE_ITEMS} selectedKey={type}
+          <Select variant="field" label="타입" selectedKey={type}
+            items={TYPE_ITEMS.filter((item) => item.id !== 'INCOME' || tx.amount > 0 || tx.type === 'INCOME')}
             onSelectionChange={(key) => { if (key != null) change({ type: key as TransactionType }) }} />
           <ComboBox label="대분류" value={major} onChange={(v) => change({ major: v })} options={majorOptions(list)} maxLength={100} />
           <ComboBox label="소분류" value={minor} onChange={(v) => change({ minor: v })} options={minorOptions(list, major.trim())} maxLength={100} />

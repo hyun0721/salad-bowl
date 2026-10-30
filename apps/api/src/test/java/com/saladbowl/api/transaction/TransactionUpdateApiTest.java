@@ -97,6 +97,15 @@ class TransactionUpdateApiTest extends IntegrationTest {
     }
 
     @Test
+    void negativeAmountCannotBecomeIncome() throws Exception {
+        patchTx(member, memberTxId, """
+                {"type":"INCOME"}
+                """)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+    }
+
+    @Test
     void ownerHidesTransaction() throws Exception {
         patchTx(member, memberTxId, """
                 {"hidden":true}

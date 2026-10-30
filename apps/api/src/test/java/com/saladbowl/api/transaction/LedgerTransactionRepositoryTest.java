@@ -87,6 +87,23 @@ class LedgerTransactionRepositoryTest extends IntegrationTest {
     }
 
     @Test
+    void refreshOriginalKeepsTypeOverrideUntilTheOriginalCatchesUp() {
+        TransactionData transfer = TestLedger.data(TransactionType.TRANSFER, "2026-09-01T12:00:00", "월세", "월세", -650_000);
+        LedgerTransaction tx = LedgerTransaction.imported(ownerId, batchId, "t".repeat(64), transfer);
+        tx.setTypeOverride(TransactionType.EXPENSE);
+
+        assertThat(tx.refreshOriginal(transfer)).isFalse();
+        assertThat(tx.displayType()).isEqualTo(TransactionType.EXPENSE);
+        assertThat(tx.isEdited()).isTrue();
+
+        TransactionData expense = TestLedger.data(TransactionType.EXPENSE, "2026-09-01T12:00:00", "월세", "월세", -650_000);
+        assertThat(tx.refreshOriginal(expense)).isTrue();
+        assertThat(tx.getTypeOverride()).isNull();
+        assertThat(tx.displayType()).isEqualTo(TransactionType.EXPENSE);
+        assertThat(tx.isEdited()).isFalse();
+    }
+
+    @Test
     void monthQueriesFilterByRangeAndHiddenAndSortNewestFirst() {
         LedgerTransaction early = transactions.save(LedgerTransaction.manual(ownerId,
                 TestLedger.data(TransactionType.EXPENSE, "2026-09-01T09:00:00", "식비", "아침", -3000)));
