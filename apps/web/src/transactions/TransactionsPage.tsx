@@ -60,7 +60,8 @@ function PanelHeader({ title, actions }: { title: string; actions: ReactNode }) 
 }
 
 export default function TransactionsPage({ today }: Props) {
-  usePageTitle(menuLabel('/transactions'))
+  const title = menuLabel('/transactions')
+  usePageTitle(title)
   const { selectedGroupId } = useGroups()
   const [scope, setScope] = useState<Scope>('mine')
   const [month, setMonth] = useState(() => defaultYearMonth(today ?? new Date()))
@@ -154,7 +155,7 @@ export default function TransactionsPage({ today }: Props) {
     setSelectedId(null)
   }
 
-  const title = shown === 'add' ? '거래 추가 (수동)' : shown?.description ?? ''
+  const panelTitle = shown === 'add' ? '거래 추가 (수동)' : shown?.description ?? ''
   const body = shown === 'add' ? (
     <ManualTransactionForm loadDraft={() => (draft.current?.key === 'add' ? draft.current.values : undefined)}
       onDraftChange={saveAddDraft} onCancel={closePanel} onDone={(created) => {
@@ -202,7 +203,7 @@ export default function TransactionsPage({ today }: Props) {
 
   return (
     <div className={styles.page} data-fit-viewport="">
-      <PageHeader title={menuLabel('/transactions')} action={
+      <PageHeader title={title} action={
         <button type="button" className={`${ui.button} ${ui.primary}`} aria-label="거래 추가"
           onClick={() => { setAdding(true); setSelectedId(null) }}><Icon name="plus" />추가</button>
       } />
@@ -246,13 +247,13 @@ export default function TransactionsPage({ today }: Props) {
         </section>
         {inSidebar && open && (
           <aside aria-label={shown === 'add' ? '거래 추가' : '거래 상세'} className={`${ui.card} ${styles.panel}`}>
-            <PanelHeader key={`header-${shown === 'add' ? 'add' : shown?.id}`} title={title} actions={headerActions} />
+            <PanelHeader key={`header-${shown === 'add' ? 'add' : shown?.id}`} title={panelTitle} actions={headerActions} />
             {body}
           </aside>
         )}
       </div>
       {!inSidebar && shown && (
-        <DialogFrame isOpen={open} onOpenChange={(next) => { if (!next) closePanel() }} title={title} fullHeight
+        <DialogFrame isOpen={open} onOpenChange={(next) => { if (!next) closePanel() }} title={panelTitle} fullHeight
           headerAction={headerActions}>
           {() => body}
         </DialogFrame>

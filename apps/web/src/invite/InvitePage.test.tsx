@@ -68,7 +68,7 @@ describe('InvitePage', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent('초대 링크가 만료되었습니다. 관리자에게 새 링크를 요청해 주세요.')
     expect(screen.queryByRole('button', { name: '다시 시도' })).not.toBeInTheDocument()
-    expect(screen.getByRole('link', { name: '내 가계부로' })).toHaveAttribute('href', '/')
+    expect(screen.getByRole('link', { name: '홈으로' })).toHaveAttribute('href', '/')
   })
 
   it('explains that a removed member cannot rejoin', async () => {

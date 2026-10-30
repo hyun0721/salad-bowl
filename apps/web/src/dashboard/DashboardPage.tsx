@@ -38,6 +38,7 @@ export default function DashboardPage({ today }: Props) {
     queryKey: ['summary', selectedGroupId, month],
     queryFn: () => dashboardApi.summary(selectedGroupId!, month),
     enabled: selectedGroupId !== null,
+    placeholderData: (prev, prevQuery) => prevQuery?.queryKey[1] === selectedGroupId ? prev : undefined,
   })
 
   if (redirect) return <Navigate to={redirect + rawSearch} replace />

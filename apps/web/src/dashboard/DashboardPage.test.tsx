@@ -217,6 +217,27 @@ describe('DashboardPage', () => {
     await waitFor(() => expect(months).toContain('2026-09'))
   })
 
+  it('keeps the totals while the previous month loads', async () => {
+    let release!: () => void
+    const pending = new Promise<void>((resolve) => { release = resolve })
+    const months: string[] = []
+    server.use(http.get('*/api/groups/10/summary', async ({ request }) => {
+      const month = new URL(request.url).searchParams.get('month')!
+      months.push(month)
+      if (month === '2026-09') await pending
+      return HttpResponse.json({ ...summary, month })
+    }))
+    const { user } = renderDashboard()
+    try {
+      await screen.findByRole('button', { name: '수입 ₩ 3,000,000' })
+      await user.click(screen.getByRole('button', { name: '이전 달' }))
+      await waitFor(() => expect(months).toContain('2026-09'))
+      expect(screen.getByRole('button', { name: '수입 ₩ 3,000,000' })).toBeInTheDocument()
+    } finally {
+      release()
+    }
+  })
+
   it('keeps trend chip choices when the dashboard month changes', async () => {
     const trendMonths: string[] = []
     server.use(
@@ -273,6 +294,7 @@ describe('DashboardPage', () => {
 
     expect(await screen.findByRole('heading', { name: '아직 속한 그룹이 없습니다' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: '그룹 만들기' })).toHaveAttribute('href', '/groups')
+    expect(screen.getByRole('link', { name: '홈으로' })).toHaveAttribute('href', '/')
   })
 
   it('redirects /dashboard to the major screen and keeps the month', async () => {
