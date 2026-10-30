@@ -18,7 +18,7 @@ describe('dashboardRedirect', () => {
 
 describe('dashboardTitle', () => {
   it('names the level', () => {
-    expect(dashboardTitle('major')).toBe('그룹 대시보드 · 대분류')
-    expect(dashboardTitle('minor')).toBe('그룹 대시보드 · 소분류')
+    expect(dashboardTitle('major')).toBe('대시보드 · 대분류')
+    expect(dashboardTitle('minor')).toBe('대시보드 · 소분류')
   })
 })

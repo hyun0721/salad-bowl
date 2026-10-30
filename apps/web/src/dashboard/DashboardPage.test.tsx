@@ -76,7 +76,7 @@ describe('DashboardPage', () => {
     server.use(http.get('*/api/groups/10/summary', () => HttpResponse.json(summary)))
     renderDashboard('/dashboard/major?month=2026-08')
     const income = await screen.findByRole('button', { name: '수입 ₩ 3,000,000' })
-    const heading = screen.getByRole('heading', { level: 1, name: '그룹 대시보드' })
+    const heading = screen.getByRole('heading', { level: 1, name: '대시보드' })
     const month = screen.getByLabelText('월')
     const menu = screen.getByRole('navigation', { name: '대시보드 메뉴' })
     const follows = (a: Element, b: Element) => Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING)
@@ -307,7 +307,7 @@ describe('DashboardPage', () => {
     await waitFor(() => expect(screen.getByRole('status', { name: '현재 주소' })).toHaveTextContent('/dashboard/major?month=2026-08'))
     expect(await screen.findByRole('region', { name: '대분류 분포' })).toBeInTheDocument()
     expect(screen.getByRole('region', { name: '대분류 추이' })).toBeInTheDocument()
-    expect(document.title).toBe('그룹 대시보드 · 대분류 · Salad Bowl')
+    expect(document.title).toBe('대시보드 · 대분류 · Salad Bowl')
   })
 
   it('reads the month from the address and writes it back when the month changes', async () => {
@@ -405,7 +405,7 @@ describe('DashboardPage on a narrow screen', () => {
     expect(screen.getByRole('status', { name: '이동 방식' })).toHaveTextContent('REPLACE')
     expect(within(screen.getByRole('navigation', { name: '대시보드 메뉴' })).getByRole('link', { name: '소분류' })).toHaveFocus()
     expect(await screen.findByRole('region', { name: '소분류 분포' })).toBeInTheDocument()
-    expect(document.title).toBe('그룹 대시보드 · 소분류 · Salad Bowl')
+    expect(document.title).toBe('대시보드 · 소분류 · Salad Bowl')
   })
 
   it('redirects /dashboard to the major screen and shows both cards', async () => {
@@ -414,7 +414,7 @@ describe('DashboardPage on a narrow screen', () => {
     await waitFor(() => expect(screen.getByRole('status', { name: '현재 주소' })).toHaveTextContent('/dashboard/major?month=2026-10'))
     expect(await screen.findByRole('region', { name: '대분류 분포' })).toBeVisible()
     expect(screen.getByRole('region', { name: '대분류 추이' })).toBeVisible()
-    expect(document.title).toBe('그룹 대시보드 · 대분류 · Salad Bowl')
+    expect(document.title).toBe('대시보드 · 대분류 · Salad Bowl')
   })
 
   it('redirects an unknown address to the major screen and keeps the search', async () => {

@@ -81,10 +81,10 @@ describe('AppRoutes', () => {
     renderApp('/')
     const nav = await screen.findByRole('navigation', { name: '주 메뉴' })
     expect(within(nav).getAllByRole('link').map((l) => l.textContent))
-      .toEqual(['홈', '그룹 대시보드', '대분류', '소분류', '거래 목록', '업로드', '그룹 관리'])
+      .toEqual(['홈', '대시보드', '대분류', '소분류', '거래 목록', '업로드', '그룹 관리'])
     expect(within(nav).getByRole('link', { name: '대분류' })).toHaveAttribute('href', '/dashboard/major')
     expect(within(nav).getByRole('link', { name: '소분류' })).toHaveAttribute('href', '/dashboard/minor')
-    expect(within(nav).getByRole('link', { name: '그룹 대시보드' })).not.toHaveAttribute('aria-current')
+    expect(within(nav).getByRole('link', { name: '대시보드' })).not.toHaveAttribute('aria-current')
   })
 
   it('marks only the current dashboard sub-link as the page', async () => {
@@ -99,7 +99,7 @@ describe('AppRoutes', () => {
     const nav = await screen.findByRole('navigation', { name: '주 메뉴' })
     expect(within(nav).getAllByRole('link').filter((link) => link.getAttribute('aria-current') === 'page'))
       .toEqual([within(nav).getByRole('link', { name: '대분류' })])
-    expect(within(nav).getByRole('link', { name: '그룹 대시보드' })).toHaveAttribute('aria-current', 'true')
+    expect(within(nav).getByRole('link', { name: '대시보드' })).toHaveAttribute('aria-current', 'true')
   })
 
   it('remembers the selected group', async () => {

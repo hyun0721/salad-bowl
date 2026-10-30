@@ -228,6 +228,6 @@ it('shows selected major member amounts in the monthly minor list', async () => 
   expect(client.getQueryState(['summary', 10, '2026-10', 'members'])?.fetchStatus).toBe('idle')
   expect(client.getQueryData(['summary', 10, '2026-10', 'members'])).toBeUndefined()
   await user.click(within(region).getByRole('radio', { name: '목록으로 보기' }))
-  expect(await within(region).findByText('하나 ₩ 100')).toBeVisible()
+  expect(await within(region).findByTitle('하나 ₩ 100')).toBeVisible()
   expect(within(region).queryByText(/999/)).not.toBeInTheDocument()
 })
