@@ -21,7 +21,7 @@ describe('PageHeader', () => {
 describe('menuLabel', () => {
   it('returns the sidebar label for a menu path', () => {
     expect(menuLabel('/')).toBe('홈')
-    expect(menuLabel('/dashboard')).toBe('그룹 대시보드')
+    expect(menuLabel('/dashboard')).toBe('대시보드')
     expect(menuLabel('/upload')).toBe('업로드')
   })
 
