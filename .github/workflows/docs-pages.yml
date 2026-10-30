@@ -1,0 +1,45 @@
+name: docs-pages
+
+on:
+  push:
+    branches: [main]
+    paths: ["docs/site/**", ".github/workflows/docs-pages.yml"]
+  pull_request:
+    paths: ["docs/site/**", ".github/workflows/docs-pages.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docs-pages-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check published documents
+        run: |
+          test -s docs/site/index.html
+          test -s docs/site/pr38-update.html
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: docs/site
+
+  deploy:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/configure-pages@v5
+      - name: Deploy documents
+        id: deployment
+        uses: actions/deploy-pages@v4
