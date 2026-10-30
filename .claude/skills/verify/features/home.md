@@ -1,6 +1,6 @@
 # Home
 
-Home (`/`, heading `내 가계부`) shows last month's upload status and a summary of the user's income and expenses for that month.
+Home (`/`, heading `홈`) shows last month's upload status and a summary of the user's income and expenses for that month.
 
 ## Sub-features
 

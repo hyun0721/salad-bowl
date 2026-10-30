@@ -81,7 +81,7 @@ describe('DashboardPage', () => {
     expect(menu.compareDocumentPosition(month) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(month.compareDocumentPosition(income) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(screen.queryByText(/공개를 켠 멤버의 원화 거래/)).not.toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: '그룹 대시보드' })).toHaveClass('visuallyHidden')
+    expect(screen.getByRole('heading', { level: 1, name: '그룹 대시보드' })).not.toHaveClass('visuallyHidden')
   })
 
   it.each([false, true])('uses the latest six months for subcategories without a month picker (narrow: %s)', async (narrow) => {

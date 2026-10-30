@@ -1,6 +1,6 @@
 # Upload
 
-Upload (`/upload`, heading `뱅크샐러드 엑셀 업로드`) shows yearly monthly upload coverage, accepts one Banksalad .xlsx export of up to 3 months and 512KB, merges it with existing transactions, reports created, updated, and unchanged counts, and lists every past upload.
+Upload (`/upload`, heading `업로드`) shows yearly monthly upload coverage, accepts one Banksalad .xlsx export of up to 3 months and 512KB, merges it with existing transactions, reports created, updated, and unchanged counts, and lists every past upload.
 
 ## Sub-features
 

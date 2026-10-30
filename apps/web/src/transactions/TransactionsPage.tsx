@@ -1,4 +1,6 @@
 import SegmentedControl from '../common/SegmentedControl'
+import { menuLabel } from '../app/menu'
+import PageHeader from '../common/PageHeader'
 import SearchField from '../common/SearchField'
 import Select from '../common/Select'
 import { useIsMutating, useQuery } from '@tanstack/react-query'
@@ -58,7 +60,7 @@ function PanelHeader({ title, actions }: { title: string; actions: ReactNode }) 
 }
 
 export default function TransactionsPage({ today }: Props) {
-  usePageTitle('거래 목록')
+  usePageTitle(menuLabel('/transactions'))
   const { selectedGroupId } = useGroups()
   const [scope, setScope] = useState<Scope>('mine')
   const [month, setMonth] = useState(() => defaultYearMonth(today ?? new Date()))
@@ -200,11 +202,10 @@ export default function TransactionsPage({ today }: Props) {
 
   return (
     <div className={styles.page} data-fit-viewport="">
-      <div className={ui.pageHeader}>
-        <h1>거래 목록</h1>
+      <PageHeader title={menuLabel('/transactions')} action={
         <button type="button" className={`${ui.button} ${ui.primary}`} aria-label="거래 추가"
           onClick={() => { setAdding(true); setSelectedId(null) }}><Icon name="plus" />추가</button>
-      </div>
+      } />
       <div className={`${ui.row} ${styles.filters}`}>
         <MonthPicker month={month} onChange={changeMonth} />
         <SegmentedControl label="범위" items={[{ id: 'mine', label: '내 거래' }, { id: 'group', label: '그룹 거래', isDisabled: selectedGroupId === null }]}

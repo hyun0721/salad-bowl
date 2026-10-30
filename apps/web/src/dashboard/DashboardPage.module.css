@@ -1,5 +1,4 @@
 /* 아주 좁은 폭에서는 큰 금액이 카드를 넘지 않게 한 줄에 하나씩 둔다. */
-.visuallyHidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .totals { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--space-3); }
 .total { align-items: flex-start; gap: var(--space-1); font: inherit; color: var(--ink); text-align: left; cursor: pointer; }
 .total:hover { background: var(--surface-100); }

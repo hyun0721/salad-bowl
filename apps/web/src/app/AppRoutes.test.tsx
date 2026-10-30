@@ -132,7 +132,7 @@ describe('AppRoutes', () => {
 
     await user.click(await screen.findByRole('link', { name: '업로드' }))
 
-    expect(await screen.findByRole('heading', { level: 1, name: '뱅크샐러드 엑셀 업로드' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { level: 1, name: '업로드' })).toBeInTheDocument()
   })
 
   it('logs out and returns to login', async () => {
@@ -151,7 +151,7 @@ describe('AppRoutes', () => {
 
     renderApp('/login')
 
-    expect(await screen.findByRole('heading', { name: '내 가계부' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: '홈' })).toBeInTheDocument()
   })
 
   it('does not crash on a crafted next value and lands on home', async () => {
@@ -159,7 +159,7 @@ describe('AppRoutes', () => {
 
     renderApp('/login?next=%2F%5Cevil.example')
 
-    expect(await screen.findByRole('heading', { name: '내 가계부' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: '홈' })).toBeInTheDocument()
   })
 
   it('keeps the user signed in and shows an alert when logout fails', async () => {
@@ -192,7 +192,7 @@ describe('AppRoutes', () => {
     expect(await screen.findByText('오래 쓰지 않았다면 서버가 깨어나는 데 최대 4분쯤 걸려요', {}, { timeout: 5000 })).toBeInTheDocument()
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     // 요청이 끝날 때까지 기다려 느린 요청 상태가 다른 테스트로 새지 않게 한다.
-    expect(await screen.findByRole('heading', { name: '내 가계부' }, { timeout: 5000 })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: '홈' }, { timeout: 5000 })).toBeInTheDocument()
   }, 15000)
 
   it('shows the salad bowl on the login route while the session is restored', async () => {
@@ -335,7 +335,7 @@ describe('AppRoutes', () => {
     renderApp('/')
     const user = userEvent.setup()
 
-    await screen.findByRole('heading', { level: 1, name: '내 가계부' })
+    await screen.findByRole('heading', { level: 1, name: '홈' })
     await user.click(screen.getByRole('link', { name: '거래 목록' }))
 
     const heading = await screen.findByRole('heading', { level: 1, name: '거래 목록' })
@@ -348,7 +348,7 @@ describe('AppRoutes', () => {
     renderApp('/')
     const user = userEvent.setup()
 
-    await screen.findByRole('heading', { level: 1, name: '내 가계부' })
+    await screen.findByRole('heading', { level: 1, name: '홈' })
     await user.click(screen.getByRole('link', { name: '거래 목록' }))
 
     expect(screen.getByRole('navigation', { name: '주 메뉴' })).toBeInTheDocument()

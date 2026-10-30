@@ -72,7 +72,10 @@ describe('GroupsPage', () => {
 
     expect(await screen.findByText(/아직 속한 그룹이 없습니다/)).toBeInTheDocument()
     expect(screen.queryByLabelText('그룹 이름')).not.toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: '그룹 만들기' }))
+    const add = screen.getByRole('button', { name: '그룹 추가' })
+    expect(add).toHaveTextContent(/^추가$/)
+    expect(add.parentElement).toBe(screen.getByRole('heading', { level: 1, name: '그룹 관리' }).parentElement)
+    await user.click(add)
     const dialog = screen.getByRole('dialog', { name: '새 그룹 만들기' })
     await user.type(within(dialog).getByLabelText('그룹 이름'), '새 그룹')
     await user.click(within(dialog).getByRole('button', { name: '만들기' }))

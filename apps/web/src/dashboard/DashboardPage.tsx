@@ -1,7 +1,9 @@
 import { useQuery } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import { Navigate, useLocation, useParams, useSearchParams } from 'react-router'
+import { menuLabel } from '../app/menu'
 import MonthPicker from '../common/MonthPicker'
+import PageHeader from '../common/PageHeader'
 import ui from '../common/ui.module.css'
 import { defaultYearMonth, isYearMonth } from '../common/format'
 import { NARROW, useMediaQuery } from '../common/useMediaQuery'
@@ -42,7 +44,7 @@ export default function DashboardPage({ today }: Props) {
   if (isLoading || isError || selectedGroupId === null) {
     return (
       <>
-        <h1 className={styles.visuallyHidden}>그룹 대시보드</h1>
+        <PageHeader title={menuLabel('/dashboard')} />
         {isLoading && <p className={ui.status}>불러오는 중입니다.</p>}
         {isError && (
           <div className={ui.row}>
@@ -57,7 +59,7 @@ export default function DashboardPage({ today }: Props) {
 
   return (
     <>
-      <h1 className={styles.visuallyHidden}>그룹 대시보드</h1>
+      <PageHeader title={menuLabel('/dashboard')} />
       {narrow && <DashboardMenu level={level} />}
       {level === 'major' && (
         <MonthPicker month={month} onChange={(m) => setSearch((p) => { p.set('month', m); return p }, { replace: true })} />

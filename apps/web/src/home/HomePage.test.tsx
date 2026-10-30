@@ -24,7 +24,8 @@ describe('HomePage', () => {
     const card = await screen.findByRole('region', { name: '지난달 업로드' })
     expect(await within(card).findByText('2026년 9월 데이터 등록됨 · 168건')).toBeInTheDocument()
     expect(within(card).queryByRole('link', { name: '업로드하기' })).not.toBeInTheDocument()
-    expect(document.title).toBe('내 가계부 · Salad Bowl')
+    expect(screen.getByRole('heading', { level: 1, name: '홈' })).toBeInTheDocument()
+    expect(document.title).toBe('홈 · Salad Bowl')
   })
 
   it('links to the upload menu with last month when it is missing', async () => {

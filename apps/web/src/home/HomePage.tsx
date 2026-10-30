@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Link } from 'react-router'
+import { menuLabel } from '../app/menu'
+import PageHeader from '../common/PageHeader'
 import ui from '../common/ui.module.css'
 import { defaultYearMonth, formatMonthLabel, formatWon } from '../common/format'
 import { usePageTitle } from '../common/usePageTitle'
@@ -12,7 +14,8 @@ import styles from './HomePage.module.css'
 type Props = { today?: Date }
 
 export default function HomePage({ today: todayProp }: Props) {
-  usePageTitle('내 가계부')
+  const title = menuLabel('/')
+  usePageTitle(title)
   const [mountedAt] = useState(() => new Date())
   const today = todayProp ?? mountedAt
   const month = defaultYearMonth(today)
@@ -26,7 +29,7 @@ export default function HomePage({ today: todayProp }: Props) {
 
   return (
     <>
-      <h1>내 가계부</h1>
+      <PageHeader title={title} />
 
       <div className={styles.twoColumns}>
         <section aria-labelledby="upload-status-title" className={ui.card}>

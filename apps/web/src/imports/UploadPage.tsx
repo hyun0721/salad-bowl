@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useSearchParams } from 'react-router'
+import { menuLabel } from '../app/menu'
+import PageHeader from '../common/PageHeader'
 import ui from '../common/ui.module.css'
 import { formatInstant } from '../common/format'
 import { usePageTitle } from '../common/usePageTitle'
@@ -11,7 +13,8 @@ import UploadForm from './UploadForm'
 type Props = { today?: Date }
 
 export default function UploadPage({ today: todayProp }: Props) {
-  usePageTitle('업로드')
+  const title = menuLabel('/upload')
+  usePageTitle(title)
   const [mountedAt] = useState(() => new Date())
   const today = todayProp ?? mountedAt
   const [params, setParams] = useSearchParams()
@@ -19,7 +22,7 @@ export default function UploadPage({ today: todayProp }: Props) {
 
   return (
     <>
-      <h1>뱅크샐러드 엑셀 업로드</h1>
+      <PageHeader title={title} />
       <CoverageSection today={today} initialMonth={params.get('month')}
         onInitialMonthHandled={() => setParams((p) => { p.delete('month'); return p }, { replace: true })} />
       <section aria-labelledby="upload-title" className={ui.card}>
