@@ -72,6 +72,40 @@ class TransactionUpdateApiTest extends IntegrationTest {
     }
 
     @Test
+    void typeOverrideIsAuditedAndSelectingTheOriginalClearsIt() throws Exception {
+        patchTx(member, memberTxId, """
+                {"type":"TRANSFER"}
+                """)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.type").value("TRANSFER"))
+                .andExpect(jsonPath("$.edited").value(true));
+
+        patchTx(member, memberTxId, """
+                {"type":"EXPENSE"}
+                """)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.type").value("EXPENSE"))
+                .andExpect(jsonPath("$.edited").value(false));
+
+        mvc.perform(get("/transactions/" + memberTxId + "/audits").header("Authorization", member.bearer()))
+                .andExpect(jsonPath("$", hasSize(2)))
+                .andExpect(jsonPath("$[0].field").value("type"))
+                .andExpect(jsonPath("$[0].before").doesNotExist())
+                .andExpect(jsonPath("$[0].after").value("TRANSFER"))
+                .andExpect(jsonPath("$[1].before").value("TRANSFER"))
+                .andExpect(jsonPath("$[1].after").doesNotExist());
+    }
+
+    @Test
+    void negativeAmountCannotBecomeIncome() throws Exception {
+        patchTx(member, memberTxId, """
+                {"type":"INCOME"}
+                """)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+    }
+
+    @Test
     void ownerHidesTransaction() throws Exception {
         patchTx(member, memberTxId, """
                 {"hidden":true}

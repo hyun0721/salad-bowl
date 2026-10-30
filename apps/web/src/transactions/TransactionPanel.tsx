@@ -1,5 +1,6 @@
 import Checkbox from '../common/Checkbox'
 import ComboBox from '../common/ComboBox'
+import Select from '../common/Select'
 import { TextAreaField } from '../common/TextField'
 import { majorOptions, minorOptions, useCategories } from './categoriesApi'
 import { useQuery } from '@tanstack/react-query'
@@ -11,10 +12,14 @@ import { toast } from '../common/Toast'
 import { formatDateTime, formatInstant, formatSignedWon } from '../common/format'
 import ui from '../common/ui.module.css'
 import styles from './TransactionPanel.module.css'
-import { transactionsApi, type AuditView, type TransactionPatch, type TransactionView } from './transactionsApi'
+import { transactionsApi, type AuditView, type TransactionPatch, type TransactionType, type TransactionView } from './transactionsApi'
 import { useTransactionMutations } from './useTransactionMutations'
 
+const TYPE_LABELS: Record<TransactionType, string> = { EXPENSE: '지출', INCOME: '수입', TRANSFER: '이체' }
+const TYPE_ITEMS = Object.entries(TYPE_LABELS).map(([id, label]) => ({ id, label }))
+
 const FIELD_LABELS: Record<string, string> = {
+  type: '타입',
   categoryMajor: '대분류',
   categoryMinor: '소분류',
   memo: '메모',
@@ -23,6 +28,7 @@ const FIELD_LABELS: Record<string, string> = {
 
 function auditValue(field: string, value: string | null): string {
   if (field === 'hidden') return value === 'true' ? '예' : '아니오'
+  if (field === 'type' && value) return TYPE_LABELS[value as TransactionType] ?? value
   return value ?? '(원본)'
 }
 
@@ -32,7 +38,7 @@ function auditLine(a: AuditView): string {
 }
 
 /** 저장하지 않은 입력. 모달↔사이드바를 바꿔 다시 그려져도 페이지가 보관했다가 돌려준다. */
-export type EditDraft = { major: string; minor: string; memo: string; hidden: boolean }
+export type EditDraft = { type: TransactionType; major: string; minor: string; memo: string; hidden: boolean }
 
 type Props = { tx: TransactionView; onDeleted: () => void; loadDraft?: () => EditDraft | undefined; onDraftChange?: (draft: EditDraft) => void }
 
@@ -42,8 +48,8 @@ export default function TransactionPanel({ tx, onDeleted, loadDraft, onDraftChan
   const { update, remove } = useTransactionMutations()
   const audits = useQuery({ queryKey: ['audits', tx.id], queryFn: () => transactionsApi.audits(tx.id) })
   const [values, setValues] = useState<EditDraft>(() => loadDraft?.()
-    ?? { major: tx.categoryMajor, minor: tx.categoryMinor, memo: tx.memo ?? '', hidden: tx.hidden })
-  const { major, minor, memo, hidden } = values
+    ?? { type: tx.type, major: tx.categoryMajor, minor: tx.categoryMinor, memo: tx.memo ?? '', hidden: tx.hidden })
+  const { type, major, minor, memo, hidden } = values
   const change = (patch: Partial<EditDraft>) => setValues((prev) => ({ ...prev, ...patch }))
   useEffect(() => { onDraftChange?.(values) }, [values, onDraftChange])
   const isOwner = me?.userId === tx.ownerId
@@ -52,6 +58,7 @@ export default function TransactionPanel({ tx, onDeleted, loadDraft, onDraftChan
   function onSave(event: FormEvent) {
     event.preventDefault()
     const patch: TransactionPatch = {}
+    if (type !== tx.type) patch.type = type
     if (major !== tx.categoryMajor) patch.categoryMajor = major
     if (minor !== tx.categoryMinor) patch.categoryMinor = minor
     if (memo !== (tx.memo ?? '')) patch.memo = memo
@@ -60,7 +67,7 @@ export default function TransactionPanel({ tx, onDeleted, loadDraft, onDraftChan
     update.mutate({ id: tx.id, patch }, {
       // 비워서 저장하면 서버가 원본 값을 돌려준다. 입력칸도 그 값으로 맞춘다.
       onSuccess: (updated) => {
-        change({ major: updated.categoryMajor, minor: updated.categoryMinor, memo: updated.memo ?? '', hidden: updated.hidden })
+        change({ type: updated.type, major: updated.categoryMajor, minor: updated.categoryMinor, memo: updated.memo ?? '', hidden: updated.hidden })
         toast('저장했습니다.')
       },
     })
@@ -78,10 +85,13 @@ export default function TransactionPanel({ tx, onDeleted, loadDraft, onDraftChan
 
       {tx.editable ? (
         <form className={ui.stack} onSubmit={onSave}>
+          <Select variant="field" label="타입" selectedKey={type}
+            items={TYPE_ITEMS.filter((item) => item.id !== 'INCOME' || tx.amount > 0 || tx.type === 'INCOME')}
+            onSelectionChange={(key) => { if (key != null) change({ type: key as TransactionType }) }} />
           <ComboBox label="대분류" value={major} onChange={(v) => change({ major: v })} options={majorOptions(list)} maxLength={100} />
           <ComboBox label="소분류" value={minor} onChange={(v) => change({ minor: v })} options={minorOptions(list, major.trim())} maxLength={100} />
           <TextAreaField label="메모" value={memo} onChange={(v) => change({ memo: v })} maxLength={1000} rows={2} />
-          <p className={ui.muted}>비워 두고 저장하면 엑셀의 원래 값으로 돌아갑니다.</p>
+          <p className={ui.muted}>비워 두거나 원래 타입을 고르고 저장하면 엑셀의 원래 값으로 돌아갑니다.</p>
           {isOwner && (
             <Checkbox isSelected={hidden} onChange={(v) => change({ hidden: v })}>그룹 화면에서 숨기기 (본인만)</Checkbox>
           )}

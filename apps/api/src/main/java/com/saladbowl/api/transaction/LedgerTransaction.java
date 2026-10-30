@@ -18,7 +18,7 @@ import java.util.Objects;
 
 /**
  * 회원 소유의 거래 한 건. 원본 필드는 import(또는 수동 추가) 값이고 API로 바꾸지 않는다.
- * 화면 값은 *_override와 hidden으로 바꾸며, 재 import가 이 필드를 덮어쓰지 않는다.
+ * 화면 값(타입·카테고리·메모)은 *_override와 hidden으로 바꾸며, 재 import가 이 필드를 덮어쓰지 않는다.
  */
 @Entity
 @Table(name = "transactions")
@@ -68,6 +68,10 @@ public class LedgerTransaction {
 
     @Column(name = "original_memo", length = 1000)
     private String originalMemo;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "type_override", length = 10)
+    private TransactionType typeOverride;
 
     @Column(name = "category_major_override", length = 100)
     private String categoryMajorOverride;
@@ -130,6 +134,10 @@ public class LedgerTransaction {
                 || !Objects.equals(originalMemo, data.memo());
         if (changed) {
             applyNonKeyFields(data);
+            // 원본이 바꾼 타입을 따라잡으면 override는 더 할 일이 없다.
+            if (typeOverride == type) {
+                typeOverride = null;
+            }
         }
         return changed;
     }
@@ -140,6 +148,10 @@ public class LedgerTransaction {
         this.categoryMinor = data.categoryMinor();
         this.currency = data.currency();
         this.originalMemo = data.memo();
+    }
+
+    public TransactionType displayType() {
+        return typeOverride != null ? typeOverride : type;
     }
 
     public Category displayCategory() {
@@ -153,9 +165,10 @@ public class LedgerTransaction {
     }
 
     public boolean isEdited() {
-        return categoryMajorOverride != null || categoryMinorOverride != null || memoOverride != null;
+        return typeOverride != null || categoryMajorOverride != null || categoryMinorOverride != null || memoOverride != null;
     }
 
+    public void setTypeOverride(TransactionType value) { this.typeOverride = value; }
     public void setCategoryMajorOverride(String value) { this.categoryMajorOverride = value; }
     public void setCategoryMinorOverride(String value) { this.categoryMinorOverride = value; }
     public void setMemoOverride(String value) { this.memoOverride = value; }
@@ -171,6 +184,7 @@ public class LedgerTransaction {
     public BigDecimal getAmount() { return amount; }
     public String getCurrency() { return currency; }
     public String getPaymentMethod() { return paymentMethod; }
+    public TransactionType getTypeOverride() { return typeOverride; }
     public String getCategoryMajorOverride() { return categoryMajorOverride; }
     public String getCategoryMinorOverride() { return categoryMinorOverride; }
     public String getMemoOverride() { return memoOverride; }

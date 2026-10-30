@@ -37,7 +37,7 @@ public class TransactionViews {
 
     private static TransactionView view(LedgerTransaction tx, String nickname, boolean editable) {
         Category category = tx.displayCategory();
-        return new TransactionView(tx.getId(), tx.getOwnerId(), nickname, tx.getOccurredAt(), tx.getType(),
+        return new TransactionView(tx.getId(), tx.getOwnerId(), nickname, tx.getOccurredAt(), tx.displayType(),
                 category.major(), category.minor(), tx.getDescription(), tx.getAmount(), tx.getCurrency(),
                 tx.getPaymentMethod(), tx.displayMemo(), tx.isHidden(), tx.getSource(), tx.isEdited(), editable);
     }

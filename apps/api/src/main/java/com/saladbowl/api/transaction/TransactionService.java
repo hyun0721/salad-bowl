@@ -145,6 +145,19 @@ public class TransactionService {
         if (!owner && request.hidden() != null) {
             throw new ApiException(ErrorCode.FORBIDDEN, "only the owner can hide a transaction");
         }
+        if (request.type() == TransactionType.INCOME && tx.getType() != TransactionType.INCOME
+                && tx.getAmount().signum() < 0) {
+            // 금액 부호는 원본 그대로라 음수 수입은 그룹 수입을 줄인다.
+            throw new ApiException(ErrorCode.VALIDATION_FAILED, "a negative amount cannot be income");
+        }
+        if (request.type() != null) {
+            TransactionType next = request.type() == tx.getType() ? null : request.type();
+            if (next != tx.getTypeOverride()) {
+                audits.save(new TransactionAudit(tx.getId(), actorId, "type", Objects.toString(tx.getTypeOverride(), null),
+                        Objects.toString(next, null)));
+                tx.setTypeOverride(next);
+            }
+        }
         applyOverride(tx, actorId, "categoryMajor", tx.getCategoryMajorOverride(), request.categoryMajor(),
                 tx::setCategoryMajorOverride);
         applyOverride(tx, actorId, "categoryMinor", tx.getCategoryMinorOverride(), request.categoryMinor(),
