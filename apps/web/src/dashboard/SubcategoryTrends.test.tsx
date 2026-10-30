@@ -63,7 +63,7 @@ describe('SubcategoryTrends', () => {
     expect(within(table).getByRole('row', { name: /외식/ })).toHaveTextContent('신규0%—')
     expect(within(table).getByRole('cell', { name: '2026년 10월 -₩ 5,000, 전월 비교 없음' })).toHaveTextContent('—')
     expect(within(table).getAllByRole('rowheader').map((row) => row.textContent)).toEqual(['외식', '미분류', '간식'])
-    expect(within(table).getAllByRole('columnheader').slice(2).map((x) => x.textContent)).toEqual(['2026년 10월', '2026년 9월', '2026년 8월'])
+    expect(within(table).getAllByRole('columnheader').slice(2).map((x) => x.textContent)).toEqual(['10월', '9월', '8월'])
     await user.click(screen.getByRole('button', { name: /대분류.*필수/ }))
     await user.click(screen.getByRole('option', { name: '대분류를 선택하세요' }))
     await waitFor(() => expect(screen.getByLabelText('주소').textContent).not.toContain('major='))
@@ -104,6 +104,52 @@ describe('SubcategoryTrends', () => {
     const share = await screen.findByRole('region', { name: '소분류 분포' })
     expect(await within(share).findByText('대분류 하나를 선택하면 하위 소분류를 볼 수 있습니다.')).toBeInTheDocument()
     expect(requests).toHaveLength(1)
+  })
+
+  it.each([[false, 'chart'], [true, 'chart'], [false, 'list'], [true, 'list']] as const)('opens minor transactions and restores focus, mobile=%s, view=%s', async (mobile, view) => {
+    mockViewport(mobile)
+    const requests: string[] = []
+    server.use(
+      http.get('*/api/groups/10/summary/subcategories', () => HttpResponse.json([
+        { month: '2026-10', major: '식비', minor: '외식', expense: 8000 },
+        { month: '2026-10', major: '식비', minor: '미분류', expense: 1000 },
+        { month: '2026-10', major: '식비', minor: '간식', expense: -2000 },
+      ])),
+      http.get('*/api/groups/10/summary/transactions', ({ request }) => {
+        const params = new URL(request.url).searchParams
+        expect(params.get('month')).toBe('2026-10')
+        expect(params.get('category')).toBe('식비')
+        const minor = params.get('minor')!
+        requests.push(minor)
+        return HttpResponse.json([{
+          id: 1, ownerId: 1, ownerNickname: '나', occurredAt: '2026-10-19T12:30:00',
+          type: 'EXPENSE', categoryMajor: '식비', categoryMinor: minor, description: `${minor} 테스트 거래`,
+          amount: minor === '간식' ? 2000 : -1000, currency: 'KRW', paymentMethod: '카드', memo: null,
+          hidden: false, source: 'IMPORT', edited: false, editable: false,
+        }])
+      }),
+    )
+    const { user } = renderPage(<SubcategoryTrends groupId={10} month="2026-10" />, { path: "/dashboard/minor?month=2026-10&major=식비" })
+    const share = await screen.findByRole('region', { name: '소분류 분포' })
+    await within(share).findByRole('button', { name: /^외식 / })
+    if (view === 'list') await user.click(within(share).getByRole('radio', { name: '목록으로 보기' }))
+    for (const minor of view === 'list' ? ['외식', '미분류', '간식'] : ['외식', '미분류']) {
+      const opener = await within(share).findByRole('button', { name: new RegExp(`^${minor} `) })
+      if (mobile) await user.click(opener)
+      else {
+        opener.focus()
+        await user.keyboard('{Enter}')
+      }
+      const dialog = await screen.findByRole('dialog', { name: `식비 · ${minor}` })
+      expect(await within(dialog).findByText(`${minor} 테스트 거래`)).toBeInTheDocument()
+      expect(within(dialog).queryByRole('button', { name: /소분류 보기/ })).not.toBeInTheDocument()
+      expect(within(dialog).getByText(`1건 · 합계 ₩ ${minor === '간식' ? '2,000' : '1,000'}`)).toBeInTheDocument()
+      if (mobile) await user.click(within(dialog).getByRole('button', { name: '닫기' }))
+      else await user.keyboard('{Escape}')
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      await waitFor(() => expect(opener).toHaveFocus())
+    }
+    expect(requests).toEqual(view === 'list' ? ['외식', '미분류', '간식'] : ['외식', '미분류'])
   })
 
   it('retries failed subcategories independently', async () => {

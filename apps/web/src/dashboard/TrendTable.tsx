@@ -12,7 +12,7 @@ export default function TrendTable({ months, categories, label }: CategoryTrend 
     <table className={styles.table}>
       <caption className={styles.srOnly}>{label}별 전월 대비 증감률</caption>
       <thead><tr><th scope="col">{label}</th><th scope="col">추이</th>
-        {indexes.map((index) => <th scope="col" key={months[index]}>{formatMonthLabel(months[index])}</th>)}
+        {indexes.map((index) => <th scope="col" key={months[index]}>{Number(months[index].slice(5))}월</th>)}
       </tr></thead>
       <tbody>{categories.map((row) => <tr key={row.category}>
         <th scope="row">{row.category}</th>

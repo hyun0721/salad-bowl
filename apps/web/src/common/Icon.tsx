@@ -72,6 +72,8 @@ const ICONS = {
     </>
   ),
   list: <><path d="M9 6h12M9 12h12M9 18h12" /><path d="M3 6h.01M3 12h.01M3 18h.01" /></>,
+  // 도메인: 대분류 아래의 소분류 목록.
+  'list-tree': <path d="M4 4v14a2 2 0 0 0 2 2h4M4 10h6M14 4h6M14 10h6M14 20h6" />,
   chart: (
     <>
       <path d="M3 3v16a2 2 0 0 0 2 2h16" />

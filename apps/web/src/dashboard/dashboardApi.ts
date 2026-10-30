@@ -27,8 +27,11 @@ export const dashboardApi = {
     apiFetch<SubcategoryMonth[]>(`/groups/${groupId}/summary/subcategories?${new URLSearchParams({ month, ...(from ? { from } : {}) })}`),
   summary: (groupId: number, month: string) =>
     apiFetch<MonthlySummary>(`/groups/${groupId}/summary?month=${month}`),
-  categoryTransactions: (groupId: number, month: string, category: string) =>
-    apiFetch<TransactionView[]>(`/groups/${groupId}/summary/transactions?${new URLSearchParams({ month, category })}`),
+  categoryTransactions: (groupId: number, month: string, category: string, minor?: string) => {
+    const params = new URLSearchParams({ month, category })
+    if (minor !== undefined) params.set('minor', minor)
+    return apiFetch<TransactionView[]>(`/groups/${groupId}/summary/transactions?${params}`)
+  },
   trend: (groupId: number, from: string, to: string) =>
     apiFetch<CategoryTrend>(`/groups/${groupId}/summary/trend?${new URLSearchParams({ from, to })}`),
 }
