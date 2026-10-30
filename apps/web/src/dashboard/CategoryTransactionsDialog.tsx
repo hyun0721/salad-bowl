@@ -58,9 +58,9 @@ export default function CategoryTransactionsDialog({ groupId, month, category, o
               <div className={styles.dialogList} data-dialog-list="">
                 {narrow ? (
                   <CardList label="거래 목록" items={items} textValue={(tx) => tx.description} onAction={() => {}}>
-                    {(tx) => <TransactionCard tx={tx} showOwner />}
+                    {(tx) => <TransactionCard tx={tx} showOwner showMajor={false} />}
                   </CardList>
-                ) : <DataTable label="거래 목록" columns={transactionColumns(true)} items={items} rowText={(tx) => tx.description} onRowAction={() => {}} />}
+                ) : <DataTable label="거래 목록" columns={transactionColumns(true, false)} items={items} rowText={(tx) => tx.description} onRowAction={() => {}} />}
               </div>
             )}
           </>}
