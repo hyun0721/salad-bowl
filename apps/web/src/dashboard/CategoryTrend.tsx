@@ -26,9 +26,9 @@ const compactPresets: { id: RangePreset; label: string }[] = [
   { id: 'custom', label: '직접' },
 ]
 
-type Props = { groupId: number; month: string; title?: string; queryKey?: readonly unknown[]; load?: (from: string, to: string) => Promise<TrendData>; label?: string; enabled?: boolean }
+type Props = { groupId: number; month: string; title?: string; queryKey?: readonly unknown[]; load?: (from: string, to: string) => Promise<TrendData>; label?: string; enabled?: boolean; ready?: boolean }
 
-export default function CategoryTrend({ groupId, month, title = '대분류 추이', queryKey, load, label = '대분류', enabled = true }: Props) {
+export default function CategoryTrend({ groupId, month, title = '대분류 추이', queryKey, load, label = '대분류', enabled = true, ready = true }: Props) {
   const [view, setView] = useState('chart')
   const titleId = useId()
   const compact = useMediaQuery(NARROW)
@@ -42,7 +42,7 @@ export default function CategoryTrend({ groupId, month, title = '대분류 추�
   const trend = useQuery({
     queryKey: [...(queryKey ?? ['summary', groupId, 'trend']), range.from, range.to],
     queryFn: () => load ? load(range.from, range.to) : dashboardApi.trend(groupId, range.from, range.to),
-    enabled: enabled && error === null,
+    enabled: ready && enabled && error === null,
     placeholderData: (previous, previousQuery) => JSON.stringify(previousQuery?.queryKey.slice(0, -2)) === scope ? previous : undefined,
   })
   const { categories, tableCategories, topFive, active, visible, series } = useMemo(() => {
@@ -76,7 +76,7 @@ export default function CategoryTrend({ groupId, month, title = '대분류 추�
   return (
     <section id="dashboard-trend" aria-labelledby={titleId} className={`${ui.card} ${styles.card}`}>
       <div className={styles.header}><h2 id={titleId}>{title}</h2><ChartViewToggle title={title} table value={view} onChange={setView} /></div>
-      {!enabled ? <p className={ui.status}>대분류 하나를 선택하면 하위 소분류를 볼 수 있습니다.</p> : <>
+      {!ready ? null : !enabled ? <p className={ui.status}>대분류 하나를 선택하면 하위 소분류를 볼 수 있습니다.</p> : <>
       <div className={styles.presetScroll}>
         <SegmentedControl label="기간" items={compact ? compactPresets : presets} selectedKey={preset} onSelectionChange={selectPreset} />
       </div>

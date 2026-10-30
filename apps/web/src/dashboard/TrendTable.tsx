@@ -1,4 +1,4 @@
-import { formatMonthLabel } from '../common/format'
+import { formatMonthLabel, formatWon } from '../common/format'
 import type { CategoryTrend } from './dashboardApi'
 import { expenseChange } from './expenseChange'
 import styles from './CategoryTrend.module.css'
@@ -24,7 +24,7 @@ export default function TrendTable({ months, categories, label }: CategoryTrend 
         {indexes.map((index) => {
           const value = row.expenses[index] ?? 0
           const change = expenseChange(value, index === 0 ? undefined : row.expenses[index - 1] ?? 0)
-          const description = `${formatMonthLabel(months[index])} ${value.toLocaleString('ko-KR')}원, ${change.comparison}`
+          const description = `${formatMonthLabel(months[index])} ${value < 0 ? '-' : ''}${formatWon(value)}, ${change.comparison}`
           return <td key={months[index]} title={description} aria-label={description}
             className={change.direction > 0 ? styles.expenseIncrease : change.direction < 0 ? styles.expenseDecrease : undefined}>{change.label}</td>
         })}

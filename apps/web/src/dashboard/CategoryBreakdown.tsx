@@ -3,14 +3,10 @@ import DonutChart, { sliceStyle } from '../common/DonutChart'
 import { NARROW, useMediaQuery } from '../common/useMediaQuery'
 import { formatWon } from '../common/format'
 import ui from '../common/ui.module.css'
+import { percent } from './percent'
 import styles from './CategoryBreakdown.module.css'
 import CategoryTransactionsDialog from './CategoryTransactionsDialog'
 import type { MonthlySummary } from './dashboardApi'
-
-function percent(expense: number, total: number) {
-  const rounded = Math.round((expense / total) * 100)
-  return rounded === 0 ? '1% 미만' : `${rounded}%`
-}
 
 type Props = { groupId: number; month: string; summary: MonthlySummary }
 

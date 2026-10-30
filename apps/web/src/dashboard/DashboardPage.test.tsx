@@ -140,7 +140,7 @@ describe('DashboardPage', () => {
     expect(url.searchParams.get('major')).toBe('식비')
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     const section = await screen.findByRole('region', { name: '소분류 분포' })
-    const title = within(section).getByRole('heading', { name: '소분류 분포' })
+    const title = within(section).getByRole('heading', { level: 2, name: '소분류 분포' })
     expect(title).toHaveFocus()
     // 포커스 뒤 state는 소비되어(replace) 새로고침·뒤로/앞으로에서 포커스가 다시 옮겨지지 않는다.
     await waitFor(() => expect(screen.getByRole('status', { name: '이동 state' })).toHaveTextContent('null'))
@@ -148,7 +148,11 @@ describe('DashboardPage', () => {
     expect(title).toHaveFocus()
     expect(new URL(screen.getByRole('status', { name: '현재 주소' }).textContent!, 'http://test').search).toBe(url.search)
     expect(await within(section).findByText('외식')).toBeInTheDocument()
-    // 차트 이동은 push이므로 뒤로 가면 대분류 화면으로 돌아온다.
+    // Select 변경은 replace이므로 뒤로 한 번이면 차트 이동 전 화면으로 돌아간다.
+    await user.click(screen.getByRole('button', { name: /대분류.*필수/ }))
+    await user.click(screen.getByRole('option', { name: '교통' }))
+    expect(screen.getByRole('status', { name: '이동 방식' })).toHaveTextContent('REPLACE')
+    expect(new URL(screen.getByRole('status', { name: '현재 주소' }).textContent!, 'http://test').searchParams.get('major')).toBe('교통')
     await user.click(screen.getByRole('button', { name: '뒤로 테스트' }))
     await waitFor(() => expect(screen.getByRole('status', { name: '현재 주소' })).toHaveTextContent('/dashboard/major?month=2026-10'))
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()

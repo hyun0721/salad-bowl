@@ -9,15 +9,12 @@ import ui from '../common/ui.module.css'
 import { dashboardApi } from './dashboardApi'
 import CategoryTrend from './CategoryTrend'
 import ChartViewToggle from './ChartViewToggle'
+import { percent } from './percent'
 import styles from './SubcategoryTrends.module.css'
 import breakdown from './CategoryBreakdown.module.css'
 import trendStyles from './CategoryTrend.module.css'
 
 const ignoreSelect = () => {}
-function percent(value: number, total: number) {
-  const rounded = Math.round(value / total * 100)
-  return rounded === 0 ? '1% 미만' : `${rounded}%`
-}
 
 export default function SubcategoryTrends({ groupId, month }: { groupId: number; month: string }) {
   const { pathname, search, state } = useLocation()
@@ -114,6 +111,6 @@ export default function SubcategoryTrends({ groupId, month }: { groupId: number;
         </>)}
     </section>
     <CategoryTrend groupId={groupId} month={month} title="소분류 추이" label="소분류"
-      queryKey={['summary', groupId, 'subcategory-trend', major]} load={loadTrend} enabled={!!major} />
+      queryKey={['summary', groupId, 'subcategory-trend', major]} load={loadTrend} enabled={!!major} ready={query.isSuccess} />
   </>
 }
