@@ -12,7 +12,7 @@ Transactions (`/transactions`, heading `거래 목록`) lists my transactions or
 ## How to get to it (user POV)
 
 - Click the menu link `거래 목록` (wide) or `거래` (narrow).
-- On home, click the link `내 거래 보기`.
+- On home, click the card `수입 ₩ …`.
 
 ## Driving it with the built-in browser
 

@@ -15,3 +15,10 @@ export const MENU: MenuItem[] = [
   { to: '/upload', label: '업로드', shortLabel: '업로드', icon: 'sheet-upload', end: false },
   { to: '/groups', label: '그룹 관리', shortLabel: '그룹', icon: 'users', end: false },
 ]
+
+/** 화면 제목은 메뉴 이름과 같게 둔다. */
+export function menuLabel(to: string): string {
+  const item = MENU.find((m) => m.to === to)
+  if (!item) throw new Error(`메뉴에 없는 경로: ${to}`)
+  return item.label
+}

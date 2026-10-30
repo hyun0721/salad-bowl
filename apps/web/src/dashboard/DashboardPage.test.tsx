@@ -71,35 +71,53 @@ describe('DashboardPage', () => {
     expect(screen.getByRole('status', { name: '현재 주소' })).toHaveTextContent('/dashboard/major?month=2026-10')
   })
 
-  it('puts the month picker below the classification tabs and before the totals', async () => {
+  it('puts the title, month picker and totals above the classification tabs', async () => {
     mockViewport(true)
     server.use(http.get('*/api/groups/10/summary', () => HttpResponse.json(summary)))
     renderDashboard('/dashboard/major?month=2026-08')
-    const income = await screen.findByRole('button', { name: '수입 3,000,000원' })
-    const menu = screen.getByRole('navigation', { name: '대시보드 메뉴' })
+    const income = await screen.findByRole('button', { name: '수입 ₩ 3,000,000' })
+    const heading = screen.getByRole('heading', { level: 1, name: '그룹 대시보드' })
     const month = screen.getByLabelText('월')
-    expect(menu.compareDocumentPosition(month) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-    expect(month.compareDocumentPosition(income) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    const menu = screen.getByRole('navigation', { name: '대시보드 메뉴' })
+    const follows = (a: Element, b: Element) => Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING)
+    expect(follows(heading, month)).toBe(true)
+    expect(follows(month, income)).toBe(true)
+    expect(follows(income, menu)).toBe(true)
     expect(screen.queryByText(/공개를 켠 멤버의 원화 거래/)).not.toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: '그룹 대시보드' })).toHaveClass('visuallyHidden')
   })
 
-  it.each([false, true])('uses the latest six months for subcategories without a month picker (narrow: %s)', async (narrow) => {
+  it.each([false, true])('applies the address month and month picker to subcategories (narrow: %s)', async (narrow) => {
     mockViewport(narrow)
     const months: string[] = []
+    const summaryMonths: string[] = []
     server.use(
-      http.get('*/api/groups/10/summary', () => HttpResponse.json(summary)),
+      http.get('*/api/groups/10/summary', ({ request }) => {
+        summaryMonths.push(new URL(request.url).searchParams.get('month')!)
+        return HttpResponse.json(summary)
+      }),
       http.get('*/api/groups/10/summary/subcategories', ({ request }) => {
         months.push(new URL(request.url).searchParams.get('month')!)
         return HttpResponse.json([])
       }),
     )
-    renderDashboard('/dashboard/minor?month=2026-03')
+    const { user } = renderDashboard('/dashboard/minor?month=2026-03')
     await screen.findByText('최근 6개월에 공개된 지출이 없습니다.')
-    expect(months).toEqual(['2026-10'])
-    expect(screen.getByText('2026년 10월까지 최근 6개월 · 지출에서 환불을 차감합니다.')).toBeInTheDocument()
-    expect(screen.queryByLabelText('월')).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: '이전 달' })).not.toBeInTheDocument()
+    expect(months).toEqual(['2026-03'])
+    expect(summaryMonths).toEqual(['2026-03'])
+    expect(screen.getByText('2026년 3월까지 최근 6개월 · 지출에서 환불을 차감합니다.')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '이전 달' }))
+    await waitFor(() => expect(screen.getByRole('status', { name: '현재 주소' })).toHaveTextContent('/dashboard/minor?month=2026-02'))
+    expect(await screen.findByText('2026년 2월까지 최근 6개월 · 지출에서 환불을 차감합니다.')).toBeInTheDocument()
+  })
+
+  it('keeps the totals above the tabs when switching to the minor tab', async () => {
+    mockViewport(true)
+    server.use(http.get('*/api/groups/10/summary', () => HttpResponse.json(summary)))
+    const { user } = renderDashboard('/dashboard/major?month=2026-10')
+    const income = await screen.findByRole('button', { name: '수입 ₩ 3,000,000' })
+    await user.click(within(screen.getByRole('navigation', { name: '대시보드 메뉴' })).getByRole('link', { name: '소분류' }))
+    await screen.findByRole('region', { name: '소분류 추이·분포' })
+    expect(screen.getByRole('button', { name: '수입 ₩ 3,000,000' })).toBe(income)
   })
 
   it('opens the minor screen for a category from its transactions dialog', async () => {
@@ -139,7 +157,7 @@ describe('DashboardPage', () => {
   it('shows member totals with an icon close button', async () => {
     server.use(http.get('*/api/groups/10/summary', () => HttpResponse.json(summary)))
     const { user } = renderDashboard('/dashboard/major?month=2026-10')
-    await user.click(await screen.findByRole('button', { name: '수입 3,000,000원' }))
+    await user.click(await screen.findByRole('button', { name: '수입 ₩ 3,000,000' }))
     const dialog = await screen.findByRole('dialog', { name: '멤버별 수입' })
     const close = within(dialog).getByRole('button', { name: '닫기' })
     expect(close).toHaveTextContent(/^$/)
@@ -156,10 +174,10 @@ describe('DashboardPage', () => {
     }))
     renderDashboard()
 
-    const income = await screen.findByRole('button', { name: '수입 3,000,000원' })
-    expect(income).toHaveTextContent('3,000,000 (원)')
-    expect(within(income).getByText('(원)')).toHaveClass('totalUnit')
-    expect(screen.getByRole('button', { name: '지출 250,000원' })).toBeInTheDocument()
+    const income = await screen.findByRole('button', { name: '수입 ₩ 3,000,000' })
+    expect(income).toHaveTextContent('₩ 3,000,000')
+    expect(income).not.toHaveTextContent('(원)')
+    expect(screen.getByRole('button', { name: '지출 ₩ 250,000' })).toBeInTheDocument()
     const categories = screen.getByRole('region', { name: '카테고리별 지출' })
     expect(within(categories).getByRole('button', { name: '식비 80% ₩ 200,000' })).toBeInTheDocument()
     expect(screen.queryByRole('region', { name: '멤버별' })).not.toBeInTheDocument()
@@ -171,14 +189,14 @@ describe('DashboardPage', () => {
     server.use(http.get('*/api/groups/10/summary', () => HttpResponse.json(summary)))
     const { user } = renderDashboard()
 
-    await user.click(await screen.findByRole('button', { name: '지출 250,000원' }))
+    await user.click(await screen.findByRole('button', { name: '지출 ₩ 250,000' }))
     const expense = await screen.findByRole('dialog', { name: '멤버별 지출' })
     expect(within(expense).getAllByRole('row').map((r) => r.textContent)).toEqual(
       ['멤버지출', '나₩ 150,000', '짝꿍₩ 100,000', '합계₩ 250,000'])
     await user.click(within(expense).getByRole('button', { name: '닫기' }))
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
 
-    await user.click(screen.getByRole('button', { name: '수입 3,000,000원' }))
+    await user.click(screen.getByRole('button', { name: '수입 ₩ 3,000,000' }))
     const income = await screen.findByRole('dialog', { name: '멤버별 수입' })
     expect(within(income).getAllByRole('row').map((r) => r.textContent)).toEqual(
       ['멤버수입', '나₩ 3,000,000', '짝꿍₩ 0', '합계₩ 3,000,000'])
@@ -197,6 +215,27 @@ describe('DashboardPage', () => {
     await user.click(screen.getByRole('button', { name: '이전 달' }))
 
     await waitFor(() => expect(months).toContain('2026-09'))
+  })
+
+  it('keeps the totals while the previous month loads', async () => {
+    let release!: () => void
+    const pending = new Promise<void>((resolve) => { release = resolve })
+    const months: string[] = []
+    server.use(http.get('*/api/groups/10/summary', async ({ request }) => {
+      const month = new URL(request.url).searchParams.get('month')!
+      months.push(month)
+      if (month === '2026-09') await pending
+      return HttpResponse.json({ ...summary, month })
+    }))
+    const { user } = renderDashboard()
+    try {
+      await screen.findByRole('button', { name: '수입 ₩ 3,000,000' })
+      await user.click(screen.getByRole('button', { name: '이전 달' }))
+      await waitFor(() => expect(months).toContain('2026-09'))
+      expect(screen.getByRole('button', { name: '수입 ₩ 3,000,000' })).toBeInTheDocument()
+    } finally {
+      release()
+    }
   })
 
   it('keeps trend chip choices when the dashboard month changes', async () => {
@@ -231,7 +270,7 @@ describe('DashboardPage', () => {
     const { user } = renderDashboard()
 
     expect(await screen.findByText('이 달에 합칠 거래가 없습니다.')).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: '수입 0원' }))
+    await user.click(screen.getByRole('button', { name: '수입 ₩ 0' }))
     expect(within(await screen.findByRole('dialog', { name: '멤버별 수입' })).getByText('공개한 멤버가 없습니다.')).toBeInTheDocument()
   })
 
@@ -255,6 +294,7 @@ describe('DashboardPage', () => {
 
     expect(await screen.findByRole('heading', { name: '아직 속한 그룹이 없습니다' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: '그룹 만들기' })).toHaveAttribute('href', '/groups')
+    expect(screen.getByRole('link', { name: '홈으로' })).toHaveAttribute('href', '/')
   })
 
   it('redirects /dashboard to the major screen and keeps the month', async () => {
@@ -334,12 +374,12 @@ describe('DashboardPage', () => {
     Object.defineProperty(Element.prototype, 'scrollIntoView', { configurable: true, value: scroll })
     try {
       const { user } = renderDashboard('/dashboard/major/trend?month=2026-10')
-      await screen.findByRole('button', { name: '수입 3,000,000원' })
+      await screen.findByRole('button', { name: '수입 ₩ 3,000,000' })
       await waitFor(() => expect(scroll).toHaveBeenCalledTimes(2))
       const calls = scroll.mock.calls.length
 
       await user.click(screen.getByRole('button', { name: '이전 달' }))
-      await screen.findByRole('button', { name: '수입 2,000,000원' })
+      await screen.findByRole('button', { name: '수입 ₩ 2,000,000' })
       expect(scroll).toHaveBeenCalledTimes(calls)
     } finally {
       if (original) Object.defineProperty(Element.prototype, 'scrollIntoView', original)

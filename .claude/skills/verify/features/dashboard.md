@@ -1,6 +1,6 @@
 # Group dashboard
 
-The dashboard (heading `그룹 대시보드`) combines a month of KRW transactions from group members who turned sharing on. Above every sub-screen it shows the month picker and the 수입·지출 total buttons, which open a per-member dialog. Below that it splits by address into 대분류 (major) and 소분류 (minor). Both widths show 분포 (share) and 추이 (trend) together on one page. The month lives in the address as `?month=YYYY-MM`.
+The dashboard (heading `그룹 대시보드`) combines a month of KRW transactions from group members who turned sharing on. Every sub-screen follows heading → month picker → 수입·지출 → (narrow) 대시보드 메뉴 → sub-screen. The total cards open a per-member dialog. The month applies to both 대분류 and 소분류, and lives in the address as `?month=YYYY-MM`. Both widths show 분포 (share) and 추이 (trend) together on one page.
 
 ## Sub-features
 
@@ -9,7 +9,7 @@ The dashboard (heading `그룹 대시보드`) combines a month of KRW transactio
 - `dash-totals` shows the 수입 and 지출 buttons. Each opens a `멤버별 수입` / `멤버별 지출` dialog listing members and a total.
 - `dash-category` (대분류 분포) shows `카테고리별 지출` as a donut plus a list with amount and percent per 대분류. Clicking a row opens a dialog of that category's transactions. Its header has two icon-only buttons: `<대분류> 소분류 보기` (bar chart) and `닫기` (X).
 - `dash-trend` (대분류 추이) shows `대분류별 추이`: a range segmented control (전월 비교 / 3·6·12개월 / 직접 지정), category chips (top 5 on by default), a line chart, and `표로 보기`.
-- `dash-minor` (`/dashboard/minor/*`) temporarily shows the old `소분류 추이·분포` card (pick a 대분류 to see its 소분류) until Plan 16d replaces it with 소분류 분포·추이. `?major=<대분류>` preselects that 대분류 when the card mounts; an unknown name shows the selection hint.
+- `dash-minor` (`/dashboard/minor/*`) temporarily shows the old `소분류 추이·분포` card (pick a 대분류 to see its 소분류) until Plan 16d replaces it with 소분류 분포·추이. It uses the latest six months through `?month=`. `?major=<대분류>` preselects that 대분류 when the card mounts; an unknown name shows the selection hint.
 - `dash-drill` is the `<대분류> 소분류 보기` button in the transactions dialog: it closes the dialog and pushes `/dashboard/minor?month=…&major=…` (history grows by one; back returns to the 대분류 screen). Focus lands on the card heading `소분류 추이·분포`. The focus hint lives in history state and is cleared right after use, so a reload does not move focus.
 - `dash-menu` shows, on narrow screens only, `navigation "대시보드 메뉴"` with one link row, group `분류` [대분류 | 소분류]. The current one carries `aria-current="page"`. Links replace history, keep the search, and leave focus on the clicked link.
 - `dash-scroll` scrolls to the `:view` card when the address has one (`/dashboard/major/trend`), at both widths, after the summary loads. The temporary 소분류 card is one card, so `/dashboard/minor/:view` does not scroll until 16d.

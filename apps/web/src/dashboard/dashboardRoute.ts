@@ -1,3 +1,5 @@
+import { menuLabel } from '../app/menu'
+
 export type Level = 'major' | 'minor'
 export type View = 'share' | 'trend'
 
@@ -13,5 +15,5 @@ export function dashboardRedirect(level: string | undefined, view: string | unde
 }
 
 export function dashboardTitle(level: Level): string {
-  return `그룹 대시보드 · ${LEVEL_LABEL[level]}`
+  return `${menuLabel('/dashboard')} · ${LEVEL_LABEL[level]}`
 }

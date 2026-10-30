@@ -130,6 +130,7 @@ describe('UploadPage', () => {
     renderPage(<UploadPage today={new Date(2026, 9, 19)} />)
 
     await screen.findByRole('region', { name: '월별 등록 현황' })
+    expect(screen.getByRole('heading', { level: 1, name: '업로드' })).toBeInTheDocument()
     expect(screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent))
       .toEqual(['월별 등록 현황', '파일 올리기', '업로드 이력'])
   })

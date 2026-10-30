@@ -48,7 +48,7 @@ function InviteError({ error, onRetry }: { error: unknown; onRetry: () => void }
       <p role="alert" className={ui.alert}>{errorMessage(error)}</p>
       <div className={ui.row}>
         {!final && <button type="button" className={ui.button} onClick={onRetry}>다시 시도</button>}
-        <Link to="/" className={`${ui.button} ${ui.linkButton}`}>내 가계부로</Link>
+        <Link to="/" className={`${ui.button} ${ui.linkButton}`}>홈으로</Link>
       </div>
     </>
   )

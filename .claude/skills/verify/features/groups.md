@@ -5,7 +5,7 @@ Groups (`/groups`, heading `그룹 관리`) lists my groups, lets me create one 
 ## Sub-features
 
 - `grp-list` shows `내 그룹`.
-- `grp-create` uses `그룹 이름` and submit.
+- `grp-create` is opened by the title-row button `추가` (accessible name `그룹 추가`), dialog `새 그룹 만들기`; uses `그룹 이름` and submit.
 - `grp-rename` uses `새 이름` (owner only).
 - `grp-invite` creates an invite link, shows it in `초대 주소`, and offers `링크 복사`. It is disabled when the group is full (6 members).
 - `grp-members` lists members and bans.

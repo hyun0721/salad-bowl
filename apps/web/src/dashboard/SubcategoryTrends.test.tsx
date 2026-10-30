@@ -93,7 +93,7 @@ describe('SubcategoryTrends', () => {
     await user.click(screen.getByRole('option', { name: '교통' }))
     expect(within(section).getByRole('row', { name: /택시/ })).toBeInTheDocument()
     expect(within(section).queryByText('외식')).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: '이전 달' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '이전 달' })).toBeInTheDocument()
     expect(requests).toEqual(['2026-10'])
   })
 

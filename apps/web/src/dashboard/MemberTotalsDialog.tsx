@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import { DialogFrame } from '../common/Dialog'
 import { formatWon } from '../common/format'
+import type { TotalKind } from '../common/TotalsCards'
 import Icon from '../common/Icon'
 import ui from '../common/ui.module.css'
 import type { MonthlySummary } from './dashboardApi'
 import styles from './DashboardPage.module.css'
 
-export type TotalKind = 'income' | 'expense'
 const LABELS: Record<TotalKind, string> = { income: '수입', expense: '지출' }
 
 type Props = { kind: TotalKind | null; summary: MonthlySummary; onClose: () => void }

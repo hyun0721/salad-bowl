@@ -1,7 +1,9 @@
 import { useIsMutating } from '@tanstack/react-query'
 import { useState } from 'react'
+import { menuLabel } from '../app/menu'
 import Icon from '../common/Icon'
 import Dialog from '../common/Dialog'
+import PageHeader from '../common/PageHeader'
 import ui from '../common/ui.module.css'
 import { usePageTitle } from '../common/usePageTitle'
 import CreateGroupForm from './CreateGroupForm'
@@ -10,19 +12,18 @@ import { useGroups } from './GroupProvider'
 import styles from './GroupsPage.module.css'
 
 export default function GroupsPage() {
-  usePageTitle('그룹 관리')
+  const title = menuLabel('/groups')
+  usePageTitle(title)
   const { groups, selectedGroupId, selectGroup, isLoading, isError, retry } = useGroups()
   const [creating, setCreating] = useState(false)
   const createPending = useIsMutating({ mutationKey: ['groups', 'create'] }) > 0
 
   return (
     <>
-      <h1>그룹 관리</h1>
-      <div className={styles.actions}>
-        <button type="button" className={`${ui.button} ${ui.primary}`} onClick={() => setCreating(true)}>
-          <Icon name="plus" size={18} />그룹 만들기
-        </button>
-      </div>
+      <PageHeader title={title} action={
+        <button type="button" className={`${ui.button} ${ui.primary}`} aria-label="그룹 추가"
+          onClick={() => setCreating(true)}><Icon name="plus" />추가</button>
+      } />
       <div className={styles.layout}>
         <section aria-labelledby="my-groups-title" className={ui.card}>
           <h2 id="my-groups-title">내 그룹</h2>
@@ -34,7 +35,7 @@ export default function GroupsPage() {
             </div>
           )}
           {!isLoading && !isError && groups.length === 0 && (
-            <p className={ui.status}>아직 속한 그룹이 없습니다. 위의 그룹 만들기로 새로 만들거나, 받은 초대 링크를 열어 합류합니다.</p>
+            <p className={ui.status}>아직 속한 그룹이 없습니다. 위의 추가 버튼으로 새로 만들거나, 받은 초대 링크를 열어 합류합니다.</p>
           )}
           {groups.length > 0 && (
             <ul className={styles.groupList}>

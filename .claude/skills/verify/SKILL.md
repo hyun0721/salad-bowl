@@ -38,7 +38,7 @@ This check only reads. It confirms the container is running, both pids are alive
 Use the built-in browser (`mcp__Claude_Browser__*`).
 
 1. Set a width first with `resize_window` (a hidden pane reports a 0×0 viewport and `read_page` returns an empty page). Then `navigate` to `http://localhost:15173/login` and wait about 3 seconds: the SPA renders after its first silent refresh, which logs two expected 401s in the console.
-2. Log in: `find "textbox"` returns `이메일` and `비밀번호`. Fill `이메일` with `verify@example.test` and `비밀번호` with `verify-pass-1234`, then press Return. You land on `/` with the heading `내 가계부`.
+2. Log in: `find "textbox"` returns `이메일` and `비밀번호`. Fill `이메일` with `verify@example.test` and `비밀번호` with `verify-pass-1234`, then press Return. You land on `/` with the heading `홈`.
 3. Widths:
    - `resize_window` preset `mobile` (375×812) gives the narrow layout: bottom tab bar and account sheet.
    - preset `desktop` gives the sidebar. Reset to `desktop` when you finish.
