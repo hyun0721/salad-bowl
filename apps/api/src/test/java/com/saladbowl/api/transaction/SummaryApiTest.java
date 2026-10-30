@@ -497,4 +497,80 @@ class SummaryApiTest extends IntegrationTest {
         subcategories("0000-02", "0000-01").andExpect(status().isBadRequest());
         subcategories("9999-12", "9999-01").andExpect(status().isOk());
     }
+
+    private org.springframework.test.web.servlet.ResultActions memberCategories(AuthedUser who, String month)
+            throws Exception {
+        return mvc.perform(get("/groups/" + groupId + "/summary/members").param("month", month)
+                .header("Authorization", who.bearer()));
+    }
+
+    @Test
+    void memberCategoriesAggregateNetExpenseAndMatchSubcategories() throws Exception {
+        saveMinor(admin, "2026-09-01T12:00:00", "식비", "외식", -10_000);
+        saveMinor(member, "2026-09-02T12:00:00", "식비", "외식", -2_000);
+        saveMinor(member, "2026-09-03T12:00:00", "식비", "외식", 3_000);
+        saveMinor(admin, "2026-09-04T12:00:00", "식비", "장보기", -4_000);
+        LedgerTransaction moved = saveMinor(admin, "2026-09-05T12:00:00", "원본", "원본", -500);
+        moved.setCategoryMajorOverride("식비");
+        moved.setCategoryMinorOverride("외식");
+        transactions.save(moved);
+        save(admin, TransactionType.INCOME, "2026-09-06T12:00:00", "급여", 99_000);
+        save(admin, TransactionType.TRANSFER, "2026-09-07T12:00:00", "이체", -99_000);
+        LedgerTransaction hidden = saveMinor(admin, "2026-09-08T12:00:00", "식비", "외식", -99_000);
+        hidden.setHidden(true);
+        transactions.save(hidden);
+        saveMinor(admin, "2026-10-01T12:00:00", "식비", "외식", -99_000);
+        transactions.save(LedgerTransaction.manual(member.id(), new TransactionData(
+                java.time.LocalDateTime.parse("2026-09-09T12:00:00"), TransactionType.EXPENSE,
+                "식비", "외식", "해외", new BigDecimal("-99.00"), "USD", "카드", null)));
+
+        var rows = new tools.jackson.databind.ObjectMapper().readTree(
+                memberCategories(member, "2026-09").andExpect(status().isOk())
+                        .andExpect(jsonPath("$", hasSize(3)))
+                        .andExpect(jsonPath("$[0].major").value("식비"))
+                        .andExpect(jsonPath("$[0].minor").value("외식"))
+                        .andExpect(jsonPath("$[0].userId").value(admin.id()))
+                        .andExpect(jsonPath("$[0].expense").value(10_500))
+                        .andExpect(jsonPath("$[1].userId").value(member.id()))
+                        .andExpect(jsonPath("$[1].expense").value(-1_000))
+                        .andExpect(jsonPath("$[2].minor").value("장보기"))
+                        .andExpect(jsonPath("$[2].expense").value(4_000))
+                        .andReturn().getResponse().getContentAsString());
+        var subcategories = new tools.jackson.databind.ObjectMapper().readTree(
+                subcategories("2026-09", "2026-09").andReturn().getResponse().getContentAsString());
+        for (var category : subcategories) {
+            BigDecimal total = BigDecimal.ZERO;
+            for (var row : rows) {
+                if (row.get("major").asText().equals(category.get("major").asText())
+                        && row.get("minor").asText().equals(category.get("minor").asText())) {
+                    total = total.add(row.get("expense").decimalValue());
+                }
+            }
+            org.junit.jupiter.api.Assertions.assertEquals(0, total.compareTo(category.get("expense").decimalValue()));
+        }
+    }
+
+    @Test
+    void memberCategoriesRespectSharingAndMembership() throws Exception {
+        saveMinor(admin, "2026-09-01T12:00:00", "식비", "외식", -1_000);
+        saveMinor(member, "2026-09-02T12:00:00", "식비", "외식", -2_000);
+        AuthedUser outsider = TestAuth.signupAndLogin(mvc, "member-summary-out@test.com", "외부인");
+        saveMinor(outsider, "2026-09-03T12:00:00", "식비", "외식", -3_000);
+        memberCategories(admin, "2026-09").andExpect(jsonPath("$", hasSize(2)));
+        mvc.perform(put("/groups/" + groupId + "/share").header("Authorization", member.bearer())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"enabled\":false}"))
+                .andExpect(status().isOk());
+        memberCategories(admin, "2026-09").andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].userId").value(admin.id()))
+                .andExpect(jsonPath("$[0].expense").value(1_000));
+        memberCategories(outsider, "2026-09").andExpect(status().isNotFound());
+    }
+
+    @Test
+    void memberCategoriesRejectInvalidMonth() throws Exception {
+        for (String month : java.util.List.of("2026-13", "bad", "0000-01")) {
+            memberCategories(admin, month).andExpect(status().isBadRequest());
+        }
+    }
 }

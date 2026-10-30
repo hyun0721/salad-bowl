@@ -197,6 +197,28 @@ public class SummaryService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public List<SummaryDtos.MemberCategoryExpense> memberCategories(long groupId, long userId, YearMonth month) {
+        access.requireMember(groupId, userId);
+        TransactionService.monthRange(month);
+        List<Long> owners = access.sharedOwnerIds(groupId);
+        if (owners.isEmpty()) return List.of();
+        record Key(String major, String minor, long userId) {}
+        Map<Key, BigDecimal> totals = new HashMap<>();
+        for (LedgerTransaction tx : summaryTransactions(owners, month)) {
+            if (tx.getType() != TransactionType.EXPENSE) continue;
+            totals.merge(new Key(majorLabel(tx), minorLabel(tx), tx.getOwnerId()),
+                    tx.getAmount().negate(), BigDecimal::add);
+        }
+        return totals.entrySet().stream()
+                .map(e -> new SummaryDtos.MemberCategoryExpense(
+                        e.getKey().major(), e.getKey().minor(), e.getKey().userId(), e.getValue()))
+                .sorted(Comparator.comparing(SummaryDtos.MemberCategoryExpense::major)
+                        .thenComparing(SummaryDtos.MemberCategoryExpense::minor)
+                        .thenComparingLong(SummaryDtos.MemberCategoryExpense::userId))
+                .toList();
+    }
+
     private static BigDecimal sum(List<LedgerTransaction> txs, TransactionType type) {
         return txs.stream()
                 .filter(tx -> tx.getType() == type)
