@@ -12,6 +12,9 @@ done
 check "port $API_PORT owned by api pid" "lsof -a -p $(cat "$STATE/api.pid" 2>/dev/null || echo 0) -iTCP:$API_PORT -sTCP:LISTEN"
 check "port $WEB_PORT owned by web pid" "lsof -a -p $(cat "$STATE/web.pid" 2>/dev/null || echo 0) -iTCP:$WEB_PORT -sTCP:LISTEN"
 check "health UP through web proxy" "curl -sf $WEB/api/actuator/health | grep -q UP"
-check "seed login works" "curl -sf -H 'Content-Type: application/json' -d '{\"email\":\"$SEED_EMAIL\",\"password\":\"$SEED_PASSWORD\"}' $WEB/api/auth/login"
+for email in "$SEED_EMAIL" "$SEED_EMAIL2" "$SEED_EMAIL3" "$SEED_EMAIL4"; do
+  check "seed login $email" "curl -sf -H 'Content-Type: application/json' -d '{\"email\":\"$email\",\"password\":\"$SEED_PASSWORD\"}' $WEB/api/auth/login"
+done
+
 echo "build: $(git -C "$ROOT" rev-parse --short HEAD)$(git -C "$ROOT" diff --quiet || echo '+dirty')"
 exit $ok

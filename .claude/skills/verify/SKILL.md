@@ -1,6 +1,6 @@
 ---
 name: verify
-description: Launch an isolated Salad Bowl stack (Postgres + Spring API + Vite web) on side ports, seed a test account with 3 months of fake Banksalad data, and drive the web UI in a browser at desktop or mobile width to prove a change works. Use after any change to apps/web or apps/api that a user would see, or to check a menu, page, or flow listed in features/.
+description: Launch an isolated Salad Bowl stack (Postgres + Spring API + Vite web) on side ports, seed four test accounts with 12 months of fake Banksalad data, and drive the web UI in a browser at desktop or mobile width to prove a change works. Use after any change to apps/web or apps/api that a user would see, or to check a menu, page, or flow listed in features/.
 ---
 
 # Verify Salad Bowl
@@ -19,9 +19,11 @@ The user often has their own dev stack running on 5432/8080/5173. Never drive or
 `up.sh` refuses to start if any of the three ports is already in use. It starts a fresh Postgres container with no volume (`salad-verify-pg`), so every launch begins with an empty DB. Flyway migrates it when the API starts. Ready means `GET http://localhost:15173/api/actuator/health` returns `UP` through the Vite proxy. `seed.sh` only works on an empty DB: run it once per launch.
 
 What the seed creates:
-- Account `verify@example.test` / `verify-pass-1234`, nickname `검증러`. Both live in `bin/env.sh`.
-- Group `검증그룹` with sharing turned on.
-- One upload covering the 3 months before today. Each month has 5 expenses and 1 income: 식비(점심·카페·배달), 교통(택시), 쇼핑(의류), 급여(월급).
+- Four accounts in `bin/env.sh`, sharing `SEED_PASSWORD`: verify@example.test / 검증러 (owner), verify2@example.test / 검증둘, verify3@example.test / 검증셋, verify4@example.test / 비공개러.
+- All join 검증그룹 through invitations. First three share ON, 비공개러 explicitly OFF (membership defaults ON).
+- Previous 12 complete months, 45 expense majors × 24 minors, plus salary for each member. Monthly files keep each upload below the API's 92-day limit.
+- 식비 신규 starts two months ago; 재등장 returns last month after missing months 2–4; 환불초과 is negative net spending two months ago. Private member adds 문화 공연 ₩ 990,000 monthly, excluded from group totals.
+- `python3 -I .claude/skills/verify/bin/make_xlsx.py --expected` computes the relative-month reference in [features/seed-expected.json](features/seed-expected.json). Dashboard recipes use that reference.
 
 Logs and pid files go to `$TMPDIR/salad-verify/`.
 
@@ -44,7 +46,7 @@ Use the built-in browser (`mcp__Claude_Browser__*`).
    - preset `desktop` gives the sidebar. Reset to `desktop` when you finish.
    - Reload after switching, because the layout is picked from a media query.
 4. Navigate the way a user does: click links inside `navigation "주 메뉴"`. On narrow screens the tabs are labelled 홈/대시보드/거래/업로드/그룹. On wide screens they are 홈/그룹 대시보드/거래 목록/업로드/그룹 관리. The active link has `aria-current="page"`.
-5. Money renders as `₩ 30,500`. Read the result with `read_page` or `get_page_text`, and use `find` with accessible names. Avoid coordinates and CSS classes: CSS Modules hash the class names.
+5. Money renders as `₩ 2,351,700`. Read the result with `read_page` or `get_page_text`, and use `find` with accessible names. Avoid coordinates and CSS classes: CSS Modules hash the class names.
 
 Per-feature recipes are in [features/README.md](features/README.md).
 
@@ -58,7 +60,7 @@ Put the proof for each run in `.verify-artifacts/<feature-id>-<yyyymmdd-hhmm>/`.
 
 ## Cleanup
 
-`$TMPDIR/salad-verify` 상태 폴더는 워크트리끼리 공유하므로 다른 워크트리의 검증 스택이 떠 있으면 먼저 그쪽에서 `down.sh`를 돌린다.
+포트가 이미 사용 중이면 다른 세션의 스택이다. 그 스택을 중지하거나 재사용하지 말고 검증 미실행으로 보고한다. `down.sh`는 이번 세션이 띄운 스택에만 실행한다.
 
 ```bash
 .claude/skills/verify/bin/down.sh
@@ -75,4 +77,4 @@ This kills only the pids in `$TMPDIR/salad-verify/*.pid` and removes the `salad-
 | `bin/seed.sh` | Signup, group, share on, upload of fake xlsx made by `make_xlsx.py`. |
 | `bin/doctor.sh` | Read-only health checks. Exit code 0 means everything passed. |
 | `bin/down.sh` | Tears down what this run started. Keeps evidence. |
-| `bin/make_xlsx.py <out.xlsx>` | Writes a fake Banksalad export (sheet `가계부 내역`) for the 3 months before today. |
+| `bin/make_xlsx.py <out.xlsx>` | Writes a fake Banksalad export (sheet `가계부 내역`) for one selected month: `--member owner|second|third|private --back 1..12`. |

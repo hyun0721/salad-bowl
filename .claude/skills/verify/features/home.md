@@ -16,7 +16,7 @@ Home (`/`, heading `홈`) shows last month's upload status and a summary of the 
 
 Preconditions:
 
-- Baseline seed: the 3 months before today are registered with 6 rows each.
+- Baseline seed: the previous 12 complete months are registered. 지난달 1,081 rows; relative-month row counts are in [seed-expected.json](seed-expected.json).
 
 - **Upload status (registered).** Open `/`. The `지난달 업로드` card reads `<YYYY년 M월> 데이터 등록됨 · 6건` for last month. The home page has no `월별 등록 현황` or `최근 업로드` section.
 - **Upload status (missing).** Remove last month's data from the upload calendar, confirming the month in the deletion prompt, then return home. The card reads `<YYYY년 M월> 데이터가 아직 없습니다.` and has the link `업로드하기`. Click it; `/upload` opens with the `<YYYY년 M월> 데이터 업로드` dialog.
