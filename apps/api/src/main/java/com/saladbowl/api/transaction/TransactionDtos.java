@@ -15,7 +15,7 @@ public final class TransactionDtos {
     private TransactionDtos() {
     }
 
-    /** 화면용 거래. categoryMajor/categoryMinor/memo는 override가 있으면 override 값이다. */
+    /** 화면용 거래. type/categoryMajor/categoryMinor/memo는 override가 있으면 override 값이다. */
     public record TransactionView(
             long id,
             long ownerId,
@@ -46,8 +46,9 @@ public final class TransactionDtos {
             @Size(max = 1000) String memo) {
     }
 
-    /** null은 변경 없음, 공백 문자열은 override 삭제. hidden은 소유자만 보낼 수 있다. */
+    /** null은 변경 없음, 공백 문자열은 override 삭제. type은 원본 값을 보내면 override 삭제. hidden은 소유자만 보낼 수 있다. */
     public record UpdateTransactionRequest(
+            TransactionType type,
             @Size(max = 100) String categoryMajor,
             @Size(max = 100) String categoryMinor,
             @Size(max = 1000) String memo,

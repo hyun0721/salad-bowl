@@ -60,7 +60,7 @@ public class SummaryService {
         LocalDateTime end = TransactionService.monthRange(to).to();
         return transactions.findVisibleBetween(owners, start, end).stream()
                 .filter(tx -> SUMMARY_CURRENCY.equals(tx.getCurrency()))
-                .filter(tx -> tx.getType() != TransactionType.TRANSFER)
+                .filter(tx -> tx.displayType() != TransactionType.TRANSFER)
                 .toList();
     }
 
@@ -87,7 +87,7 @@ public class SummaryService {
 
         Map<String, BigDecimal> byCategory = new LinkedHashMap<>();
         for (LedgerTransaction tx : txs) {
-            if (tx.getType() == TransactionType.EXPENSE) {
+            if (tx.displayType() == TransactionType.EXPENSE) {
                 byCategory.merge(majorLabel(tx), tx.getAmount().negate(), BigDecimal::add);
             }
         }
@@ -121,7 +121,7 @@ public class SummaryService {
         }
         Map<String, BigDecimal[]> byCategory = new HashMap<>();
         for (LedgerTransaction tx : summaryTransactions(access.sharedOwnerIds(groupId), from, to)) {
-            if (tx.getType() != TransactionType.EXPENSE) {
+            if (tx.displayType() != TransactionType.EXPENSE) {
                 continue;
             }
             BigDecimal[] row = byCategory.computeIfAbsent(majorLabel(tx), k -> zeros(months.size()));
@@ -159,7 +159,7 @@ public class SummaryService {
                                                       String minor) {
         access.requireMember(groupId, userId);
         List<LedgerTransaction> matched = summaryTransactions(access.sharedOwnerIds(groupId), month).stream()
-                .filter(tx -> tx.getType() == TransactionType.EXPENSE)
+                .filter(tx -> tx.displayType() == TransactionType.EXPENSE)
                 .filter(tx -> majorLabel(tx).equals(category))
                 .filter(tx -> minor == null || minorLabel(tx).equals(minor))
                 .toList();
@@ -184,7 +184,7 @@ public class SummaryService {
         record Key(String month, String major, String minor) {}
         Map<Key, BigDecimal> totals = new LinkedHashMap<>();
         for (LedgerTransaction tx : summaryTransactions(owners, from, month)) {
-            if (tx.getType() != TransactionType.EXPENSE) continue;
+            if (tx.displayType() != TransactionType.EXPENSE) continue;
             Key key = new Key(YearMonth.from(tx.getOccurredAt()).toString(), majorLabel(tx), minorLabel(tx));
             totals.merge(key, tx.getAmount().negate(), BigDecimal::add);
         }
@@ -199,7 +199,7 @@ public class SummaryService {
 
     private static BigDecimal sum(List<LedgerTransaction> txs, TransactionType type) {
         return txs.stream()
-                .filter(tx -> tx.getType() == type)
+                .filter(tx -> tx.displayType() == type)
                 .map(LedgerTransaction::getAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }

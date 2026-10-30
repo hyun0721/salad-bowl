@@ -6,6 +6,7 @@ export function useTransactionMutations() {
   const refreshLists = () => Promise.all([
     client.invalidateQueries({ queryKey: ['transactions'] }),
     client.invalidateQueries({ queryKey: ['categories'] }),
+    client.invalidateQueries({ queryKey: ['summary'] }),
   ])
 
   const update = useMutation({

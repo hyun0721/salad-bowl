@@ -75,6 +75,26 @@ class SummaryApiTest extends IntegrationTest {
     }
 
     @Test
+    void overrideTypeDecidesWhetherATransactionIsSummarized() throws Exception {
+        LedgerTransaction rent = save(member, TransactionType.TRANSFER, "2026-09-05T12:00:00", "월세", -650_000);
+        rent.setTypeOverride(TransactionType.EXPENSE);
+        transactions.save(rent);
+        LedgerTransaction saving = save(member, TransactionType.EXPENSE, "2026-09-06T12:00:00", "저축", -100_000);
+        saving.setTypeOverride(TransactionType.TRANSFER);
+        transactions.save(saving);
+
+        mvc.perform(get("/groups/" + groupId + "/summary").param("month", "2026-09")
+                        .header("Authorization", admin.bearer()))
+                .andExpect(jsonPath("$.expense").value(650_000.0))
+                .andExpect(jsonPath("$.byCategory", hasSize(1)))
+                .andExpect(jsonPath("$.byCategory[0].category").value("월세"));
+        mvc.perform(get("/groups/" + groupId + "/summary/subcategories").param("month", "2026-09")
+                        .header("Authorization", admin.bearer()))
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].major").value("월세"));
+    }
+
+    @Test
     void overrideCategoryIsUsedAndHiddenIsExcluded() throws Exception {
         LedgerTransaction lunch = save(member, TransactionType.EXPENSE, "2026-09-02T12:00:00", "식비", -20_000);
         lunch.setCategoryMajorOverride("외식");

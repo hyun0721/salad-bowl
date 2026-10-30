@@ -145,6 +145,14 @@ public class TransactionService {
         if (!owner && request.hidden() != null) {
             throw new ApiException(ErrorCode.FORBIDDEN, "only the owner can hide a transaction");
         }
+        if (request.type() != null) {
+            TransactionType next = request.type() == tx.getType() ? null : request.type();
+            if (next != tx.getTypeOverride()) {
+                audits.save(new TransactionAudit(tx.getId(), actorId, "type", Objects.toString(tx.getTypeOverride(), null),
+                        Objects.toString(next, null)));
+                tx.setTypeOverride(next);
+            }
+        }
         applyOverride(tx, actorId, "categoryMajor", tx.getCategoryMajorOverride(), request.categoryMajor(),
                 tx::setCategoryMajorOverride);
         applyOverride(tx, actorId, "categoryMinor", tx.getCategoryMinorOverride(), request.categoryMinor(),

@@ -39,6 +39,25 @@ describe('TransactionPanel', () => {
     expect(body).toEqual({ categoryMajor: '외식' })
   })
 
+  it('changes the type and refreshes the dashboard summary', async () => {
+    auditsHandler()
+    let body: unknown
+    server.use(http.patch('*/api/transactions/7', async ({ request }) => {
+      body = await request.json()
+      return HttpResponse.json({ ...mine, type: 'TRANSFER', edited: true })
+    }))
+    const { client, user } = renderPage(<TransactionPanel tx={mine} onDeleted={vi.fn()} />)
+    client.setQueryData(['summary', 1, '2026-10'], { stale: true })
+
+    await user.click(await screen.findByRole('button', { name: /타입/ }))
+    await user.click(await screen.findByRole('option', { name: '이체' }))
+    await user.click(screen.getByRole('button', { name: '저장' }))
+
+    expect(await screen.findByText('저장했습니다.')).toBeInTheDocument()
+    expect(body).toEqual({ type: 'TRANSFER' })
+    expect(client.getQueryState(['summary', 1, '2026-10'])?.isInvalidated).toBe(true)
+  })
+
   it('clears an override by saving an empty field', async () => {
     auditsHandler()
     let body: unknown
@@ -89,6 +108,7 @@ describe('TransactionPanel', () => {
     auditsHandler([
       { actorId: 2, actorNickname: '관리자', field: 'categoryMajor', before: null, after: '외식', changedAt: '2026-10-06T09:00:00+09:00' },
       { actorId: 1, actorNickname: '나', field: 'hidden', before: 'false', after: 'true', changedAt: '2026-10-07T10:00:00+09:00' },
+      { actorId: 1, actorNickname: '나', field: 'type', before: null, after: 'EXPENSE', changedAt: '2026-10-08T10:00:00+09:00' },
     ])
 
     renderPage(<TransactionPanel tx={mine} onDeleted={vi.fn()} />)
@@ -97,6 +117,7 @@ describe('TransactionPanel', () => {
     const items = await within(history).findAllByRole('listitem')
     expect(items[0]).toHaveTextContent('관리자 · 대분류: (원본) → 외식')
     expect(items[1]).toHaveTextContent('나 · 숨김: 아니오 → 예')
+    expect(items[2]).toHaveTextContent('나 · 타입: (원본) → 지출')
   })
 
   it('shows a readable error when delete is refused', async () => {
