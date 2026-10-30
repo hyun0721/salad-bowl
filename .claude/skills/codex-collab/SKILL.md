@@ -6,8 +6,10 @@ description: Use in a salad-bowl Claude Code session before any code change, whe
 # Codex 협업 (salad-bowl)
 
 **적용 범위:** Claude Code 세션에서 코드를 바꾸는 모든 작업에 적용한다. 계획 실행과
-사용자의 직접 요청을 구분하지 않는다. 계획이 없는 직접 요청이면 brief와 구현 보고를
-`.superpowers/sdd/<작업명>/`에 짧게 남기고 같은 표를 따른다. 먼저 저장소의
+사용자의 직접 요청을 구분하지 않는다. 계획 문서가 없는 작업(직접 요청, 또는 `docs/agent-guidelines.md` 기준으로 스펙·계획
+문서를 생략한 한 세션 범위 작업)이면 Task별 brief와 구현 보고를
+`.superpowers/sdd/<작업명>/`에 짧게 남기고 같은 표를 따른다. brief에는 요구사항과
+정확한 값만 쓰고, 구현 코드를 미리 써 두지 않는다. 먼저 저장소의
 `docs/agent-guidelines.md`를 따른다. Codex가 직접 시작한 작업에는
 `AGENTS.md`와 `.agents/skills/salad-bowl-workflow/SKILL.md`를 적용한다.
 아래 모델·담당 표는 Claude 위임의 기본값이며 사용자의 지정과 현재 환경이 우선한다.
@@ -74,7 +76,7 @@ $C review <base-ref> <out-file> [effort]                 # Codex 기본 리뷰�
 | 수정 라운드 1~3 | 원래 구현자 | 같은 모델 | Codex면 `resume <session-id>`(apps/api면 `resume-api`) + 템플릿 D, Claude면 SendMessage |
 | 수정 라운드 4~5 | 같은 쪽, 한 단계 위 모델 | luna→sol→astra, sonnet→opus | Codex는 새 `write`(apps/api면 `api`), Claude는 새 서브에이전트 |
 | 원인을 모르는 실패 | Codex 진단 | `gpt-6-astra` / `high` | `read`, 템플릿 E. 고치지 않고 원인과 근거만 받는다 |
-| 계획 작성 | 컨트롤러 | (이 세션 모델) | writing-plans |
+| 계획 작성 | 컨트롤러 | (이 세션 모델) | 계획 문서가 필요한 작업만 writing-plans. 한 세션 범위면 Task별 brief만 쓴다 |
 | 계획 검토 | 따로 두지 않는다 | — | 컨트롤러의 자체 점검과 SDD 사전 점검으로 대신한다. 템플릿 A는 사용자가 요청할 때만 |
 | 브랜치 최종 리뷰 | Claude **한 번만** | opus | SDD 최종 리뷰어. `$C review`는 함께 돌리지 않는다 |
 | PR 직전, 위험 영역이 바뀐 경우 | Codex 반론 리뷰 | `gpt-6-astra` / `xhigh` | 인증·쿠키·프록시·삭제·권한이 바뀌었으면 `read`, 템플릿 F |
