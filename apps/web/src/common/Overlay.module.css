@@ -26,3 +26,8 @@
 
 /* 거래 상세·추가처럼 내용이 긴 시트는 화면 높이를 다 쓴다. 위쪽 안전 영역(노치)을 피한다. */
 .fullSheet { height: 100vh; height: 100dvh; max-height: 100vh; max-height: 100dvh; border-radius: 0; padding-top: env(safe-area-inset-top); }
+
+/* 머리를 고정하고 본문 안의 목록만 스크롤하는 창. 본문이 남은 높이를 받고, 스크롤할 영역은 본문이 정한다. */
+.pinned { display: flex; flex-direction: column; }
+.pinned .content { flex: 1 1 auto; min-height: 0; }
+.pinned .header { flex: none; }

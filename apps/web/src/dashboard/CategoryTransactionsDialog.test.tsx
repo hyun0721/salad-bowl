@@ -36,20 +36,29 @@ describe('CategoryTransactionsDialog', () => {
     server.use(http.get('*/api/groups/10/summary/transactions', () => HttpResponse.json([tx(1, -10000), tx(2, -20000), tx(3, 3000)])))
     renderPage(<CategoryTransactionsDialog groupId={10} month="2026-10" category="식비" onClose={() => {}} />)
     const dialog = await screen.findByRole('dialog', { name: '식비' })
-    expect(await within(dialog).findByText('3건 · 합계 ₩ 27,000')).toBeInTheDocument()
-    expect(within(dialog).getByRole('grid', { name: '거래 목록' })).toBeInTheDocument()
-    expect(within(dialog).getByText('점심 1')).toBeInTheDocument()
+    const summary = await within(dialog).findByText('3건 · 합계 ₩ 27,000')
+    const grid = within(dialog).getByRole('grid', { name: '거래 목록' })
+    expect(within(grid).getAllByRole('columnheader').map((h) => h.textContent))
+      .toEqual(['일시', '멤버', '소분류', '내용', '결제수단', '금액'])
+    // 창 제목이 대분류라 행에는 대분류를 다시 쓰지 않는다.
+    expect(within(grid).getAllByRole('row')[1]).toHaveTextContent('외식')
+    expect(within(grid).getAllByRole('row')[1]).not.toHaveTextContent('식비')
+    // 요약 줄은 목록 스크롤 영역 밖(위)에 있어 목록을 내려도 남는다.
+    expect(summary.contains(grid)).toBe(false)
+    expect(grid.closest('[data-dialog-list]')).not.toBeNull()
+    expect(summary.closest('[data-dialog-list]')).toBeNull()
     expect(dialog.parentElement).toHaveClass('wide')
+    expect(dialog.parentElement).toHaveClass('pinned')
   })
 
   it('shows a card list on a narrow screen', async () => {
     mockViewport(true)
-    server.use(http.get('*/api/groups/10/summary/transactions', () => HttpResponse.json([tx(1, -10000)])))
+    server.use(http.get('*/api/groups/10/summary/transactions', () => HttpResponse.json([{ ...tx(1, -10000), memo: '회사 앞' }])))
     renderPage(<CategoryTransactionsDialog groupId={10} month="2026-10" category="식비" onClose={() => {}} />)
     const dialog = await screen.findByRole('dialog', { name: '식비' })
-    expect(await within(dialog).findByRole('grid', { name: '거래 목록' })).toHaveTextContent('점심 1')
+    const card = within(await within(dialog).findByRole('grid', { name: '거래 목록' })).getByRole('row', { name: /점심 1/ })
+    expect(card).toHaveTextContent(/점심 1.*-₩ 10,000외식 · 나 \| 회사 앞.*10-19 12:30/)
     expect(within(dialog).queryByRole('columnheader')).not.toBeInTheDocument()
-    expect(within(dialog).getByText('10-19 12:30 · 외식 · 나')).toBeInTheDocument()
   })
 
   it('keeps the title and loaded content while a narrow sheet closes', async () => {

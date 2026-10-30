@@ -73,6 +73,13 @@ describe('Dialog', () => {
     expect(screen.getByRole('button', { name: '닫기' })).toBeDisabled()
     expect(onClose).not.toHaveBeenCalled()
   })
+  it('pins the header only when asked', async () => {
+    const { rerender } = render(<DialogFrame isOpen onOpenChange={() => {}} title="창">{() => <p>본문</p>}</DialogFrame>)
+    expect(screen.getByRole('dialog', { name: '창' }).parentElement).not.toHaveClass('pinned')
+    rerender(<DialogFrame isOpen onOpenChange={() => {}} title="창" pinnedHeader>{() => <p>본문</p>}</DialogFrame>)
+    expect(screen.getByRole('dialog', { name: '창' }).parentElement).toHaveClass('pinned')
+  })
+
 })
 
 describe('DialogFrame sheet outside press', () => {

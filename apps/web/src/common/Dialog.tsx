@@ -13,13 +13,14 @@ type FrameProps = {
   closeOnOutsideClick?: boolean
   fullHeight?: boolean
   wide?: boolean
+  pinnedHeader?: boolean
   headerAction?: ReactNode
   children: (opts: { close: () => void }) => ReactNode
 }
 
 /** 넓은 화면은 가운데 모달, 좁은 화면은 아래에서 올라오는 시트. 포커스 가두기·Esc·복귀는 RAC가 맡는다. */
 export function DialogFrame(props: FrameProps) {
-  const { isOpen, onOpenChange, title, closeDisabled = false, closeOnOutsideClick = false, fullHeight = false, wide = false, headerAction, children } = props
+  const { isOpen, onOpenChange, title, closeDisabled = false, closeOnOutsideClick = false, fullHeight = false, wide = false, pinnedHeader = false, headerAction, children } = props
   const narrow = useNarrowWhileOpen(isOpen)
   useDialogHistory(isOpen, closeDisabled, onOpenChange)
 
@@ -36,10 +37,11 @@ export function DialogFrame(props: FrameProps) {
   // 좁은 화면도 같은 ModalOverlay에 CSS 애니메이션을 달아 애니메이션이 끝나면 닫히게 한다.
   const sheetClass = fullHeight ? `${styles.modalSheet} ${styles.fullSheet}` : styles.modalSheet
   const modalClass = wide ? `${styles.modal} ${styles.wide}` : styles.modal
+  const pinned = pinnedHeader ? ` ${styles.pinned}` : ''
   return (
     <ModalOverlay isOpen={isOpen} onOpenChange={onOpenChange} isDismissable={closeOnOutsideClick && !closeDisabled}
       isKeyboardDismissDisabled={closeDisabled} className={narrow ? styles.sheetBackdrop : styles.backdrop}>
-      <Modal className={narrow ? sheetClass : modalClass}>
+      <Modal className={(narrow ? sheetClass : modalClass) + pinned}>
         <AriaDialog className={styles.content}>{({ close }) => body(close)}</AriaDialog>
       </Modal>
     </ModalOverlay>
