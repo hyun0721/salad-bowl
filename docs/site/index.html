@@ -1,16 +1,26 @@
 <!doctype html>
 <html lang="ko">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Salad Bowl 문서</title>
-  </head>
-  <body>
-    <main>
-      <h1>Salad Bowl 문서</h1>
-      <ul>
-        <li><a href="pr38-update.html">PR #38 · 새 버전 확인과 적용의 최종 구조</a></li>
-      </ul>
-    </main>
-  </body>
-</html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Salad Bowl 개발자 가이드: 로컬 개발, 시스템 구조, 배포·운영, 인증과 권한.">
+  <title>문서 홈 · Salad Bowl 개발자 가이드</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="guide.css">
+</head>
+<body>
+<a class="skip" href="#main">본문으로 건너뛰기</a>
+<header class="site-header"><div class="header-inner"><a class="brand" href="index.html">Salad Bowl <span>개발자 가이드</span></a><a href="https://github.com/hyun0721/salad-bowl">GitHub 저장소</a></div></header>
+<div class="layout"><nav class="guide-nav" aria-label="문서"><a href="index.html" aria-current="page">문서 홈</a><a href="development.html">시작하기</a><a href="architecture.html">시스템 구조</a><a href="deploy.html">배포·운영</a><a href="auth.html">인증과 권한</a><a href="pr38-update.html">PWA 업데이트 기록</a></nav>
+<main id="main"><header class="home-intro"><h1>Salad Bowl을 이해하고,<br>안심하고 변경하기.</h1><p class="lead">로컬 실행부터 요청 흐름, 배포와 인증까지.<br>개발을 시작할 때와 운영 중 막혔을 때 찾아보는 가이드입니다.</p></header>
+<div class="start"><h2>처음 참여했다면 여기서 시작하세요</h2><p>DB와 API, 웹을 실행하고 가짜 데이터로 첫 화면을 확인합니다. 다음으로 시스템 구조를 읽으면 코드에서 길을 찾기 쉬워집니다.</p><a href="development.html">로컬 개발 시작하기</a></div>
+<section id="guides"><h2>개발자 가이드</h2><ul class="guide-list">
+<li><h3><a href="development.html">처음 시작하기</a></h3><p>준비 도구, 실행 명령, 테스트 데이터와 검증 환경.<br>처음부터 앱을 띄우는 순서를 안내합니다.</p></li>
+<li><h3><a href="architecture.html">시스템 구조</a></h3><p>Cloudflare, Render, Supabase의 역할과 요청 경로.<br>기능을 바꿀 때 볼 코드 위치를 정리합니다.</p></li>
+<li><h3><a href="deploy.html">배포·운영</a></h3><p>변경 종류별 배포와 설정값 적용, 성공 확인과 되돌리기.<br>CI 결과와 실제 서비스 반영을 구분합니다.</p></li>
+<li><h3><a href="auth.html">인증과 권한</a></h3><p>로그인과 세션 복원, Google 연동, 그룹의 공개 범위.<br>토큰과 데이터 접근의 경계를 설명합니다.</p></li></ul></section>
+<section id="services"><h2>앱과 문서의 주소는 다릅니다</h2><div class="service-list"><p><strong>Cloudflare Pages</strong>실제 웹앱과 API 프록시를 제공합니다.</p><p><strong>GitHub Pages · 지금 보고 있는 곳</strong>개발자 가이드와 공개 설명 문서를 제공합니다.</p></div></section>
+<section class="history" id="history"><h2>변경 기록으로 더 살펴보기</h2><p><a href="pr38-update.html">PR #38 · 새 버전 확인과 적용의 최종 구조</a><br>PWA 업데이트 동작을 설명한 당시의 기록입니다. 최신 가이드와 구분해 읽으세요.</p></section>
+</main></div>
+<footer class="site-footer">Salad Bowl · 코드와 함께 읽는 개발 문서 <a href="https://github.com/hyun0721/salad-bowl/tree/main/docs">저장소 문서 전체</a></footer>
+</body></html>
