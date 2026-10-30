@@ -71,6 +71,7 @@ const ICONS = {
       <path d="m6 6 12 12" />
     </>
   ),
+  list: <><path d="M9 6h12M9 12h12M9 18h12" /><path d="M3 6h.01M3 12h.01M3 18h.01" /></>,
   chart: (
     <>
       <path d="M3 3v16a2 2 0 0 0 2 2h16" />

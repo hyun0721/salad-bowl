@@ -77,13 +77,13 @@ export default function DashboardPage({ today }: Props) {
       </>}
       {narrow && <DashboardMenu level={level} />}
       <SummaryView key={selectedGroupId} groupId={selectedGroupId} month={month} summary={summary.data}
-        level={level} view={params.view as View | undefined} major={search.get('major') ?? undefined} />
+        level={level} view={params.view as View | undefined} />
     </>
   )
 }
 
-function SummaryView({ groupId, month, summary, level, view, major }: {
-  groupId: number; month: string; summary?: MonthlySummary; level: Level; view?: View; major?: string
+function SummaryView({ groupId, month, summary, level, view }: {
+  groupId: number; month: string; summary?: MonthlySummary; level: Level; view?: View
 }) {
   const hasSummary = summary !== undefined
   const scrolledWithSummary = useRef<string | null>(null)
@@ -91,7 +91,6 @@ function SummaryView({ groupId, month, summary, level, view, major }: {
     if (!view) return
     const key = `${level}/${view}`
     if (scrolledWithSummary.current === key) return
-    // shortcut: 소분류 임시 카드는 분포·추이가 한 카드라 대상이 없다. 16d에서 카드를 나눌 때 같은 id를 붙인다.
     const target = document.getElementById(`dashboard-${view}`)
     if (!target) return
     target.scrollIntoView?.({ block: 'start' })
@@ -100,16 +99,13 @@ function SummaryView({ groupId, month, summary, level, view, major }: {
   return (
     <>
       {level === 'minor' ? (
-        // shortcut: 16d 전까지 소분류는 main의 카드를 그대로 보여준다. 16d에서 소분류 분포·추이로 바꾼다.
-        <SubcategoryTrends groupId={groupId} month={month} initialMajor={major} />
+        <SubcategoryTrends groupId={groupId} month={month} />
       ) : (
         <>
           <div id="dashboard-share">
             {summary && <CategoryBreakdown key={`${groupId}:${month}`} groupId={groupId} month={month} summary={summary} />}
           </div>
-          <div id="dashboard-trend">
-            <CategoryTrend groupId={groupId} month={month} />
-          </div>
+          <CategoryTrend groupId={groupId} month={month} />
         </>
       )}
     </>

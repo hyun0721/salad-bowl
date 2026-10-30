@@ -13,8 +13,6 @@
 .marker { width: 18px; flex: 0 0 18px; border-top: 3px var(--marker-style) var(--marker-color); }
 .chart { width: 100%; min-width: 0; }
 .stale { opacity: 0.5; }
-.details { min-width: 0; }
-.details summary { cursor: pointer; min-height: var(--control-height); display: flex; align-items: center; width: fit-content; }
 .tableScroll { max-width: 100%; overflow-x: auto; }
 .table { width: 100%; border-collapse: collapse; white-space: nowrap; }
 .table caption { text-align: left; color: var(--ink-muted); font-size: var(--text-sm); }
@@ -31,3 +29,5 @@
 
 .expenseIncrease { color: var(--danger); font-weight: 600; }
 .expenseDecrease { color: light-dark(#1d4ed8, #93c5fd); font-weight: 600; }
+.header { display: flex; justify-content: space-between; align-items: center; gap: var(--space-3); }
+.srOnly { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }

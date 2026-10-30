@@ -19,8 +19,8 @@ export type CategoryTrend = {
 export type SubcategoryMonth = { month: string; major: string; minor: string; expense: number }
 
 export const dashboardApi = {
-  subcategories: (groupId: number, month: string) =>
-    apiFetch<SubcategoryMonth[]>(`/groups/${groupId}/summary/subcategories?month=${month}`),
+  subcategories: (groupId: number, month: string, from?: string) =>
+    apiFetch<SubcategoryMonth[]>(`/groups/${groupId}/summary/subcategories?${new URLSearchParams({ month, ...(from ? { from } : {}) })}`),
   summary: (groupId: number, month: string) =>
     apiFetch<MonthlySummary>(`/groups/${groupId}/summary?month=${month}`),
   categoryTransactions: (groupId: number, month: string, category: string) =>

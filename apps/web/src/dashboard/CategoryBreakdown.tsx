@@ -3,14 +3,10 @@ import DonutChart, { sliceStyle } from '../common/DonutChart'
 import { NARROW, useMediaQuery } from '../common/useMediaQuery'
 import { formatWon } from '../common/format'
 import ui from '../common/ui.module.css'
+import { percent } from './percent'
 import styles from './CategoryBreakdown.module.css'
 import CategoryTransactionsDialog from './CategoryTransactionsDialog'
 import type { MonthlySummary } from './dashboardApi'
-
-function percent(expense: number, total: number) {
-  const rounded = Math.round((expense / total) * 100)
-  return rounded === 0 ? '1% 미만' : `${rounded}%`
-}
 
 type Props = { groupId: number; month: string; summary: MonthlySummary }
 
@@ -26,7 +22,7 @@ export default function CategoryBreakdown({ groupId, month, summary }: Props) {
 
   return (
     <section aria-labelledby="category-title" className={`${ui.card} ${styles.card}`}>
-      <h2 id="category-title">카테고리별 지출</h2>
+      <h2 id="category-title">대분류 분포</h2>
       {items.length === 0 ? <p className={ui.status}>지출이 없습니다.</p> : (
         <div className={styles.content}>
           <DonutChart compact={compact} slices={slices}
