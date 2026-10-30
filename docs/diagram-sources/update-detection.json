@@ -1,0 +1,96 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "업데이트 확인과 알림",
+    "output": ".archify/version-update/update-detection.html",
+    "quality_profile": "showcase",
+    "locale": "ko",
+    "repository": {
+      "url": "https://github.com/hyun0721/salad-bowl.git",
+      "revision": "1929770816ab6e524e4ec647ca8db83ee423972b"
+    }
+  },
+  "participants": [
+    {
+      "id": "hook",
+      "label": "useAppUpdate",
+      "type": "frontend",
+      "sources": [
+        {
+          "path": "apps/web/src/app/useAppUpdate.ts",
+          "line": 10,
+          "end_line": 20
+        }
+      ]
+    },
+    {
+      "id": "sw",
+      "label": "서비스워커 등록 객체",
+      "type": "backend",
+      "sources": [
+        {
+          "path": "apps/web/src/app/useAppUpdate.ts",
+          "line": 10,
+          "end_line": 20
+        }
+      ]
+    },
+    {
+      "id": "plugin",
+      "label": "PWA 플러그인",
+      "type": "backend",
+      "sources": [
+        {
+          "path": "apps/web/src/app/useAppUpdate.ts",
+          "line": 10,
+          "end_line": 20
+        }
+      ]
+    },
+    {
+      "id": "ui",
+      "label": "UpdatePrompt",
+      "type": "frontend",
+      "sources": [
+        {
+          "path": "apps/web/src/app/UpdatePrompt.tsx",
+          "line": 7,
+          "end_line": 13
+        }
+      ]
+    }
+  ],
+  "messages": [
+    {
+      "id": "hook-to-sw-1",
+      "from": "hook",
+      "to": "sw",
+      "label": "1시간 경과 또는 화면 복귀: update()",
+      "y": 160
+    },
+    {
+      "id": "plugin-to-hook-1",
+      "from": "plugin",
+      "to": "hook",
+      "label": "새 버전 감지 상태: needRefresh",
+      "y": 208,
+      "variant": "return"
+    },
+    {
+      "id": "hook-to-ui-1",
+      "from": "hook",
+      "to": "ui",
+      "label": "needRefresh가 true면 알림 표시",
+      "y": 256
+    },
+    {
+      "id": "ui-to-hook-1",
+      "from": "ui",
+      "to": "hook",
+      "label": "새로고침: update / 나중에: dismiss",
+      "y": 304,
+      "variant": "emphasis"
+    }
+  ]
+}

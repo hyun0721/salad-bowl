@@ -1,0 +1,167 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "새 버전을 화면에 적용하는 두 경로",
+    "output": ".archify/version-update/update-apply.html",
+    "quality_profile": "showcase",
+    "locale": "ko",
+    "repository": {
+      "url": "https://github.com/hyun0721/salad-bowl.git",
+      "revision": "1929770816ab6e524e4ec647ca8db83ee423972b"
+    },
+    "legend": {
+      "entries": {
+        "frontend": {
+          "label": "앱 UI"
+        },
+        "backend": {
+          "label": "브라우저 내부 처리"
+        }
+      }
+    }
+  },
+  "lanes": [
+    {
+      "id": "lane-0",
+      "label": "새 버전 활성화"
+    },
+    {
+      "id": "lane-1",
+      "label": "화면 반영"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "click",
+      "label": "새로고침 클릭",
+      "type": "frontend",
+      "width": 124,
+      "col": 0,
+      "lane": "lane-0",
+      "sources": [
+        {
+          "path": "apps/web/src/app/UpdatePrompt.tsx",
+          "line": 7,
+          "end_line": 13
+        }
+      ]
+    },
+    {
+      "id": "check",
+      "label": "대기 워커 있음?",
+      "type": "backend",
+      "width": 137,
+      "icon": "decision",
+      "col": 1,
+      "lane": "lane-0",
+      "sources": [
+        {
+          "path": "apps/web/src/app/useAppUpdate.ts",
+          "line": 27,
+          "end_line": 34
+        }
+      ]
+    },
+    {
+      "id": "listen",
+      "label": "활성화 감시 등록",
+      "type": "backend",
+      "width": 144,
+      "col": 2,
+      "lane": "lane-0",
+      "sources": [
+        {
+          "path": "apps/web/src/app/useAppUpdate.ts",
+          "line": 27,
+          "end_line": 34
+        }
+      ]
+    },
+    {
+      "id": "activate",
+      "label": "활성화 요청",
+      "type": "backend",
+      "width": 111,
+      "col": 3,
+      "lane": "lane-0",
+      "sources": [
+        {
+          "path": "apps/web/src/app/useAppUpdate.ts",
+          "line": 27,
+          "end_line": 34
+        }
+      ]
+    },
+    {
+      "id": "ready",
+      "label": "activated 감지",
+      "type": "backend",
+      "width": 131,
+      "col": 4,
+      "lane": "lane-0",
+      "sources": [
+        {
+          "path": "apps/web/src/app/useAppUpdate.ts",
+          "line": 27,
+          "end_line": 34
+        }
+      ]
+    },
+    {
+      "id": "reload",
+      "label": "화면 새로고침",
+      "type": "frontend",
+      "width": 124,
+      "col": 4,
+      "lane": "lane-1",
+      "sources": [
+        {
+          "path": "apps/web/src/app/useAppUpdate.ts",
+          "line": 27,
+          "end_line": 34
+        }
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "id": "click-to-check-1",
+      "from": "click",
+      "to": "check",
+      "label": "update()"
+    },
+    {
+      "id": "check-to-reload-1",
+      "from": "check",
+      "to": "reload",
+      "label": "없음",
+      "variant": "emphasis"
+    },
+    {
+      "id": "check-to-listen-1",
+      "from": "check",
+      "to": "listen",
+      "label": "있음"
+    },
+    {
+      "id": "listen-to-activate-1",
+      "from": "listen",
+      "to": "activate",
+      "label": "감시 후"
+    },
+    {
+      "id": "activate-to-ready-1",
+      "from": "activate",
+      "to": "ready",
+      "label": "상태 변경"
+    },
+    {
+      "id": "ready-to-reload-1",
+      "from": "ready",
+      "to": "reload",
+      "label": "활성화 완료",
+      "variant": "emphasis"
+    }
+  ]
+}

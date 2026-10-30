@@ -7,11 +7,19 @@
 ## 주요 기능
 
 - **엑셀 가져오기**: 뱅크샐러드 엑셀을 올리면 기존 거래와 병합한다. 웹에서 고친 내용은 다음 가져오기에서 덮어쓰지 않는다.
-- **가계부**: 홈 달력에서 월별 등록 현황을 확인하고, 거래 목록에서 거래를 추가·수정한다.
+- **가계부**: 업로드 화면에서 월별 등록 현황을 확인하고, 거래 목록에서 거래를 추가·수정한다.
 - **그룹 공유**: 그룹을 만들고 초대 링크로 최대 6명까지 모은다. 내 거래를 공개할 그룹을 고른다.
 - **PWA**: 모바일 홈 화면에 추가해 앱처럼 실행한다.
 
 ## 문서
+
+[개발자 가이드 사이트](https://hyun0721.github.io/salad-bowl/)에서
+[시작하기](https://hyun0721.github.io/salad-bowl/development.html) ·
+[시스템 구조](https://hyun0721.github.io/salad-bowl/architecture.html) ·
+[배포·운영](https://hyun0721.github.io/salad-bowl/deploy.html) ·
+[인증과 권한](https://hyun0721.github.io/salad-bowl/auth.html) ·
+[버전 관리](https://hyun0721.github.io/salad-bowl/pr38-update.html)를 읽을 수 있다.
+새 문서는 main 반영 후 게시된다.
 
 | 문서 | 내용 |
 |---|---|

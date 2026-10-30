@@ -24,6 +24,15 @@ jobs:
         run: |
           test -s docs/site/index.html
           test -s docs/site/pr38-update.html
+          test -s docs/site/development.html
+          test -s docs/site/architecture.html
+          test -s docs/site/deploy.html
+          test -s docs/site/auth.html
+          test -s docs/site/guide.css
+          test -s docs/site/diagrams/update-detection.html
+          test -s docs/site/diagrams/update-apply.html
+          test -s docs/site/images/update-detection.png
+          test -s docs/site/images/update-apply.png
       - uses: actions/upload-pages-artifact@v4
         with:
           path: docs/site
