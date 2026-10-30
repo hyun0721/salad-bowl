@@ -19,12 +19,12 @@ Upload (`/upload`, heading `업로드`) shows yearly monthly upload coverage, ac
 
 Preconditions:
 
-- Baseline seed has one batch, `seed.xlsx`.
+- Baseline seed has 12 monthly batches per member, `seed-owner-1.xlsx` through `seed-owner-12.xlsx` for the owner.
 
-- **Coverage and order.** Open `업로드`. The page order is `월별 등록 현황` → `파일 올리기` → `업로드 이력`. The calendar shows the seeded months as registered with 6 rows each.
+- **Coverage and order.** Open `업로드`. The page order is `월별 등록 현황` → `파일 올리기` → `업로드 이력`. The calendar shows the seeded months as registered (지난달 1,081 rows; see seed-expected.json for each relative month).
 - **Deep link (missing month).** Open `/upload?month=<YYYY-MM four months before today>` (a month the seed does not cover). The `<YYYY년 M월> 데이터 업로드` dialog opens and the address becomes `/upload`. Reload; no dialog opens.
 - **Home link.** Delete last month's data from the calendar, confirming the month in the deletion prompt. Return home and click `업로드하기`; the matching upload dialog opens on `/upload`.
-- **History.** `업로드 이력` lists `seed.xlsx` with 신규 18 · 갱신 0 · 변경 없음 0.
+- **History.** `업로드 이력` lists 12 batches; `seed-owner-1.xlsx` has 신규 1,081 · 갱신 0 · 변경 없음 0.
 
 ## Gotchas
 

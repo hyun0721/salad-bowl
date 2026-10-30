@@ -18,7 +18,7 @@ Transactions (`/transactions`, heading `거래 목록`) lists my transactions or
 
 Preconditions:
 
-- Baseline seed has 18 of my transactions.
+- Baseline seed has 12,960 of my transactions across 12 months (지난달 1,081).
 
 - **List.** Open from the menu. With `내 거래` selected, the list shows seeded rows such as `김밥`.
 - **Search.** Type `택시` into `검색`. Only the 3 taxi rows remain.
