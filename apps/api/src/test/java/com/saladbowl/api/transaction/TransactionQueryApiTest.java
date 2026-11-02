@@ -43,6 +43,96 @@ class TransactionQueryApiTest extends IntegrationTest {
                 TestLedger.data(TransactionType.EXPENSE, dateTime, "식비", description, amount)));
     }
 
+    private LedgerTransaction save(AuthedUser owner, TransactionType type, String dateTime, String major,
+                                   String description, long amount) {
+        return transactions.save(LedgerTransaction.manual(owner.id(),
+                TestLedger.data(type, dateTime, major, description, amount)));
+    }
+
+    @Test
+    void myTransactionsFilterByMajorAndTypeWithOrInsideAndAcross() throws Exception {
+        save(member, TransactionType.EXPENSE, "2026-09-01T09:00:00", "식비", "점심", -8000);
+        save(member, TransactionType.EXPENSE, "2026-09-02T09:00:00", "교통", "버스", -1500);
+        save(member, TransactionType.EXPENSE, "2026-09-03T09:00:00", "쇼핑", "옷", -30000);
+        save(member, TransactionType.INCOME, "2026-09-04T09:00:00", "식비", "환급", 2000);
+
+        mvc.perform(get("/me/transactions").param("month", "2026-09")
+                        .param("major", "식비", "교통").param("type", "EXPENSE")
+                        .header("Authorization", member.bearer()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(2)))
+                .andExpect(jsonPath("$[0].description").value("버스"))
+                .andExpect(jsonPath("$[1].description").value("점심"));
+    }
+
+    @Test
+    void majorContainingCommaIsKeptWholeForMineAndGroup() throws Exception {
+        save(member, TransactionType.EXPENSE, "2026-09-01T09:00:00", "식비,외식", "쉼표 분류", -8000);
+
+        mvc.perform(get("/me/transactions").param("month", "2026-09").param("major", "식비,외식")
+                        .header("Authorization", member.bearer()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)));
+        mvc.perform(get("/groups/{id}/transactions", groupId).param("month", "2026-09").param("major", "식비,외식")
+                        .header("Authorization", admin.bearer()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)));
+    }
+
+    @Test
+    void myTransactionsFilterUncategorizedMinorWithEmptyValue() throws Exception {
+        save(member, TransactionType.EXPENSE, "2026-09-01T09:00:00", "식비", "미분류 거래", -1000);
+        LedgerTransaction categorized = save(member, TransactionType.EXPENSE, "2026-09-02T09:00:00", "식비", "분류 거래", -2000);
+        categorized.setCategoryMinorOverride("외식");
+        transactions.save(categorized);
+
+        mvc.perform(get("/me/transactions").param("month", "2026-09").param("minor", "")
+                        .header("Authorization", member.bearer()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].description").value("미분류 거래"));
+    }
+
+    @Test
+    void myTransactionsSortByAbsoluteAmountThenNewest() throws Exception {
+        save(member, TransactionType.EXPENSE, "2026-09-01T09:00:00", "식비", "작은", -1000);
+        save(member, TransactionType.INCOME, "2026-09-02T09:00:00", "급여", "큰", 50000);
+        save(member, TransactionType.EXPENSE, "2026-09-03T09:00:00", "식비", "중간-새", -5000);
+        save(member, TransactionType.EXPENSE, "2026-09-01T10:00:00", "식비", "중간-옛", -5000);
+
+        mvc.perform(get("/me/transactions").param("month", "2026-09").param("sort", "AMOUNT_DESC")
+                        .header("Authorization", member.bearer()))
+                .andExpect(jsonPath("$[*].description").value(org.hamcrest.Matchers.contains("큰", "중간-새", "중간-옛", "작은")));
+        mvc.perform(get("/me/transactions").param("month", "2026-09").param("sort", "AMOUNT_ASC")
+                        .header("Authorization", member.bearer()))
+                .andExpect(jsonPath("$[*].description").value(org.hamcrest.Matchers.contains("작은", "중간-새", "중간-옛", "큰")));
+        mvc.perform(get("/me/transactions").param("month", "2026-09").param("sort", "DATE_ASC")
+                        .header("Authorization", member.bearer()))
+                .andExpect(jsonPath("$[0].description").value("작은"));
+    }
+
+    @Test
+    void invalidSortOrTypeIsRejected() throws Exception {
+        mvc.perform(get("/me/transactions").param("month", "2026-09").param("sort", "price")
+                        .header("Authorization", member.bearer()))
+                .andExpect(status().isBadRequest());
+        mvc.perform(get("/me/transactions").param("month", "2026-09").param("type", "GIFT")
+                        .header("Authorization", member.bearer()))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void groupFilterDoesNotRevealHiddenTransactions() throws Exception {
+        LedgerTransaction hidden = save(member, TransactionType.EXPENSE, "2026-09-01T09:00:00", "식비", "숨김", -1000);
+        hidden.setHidden(true);
+        transactions.save(hidden);
+
+        mvc.perform(get("/groups/{id}/transactions", groupId).param("month", "2026-09").param("major", "식비")
+                        .header("Authorization", admin.bearer()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(0)));
+    }
+
     @Test
     void myTransactionsListTheMonthNewestFirstIncludingHidden() throws Exception {
         save(member, "2026-09-01T09:00:00", "아침", -3000);

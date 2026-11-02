@@ -50,7 +50,8 @@ public class SummaryController {
     public List<TransactionView> categoryTransactions(@CurrentUser Long userId, @PathVariable long groupId,
                                                       @RequestParam YearMonth month,
                                                       @RequestParam String category,
-                                                      @RequestParam(required = false) String minor) {
-        return summaryService.categoryTransactions(groupId, userId, month, category, minor);
+                                                      @RequestParam(required = false) String minor,
+                                                      @RequestParam(defaultValue = "DATE_DESC") TransactionSort sort) {
+        return summaryService.categoryTransactions(groupId, userId, month, category, minor, sort);
     }
 }
