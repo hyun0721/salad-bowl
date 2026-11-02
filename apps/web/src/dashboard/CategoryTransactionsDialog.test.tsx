@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { describe, expect, it, vi } from 'vitest'
 import { useState } from 'react'
@@ -55,11 +55,16 @@ describe('CategoryTransactionsDialog', () => {
   it('shows a card list on a narrow screen', async () => {
     mockViewport(true)
     server.use(http.get('*/api/groups/10/summary/transactions', () => HttpResponse.json([{ ...tx(1, -10000), memo: '회사 앞' }])))
-    renderPage(<CategoryTransactionsDialog groupId={10} month="2026-10" category="식비" onClose={() => {}} />)
+    server.use(http.get('*/api/me/categories', () => HttpResponse.json([])), http.get('*/api/transactions/1/audits', () => HttpResponse.json([])))
+    const { user } = renderPage(<CategoryTransactionsDialog groupId={10} month="2026-10" category="식비" onClose={() => {}} />)
     const dialog = await screen.findByRole('dialog', { name: '식비' })
     const card = within(await within(dialog).findByRole('grid', { name: '거래 목록' })).getByRole('row', { name: /점심 1/ })
     expect(card).toHaveTextContent(/점심 1.*-₩ 10,000외식 · 나 \| 회사 앞.*10-19 12:30/)
     expect(within(dialog).queryByRole('columnheader')).not.toBeInTheDocument()
+    await user.click(card)
+    expect(within(dialog).getByRole('heading', { name: '점심 1' })).toBeInTheDocument()
+    await user.click(within(dialog).getByRole('button', { name: '거래 목록으로 돌아가기' }))
+    await waitFor(() => expect(within(dialog).getByRole('row', { name: /점심 1/ })).toHaveFocus())
   })
 
   it('keeps the title and loaded content while a narrow sheet closes', async () => {
@@ -116,5 +121,93 @@ describe('CategoryTransactionsDialog', () => {
     expect(await screen.findByText('거래가 없습니다.')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '닫기' }))
     expect(onClose).toHaveBeenCalledOnce()
+  })
+
+  it('edits a row in the same dialog, refreshes the summary list, and restores focus', async () => {
+    let requests = 0
+    let changed = false
+    server.use(
+      http.get('*/api/groups/10/summary/transactions', () => {
+        requests++
+        return HttpResponse.json(changed ? [] : [{ ...tx(1, -10000), editable: true }])
+      }),
+      http.get('*/api/me/categories', () => HttpResponse.json([])),
+      http.get('*/api/transactions/1/audits', () => HttpResponse.json([])),
+      http.patch('*/api/transactions/1', async ({ request }) => {
+        expect(await request.json()).toEqual({ categoryMajor: '외식' })
+        changed = true
+        return HttpResponse.json({ ...tx(1, -10000), editable: true, categoryMajor: '외식' })
+      }),
+    )
+    const { user } = renderPage(<CategoryTransactionsDialog groupId={10} month="2026-10" category="식비" onClose={() => {}} />)
+    const dialog = await screen.findByRole('dialog', { name: '식비' })
+    await user.click(await within(dialog).findByRole('row', { name: /점심 1/ }))
+    expect(within(dialog).getByRole('heading', { name: '점심 1' })).toBeInTheDocument()
+    expect(within(dialog).getByLabelText('대분류')).toBeInTheDocument()
+    expect(within(dialog).queryByRole('grid', { name: '거래 목록' })).not.toBeInTheDocument()
+    await user.click(within(dialog).getByRole('button', { name: '거래 목록으로 돌아가기' }))
+    await waitFor(() => expect(within(dialog).getByRole('row', { name: /점심 1/ })).toHaveFocus())
+    await user.click(within(dialog).getByRole('row', { name: /점심 1/ }))
+    const major = within(dialog).getByLabelText('대분류')
+    await user.clear(major)
+    await user.type(major, '외식')
+    await user.click(within(dialog).getByRole('button', { name: '저장' }))
+    await waitFor(() => expect(within(dialog).getByText('거래가 없습니다.')).toBeInTheDocument())
+    await waitFor(() => expect(requests).toBeGreaterThan(1))
+    await waitFor(() => expect(within(dialog).getByText('거래가 없습니다.')).toBeInTheDocument())
+    await waitFor(() => expect(within(dialog).getByText('0건 · 합계 ₩ 0')).toHaveFocus())
+  })
+
+  it('returns to the list after deleting an owned manual transaction', async () => {
+    let deleted = false
+    server.use(
+      http.get('*/api/groups/10/summary/transactions', () => HttpResponse.json(deleted ? [] : [{ ...tx(1, -10000), editable: true, source: 'MANUAL' }])),
+      http.get('*/api/me/categories', () => HttpResponse.json([])),
+      http.get('*/api/transactions/1/audits', () => HttpResponse.json([])),
+      http.delete('*/api/transactions/1', () => {
+        deleted = true
+        return new HttpResponse(null, { status: 204 })
+      }),
+    )
+    const { user } = renderPage(<CategoryTransactionsDialog groupId={10} month="2026-10" category="식비" onClose={() => {}} />)
+    const dialog = await screen.findByRole('dialog', { name: '식비' })
+    await user.click(await within(dialog).findByRole('row', { name: /점심 1/ }))
+    await user.click(within(dialog).getByRole('button', { name: '삭제' }))
+    await user.click(screen.getByRole('button', { name: '삭제 확인' }))
+    await waitFor(() => expect(within(dialog).getByText('거래가 없습니다.')).toBeInTheDocument())
+    await waitFor(() => expect(within(dialog).getByText('0건 · 합계 ₩ 0')).toHaveFocus())
+  })
+
+  it('requests the selected minor and hides the minor navigation button', async () => {
+    let selected: string | null = null
+    server.use(http.get('*/api/groups/10/summary/transactions', ({ request }) => {
+      selected = new URL(request.url).searchParams.get('minor')
+      return HttpResponse.json([])
+    }))
+    renderPage(<CategoryTransactionsDialog groupId={10} month="2026-10" category="식비" minor="외식" onClose={() => {}} />)
+    const dialog = await screen.findByRole('dialog', { name: '식비 · 외식' })
+    await within(dialog).findByText('거래가 없습니다.')
+    expect(selected).toBe('외식')
+    expect(within(dialog).queryByRole('button', { name: /소분류 보기/ })).not.toBeInTheDocument()
+  })
+
+  it('starts from the list when a category is reopened', async () => {
+    server.use(
+      http.get('*/api/groups/10/summary/transactions', () => HttpResponse.json([tx(1, -10000)])),
+      http.get('*/api/me/categories', () => HttpResponse.json([])),
+      http.get('*/api/transactions/1/audits', () => HttpResponse.json([])),
+    )
+    function Harness() {
+      const [category, setCategory] = useState<string | null>('식비')
+      return <><button onClick={() => setCategory('식비')}>다시 열기</button>
+        <CategoryTransactionsDialog groupId={10} month="2026-10" category={category} onClose={() => setCategory(null)} /></>
+    }
+    const { user } = renderPage(<Harness />)
+    const dialog = await screen.findByRole('dialog', { name: '식비' })
+    await user.click(await within(dialog).findByRole('row', { name: /점심 1/ }))
+    await user.click(within(dialog).getByRole('button', { name: '닫기' }))
+    await user.click(screen.getByRole('button', { name: '다시 열기' }))
+    expect(await screen.findByRole('grid', { name: '거래 목록' })).toBeInTheDocument()
+    expect(screen.queryByLabelText('대분류')).not.toBeInTheDocument()
   })
 })
