@@ -49,6 +49,31 @@ describe('TransactionsPage', () => {
     server.use(http.get('*/api/me/categories', () => HttpResponse.json([])))
   })
 
+  it('sends applied filter and sort as query params', async () => {
+    const requestedUrls: string[] = []
+    const lastRequestedUrl = () => requestedUrls.at(-1) ?? ''
+    server.use(
+      http.get('*/api/me/categories', () => HttpResponse.json([])),
+      http.get('*/api/me/transactions', ({ request }) => {
+        requestedUrls.push(request.url)
+        return HttpResponse.json([{ ...base }])
+      }),
+    )
+    const { user } = renderPage(<TransactionsPage today={today} />, { groups })
+
+    await screen.findByRole('row', { name: /김밥/ })
+    await user.click(screen.getByRole('button', { name: '필터' }))
+    await user.click(screen.getByRole('checkbox', { name: '지출' }))
+    await user.click(screen.getByRole('button', { name: '적용' }))
+    await user.click(screen.getByRole('button', { name: /정렬/ }))
+    await user.click(screen.getByRole('radio', { name: '금액 큰 순' }))
+    await user.click(screen.getByRole('button', { name: '적용' }))
+
+    await waitFor(() => expect(lastRequestedUrl()).toContain('type=EXPENSE'))
+    await waitFor(() => expect(lastRequestedUrl()).toContain('sort=AMOUNT_DESC'))
+    expect(screen.getByRole('button', { name: '필터, 1개 적용됨' })).toBeInTheDocument()
+  })
+
   it.each([false, true])('back closes only the modal and keeps the route (narrow: %s)', async (narrow) => {
     mockViewport(narrow)
     mineHandler([{ ...base }])
