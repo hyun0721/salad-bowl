@@ -49,6 +49,67 @@ describe('TransactionsPage', () => {
     server.use(http.get('*/api/me/categories', () => HttpResponse.json([])))
   })
 
+  it('sends applied filter and sort as query params', async () => {
+    const requestedUrls: string[] = []
+    const lastRequestedUrl = () => requestedUrls.at(-1) ?? ''
+    server.use(
+      http.get('*/api/me/categories', () => HttpResponse.json([])),
+      http.get('*/api/me/transactions', ({ request }) => {
+        requestedUrls.push(request.url)
+        return HttpResponse.json([{ ...base }])
+      }),
+    )
+    const { user } = renderPage(<TransactionsPage today={today} />, { groups })
+
+    await screen.findByRole('row', { name: /김밥/ })
+    await user.click(screen.getByRole('button', { name: '필터' }))
+    await user.click(screen.getByRole('checkbox', { name: '지출' }))
+    await user.click(screen.getByRole('button', { name: '적용' }))
+    await user.click(screen.getByRole('button', { name: /정렬/ }))
+    await user.click(screen.getByRole('radio', { name: '금액 큰 순' }))
+    await user.click(screen.getByRole('button', { name: '적용' }))
+
+    await waitFor(() => expect(lastRequestedUrl()).toContain('type=EXPENSE'))
+    await waitFor(() => expect(lastRequestedUrl()).toContain('sort=AMOUNT_DESC'))
+    expect(screen.getByRole('button', { name: '필터, 1개 적용됨' })).toBeInTheDocument()
+  })
+
+  it('drops a hidden minor after changing major before applying', async () => {
+    const requests: string[] = []
+    server.use(
+      http.get('*/api/me/categories', () => HttpResponse.json([
+        { major: '교통', count: 1, minors: [{ minor: '버스', count: 1 }] },
+        { major: '식비', count: 1, minors: [{ minor: '외식', count: 1 }] },
+      ])),
+      http.get('*/api/me/transactions', ({ request }) => {
+        requests.push(request.url)
+        return HttpResponse.json([])
+      }),
+    )
+    const { user } = renderPage(<TransactionsPage today={today} />, { groups })
+    await screen.findByText('이 달에 거래가 없습니다.')
+    await user.click(screen.getByRole('button', { name: '필터' }))
+    await user.click(screen.getByRole('checkbox', { name: '교통' }))
+    await user.click(screen.getByRole('checkbox', { name: '교통 · 버스' }))
+    await user.click(screen.getByRole('checkbox', { name: '교통' }))
+    await user.click(screen.getByRole('checkbox', { name: '식비' }))
+    expect(screen.queryByRole('checkbox', { name: /버스/ })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '적용' }))
+    await waitFor(() => expect(new URL(requests.at(-1)!).searchParams.get('major')).toBe('식비'))
+    expect(new URL(requests.at(-1)!).searchParams.has('minor')).toBe(false)
+    expect(screen.getByRole('button', { name: '필터, 1개 적용됨' })).toBeInTheDocument()
+  })
+
+  it('shows a filtered empty state when the server returns no matches', async () => {
+    mineHandler([])
+    const { user } = renderPage(<TransactionsPage today={today} />, { groups })
+    await screen.findByText('이 달에 거래가 없습니다.')
+    await user.click(screen.getByRole('button', { name: '필터' }))
+    await user.click(screen.getByRole('checkbox', { name: '지출' }))
+    await user.click(screen.getByRole('button', { name: '적용' }))
+    expect(await screen.findByText('조건에 맞는 거래가 없습니다.')).toBeInTheDocument()
+  })
+
   it.each([false, true])('back closes only the modal and keeps the route (narrow: %s)', async (narrow) => {
     mockViewport(narrow)
     mineHandler([{ ...base }])

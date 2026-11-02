@@ -16,6 +16,36 @@ const tx = (id: number, amount: number): TransactionView => ({
 })
 
 describe('CategoryTransactionsDialog', () => {
+  it('sorts the category transactions through the API', async () => {
+    const requestedUrls: string[] = []
+    server.use(http.get('*/api/groups/10/summary/transactions', ({ request }) => {
+      requestedUrls.push(request.url)
+      return HttpResponse.json([tx(1, -10000)])
+    }))
+    const { user } = renderPage(<CategoryTransactionsDialog groupId={10} month="2026-10" category="식비" onClose={() => {}} />)
+    await screen.findByText('1건 · 합계 ₩ 10,000')
+    await user.click(screen.getByRole('button', { name: '정렬, 최신순' }))
+    await user.click(screen.getByRole('radio', { name: '금액 큰 순' }))
+    await user.click(screen.getByRole('button', { name: '적용' }))
+    await waitFor(() => expect(requestedUrls.at(-1)).toContain('sort=AMOUNT_DESC'))
+  })
+
+  it.each([false, true])('keeps the category dialog open while using sort (narrow: %s)', async (narrow) => {
+    mockViewport(narrow)
+    const onClose = vi.fn()
+    server.use(http.get('*/api/groups/10/summary/transactions', () => HttpResponse.json([tx(1, -10000)])))
+    const { user } = renderPage(<CategoryTransactionsDialog groupId={10} month="2026-10" category="식비" onClose={onClose} />)
+    const categoryDialog = await screen.findByRole('dialog', { name: '식비' })
+    await user.click(await within(categoryDialog).findByRole('button', { name: '정렬, 최신순' }))
+    await user.click(screen.getByRole('radio', { name: '금액 큰 순' }))
+    expect(categoryDialog).toBeInTheDocument()
+    expect(onClose).not.toHaveBeenCalled()
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('radio', { name: '금액 큰 순' })).not.toBeInTheDocument())
+    expect(categoryDialog).toBeInTheDocument()
+    expect(onClose).not.toHaveBeenCalled()
+  })
+
   it('shows icon buttons for the minor screen and closing', async () => {
     const onClose = vi.fn()
     server.use(http.get('*/api/groups/10/summary/transactions', () => HttpResponse.json([tx(1, -10000)])))
