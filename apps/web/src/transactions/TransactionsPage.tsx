@@ -249,7 +249,7 @@ export default function TransactionsPage({ today }: Props) {
             </div>
           )}
           {list.data && items.length === 0 && (
-            <p className={ui.status}>{list.data.length > 0 ? '검색 결과가 없습니다.' : '이 달에 거래가 없습니다.'}</p>
+            <p className={ui.status}>{list.data.length > 0 ? '검색 결과가 없습니다.' : Object.values(filter).some((values) => values.length > 0) ? '조건에 맞는 거래가 없습니다.' : '이 달에 거래가 없습니다.'}</p>
           )}
           {items.length > 0 && (
             <TransactionList key={JSON.stringify([groupId, month, memberId, search, filter, sort])} items={items} showOwner={inGroup} selectedId={selectedId}

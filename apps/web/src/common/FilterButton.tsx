@@ -40,6 +40,14 @@ export default function FilterButton({ groups, value, onApply, onDraftChange }: 
     setDraft({ ...draft, [key]: selected ? [...list, option] : list.filter((v) => v !== option) })
   }
 
+  function apply() {
+    const next = Object.fromEntries(Object.entries(draft)
+      .map(([key, values]) => [key, values.filter((v) => groups.find((g) => g.key === key)?.options.some((o) => o.value === v))])
+      .filter(([, values]) => values.length > 0))
+    onApply(next)
+    setOpen(false)
+  }
+
   return (
     <DialogTrigger isOpen={open} onOpenChange={toggle}>
       <Button type="button" className={`${ui.button} ${ui.iconButton} ${styles.trigger} ${count > 0 ? styles.applied : ''}`}
@@ -60,7 +68,7 @@ export default function FilterButton({ groups, value, onApply, onDraftChange }: 
           <div className={styles.actions}>
             <button type="button" className={ui.button} onClick={() => setDraft({})}>초기화</button>
             <button type="button" className={`${ui.button} ${ui.primary}`}
-              onClick={() => { onApply(Object.fromEntries(Object.entries(draft).filter(([, v]) => v.length > 0))); setOpen(false) }}>적용</button>
+              onClick={apply}>적용</button>
           </div>
         </div>
       </ResponsiveOverlay>
