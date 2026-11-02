@@ -6,10 +6,12 @@ import DataTable from '../common/DataTable'
 import { DialogFrame } from '../common/Dialog'
 import { formatWon } from '../common/format'
 import Icon from '../common/Icon'
+import SortButton from '../common/SortButton'
 import ui from '../common/ui.module.css'
 import { NARROW, useMediaQuery } from '../common/useMediaQuery'
 import { TransactionCard, transactionColumns } from '../transactions/transactionRows'
 import TransactionPanel from '../transactions/TransactionPanel'
+import { DEFAULT_SORT, SORT_OPTIONS, type TransactionSort } from '../transactions/transactionQuery'
 import { dashboardApi } from './dashboardApi'
 import styles from './CategoryBreakdown.module.css'
 
@@ -19,6 +21,7 @@ export default function CategoryTransactionsDialog({ groupId, month, category, m
   const navigate = useNavigate()
   const narrow = useMediaQuery(NARROW)
   const [selectedId, setSelectedId] = useState<number | null>(null)
+  const [sort, setSort] = useState<TransactionSort>(DEFAULT_SORT)
   const listRef = useRef<HTMLDivElement>(null)
   const summaryRef = useRef<HTMLParagraphElement>(null)
   const focusId = useRef<number | null>(null)
@@ -27,13 +30,14 @@ export default function CategoryTransactionsDialog({ groupId, month, category, m
   if (category !== null && (lastSelection.category !== category || lastSelection.minor !== minor || lastSelection.month !== month)) {
     setLastSelection({ category, minor, month })
     setSelectedId(null)
+    setSort(DEFAULT_SORT)
   }
   const displayedCategory = category ?? lastSelection.category
   const displayedMinor = category !== null ? minor : lastSelection.minor
   const title = displayedMinor == null ? displayedCategory ?? '' : `${displayedCategory} · ${displayedMinor || '미분류'}`
   const transactions = useQuery({
-    queryKey: ['summary', groupId, month, 'transactions', displayedCategory, displayedMinor ?? null],
-    queryFn: () => dashboardApi.categoryTransactions(groupId, month, displayedCategory!, displayedMinor ?? undefined),
+    queryKey: ['summary', groupId, month, 'transactions', displayedCategory, displayedMinor ?? null, sort],
+    queryFn: () => dashboardApi.categoryTransactions(groupId, month, displayedCategory!, displayedMinor ?? undefined, sort),
     enabled: category !== null,
   })
   const items = transactions.data ?? []
@@ -77,6 +81,7 @@ export default function CategoryTransactionsDialog({ groupId, month, category, m
             aria-label={`${displayedCategory} 소분류 보기`} title="소분류 보기" onClick={showMinors}>
             <Icon name="list-tree" />
           </button>}
+          {!selected && <SortButton options={SORT_OPTIONS} value={sort} defaultValue={DEFAULT_SORT} onApply={setSort} />}
           <button type="button" className={`${ui.button} ${ui.iconButton}`} aria-label="닫기" onClick={close}>
             <Icon name="x" />
           </button>

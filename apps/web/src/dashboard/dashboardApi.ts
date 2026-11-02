@@ -1,5 +1,6 @@
 import { apiFetch } from '../api/client'
 import type { TransactionView } from '../transactions/transactionsApi'
+import { DEFAULT_SORT, queryParams, type TransactionSort } from '../transactions/transactionQuery'
 
 export type CategoryTotal = { category: string; expense: number }
 export type MemberTotal = { userId: number; nickname: string; income: number; expense: number }
@@ -27,10 +28,10 @@ export const dashboardApi = {
     apiFetch<SubcategoryMonth[]>(`/groups/${groupId}/summary/subcategories?${new URLSearchParams({ month, ...(from ? { from } : {}) })}`),
   summary: (groupId: number, month: string) =>
     apiFetch<MonthlySummary>(`/groups/${groupId}/summary?month=${month}`),
-  categoryTransactions: (groupId: number, month: string, category: string, minor?: string) => {
+  categoryTransactions: (groupId: number, month: string, category: string, minor?: string, sort: TransactionSort = DEFAULT_SORT) => {
     const params = new URLSearchParams({ month, category })
     if (minor !== undefined) params.set('minor', minor)
-    return apiFetch<TransactionView[]>(`/groups/${groupId}/summary/transactions?${params}`)
+    return apiFetch<TransactionView[]>(`/groups/${groupId}/summary/transactions?${queryParams(params, {}, sort)}`)
   },
   trend: (groupId: number, from: string, to: string) =>
     apiFetch<CategoryTrend>(`/groups/${groupId}/summary/trend?${new URLSearchParams({ from, to })}`),
