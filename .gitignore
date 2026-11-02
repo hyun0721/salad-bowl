@@ -27,3 +27,8 @@ graphify-out/
 
 # Local Archify candidates and validation receipts
 .archify/
+
+# 일회성 작업 산출물: 캡처·로그(tmp/), agent brief(.superpowers/), 예전 Playwright MCP 기본 출력
+/tmp/
+.superpowers/
+.playwright-mcp/

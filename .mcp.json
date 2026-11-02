@@ -5,7 +5,9 @@
       "command": "npx",
       "args": [
         "-y",
-        "@playwright/mcp@0.0.83"
+        "@playwright/mcp@0.0.83",
+        "--output-dir",
+        "tmp/playwright"
       ],
       "env": {}
     }

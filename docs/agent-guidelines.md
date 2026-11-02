@@ -81,6 +81,9 @@ Claude와 Codex가 공유하는 저장소 규칙의 원본이다. 각 실행기�
   캡처는 코드로 만든 가짜 데이터 화면만 쓴다. 이미지는 `pr-assets` 브랜치의
   `pr-<번호>/`에 push하고 `raw.githubusercontent.com` 주소로 참조한다.
   main 기록에는 이미지를 커밋하지 않는다.
+  캡처 같은 일회성 산출물은 저장소의 `tmp/`(무시됨)에 둔다. Playwright MCP는 `.mcp.json`의
+  `--output-dir tmp/playwright`로 고정돼 있다. `.superpowers/`(brief·출력)도 무시되는 임시 작업 공간이므로,
+  여러 세션이나 worktree에 걸친 작업의 인수인계는 커밋한 계획 문서로 한다.
 - 리뷰에는 수행 주체·범위·결과를 적는다. 자체 점검과 독립 리뷰를 구분하고,
   미실행 리뷰나 미해결 사항을 숨기지 않는다. 독립 리뷰가 필요한 작업은 공통 협업 규칙을 따른다.
 - 생성 뒤 PR URL·base/head·draft 상태·병합 충돌·검증 상태를 확인하고 사용자에게 링크를 전달한다.
