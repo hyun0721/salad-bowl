@@ -66,6 +66,20 @@ class TransactionQueryApiTest extends IntegrationTest {
     }
 
     @Test
+    void majorContainingCommaIsKeptWholeForMineAndGroup() throws Exception {
+        save(member, TransactionType.EXPENSE, "2026-09-01T09:00:00", "식비,외식", "쉼표 분류", -8000);
+
+        mvc.perform(get("/me/transactions").param("month", "2026-09").param("major", "식비,외식")
+                        .header("Authorization", member.bearer()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)));
+        mvc.perform(get("/groups/{id}/transactions", groupId).param("month", "2026-09").param("major", "식비,외식")
+                        .header("Authorization", admin.bearer()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)));
+    }
+
+    @Test
     void myTransactionsFilterUncategorizedMinorWithEmptyValue() throws Exception {
         save(member, TransactionType.EXPENSE, "2026-09-01T09:00:00", "식비", "미분류 거래", -1000);
         LedgerTransaction categorized = save(member, TransactionType.EXPENSE, "2026-09-02T09:00:00", "식비", "분류 거래", -2000);

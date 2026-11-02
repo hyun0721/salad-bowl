@@ -35,13 +35,11 @@ public class TransactionController {
 
     @GetMapping("/me/transactions")
     public List<TransactionView> mine(@CurrentUser Long userId, @RequestParam YearMonth month,
-                                      @RequestParam(required = false) List<String> major,
                                       HttpServletRequest request,
                                       @RequestParam(required = false) List<TransactionType> type,
                                       @RequestParam(defaultValue = "DATE_DESC") TransactionSort sort) {
-        String[] minor = request.getParameterValues("minor");
         return transactionService.myTransactions(userId, month,
-                new TransactionQuery(major, minor == null ? null : List.of(minor), type, sort));
+                transactionQuery(request, type, sort));
     }
 
     @GetMapping("/me/coverage")
@@ -70,13 +68,19 @@ public class TransactionController {
     public List<TransactionView> group(@CurrentUser Long userId, @PathVariable long groupId,
                                        @RequestParam YearMonth month,
                                        @RequestParam(required = false) Long memberId,
-                                       @RequestParam(required = false) List<String> major,
                                        HttpServletRequest request,
                                        @RequestParam(required = false) List<TransactionType> type,
                                        @RequestParam(defaultValue = "DATE_DESC") TransactionSort sort) {
-        String[] minor = request.getParameterValues("minor");
         return transactionService.groupTransactions(groupId, userId, month, memberId,
-                new TransactionQuery(major, minor == null ? null : List.of(minor), type, sort));
+                transactionQuery(request, type, sort));
+    }
+
+    private TransactionQuery transactionQuery(HttpServletRequest request, List<TransactionType> type, TransactionSort sort) {
+        // Spring의 List 바인딩은 단일 값을 쉼표로 나누므로 원본 파라미터를 읽어 빈 minor와 쉼표 든 major를 보존한다.
+        String[] major = request.getParameterValues("major");
+        String[] minor = request.getParameterValues("minor");
+        return new TransactionQuery(major == null ? null : List.of(major),
+                minor == null ? null : List.of(minor), type, sort);
     }
 
     @PatchMapping("/transactions/{transactionId}")
