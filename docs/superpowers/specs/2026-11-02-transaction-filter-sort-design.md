@@ -28,7 +28,7 @@
 | `major` | 반복 가능 문자열 | 대분류 중 하나와 일치 |
 | `minor` | 반복 가능 문자열 | 소분류 중 하나와 일치 (summary 엔드포인트의 기존 단일 `minor`는 그대로 둔다) |
 | `type` | 반복 가능 `TransactionType` | 거래 타입 중 하나와 일치 |
-| `sort` | `date_desc`(기본) · `date_asc` · `amount_desc` · `amount_asc` | 정렬 |
+| `sort` | `DATE_DESC`(기본) · `DATE_ASC` · `AMOUNT_DESC` · `AMOUNT_ASC` (enum 이름 그대로) | 정렬 |
 
 - 같은 항목 안은 OR, 항목 사이는 AND.
 - 빈 소분류(미분류)는 빈 문자열 값으로 선택한다.
