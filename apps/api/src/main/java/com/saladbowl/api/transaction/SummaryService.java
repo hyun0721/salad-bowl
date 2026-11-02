@@ -156,7 +156,7 @@ public class SummaryService {
     /** 요약의 대분류(선택 시 소분류) 조각을 이루는 거래. 환불도 넣어야 합계가 같다. */
     @Transactional(readOnly = true)
     public List<TransactionView> categoryTransactions(long groupId, long userId, YearMonth month, String category,
-                                                      String minor) {
+                                                      String minor, TransactionSort sort) {
         access.requireMember(groupId, userId);
         List<LedgerTransaction> matched = summaryTransactions(access.sharedOwnerIds(groupId), month).stream()
                 .filter(tx -> tx.displayType() == TransactionType.EXPENSE)
@@ -165,7 +165,8 @@ public class SummaryService {
                 .toList();
         Map<Long, Boolean> editable = new HashMap<>();
         return views.toViews(matched,
-                owner -> editable.computeIfAbsent(owner, id -> access.canEditOwnedBy(userId, id)));
+                owner -> editable.computeIfAbsent(owner, id -> access.canEditOwnedBy(userId, id)))
+                .stream().sorted(sort.comparator()).toList();
     }
 
     /** from(없으면 month - 5)~month의 소분류별 순지출. 거래가 없는 월은 화면에서 0으로 채운다. */

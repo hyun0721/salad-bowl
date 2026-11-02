@@ -59,9 +59,9 @@ public class TransactionService {
     }
 
     @Transactional(readOnly = true)
-    public List<TransactionView> myTransactions(long userId, YearMonth month) {
+    public List<TransactionView> myTransactions(long userId, YearMonth month, TransactionQuery query) {
         Range range = monthRange(month);
-        return views.toViews(transactions.findOwnedBetween(userId, range.from(), range.to()), owner -> true);
+        return query.apply(views.toViews(transactions.findOwnedBetween(userId, range.from(), range.to()), owner -> true));
     }
 
     @Transactional(readOnly = true)
@@ -104,7 +104,8 @@ public class TransactionService {
     }
 
     @Transactional(readOnly = true)
-    public List<TransactionView> groupTransactions(long groupId, long userId, YearMonth month, Long memberId) {
+    public List<TransactionView> groupTransactions(long groupId, long userId, YearMonth month, Long memberId,
+                                                   TransactionQuery query) {
         access.requireMember(groupId, userId);
         List<Long> owners = access.sharedOwnerIds(groupId);
         if (memberId != null) {
@@ -115,8 +116,8 @@ public class TransactionService {
         }
         Range range = monthRange(month);
         Map<Long, Boolean> editable = new HashMap<>();
-        return views.toViews(transactions.findVisibleBetween(owners, range.from(), range.to()),
-                owner -> editable.computeIfAbsent(owner, id -> access.canEditOwnedBy(userId, id)));
+        return query.apply(views.toViews(transactions.findVisibleBetween(owners, range.from(), range.to()),
+                owner -> editable.computeIfAbsent(owner, id -> access.canEditOwnedBy(userId, id))));
     }
 
     @Transactional

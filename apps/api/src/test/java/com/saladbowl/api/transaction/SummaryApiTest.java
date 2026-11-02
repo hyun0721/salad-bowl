@@ -218,6 +218,19 @@ class SummaryApiTest extends IntegrationTest {
     }
 
     @Test
+    void categoryTransactionsSortByAbsoluteAmount() throws Exception {
+        save(admin, TransactionType.EXPENSE, "2026-09-01T12:00:00", "식비", -10_000);
+        save(member, TransactionType.EXPENSE, "2026-09-02T12:00:00", "식비", -20_000);
+        save(member, TransactionType.EXPENSE, "2026-09-03T12:00:00", "식비", -5_000);
+
+        mvc.perform(get("/groups/" + groupId + "/summary/transactions")
+                        .param("month", "2026-09").param("category", "식비")
+                        .param("sort", "AMOUNT_DESC").header("Authorization", admin.bearer()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[*].amount").value(org.hamcrest.Matchers.contains(-20_000.0, -10_000.0, -5_000.0)));
+    }
+
+    @Test
     void categoryTransactionsExcludeMembersWhoTurnedSharingOff() throws Exception {
         save(admin, TransactionType.EXPENSE, "2026-09-01T12:00:00", "식비", -10_000);
         save(member, TransactionType.EXPENSE, "2026-09-02T12:00:00", "식비", -20_000);

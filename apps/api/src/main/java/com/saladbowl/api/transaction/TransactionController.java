@@ -8,6 +8,7 @@ import com.saladbowl.api.transaction.TransactionDtos.ManualTransactionRequest;
 import com.saladbowl.api.transaction.TransactionDtos.MonthDeleteResult;
 import com.saladbowl.api.transaction.TransactionDtos.TransactionView;
 import com.saladbowl.api.transaction.TransactionDtos.UpdateTransactionRequest;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -33,8 +34,14 @@ public class TransactionController {
     }
 
     @GetMapping("/me/transactions")
-    public List<TransactionView> mine(@CurrentUser Long userId, @RequestParam YearMonth month) {
-        return transactionService.myTransactions(userId, month);
+    public List<TransactionView> mine(@CurrentUser Long userId, @RequestParam YearMonth month,
+                                      @RequestParam(required = false) List<String> major,
+                                      HttpServletRequest request,
+                                      @RequestParam(required = false) List<TransactionType> type,
+                                      @RequestParam(defaultValue = "DATE_DESC") TransactionSort sort) {
+        String[] minor = request.getParameterValues("minor");
+        return transactionService.myTransactions(userId, month,
+                new TransactionQuery(major, minor == null ? null : List.of(minor), type, sort));
     }
 
     @GetMapping("/me/coverage")
@@ -62,8 +69,14 @@ public class TransactionController {
     @GetMapping("/groups/{groupId}/transactions")
     public List<TransactionView> group(@CurrentUser Long userId, @PathVariable long groupId,
                                        @RequestParam YearMonth month,
-                                       @RequestParam(required = false) Long memberId) {
-        return transactionService.groupTransactions(groupId, userId, month, memberId);
+                                       @RequestParam(required = false) Long memberId,
+                                       @RequestParam(required = false) List<String> major,
+                                       HttpServletRequest request,
+                                       @RequestParam(required = false) List<TransactionType> type,
+                                       @RequestParam(defaultValue = "DATE_DESC") TransactionSort sort) {
+        String[] minor = request.getParameterValues("minor");
+        return transactionService.groupTransactions(groupId, userId, month, memberId,
+                new TransactionQuery(major, minor == null ? null : List.of(minor), type, sort));
     }
 
     @PatchMapping("/transactions/{transactionId}")
