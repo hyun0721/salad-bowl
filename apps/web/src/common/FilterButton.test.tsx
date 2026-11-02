@@ -2,7 +2,6 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import FilterButton, { countFilters, type FilterGroup } from './FilterButton'
-
 import { mockViewport } from '../test/mockViewport'
 
 afterEach(() => vi.unstubAllGlobals())
@@ -64,5 +63,4 @@ describe('FilterButton', () => {
     expect(value).toEqual({ type: ['EXPENSE'], minor: [''] })
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
-
 })
