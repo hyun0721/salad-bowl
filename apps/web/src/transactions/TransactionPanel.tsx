@@ -40,9 +40,9 @@ function auditLine(a: AuditView): string {
 /** 저장하지 않은 입력. 모달↔사이드바를 바꿔 다시 그려져도 페이지가 보관했다가 돌려준다. */
 export type EditDraft = { type: TransactionType; major: string; minor: string; memo: string; hidden: boolean }
 
-type Props = { tx: TransactionView; onDeleted: () => void; loadDraft?: () => EditDraft | undefined; onDraftChange?: (draft: EditDraft) => void }
+type Props = { tx: TransactionView; onDeleted: () => void; onSaved?: () => void; loadDraft?: () => EditDraft | undefined; onDraftChange?: (draft: EditDraft) => void }
 
-export default function TransactionPanel({ tx, onDeleted, loadDraft, onDraftChange }: Props) {
+export default function TransactionPanel({ tx, onDeleted, onSaved, loadDraft, onDraftChange }: Props) {
   const { me } = useAuth()
   const list = useCategories().data ?? []
   const { update, remove } = useTransactionMutations()
@@ -69,6 +69,7 @@ export default function TransactionPanel({ tx, onDeleted, loadDraft, onDraftChan
       onSuccess: (updated) => {
         change({ type: updated.type, major: updated.categoryMajor, minor: updated.categoryMinor, memo: updated.memo ?? '', hidden: updated.hidden })
         toast('저장했습니다.')
+        onSaved?.()
       },
     })
   }

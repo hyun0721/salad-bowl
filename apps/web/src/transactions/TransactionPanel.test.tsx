@@ -39,6 +39,16 @@ describe('TransactionPanel', () => {
     expect(body).toEqual({ categoryMajor: '외식' })
   })
 
+  it('calls onSaved after a successful update', async () => {
+    auditsHandler()
+    server.use(http.patch('*/api/transactions/7', () => HttpResponse.json({ ...mine, memo: '변경' })))
+    const onSaved = vi.fn()
+    const { user } = renderPage(<TransactionPanel tx={mine} onDeleted={vi.fn()} onSaved={onSaved} />)
+    await user.type(await screen.findByLabelText('메모'), '변경')
+    await user.click(screen.getByRole('button', { name: '저장' }))
+    await vi.waitFor(() => expect(onSaved).toHaveBeenCalledOnce())
+  })
+
   it('changes the type and refreshes the dashboard summary', async () => {
     auditsHandler()
     let body: unknown

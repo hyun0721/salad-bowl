@@ -14,8 +14,7 @@
 .amount { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .percent { min-width: 48px; color: var(--ink-muted); text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
 /* 창 머리와 요약 줄은 고정하고 목록만 스크롤한다. 넓은 화면 높이는 전과 같다. */
-.dialogBody { flex: 1 1 auto; min-height: 0; max-height: min(70vh, 680px); display: flex; flex-direction: column; gap: var(--space-4); }
+.dialogBody { flex: 1 1 auto; min-height: 0; height: min(70vh, 680px); display: flex; flex-direction: column; gap: var(--space-4); }
 .summary { flex: none; margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
 .dialogList { min-height: 0; overflow: auto; }
 .dialogList thead th { position: sticky; top: 0; z-index: 1; background: var(--surface-000); box-shadow: inset 0 -1px var(--line); }
-
