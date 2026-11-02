@@ -28,6 +28,7 @@ jobs:
           test -s docs/site/architecture.html
           test -s docs/site/deploy.html
           test -s docs/site/auth.html
+          test -s docs/site/workflow.html
           test -s docs/site/guide.css
           test -s docs/site/diagrams/update-detection.html
           test -s docs/site/diagrams/update-apply.html
