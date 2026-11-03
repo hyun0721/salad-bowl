@@ -54,3 +54,5 @@ npm run typecheck
 Docker가 필요하다. `.claude/skills/verify/bin/`에서 `up.sh → seed.sh → doctor.sh → down.sh` 순서로 실행한다. 포트는 DB 55432 / API 18080 / web 15173이다. 이미 쓰이는 포트는 다른 세션의 스택이므로 건드리지 않고 실행을 생략한다.
 
 테스트 계정 값은 `bin/env.sh`에 있다: verify@example.test(검증러·소유자), verify2@example.test(검증둘), verify3@example.test(검증셋)은 공개 ON, verify4@example.test(비공개러)는 OFF다. 모두 같은 SEED_PASSWORD를 쓴다. 이전 12개월의 월별 합성 엑셀 48개를 각자의 토큰으로 올린다. 기대값은 `make_xlsx.py --expected`와 [시드 기대값](../.claude/skills/verify/features/seed-expected.json)을 따른다.
+
+API 동작·권한·업로드 시나리오를 점검할 합성 데이터와 등록 스크립트는 [테스트 데이터](test-data.md)를 따른다.
