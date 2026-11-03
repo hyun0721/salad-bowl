@@ -28,10 +28,12 @@ function compact(majors: CategoryOption[], selected: Set<string>): Picks {
   return picks.length === majors.length && picks.every((p, i) => p === majors[i].major) ? undefined : picks
 }
 
-function summary(picks: Picks): string {
+/** 대분류 한두 개는 이름으로, 그보다 많으면 고른 수/전체 수로 보여 준다. 일부만 고른 대분류가 있으면 '일부'를 붙인다. */
+function summary(picks: Picks, total: number): string {
   if (!picks) return '전체'
   const majors = [...new Set(picks.map((p) => p.split('\t')[0]))]
-  return majors.length === 0 ? '선택 안 함' : majors.length === 1 ? majors[0] : `${majors[0]} 외 ${majors.length - 1}`
+  const partial = picks.some((p) => p.includes('\t')) ? ' · 일부' : ''
+  return majors.length === 0 ? '선택 안 함' : majors.length <= 2 ? majors.join(', ') + partial : `${majors.length}/${total}개${partial}`
 }
 
 export default function TransactionFilter({ categories, value, onApply }: Props) {
@@ -91,7 +93,7 @@ export default function TransactionFilter({ categories, value, onApply }: Props)
                   <span className={styles.summary}>{count}/{keys.length}</span>
                   <button type="button" className={`${ui.button} ${ui.iconButton}`} aria-label={`${c.major} 펼치기`} aria-expanded={isOpen}
                     onClick={() => setExpanded(isOpen ? expanded.filter((m) => m !== c.major) : [...expanded, c.major])}>
-                    <Icon name="chevron-down" />
+                    <Icon name={isOpen ? 'chevron-up' : 'chevron-down'} />
                   </button>
                 </div>
                 {isOpen && (
@@ -106,7 +108,7 @@ export default function TransactionFilter({ categories, value, onApply }: Props)
             )
           })}
         </div>
-        <div className={optionStyles.actions}>
+        <div className={`${optionStyles.actions} ${styles.actions}`}>
           <button type="button" className={`${ui.button} ${ui.primary}`} onClick={() => setStep(null)}>확인</button>
         </div>
       </>
@@ -120,6 +122,8 @@ export default function TransactionFilter({ categories, value, onApply }: Props)
         <Icon name={applied ? 'funnel-filled' : 'funnel'} />
       </Button>
       <ResponsiveOverlay mobile={mobile} title="내역 필터">
+        <button type="button" className={`${ui.button} ${ui.iconButton} ${styles.close}`} aria-label="닫기"
+          onClick={() => setOpen(false)}><Icon name="x" /></button>
         <div className={optionStyles.panel}>
           {step ? categoryStep(step) : (
             <>
@@ -134,7 +138,7 @@ export default function TransactionFilter({ categories, value, onApply }: Props)
               </div>
               {draft.types.map((t) => {
                 const label = `${TYPE_LABELS[t]} 카테고리`
-                const text = summary(draft.picks[t])
+                const text = summary(draft.picks[t], categories.filter((c) => c.type === t).length)
                 return (
                   <button key={t} type="button" className={styles.row} aria-label={`${label} ${text}`}
                     onClick={() => { setStep(t); setExpanded([]) }}>
@@ -143,8 +147,9 @@ export default function TransactionFilter({ categories, value, onApply }: Props)
                 )
               })}
               {error && <p role="alert" className={ui.alert}>{error}</p>}
-              <div className={optionStyles.actions}>
-                <button type="button" className={ui.button} onClick={() => { setDraft(DEFAULT_FILTER); setError('') }}>초기화</button>
+              <div className={`${optionStyles.actions} ${styles.actions}`}>
+                {/* 초기화는 바로 반영해 저장한 필터도 지운다. */}
+                <button type="button" className={ui.button} onClick={() => { setDraft(DEFAULT_FILTER); setError(''); onApply(DEFAULT_FILTER) }}>초기화</button>
                 <button type="button" className={`${ui.button} ${ui.primary}`} onClick={apply}>적용</button>
               </div>
             </>

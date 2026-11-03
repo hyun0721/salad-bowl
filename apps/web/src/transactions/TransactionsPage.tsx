@@ -23,7 +23,7 @@ import panelStyles from './TransactionPanel.module.css'
 import styles from './TransactionsPage.module.css'
 import { transactionsApi } from './transactionsApi'
 import { useCategories } from './categoriesApi'
-import { DEFAULT_FILTER, DEFAULT_SORT, SORT_OPTIONS, isFilterApplied, type TransactionFilterValue, type TransactionSort } from './transactionQuery'
+import { DEFAULT_SORT, SORT_OPTIONS, isFilterApplied, readStoredFilter, storeFilter, type TransactionFilterValue, type TransactionSort } from './transactionQuery'
 
 type Scope = 'mine' | 'group'
 type Props = { today?: Date }
@@ -72,7 +72,7 @@ export default function TransactionsPage({ today }: Props) {
   // 멤버 선택은 그룹별로 기억한다. 헤더에서 그룹을 바꾸면 이전 그룹의 멤버 id가 남지 않는다.
   const [member, setMember] = useState<{ groupId: number; userId: number } | null>(null)
   const [search, setSearch] = useState('')
-  const [filter, setFilter] = useState<TransactionFilterValue>(DEFAULT_FILTER)
+  const [filter, setFilter] = useState<TransactionFilterValue>(readStoredFilter)
   const [sort, setSort] = useState<TransactionSort>(DEFAULT_SORT)
   const categories = useCategories()
   const [selectedId, setSelectedId] = useState<number | null>(null)
@@ -231,7 +231,7 @@ export default function TransactionsPage({ today }: Props) {
           </>
         )}
         <TransactionFilter categories={categories.data ?? []} value={filter}
-          onApply={(next) => { setFilter(next); setSelectedId(null) }} />
+          onApply={(next) => { setFilter(next); storeFilter(next); setSelectedId(null) }} />
         <SortButton options={SORT_OPTIONS} value={sort} defaultValue={DEFAULT_SORT} onApply={setSort} />
         <SearchField label="검색" value={search} onChange={setSearch} placeholder="내용·카테고리 검색" className={styles.search} />
       </div>

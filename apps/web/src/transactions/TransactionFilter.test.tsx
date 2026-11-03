@@ -25,7 +25,7 @@ it.each([false, true])('edits two steps, partial majors, summaries and compact p
   expect(screen.getByRole('checkbox', { name: '식비' })).toBePartiallyChecked()
   expect(screen.getByText('1/2')).toBeInTheDocument()
   await userEvent.click(screen.getByRole('button', { name: '확인' }))
-  expect(screen.getByRole('button', { name: '지출 카테고리 식비 외 2' })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: '지출 카테고리 3/3개 · 일부' })).toBeInTheDocument()
   expect(onApply).not.toHaveBeenCalled()
   await userEvent.click(screen.getByRole('button', { name: '적용' }))
   expect(onApply).toHaveBeenCalledWith({ ...DEFAULT_FILTER, picks: { EXPENSE: ['식비\t외식', '교통', '문화'] } })
@@ -47,8 +47,8 @@ it('validates empty types and categories, then resets to default', async () => {
   expect(screen.getByRole('alert')).toHaveTextContent('카테고리')
   expect(onApply).not.toHaveBeenCalled()
   await userEvent.click(screen.getByRole('button', { name: '초기화' }))
-  await userEvent.click(screen.getByRole('button', { name: '적용' }))
   expect(onApply).toHaveBeenCalledWith(DEFAULT_FILTER)
+  expect(screen.getByRole('button', { name: '이체' })).toHaveAttribute('aria-pressed', 'true')
 })
 it.each([false, true])('discards unapplied drafts and indicates applied filters (mobile=%s)', async (mobile) => {
   mockViewport(mobile)

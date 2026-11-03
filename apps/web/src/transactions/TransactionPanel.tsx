@@ -15,6 +15,7 @@ import styles from './TransactionPanel.module.css'
 import { transactionsApi, type AuditView, type TransactionPatch, type TransactionType, type TransactionView } from './transactionsApi'
 import { useTransactionMutations } from './useTransactionMutations'
 
+// oxlint-disable-next-line react/only-export-components
 export const TYPE_LABELS: Record<TransactionType, string> = { EXPENSE: '지출', INCOME: '수입', TRANSFER: '이체' }
 const TYPE_ITEMS = Object.entries(TYPE_LABELS).map(([id, label]) => ({ id, label }))
 
