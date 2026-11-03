@@ -57,7 +57,7 @@ class TransactionQueryApiTest extends IntegrationTest {
         save(member, TransactionType.INCOME, "2026-09-04T09:00:00", "식비", "환급", 2000);
 
         mvc.perform(get("/me/transactions").param("month", "2026-09")
-                        .param("major", "식비", "교통").param("type", "EXPENSE")
+                        .param("pick", "EXPENSE\t식비", "EXPENSE\t교통").param("type", "EXPENSE")
                         .header("Authorization", member.bearer()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(2)))
@@ -69,11 +69,11 @@ class TransactionQueryApiTest extends IntegrationTest {
     void majorContainingCommaIsKeptWholeForMineAndGroup() throws Exception {
         save(member, TransactionType.EXPENSE, "2026-09-01T09:00:00", "식비,외식", "쉼표 분류", -8000);
 
-        mvc.perform(get("/me/transactions").param("month", "2026-09").param("major", "식비,외식")
+        mvc.perform(get("/me/transactions").param("month", "2026-09").param("pick", "EXPENSE\t식비,외식")
                         .header("Authorization", member.bearer()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(1)));
-        mvc.perform(get("/groups/{id}/transactions", groupId).param("month", "2026-09").param("major", "식비,외식")
+        mvc.perform(get("/groups/{id}/transactions", groupId).param("month", "2026-09").param("pick", "EXPENSE\t식비,외식")
                         .header("Authorization", admin.bearer()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(1)));
@@ -86,7 +86,7 @@ class TransactionQueryApiTest extends IntegrationTest {
         categorized.setCategoryMinorOverride("외식");
         transactions.save(categorized);
 
-        mvc.perform(get("/me/transactions").param("month", "2026-09").param("minor", "")
+        mvc.perform(get("/me/transactions").param("month", "2026-09").param("pick", "EXPENSE\t식비\t")
                         .header("Authorization", member.bearer()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(1)))
@@ -122,12 +122,24 @@ class TransactionQueryApiTest extends IntegrationTest {
     }
 
     @Test
+    void invalidPicksAreRejectedForMineAndGroup() throws Exception {
+        for (String path : new String[] {"/me/transactions", "/groups/" + groupId + "/transactions"}) {
+            for (String pick : new String[] {"EXPENSE", "EXPENSE\t식비\t외식\t추가", "GIFT\t식비"}) {
+                mvc.perform(get(path).param("month", "2026-09").param("pick", pick)
+                                .header("Authorization", member.bearer()))
+                        .andExpect(status().isBadRequest())
+                        .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+            }
+        }
+    }
+
+    @Test
     void groupFilterDoesNotRevealHiddenTransactions() throws Exception {
         LedgerTransaction hidden = save(member, TransactionType.EXPENSE, "2026-09-01T09:00:00", "식비", "숨김", -1000);
         hidden.setHidden(true);
         transactions.save(hidden);
 
-        mvc.perform(get("/groups/{id}/transactions", groupId).param("month", "2026-09").param("major", "식비")
+        mvc.perform(get("/groups/{id}/transactions", groupId).param("month", "2026-09").param("pick", "EXPENSE\t식비")
                         .header("Authorization", admin.bearer()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(0)));

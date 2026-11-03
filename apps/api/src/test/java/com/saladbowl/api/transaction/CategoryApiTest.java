@@ -24,8 +24,12 @@ class CategoryApiTest extends IntegrationTest {
     LedgerTransactionRepository transactions;
 
     private LedgerTransaction manual(AuthedUser owner, String major, String minor) {
+        return manual(owner, TransactionType.EXPENSE, major, minor);
+    }
+
+    private LedgerTransaction manual(AuthedUser owner, TransactionType type, String major, String minor) {
         return transactions.save(LedgerTransaction.manual(owner.id(), new TransactionData(
-                LocalDateTime.parse("2026-10-01T12:00:00"), TransactionType.EXPENSE, major, minor, "거래",
+                LocalDateTime.parse("2026-10-01T12:00:00"), type, major, minor, "거래",
                 BigDecimal.valueOf(-1000).setScale(2), "KRW", "카드", null)));
     }
 
@@ -49,12 +53,14 @@ class CategoryApiTest extends IntegrationTest {
         mvc.perform(get("/me/categories").header("Authorization", me.bearer()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(3)))
+                .andExpect(jsonPath("$[0].type").value("EXPENSE"))
                 .andExpect(jsonPath("$[0].major").value("식비"))
                 .andExpect(jsonPath("$[0].count").value(4))
-                .andExpect(jsonPath("$[0].minors", hasSize(2)))
+                .andExpect(jsonPath("$[0].minors", hasSize(3)))
                 .andExpect(jsonPath("$[0].minors[0].minor").value("카페"))
                 .andExpect(jsonPath("$[0].minors[0].count").value(2))
-                .andExpect(jsonPath("$[0].minors[1].minor").value("점심"))
+                .andExpect(jsonPath("$[0].minors[1].minor").value(""))
+                .andExpect(jsonPath("$[0].minors[2].minor").value("점심"))
                 .andExpect(jsonPath("$[1].major").value("교통"))
                 .andExpect(jsonPath("$[1].count").value(3))
                 .andExpect(jsonPath("$[1].minors[0].minor").value("버스"))
@@ -72,8 +78,29 @@ class CategoryApiTest extends IntegrationTest {
 
         mvc.perform(get("/me/categories").header("Authorization", me.bearer()))
                 .andExpect(jsonPath("$[0].major").value("교통"))
-                .andExpect(jsonPath("$[0].minors", hasSize(0)))
+                .andExpect(jsonPath("$[0].minors[0].minor").value(""))
                 .andExpect(jsonPath("$[1].major").value("쇼핑"));
+    }
+
+    @Test
+    void groupsSameMajorSeparatelyByTypeAndOrdersTypes() throws Exception {
+        AuthedUser me = TestAuth.signupAndLogin(mvc, "me@test.com", "나");
+        manual(me, TransactionType.INCOME, "공통", "급여");
+        manual(me, TransactionType.EXPENSE, "공통", "");
+        manual(me, TransactionType.TRANSFER, "공통", "이체");
+        LedgerTransaction changed = manual(me, TransactionType.EXPENSE, "변경", "");
+        changed.setTypeOverride(TransactionType.INCOME);
+        transactions.save(changed);
+
+        mvc.perform(get("/me/categories").header("Authorization", me.bearer()))
+                .andExpect(jsonPath("$", hasSize(4)))
+                .andExpect(jsonPath("$[0].type").value("EXPENSE"))
+                .andExpect(jsonPath("$[0].major").value("공통"))
+                .andExpect(jsonPath("$[0].minors[0].minor").value(""))
+                .andExpect(jsonPath("$[1].type").value("INCOME"))
+                .andExpect(jsonPath("$[2].type").value("INCOME"))
+                .andExpect(jsonPath("$[2].major").value("변경"))
+                .andExpect(jsonPath("$[3].type").value("TRANSFER"));
     }
 
     @Test

@@ -5,21 +5,24 @@ import com.saladbowl.api.transaction.TransactionDtos.TransactionView;
 import java.util.List;
 
 /** 조회 결과에 적용하는 화면 필터·정렬. 비어 있는 목록은 그 항목을 거르지 않는다. */
-public record TransactionQuery(List<String> majors, List<String> minors, List<TransactionType> types,
-                               TransactionSort sort) {
+public record TransactionQuery(List<Pick> picks, List<TransactionType> types, TransactionSort sort) {
+
+    public record Pick(TransactionType type, String major, String minor) {
+    }
 
     public TransactionQuery {
-        majors = majors == null ? List.of() : List.copyOf(majors);
-        minors = minors == null ? List.of() : List.copyOf(minors);
+        picks = picks == null ? List.of() : List.copyOf(picks);
         types = types == null ? List.of() : List.copyOf(types);
         sort = sort == null ? TransactionSort.DATE_DESC : sort;
     }
 
     public List<TransactionView> apply(List<TransactionView> views) {
         return views.stream()
-                .filter(tx -> majors.isEmpty() || majors.contains(tx.categoryMajor()))
-                .filter(tx -> minors.isEmpty() || minors.contains(tx.categoryMinor()))
                 .filter(tx -> types.isEmpty() || types.contains(tx.type()))
+                .filter(tx -> picks.stream().noneMatch(pick -> pick.type() == tx.type())
+                        || picks.stream().anyMatch(pick -> pick.type() == tx.type()
+                                && pick.major().equals(tx.categoryMajor())
+                                && (pick.minor() == null || pick.minor().equals(tx.categoryMinor()))))
                 .sorted(sort.comparator())
                 .toList();
     }
