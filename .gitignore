@@ -18,6 +18,10 @@ apps/web/dist/
 .env.*
 !.env.example
 
+# 생성한 테스트 데이터와 Python 바이트코드
+/tmp/
+__pycache__/
+
 # Local Graphify environment and generated graph/cache
 .venv-graphify/
 graphify-out/
