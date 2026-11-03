@@ -7,3 +7,5 @@
 
 .diagram{margin:24px 0;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px}.diagram>a{display:block;overflow-x:auto}.diagram img{display:block;width:100%;height:auto;min-width:680px}.diagram figcaption{font-size:13px;color:var(--muted);margin-top:12px}.diagram figcaption a{display:inline-block;margin-left:8px}
 @media print{.diagram>a{overflow:visible}.diagram img{min-width:0}}
+
+.timeline{overflow-x:auto;padding:16px}.timeline svg{display:block;width:100%;min-width:680px;height:auto}.timeline text{fill:var(--ink);font-size:13px}.timeline .mut{fill:var(--muted);font-size:12px}.timeline .bar{fill:var(--tint);stroke:var(--brand)}.timeline .soft{fill:var(--paper);stroke:var(--line)}.timeline .gone{fill:none;stroke:var(--muted);stroke-dasharray:5 4}.timeline .guide{stroke:var(--line);stroke-dasharray:3 4}.timeline .thin{stroke:var(--brand);stroke-width:1.5}.timeline .keep{stroke:var(--brand);stroke-width:4}.timeline .dot{fill:var(--brand)}.timeline .open{fill:var(--panel);stroke:var(--brand);stroke-width:2}.timeline figcaption{font-size:13px;color:var(--muted);margin-top:12px}

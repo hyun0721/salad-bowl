@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="작업 하나가 시작해서 병합과 함께 끝날 때까지 세션과 worktree를 언제 만들고, 이어 가고, 지우는지 순서대로 설명합니다.">
+  <title>세션과 worktree의 수명 주기 · Salad Bowl 개발자 가이드</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="guide.css">
+</head>
+<body>
+<a class="skip" href="#main">본문으로 건너뛰기</a>
+<header class="site-header"><div class="header-inner"><a class="brand" href="index.html">Salad Bowl <span>개발자 가이드</span></a><a href="https://github.com/hyun0721/salad-bowl">GitHub 저장소</a></div></header>
+<div class="layout"><nav class="guide-nav" aria-label="문서"><a href="index.html">문서 홈</a><a href="development.html">시작하기</a><a href="architecture.html">시스템 구조</a><a href="deploy.html">배포·운영</a><a href="auth.html">인증과 권한</a><a href="pr38-update.html">버전 관리</a><a href="workflow.html" aria-current="page">작업 흐름</a></nav>
+<main id="main">
+<header class="page-heading"><h1>세션과 worktree의 수명 주기</h1><p class="lead">작업 하나는 브랜치 하나와 worktree 하나를 쓰고, 병합과 함께 끝납니다. 시작부터 정리까지 순서대로 무엇을 만들고 언제 지우는지 설명합니다.</p><p class="meta">코드 확인: 2026-11-02 · 기준 <a href="https://github.com/hyun0721/salad-bowl/commit/398b05c"><code>398b05c</code></a>와 이 문서를 도입한 PR</p></header>
+<nav class="toc" aria-label="이 페이지 목차"><strong>이 페이지에서</strong><a href="#summary">한눈에 보기</a><a href="#where">무엇이 어디에 사는가</a><a href="#steps">단계별 순서</a><a href="#handoff">세션을 넘겨 이어 가기</a><a href="#cleanup">정리 대상 판단</a><a href="#trouble">자주 막히는 상황</a><a href="#decisions">정하지 않은 것</a></nav>
+
+<section id="summary">
+<h2>작업의 수명은 worktree가 정하고, 세션은 그 안에서 짧게 이어집니다</h2>
+<p>세 가지만 기억하면 됩니다.</p>
+<ul>
+<li>작업 하나에 브랜치 하나, worktree 하나를 씁니다. 브랜치는 한 번에 한 worktree에서만 열 수 있습니다.</li>
+<li>한 worktree에서 세션이 여러 번 이어질 수 있습니다. 세션이 끝나도 작업이 끝난 것은 아닙니다.</li>
+<li>다음 세션과 main에 남는 것은 커밋한 파일과 PR뿐입니다. 임시 산출물은 worktree를 지울 때 함께 사라집니다.</li>
+</ul>
+<figure class="diagram timeline">
+<svg viewBox="0 0 760 300" role="img" aria-labelledby="tl-title tl-desc">
+<title id="tl-title">작업 하나의 수명 주기</title>
+<desc id="tl-desc">브랜치와 worktree는 시작에서 병합까지 작업 중이고 병합 직후 삭제됩니다. 세션은 그 안에서 여러 번 열리고 닫힙니다. 임시 산출물은 worktree와 함께 삭제되고, 커밋과 PR은 병합 뒤에도 main에 남습니다.</desc>
+<line class="guide" x1="140" y1="34" x2="140" y2="290"/><line class="guide" x1="400" y1="34" x2="400" y2="290"/><line class="guide" x1="520" y1="34" x2="520" y2="290"/>
+<text x="140" y="22">시작</text><text x="270" y="22" text-anchor="middle">구현</text><text x="460" y="22" text-anchor="middle">검증·PR</text><text x="580" y="22" text-anchor="middle">병합·정리</text>
+<text x="8" y="72">브랜치 · worktree</text>
+<rect class="bar" x="140" y="50" width="380" height="34" rx="5"/><text x="152" y="72">작업 중 (브랜치 1개, worktree 1개)</text>
+<rect class="gone" x="520" y="50" width="120" height="34" rx="5"/><text class="mut" x="580" y="72" text-anchor="middle">삭제</text>
+<text x="8" y="132">세션</text>
+<rect class="bar" x="140" y="110" width="130" height="34" rx="5"/><text x="205" y="132" text-anchor="middle">세션 1</text>
+<rect class="bar" x="300" y="110" width="130" height="34" rx="5"/><text x="365" y="132" text-anchor="middle">세션 2</text>
+<rect class="bar" x="460" y="110" width="60" height="34" rx="5"/><text x="490" y="132" text-anchor="middle">세션 3</text>
+<text x="8" y="192">임시 산출물</text>
+<rect class="bar soft" x="140" y="170" width="500" height="34" rx="5"/><text x="152" y="192">.superpowers/ · tmp/ · graphify-out/ · node_modules/</text>
+<text x="8" y="252">main에 남는 것</text>
+<line class="thin" x1="140" y1="247" x2="520" y2="247"/><circle class="dot" cx="190" cy="247" r="5"/><circle class="dot" cx="250" cy="247" r="5"/><circle class="dot" cx="320" cy="247" r="5"/><circle class="dot" cx="380" cy="247" r="5"/>
+<text class="mut" x="190" y="276" text-anchor="middle">커밋</text><text class="mut" x="400" y="276" text-anchor="middle">PR 열기</text><circle class="open" cx="400" cy="247" r="6"/>
+<path class="dot" d="M520 238 L529 247 L520 256 L511 247 Z"/><text class="mut" x="520" y="276" text-anchor="middle">병합</text>
+<line class="keep" x1="529" y1="247" x2="750" y2="247"/><text class="mut" x="640" y="236" text-anchor="middle">이후 기록으로 남음</text>
+</svg>
+<figcaption>검증용 스택과 개발 DB는 이 그림에 없습니다. 컴퓨터에 하나뿐이라 모든 worktree가 공유합니다.</figcaption>
+</figure>
+</section>
+
+<section id="where">
+<h2>무엇이 어디에 사는가</h2>
+<p>수명이 다른 것을 한곳에 두면 정리할 때 헷갈립니다. 아래 표에서 각 항목이 어디에 있고 언제까지 남는지 확인합니다.</p>
+<div class="table-wrap"><table><thead><tr><th scope="col">항목</th><th scope="col">위치</th><th scope="col">남는 기간</th><th scope="col">공유 범위</th></tr></thead><tbody>
+<tr><td>기본 체크아웃</td><td>저장소 루트</td><td>계속</td><td><code>main</code>만 둡니다. 새 작업을 여기서 시작하지 않습니다.</td></tr>
+<tr><td>Claude worktree</td><td><code>.claude/worktrees/&lt;이름&gt;</code></td><td>작업 시작부터 병합까지</td><td>해당 작업 하나</td></tr>
+<tr><td>Codex worktree</td><td><code>~/.codex/worktrees/&lt;id&gt;/salad-bowl</code></td><td>작업 시작부터 병합까지</td><td>해당 작업 하나. Codex 앱이 만듭니다.</td></tr>
+<tr><td><code>.git</code></td><td>저장소 루트</td><td>계속</td><td>모든 worktree가 브랜치, 원격 정보, stash를 공유합니다.</td></tr>
+<tr><td>세션</td><td>Claude나 Codex의 대화</td><td>분에서 시간 단위</td><td>대화 내용은 다른 세션에 전달되지 않습니다.</td></tr>
+<tr><td>brief와 보고</td><td><code>.superpowers/sdd/&lt;작업명&gt;/</code></td><td>worktree와 같음</td><td>git이 무시합니다. 같은 worktree의 세션만 읽습니다.</td></tr>
+<tr><td>캡처와 로그</td><td><code>tmp/</code> (Playwright는 <code>tmp/playwright/</code>)</td><td>worktree와 같음</td><td>git이 무시합니다.</td></tr>
+<tr><td>Graphify 그래프</td><td><code>graphify-out/</code></td><td>worktree와 같음</td><td>worktree 사이에 자동으로 공유되지 않습니다. 새 worktree에서 다시 만듭니다.</td></tr>
+<tr><td>의존성과 빌드 결과</td><td>worktree 안의 <code>node_modules/</code> 등</td><td>worktree와 같음</td><td>2026-11-02에 측정한 worktree 대부분이 340~450MB였습니다.</td></tr>
+<tr><td>검증 스택, 개발 DB</td><td>Docker와 로컬 포트 (DB 55432, API 18080, 웹 15173)</td><td><code>down.sh</code> 실행 때까지</td><td>컴퓨터 전체가 공유합니다. 한 번에 하나만 띄웁니다.</td></tr>
+</tbody></table></div>
+</section>
+
+<section id="steps">
+<h2>단계별 순서</h2>
+
+<h3>1. 시작하기 전에 기본 체크아웃을 확인합니다</h3>
+<p>기본 체크아웃이 <code>main</code>이고 깨끗해야 합니다. 이전 작업의 worktree가 남아 있으면 먼저 <a href="#cleanup">정리 대상을 판단</a>합니다.</p>
+<pre><code>git fetch --prune origin
+git status -sb
+git worktree list</code></pre>
+
+<h3>2. 최신 main에서 worktree를 만듭니다</h3>
+<p>새 작업은 항상 <code>origin/main</code>에서 시작합니다. 병합한 브랜치를 다시 쓰지 않고 새 이름을 붙입니다. 이름을 재사용하면 이전 PR의 커밋과 새 커밋이 섞여 범위가 흐려집니다.</p>
+<pre><code>git worktree add .claude/worktrees/&lt;작업명&gt; -b &lt;type&gt;/&lt;작업명&gt; origin/main</code></pre>
+<p>Claude Code와 Codex 앱은 각자 worktree를 만들 수 있습니다. 어느 쪽이 만들었든 같은 규칙으로 정리합니다.</p>
+<p>그다음 작업 크기를 정합니다.</p>
+<ul>
+<li>한 세션에서 끝나면 대화에서 설계 승인을 한 번 받고 바로 구현합니다. 스펙과 계획 문서는 쓰지 않고, 설계 결정은 PR 본문의 "무엇"에 남깁니다.</li>
+<li>여러 세션이나 여러 PR에 걸치거나, 다른 세션이 이어서 실행하거나, 가져오기 중복 판정·웹 수정 보호·거래 소유권·그룹 공개 범위·인증·쿠키·삭제 동작을 바꾸면 <code>docs/superpowers/specs/</code>와 <code>plans/</code>에 문서를 커밋합니다.</li>
+</ul>
+<p>기존 스펙이 있으면 최신 main 기준으로 현재 코드와 맞는지 먼저 대조합니다.</p>
+
+<h3>3. 구현합니다</h3>
+<ul>
+<li>같은 변경을 구현하는 담당자는 한 번에 한 명입니다. 다른 실행기의 미완료 변경을 덮어쓰지 않습니다.</li>
+<li>Claude 세션은 <code>codex-collab</code>의 역할 표를 따릅니다. 구현하지 않은 쪽이 리뷰를 한 번 맡습니다.</li>
+<li>계획 문서가 없는 작업의 brief와 보고는 <code>.superpowers/sdd/&lt;작업명&gt;/</code>에 짧게 둡니다. brief에는 요구사항과 정확한 값만 쓰고 구현 코드를 미리 쓰지 않습니다.</li>
+<li>화면 캡처는 <code>tmp/</code>에 둡니다. Playwright MCP는 <code>.mcp.json</code>의 <code>--output-dir tmp/playwright</code>로 이미 그 위치에 저장합니다.</li>
+<li>검증 스택은 컴퓨터에 하나입니다. 포트가 이미 사용 중이면 다른 세션의 스택이므로 건드리지 않고, 검증을 실행하지 못했다고 보고합니다. <code>down.sh</code>는 이번 세션이 띄운 스택에만 실행합니다.</li>
+</ul>
+
+<h3>4. 검증하고 리뷰합니다</h3>
+<p>웹 코드를 바꿨다면 <code>apps/web</code>에서 <code>npm run typecheck &amp;&amp; npm test &amp;&amp; npm run lint &amp;&amp; npm run build</code>를 실행합니다. API 코드를 바꿨다면 <code>apps/api</code>에서 <code>./gradlew test</code>를 실행하고, 업로드 한도·파서·메모리를 바꿨다면 <code>./gradlew memoryTest</code>도 실행합니다. 문서만 바꿨다면 링크와 참조를 확인합니다. 독립 리뷰는 구현하지 않은 쪽이 한 번만 합니다.</p>
+
+<h3>5. PR을 엽니다</h3>
+<p>PR 제목은 <code>type(scope): 한국어 변경 요약</code> 형식을 따르고, 본문은 <code>무엇 / 확인 / 리뷰 / 참고</code>로 씁니다. 화면이 바뀌면 375px 이전·이후 캡처를 "확인"에 표로 넣습니다. 이미지는 <code>pr-assets</code> 브랜치의 <code>pr-&lt;번호&gt;/</code>에 올리고 main에는 커밋하지 않습니다. 병합은 사용자가 요청할 때만 합니다.</p>
+
+<h3>6. 병합하면 바로 정리합니다</h3>
+<p>병합한 순간 브랜치와 worktree는 역할을 마쳤습니다. 기록은 main에 남아 있고, PR 페이지의 <strong>Restore branch</strong> 버튼으로 브랜치도 되살릴 수 있습니다.</p>
+<pre><code>git switch main &amp;&amp; git pull --ff-only
+git worktree remove &lt;worktree 경로&gt;
+git branch -d &lt;브랜치&gt;</code></pre>
+<p>쌓인 것이 여러 개면 스크립트가 병합된 브랜치만 골라 지웁니다. 기본은 dry-run이고, 실제 삭제는 <code>RUN=1</code>을 붙여야 합니다.</p>
+<pre><code>scripts/git-cleanup.sh          # 지울 목록만 출력
+RUN=1 scripts/git-cleanup.sh    # 실제로 삭제</code></pre>
+<p>병합 뒤에 수정이 더 필요하면 2단계로 돌아가 <code>origin/main</code>에서 새 브랜치를 만듭니다.</p>
+
+<h3>7. 세션을 닫기 전에 상태를 확인합니다</h3>
+<p>작업이 끝나지 않았어도 세션은 닫힙니다. 닫기 전에 아래 셋을 확인합니다.</p>
+<pre><code>git status -sb                  # 커밋하지 않은 변경
+git log origin/&lt;브랜치&gt;..HEAD    # 푸시하지 않은 커밋
+gh pr list --head &lt;브랜치&gt;       # 열린 PR</code></pre>
+</section>
+
+<section id="handoff">
+<h2>세션을 넘겨 이어 가기</h2>
+<p>무엇이 다음 세션에 전달되는지는 이어 가는 장소로 정해집니다.</p>
+<div class="table-wrap"><table><thead><tr><th scope="col">상황</th><th scope="col">전달되는 것</th><th scope="col">할 일</th></tr></thead><tbody>
+<tr><td>같은 worktree에서 Claude와 Codex가 교대</td><td>커밋하지 않은 변경, <code>.superpowers/sdd/</code>의 brief와 보고</td><td>담당자를 한 명으로 정합니다. 다른 쪽의 미완료 변경을 덮어쓰지 않습니다.</td></tr>
+<tr><td>다른 worktree나 다른 날 세션에서 이어 감</td><td>푸시한 브랜치와 커밋한 계획 문서만</td><td>계획 문서를 커밋하고 브랜치를 푸시합니다. <code>.superpowers/</code>는 넘어가지 않습니다.</td></tr>
+<tr><td>작업을 잠시 중단</td><td>푸시한 커밋</td><td>미완료 변경을 WIP 커밋으로 푸시합니다. stash는 모든 worktree가 공유하므로 오래 두지 않습니다.</td></tr>
+<tr><td>같은 브랜치를 다른 worktree에서 열고 싶음</td><td>열리지 않음</td><td>먼저 열려 있는 worktree를 정리하거나 그 worktree에서 이어 갑니다.</td></tr>
+</tbody></table></div>
+<div class="note"><p>다른 세션이 이어서 실행해야 하는 작업은 계획 문서가 필요하다는 것이 공통 작업 규칙입니다. <code>.superpowers/</code>를 git이 무시하는 이유도 같습니다. 인수인계 수단이 아니라 한 worktree 안의 작업 메모이기 때문입니다.</p></div>
+</section>
+
+<section id="cleanup">
+<h2>정리 대상 판단</h2>
+<p><code>git worktree remove</code>는 <code>--force</code> 없이 실행하면 커밋하지 않은 수정이나 추적하지 않는 새 파일이 있는 worktree를 거부합니다. git이 무시하는 파일(<code>tmp/</code>, <code>.superpowers/</code>, <code>graphify-out/</code>)만 남았다면 거부하지 않습니다. 그래서 스크립트는 <code>--force</code>를 쓰지 않고, 거부된 브랜치는 건너뛰고 이유를 출력합니다.</p>
+<div class="table-wrap"><table><thead><tr><th scope="col">상태</th><th scope="col">처리</th></tr></thead><tbody>
+<tr><td>병합했고 변경 없음, 또는 무시되는 파일만 남음</td><td><code>scripts/git-cleanup.sh</code>가 지웁니다.</td></tr>
+<tr><td>병합했고 무시되지 않는 새 파일(예전 브랜치의 스크린샷 등)이 남음</td><td>필요한 파일이 없는지 목록을 본 뒤 <code>git worktree remove --force</code>로 지웁니다.</td></tr>
+<tr><td>병합했고 추적하는 파일이 수정됨</td><td>수정 내용을 확인합니다. 이미 main에 있으면 버리고, 아니면 새 브랜치로 옮긴 뒤 지웁니다.</td></tr>
+<tr><td>병합하지 않음 (PR이 열려 있거나 main에 없는 커밋이 있음)</td><td>지우지 않습니다. 스크립트는 이런 브랜치를 건너뜁니다.</td></tr>
+<tr><td>원격 브랜치가 삭제되어 <code>[gone]</code>으로 표시됨</td><td>병합 때문인지 PR로 확인합니다. 병합한 PR이면 위 행을 따릅니다.</td></tr>
+</tbody></table></div>
+<p>스크립트는 브랜치가 <code>origin/main</code>의 조상인지로 병합 여부를 판단합니다. merge commit으로 병합할 때만 맞습니다. squash merge로 바꾸면 병합한 브랜치도 미병합으로 보여 아무것도 지우지 않으므로, 그때는 <code>gh pr list --state merged</code>의 브랜치 이름을 기준으로 바꿉니다.</p>
+</section>
+
+<section id="trouble">
+<h2>자주 막히는 상황</h2>
+<div class="table-wrap"><table><thead><tr><th scope="col">증상</th><th scope="col">원인</th><th scope="col">조치</th></tr></thead><tbody>
+<tr><td><code>contains modified or untracked files, use --force to delete it</code></td><td>worktree에 수정이나 추적하지 않는 파일이 있습니다.</td><td><code>git -C &lt;경로&gt; status</code>로 목록을 확인합니다. 필요 없으면 <code>--force</code>를 붙입니다.</td></tr>
+<tr><td><code>Cannot delete branch '…' checked out at '…'</code></td><td>다른 worktree가 그 브랜치를 열고 있습니다.</td><td>해당 worktree를 먼저 제거한 뒤 브랜치를 지웁니다.</td></tr>
+<tr><td><code>The branch '…' is not fully merged</code></td><td>main에 없는 커밋이 있습니다.</td><td>PR 상태를 확인합니다. 병합하지 않은 작업이면 지우지 않습니다.</td></tr>
+<tr><td><code>'…' is already checked out at '…'</code></td><td>같은 브랜치를 두 번째 worktree에서 열려고 했습니다.</td><td>기존 worktree에서 이어 가거나 새 브랜치 이름을 씁니다.</td></tr>
+<tr><td>검증 스택 포트가 이미 사용 중임</td><td>다른 세션이 스택을 띄웠습니다.</td><td>중지하거나 재사용하지 않고, 검증을 실행하지 못했다고 보고합니다.</td></tr>
+<tr><td>새 worktree에 그래프가 없음</td><td><code>graphify-out/</code>은 worktree마다 따로 만듭니다.</td><td>Graphify로 갱신하거나, 없으면 일반 검색으로 진행합니다.</td></tr>
+<tr><td>병합했는데 스크립트가 아무것도 지우지 않음</td><td>squash merge라서 조상 판정이 맞지 않습니다.</td><td>위 <a href="#cleanup">정리 대상 판단</a>의 마지막 문단을 따릅니다.</td></tr>
+<tr><td>사라진 줄 알았던 변경이 <code>git stash list</code>에 있음</td><td>stash는 모든 worktree가 공유합니다.</td><td>내용을 확인하고 필요하면 브랜치에 적용한 뒤 <code>git stash drop</code>으로 지웁니다.</td></tr>
+</tbody></table></div>
+</section>
+
+<section id="decisions">
+<h2>정하지 않은 것</h2>
+<ul>
+<li><strong>세션 종료 훅으로 자동 정리하지 않습니다.</strong> 세션이 끝나도 작업이 끝난 것은 아닙니다. 미완료 브랜치의 brief를 훅이 지우면 이어 갈 수 없습니다. 병합 뒤 정리 단계와 무시 규칙으로 충분하고, 필요해지면 병합한 브랜치의 worktree에만 적용합니다.</li>
+<li><strong>squash merge로 바꾸지 않았습니다.</strong> 바꾸게 되면 정리 스크립트의 병합 판정부터 고칩니다.</li>
+</ul>
+<p>근거 문서: <a href="https://github.com/hyun0721/salad-bowl/blob/main/docs/agent-guidelines.md">에이전트 공통 작업 규칙</a>, <a href="https://github.com/hyun0721/salad-bowl/blob/main/.claude/skills/codex-collab/SKILL.md"><code>codex-collab</code></a>, <a href="https://github.com/hyun0721/salad-bowl/blob/main/docs/development.md#검증-스택과-시드">검증 스택과 시드</a>, <a href="https://github.com/hyun0721/salad-bowl/blob/main/docs/graphify.md">Graphify 사용</a>, <a href="https://github.com/hyun0721/salad-bowl/blob/main/scripts/git-cleanup.sh"><code>scripts/git-cleanup.sh</code></a>.</p>
+</section>
+
+<div class="page-end"><a href="deploy.html">← 배포·운영</a><a href="index.html">문서 홈 →</a></div>
+</main></div>
+<footer class="site-footer">Salad Bowl · 코드와 함께 읽는 개발 문서 <a href="https://github.com/hyun0721/salad-bowl/tree/main/docs">저장소 문서 전체</a></footer>
+</body></html>
