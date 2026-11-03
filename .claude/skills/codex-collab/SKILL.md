@@ -106,6 +106,9 @@ PR 소모값 집계(`scripts/pr_usage.py`)가 읽는 태그다. 유형: `explore
 
 Codex를 부르는 프롬프트 파일과 Claude 서브에이전트(Agent) 프롬프트의 **맨 앞 줄**에 `[task=<유형>]`을 넣는다. 4장 템플릿 A~F의 첫 줄에도 해당 태그가 들어 있다.
 
+- 수정 라운드 1~3은 같은 세션/서브에이전트를 이어 쓰므로 원래 구현 태그로 집계되고, `fix-round`는 새 세션을 띄운 4~5라운드에서만 나온다.
+- 브랜치 생성 전(main)에서 한 작업은 PR에서 빠지고, 태그 없는 Codex 자동 리뷰 세션은 `미분류`로 잡힌다.
+
 ## 4. 프롬프트 템플릿
 
 모든 프롬프트 끝에 공통 규칙을 붙인다.
@@ -129,7 +132,7 @@ docs/superpowers/plans/<plan>.md 를 검토한다. 코드는 바꾸지 않는다
 
 **B. Task 구현** (`write`)
 ```text
-[task=impl-web]  <!-- 구현 유형에 맞게 impl-web / impl-web-common / impl-api 중 하나로 바꾼다 -->
+[task=impl-web]
 너는 Plan <plan>의 Task N 구현자다. 먼저 <brief 경로>를 읽는다 — 요구사항과 정확한 값이 들어 있다.
 계획 전체 규칙: <workspace>/constraints.md
 브리프의 TDD 단계를 따른다: 실패하는 테스트 → 실패 확인 → 구현 → 통과 확인.
@@ -140,6 +143,8 @@ apps/web에서 `npm run typecheck && npm test && npm run lint && npm run build`�
 막히면 추측하지 말고 보고 파일에 BLOCKED/NEEDS_CONTEXT와 이유를 쓰고 멈춘다.
 보고 형식(마지막 응답): Status, 바꾼 파일, 제안 커밋 제목, 테스트 한 줄 요약, 걱정되는 점.
 ```
+
+템플릿 B의 태그는 구현 유형에 맞게 `impl-web` / `impl-web-common` / `impl-api` 중 하나로 바꾼다.
 
 **C. Task 리뷰** (`read`) — Claude가 구현한 Task
 ```text

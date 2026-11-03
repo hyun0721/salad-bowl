@@ -11,8 +11,13 @@ import subprocess
 TAG = re.compile(r'\[task=([a-z-]+)\]')
 
 
-def git(*args):
-    return subprocess.run(['git', *args], capture_output=True, text=True).stdout.strip()
+def git(*args, cwd=None):
+    return subprocess.run(['git', *args], capture_output=True, text=True, cwd=cwd).stdout.strip()
+
+
+def repo_root(worktree):
+    common = Path(worktree).is_dir() and git('rev-parse', '--path-format=absolute', '--git-common-dir', cwd=worktree)
+    return Path(common).parent if common else Path(worktree)  # git 밖이면 worktree 자체
 
 
 def parse_ts(value):
@@ -60,7 +65,7 @@ class Usage:
         r[2] += cache
 
 
-def read_claude(usage, root, branch, since):
+def read_claude(usage, root, branch, since, repo):
     best, tools = {}, {}
     for path in sorted(Path(root).expanduser().glob('**/*.jsonl')):
         tag = None
@@ -70,12 +75,15 @@ def read_claude(usage, root, branch, since):
             msg = o.get('message')
             if o.get('type') != 'assistant' or not isinstance(msg, dict) or o.get('gitBranch') != branch:
                 continue
+            cwd = Path(o.get('cwd') or '/nonexistent')
+            if repo != cwd and repo not in cwd.parents:
+                continue
             ts = parse_ts(o.get('timestamp'))
             if since and (ts is None or ts < since):
                 continue
-            if not msg.get('id') or msg.get('model') == '<synthetic>':
+            if not msg.get('id') or not msg.get('model') or msg['model'] == '<synthetic>':
                 continue
-            u = msg.get('usage') or {}
+            u = {k: v or 0 for k, v in (msg.get('usage') or {}).items()}
             prev = best.get(msg['id'])
             if prev is None or u.get('output_tokens', 0) > prev[1].get('output_tokens', 0):
                 label = 'controller' if not o.get('isSidechain') else (tag or '미분류')
@@ -97,7 +105,7 @@ def read_claude(usage, root, branch, since):
             usage.agents[inp.get('subagent_type') or 'general-purpose'] += 1
 
 
-def read_codex(usage, root, worktree, since):
+def read_codex(usage, root, worktree, since, branch):
     wt = Path(worktree).resolve()
     for path in sorted(Path(root).expanduser().glob('**/rollout-*.jsonl')):
         tag = model = effort = total = None
@@ -108,7 +116,9 @@ def read_codex(usage, root, worktree, since):
             if kind == 'session_meta':
                 cwd = Path(p.get('cwd') or '/nonexistent').resolve()
                 ts = parse_ts(p.get('timestamp') or o.get('timestamp'))
-                ok = (cwd == wt or wt in cwd.parents) and not (since and (ts is None or ts < since))
+                gb = (p.get('git') or {}).get('branch')
+                # git.branch가 없는 옛 rollout만 cwd 일치로 대신한다
+                ok = (gb == branch if gb else cwd == wt) and not (since and (ts is None or ts < since))
             elif kind == 'turn_context':
                 model, effort = p.get('model', model), p.get('effort', effort)
             elif kind == 'response_item' and ptype == 'message' and p.get('role') == 'user' and tag is None:
@@ -132,7 +142,7 @@ def read_codex(usage, root, worktree, since):
 
 
 def short(n):
-    if n >= 1_000_000:
+    if n >= 999_500:
         return f'{n / 1_000_000:.2f}M'
     return f'{n / 1000:.0f}k' if n >= 1000 else str(n)
 
@@ -146,7 +156,7 @@ def render(usage, branch, now):
     for (_, s, _), r in items:
         side[s] += r[1]
     out = ['## 소모값', '',
-           f"> 브랜치 `{branch}` · 세션 {sum(map(len, usage.sessions.values()))}개"
+           f"> 브랜치 `{branch}` · 로그 파일 {sum(map(len, usage.sessions.values()))}개"
            f"(Claude {len(usage.sessions['Claude'])}, Codex {len(usage.sessions['Codex'])})"
            f" · 집계 시각 {now:%Y-%m-%d %H:%M}", '',
            '**전체 대비 비중** (작업 토큰 기준: 신규 입력 + 캐시 쓰기 + 출력, 캐시 읽기 제외)', '',
@@ -175,9 +185,11 @@ def main(argv=None):
     branch = a.branch or git('rev-parse', '--abbrev-ref', 'HEAD')
     worktree = a.worktree or git('rev-parse', '--show-toplevel') or '.'
     since = parse_ts(a.since) if a.since else None
+    if a.since and since is None:
+        ap.error(f'--since 형식이 잘못됐다: {a.since}')
     usage = Usage()
-    read_claude(usage, a.claude_dir, branch, since)
-    read_codex(usage, a.codex_dir, worktree, since)
+    read_claude(usage, a.claude_dir, branch, since, repo_root(worktree))
+    read_codex(usage, a.codex_dir, worktree, since, branch)
     print(render(usage, branch, datetime.now()), end='')
 
 
