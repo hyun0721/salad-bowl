@@ -3,9 +3,9 @@ name: test-data-ci
 on:
   push:
     branches: [main]
-    paths: ["scripts/test_data.py", "scripts/test_test_data.py", ".github/workflows/test-data-ci.yml"]
+    paths: ["scripts/test_data.py", "scripts/test_test_data.py", "scripts/pr_usage.py", "scripts/test_pr_usage.py", ".github/workflows/test-data-ci.yml"]
   pull_request:
-    paths: ["scripts/test_data.py", "scripts/test_test_data.py", ".github/workflows/test-data-ci.yml"]
+    paths: ["scripts/test_data.py", "scripts/test_test_data.py", "scripts/pr_usage.py", "scripts/test_pr_usage.py", ".github/workflows/test-data-ci.yml"]
 
 permissions:
   contents: read
