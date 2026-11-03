@@ -1,6 +1,5 @@
 import { apiFetch } from '../api/client'
-import type { FilterValue } from '../common/FilterButton'
-import { DEFAULT_SORT, queryParams, type TransactionSort } from './transactionQuery'
+import { DEFAULT_FILTER, DEFAULT_SORT, queryParams, type TransactionFilterValue, type TransactionSort } from './transactionQuery'
 
 export type TransactionType = 'INCOME' | 'EXPENSE' | 'TRANSFER'
 
@@ -53,9 +52,9 @@ export const transactionsApi = {
     apiFetch<MonthDeleteResult>(
       `/me/transactions?${new URLSearchParams({ month, includeManual: String(includeManual) })}`,
       { method: 'DELETE' }),
-  mine: (month: string, filter: FilterValue = {}, sort: TransactionSort = DEFAULT_SORT) =>
+  mine: (month: string, filter: TransactionFilterValue = DEFAULT_FILTER, sort: TransactionSort = DEFAULT_SORT) =>
     apiFetch<TransactionView[]>(`/me/transactions?${queryParams(new URLSearchParams({ month }), filter, sort)}`),
-  group: (groupId: number, month: string, memberId: number | null, filter: FilterValue = {}, sort: TransactionSort = DEFAULT_SORT) => {
+  group: (groupId: number, month: string, memberId: number | null, filter: TransactionFilterValue = DEFAULT_FILTER, sort: TransactionSort = DEFAULT_SORT) => {
     const params = new URLSearchParams({ month })
     if (memberId !== null) params.set('memberId', String(memberId))
     return apiFetch<TransactionView[]>(`/groups/${groupId}/transactions?${queryParams(params, filter, sort)}`)

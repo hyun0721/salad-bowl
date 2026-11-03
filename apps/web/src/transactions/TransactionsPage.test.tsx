@@ -63,7 +63,8 @@ describe('TransactionsPage', () => {
 
     await screen.findByRole('row', { name: /김밥/ })
     await user.click(screen.getByRole('button', { name: '필터' }))
-    await user.click(screen.getByRole('checkbox', { name: '지출' }))
+    await user.click(screen.getByRole('button', { name: '수입' }))
+    await user.click(screen.getByRole('button', { name: '이체' }))
     await user.click(screen.getByRole('button', { name: '적용' }))
     await user.click(screen.getByRole('button', { name: /정렬/ }))
     await user.click(screen.getByRole('radio', { name: '금액 큰 순' }))
@@ -71,15 +72,16 @@ describe('TransactionsPage', () => {
 
     await waitFor(() => expect(lastRequestedUrl()).toContain('type=EXPENSE'))
     await waitFor(() => expect(lastRequestedUrl()).toContain('sort=AMOUNT_DESC'))
-    expect(screen.getByRole('button', { name: '필터, 1개 적용됨' })).toBeInTheDocument()
+    expect(new URL(lastRequestedUrl()).searchParams.getAll('type')).toEqual(['EXPENSE'])
+    expect(screen.getByRole('button', { name: '필터, 적용됨' })).toBeInTheDocument()
   })
 
-  it('drops a hidden minor after changing major before applying', async () => {
+  it('sends picked categories as type-scoped picks', async () => {
     const requests: string[] = []
     server.use(
       http.get('*/api/me/categories', () => HttpResponse.json([
-        { major: '교통', count: 1, minors: [{ minor: '버스', count: 1 }] },
-        { major: '식비', count: 1, minors: [{ minor: '외식', count: 1 }] },
+        { type: 'EXPENSE', major: '교통', count: 1, minors: [{ minor: '버스', count: 1 }] },
+        { type: 'EXPENSE', major: '식비', count: 1, minors: [{ minor: '외식', count: 1 }] },
       ])),
       http.get('*/api/me/transactions', ({ request }) => {
         requests.push(request.url)
@@ -89,15 +91,13 @@ describe('TransactionsPage', () => {
     const { user } = renderPage(<TransactionsPage today={today} />, { groups })
     await screen.findByText('이 달에 거래가 없습니다.')
     await user.click(screen.getByRole('button', { name: '필터' }))
+    await user.click(screen.getByRole('button', { name: '지출 카테고리 전체' }))
     await user.click(screen.getByRole('checkbox', { name: '교통' }))
-    await user.click(screen.getByRole('checkbox', { name: '교통 · 버스' }))
-    await user.click(screen.getByRole('checkbox', { name: '교통' }))
-    await user.click(screen.getByRole('checkbox', { name: '식비' }))
-    expect(screen.queryByRole('checkbox', { name: /버스/ })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '확인' }))
     await user.click(screen.getByRole('button', { name: '적용' }))
-    await waitFor(() => expect(new URL(requests.at(-1)!).searchParams.get('major')).toBe('식비'))
-    expect(new URL(requests.at(-1)!).searchParams.has('minor')).toBe(false)
-    expect(screen.getByRole('button', { name: '필터, 1개 적용됨' })).toBeInTheDocument()
+    await waitFor(() => expect(new URL(requests.at(-1)!).searchParams.getAll('pick')).toEqual(['EXPENSE\t식비']))
+    expect(new URL(requests.at(-1)!).searchParams.has('type')).toBe(false)
+    expect(screen.getByRole('button', { name: '필터, 적용됨' })).toBeInTheDocument()
   })
 
   it('shows a filtered empty state when the server returns no matches', async () => {
@@ -105,7 +105,7 @@ describe('TransactionsPage', () => {
     const { user } = renderPage(<TransactionsPage today={today} />, { groups })
     await screen.findByText('이 달에 거래가 없습니다.')
     await user.click(screen.getByRole('button', { name: '필터' }))
-    await user.click(screen.getByRole('checkbox', { name: '지출' }))
+    await user.click(screen.getByRole('button', { name: '수입' }))
     await user.click(screen.getByRole('button', { name: '적용' }))
     expect(await screen.findByText('조건에 맞는 거래가 없습니다.')).toBeInTheDocument()
   })
