@@ -17,7 +17,7 @@ GitHub Pages 사용 가능 여부는 저장소 공개 범위와 계정 플랜에
 ## 개발자 가이드와 홈
 
 홈 `docs/site/index.html`에서 시작하기·시스템 구조·배포·운영·인증과 권한 가이드를 연결한다.
-가이드는 `development.html`, `architecture.html`, `deploy.html`, `auth.html`이며
+가이드는 `development.html`, `architecture.html`, `deploy.html`, `auth.html`, `workflow.html`이며
 공통 스타일은 `guide.css`다. 외부 폰트·스크립트나 별도 빌드 없이 정적 HTML로 제공한다.
 `pr38-update.html`은 기존 URL을 유지한 버전 관리·PWA 업데이트 가이드다.
 Archify 다이어그램은 `diagrams/`에, 본문용 정적 이미지는 `images/`에 둔다.
@@ -30,9 +30,14 @@ Archify 다이어그램은 `diagrams/`에, 본문용 정적 이미지는 `images
 ## 이후 문서 추가·수정
 
 1. 완성한 HTML을 `docs/site/<문서명>.html`에 복사한다. 이미지 등 외부 파일이 필요하면 같은 폴더 아래에 함께 둔다.
-2. `docs/site/index.html`에 상대 경로 링크를 추가한다.
-3. PR에서 `docs-pages`의 파일 검사가 통과했는지 확인한다.
-4. `main`에 머지하면 자동 배포된다. 삭제한 파일도 다음 배포부터 제공되지 않는다.
+   헤더에 코드 확인일과 기준 커밋을 적는다.
+2. 새 페이지 링크를 모든 페이지의 `guide-nav`와 `docs/site/index.html` 본문 목록에 추가한다.
+   새 페이지의 현재 링크에는 `aria-current="page"`를 둔다.
+3. `.github/workflows/docs-pages.yml`의 `Check published documents`에 `test -s docs/site/<문서명>.html`을 추가한다.
+4. 저장소 루트에서 `python3 scripts/check-docs-site.py`를 실행한다. 2~3번을 빠뜨리거나 깨진 링크·앵커가 있으면 실패한다.
+5. 로컬 확인(아래)으로 렌더링을 보고, 좁은 폭(390px)에서 페이지 전체가 가로로 넘치지 않는지 확인한다.
+6. PR에서 `docs-pages`의 검사가 통과했는지 확인한다.
+7. `main`에 머지하면 자동 배포된다. 삭제한 파일도 다음 배포부터 제공되지 않는다.
 
 PR은 홈·가이드·공통 스타일·대표 문서의 존재를 검사하고 배포용 artifact를 만든다. 공개 사이트 배포는 `main`의 push 또는 수동 실행에서만 한다. HTML 렌더링·모든 링크 검증은 수행하지 않으므로 Archify 문서는 생성 시 `finalize`를 통과한 결과물을 복사한다.
 

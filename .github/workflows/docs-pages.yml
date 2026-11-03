@@ -3,9 +3,9 @@ name: docs-pages
 on:
   push:
     branches: [main]
-    paths: ["docs/site/**", ".github/workflows/docs-pages.yml"]
+    paths: ["docs/site/**", ".github/workflows/docs-pages.yml", "scripts/check-docs-site.py"]
   pull_request:
-    paths: ["docs/site/**", ".github/workflows/docs-pages.yml"]
+    paths: ["docs/site/**", ".github/workflows/docs-pages.yml", "scripts/check-docs-site.py"]
   workflow_dispatch:
 
 permissions:
@@ -20,6 +20,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Check page consistency
+        run: python3 scripts/check-docs-site.py
       - name: Check published documents
         run: |
           test -s docs/site/index.html
@@ -28,6 +30,7 @@ jobs:
           test -s docs/site/architecture.html
           test -s docs/site/deploy.html
           test -s docs/site/auth.html
+          test -s docs/site/workflow.html
           test -s docs/site/guide.css
           test -s docs/site/diagrams/update-detection.html
           test -s docs/site/diagrams/update-apply.html
