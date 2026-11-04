@@ -4,17 +4,19 @@ import { useMediaQuery } from './useMediaQuery'
 import styles from './EChart.module.css'
 
 type Handler = (params: { name?: string; dataIndex?: number }) => void
-type Props = { option: ChartOption; onEvents?: Record<string, Handler>; height: number; className?: string }
+type Props = { option: ChartOption; onEvents?: Record<string, Handler>; height: number; className?: string; skipInitialAnimation?: boolean }
 
-export const EChart = forwardRef<ChartInstance | null, Props>(function EChart({ option, onEvents, height, className }, ref) {
+export const EChart = forwardRef<ChartInstance | null, Props>(function EChart({ option, onEvents, height, className, skipInitialAnimation }, ref) {
   const containerRef = useRef<HTMLDivElement>(null)
   const chartRef = useRef<ChartInstance | null>(null)
+  const initialOptionRef = useRef(true)
   const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
 
   useLayoutEffect(() => {
     const container = containerRef.current!
     const chart = echarts.init(container, null, { renderer: 'svg' })
     chartRef.current = chart
+    initialOptionRef.current = true
     const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(() => chart.resize())
     observer?.observe(container)
     return () => {
@@ -27,8 +29,10 @@ export const EChart = forwardRef<ChartInstance | null, Props>(function EChart({ 
   useImperativeHandle(ref, () => chartRef.current!, [])
 
   useEffect(() => {
-    chartRef.current?.setOption(reducedMotion ? { ...option, animation: false } : option, { notMerge: true })
-  }, [option, reducedMotion])
+    const disableAnimation = reducedMotion || (skipInitialAnimation && initialOptionRef.current)
+    chartRef.current?.setOption(disableAnimation ? { ...option, animation: false } : option, { notMerge: true })
+    initialOptionRef.current = false
+  }, [option, reducedMotion, skipInitialAnimation])
 
   useEffect(() => {
     const chart = chartRef.current!

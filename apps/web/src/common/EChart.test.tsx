@@ -22,6 +22,7 @@ it('initializes SVG, replaces options, exposes its instance and disposes on unmo
   const { container, rerender, unmount } = render(<EChart ref={ref} option={option} height={240} className="custom" />)
   expect(echarts.init).toHaveBeenCalledWith(container.firstChild, null, { renderer: 'svg' })
   expect(chart.setOption).toHaveBeenLastCalledWith(option, { notMerge: true })
+  expect(chart.setOption.mock.calls[0][0]).toBe(option)
   expect(ref.current).toBe(chart)
   expect(container.firstChild).toHaveAttribute('aria-hidden', 'true')
   expect(container.firstChild).toHaveStyle({ height: '240px' })
@@ -34,6 +35,31 @@ it('initializes SVG, replaces options, exposes its instance and disposes on unmo
   unmount()
   expect(chart.dispose).toHaveBeenCalledOnce()
   expect(ref.current).toBeNull()
+})
+
+it('skips animation only for the first option when requested', () => {
+  const option = { animation: true, series: [] }
+  const { rerender } = render(<EChart option={option} height={240} skipInitialAnimation />)
+  expect(chart.setOption).toHaveBeenNthCalledWith(1, { ...option, animation: false }, { notMerge: true })
+  expect(option.animation).toBe(true)
+  const next = { animation: true, series: [] }
+  rerender(<EChart option={next} height={240} skipInitialAnimation />)
+  expect(chart.setOption).toHaveBeenCalledTimes(2)
+  expect(chart.setOption).toHaveBeenLastCalledWith(next, { notMerge: true })
+  expect(chart.setOption.mock.calls[1][0]).toBe(next)
+})
+
+it('skips the first animation of the recreated StrictMode instance', () => {
+  const instances: (typeof chart)[] = []
+  vi.mocked(echarts.init).mockImplementation(() => {
+    const instance = { ...chart, setOption: vi.fn() }
+    instances.push(instance)
+    return instance as unknown as ChartInstance
+  })
+  const option = { animation: true, series: [] }
+  render(<StrictMode><EChart option={option} height={240} skipInitialAnimation /></StrictMode>)
+  expect(instances).toHaveLength(2)
+  expect(instances.at(-1)!.setOption).toHaveBeenNthCalledWith(1, { ...option, animation: false }, { notMerge: true })
 })
 
 it('dispatches events and removes old handlers on replacement, removal and unmount', () => {

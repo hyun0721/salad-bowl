@@ -67,6 +67,7 @@ it('uses the wrapper and memoizes options until inputs change', () => {
   expect(container.firstChild).toHaveStyle({ height: '300px' })
   expect(container.firstChild).toHaveClass('custom')
   expect(chart.setOption).toHaveBeenCalledOnce()
+  expect(chart.setOption).toHaveBeenNthCalledWith(1, expect.objectContaining({ animation: false }), { notMerge: true })
   rerender(<LineChart series={series} months={months} className="custom" />)
   expect(chart.setOption).toHaveBeenCalledOnce()
   rerender(<LineChart series={series} months={months} compact />)

@@ -81,5 +81,6 @@ export function buildLineOption(series: LineSeries[], months: string[], { theme,
 export default function LineChart({ series, months, compact = false, className }: Props) {
   const theme = useChartTheme()
   const option = useMemo(() => buildLineOption(series, months, { theme, compact }), [series, months, compact, theme])
-  return <EChart option={option} height={compact ? 240 : 300} className={className} />
+  // iOS PWA에서 첫 진입 시 선이 터치 전까지 보이지 않아 최초 애니메이션만 끈다.
+  return <EChart option={option} height={compact ? 240 : 300} className={className} skipInitialAnimation />
 }
