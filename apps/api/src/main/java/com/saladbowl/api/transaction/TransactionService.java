@@ -81,9 +81,20 @@ public class TransactionService {
 
     @Transactional(readOnly = true)
     public List<CategoryOption> categories(long userId) {
+        return categoryOptions(transactions.countDisplayCategories(userId));
+    }
+
+    @Transactional(readOnly = true)
+    public List<CategoryOption> groupCategories(long groupId, long userId) {
+        access.requireMember(groupId, userId);
+        List<Long> owners = access.sharedOwnerIds(groupId);
+        return owners.isEmpty() ? List.of() : categoryOptions(transactions.countVisibleDisplayCategories(owners));
+    }
+
+    private List<CategoryOption> categoryOptions(List<Object[]> rows) {
         record CategoryKey(TransactionType type, String major) {}
         Map<CategoryKey, Map<String, Long>> byMajor = new HashMap<>();
-        for (Object[] row : transactions.countDisplayCategories(userId)) {
+        for (Object[] row : rows) {
             byMajor.computeIfAbsent(new CategoryKey((TransactionType) row[0], (String) row[1]), k -> new HashMap<>())
                     .merge((String) row[2], ((Number) row[3]).longValue(), Long::sum);
         }

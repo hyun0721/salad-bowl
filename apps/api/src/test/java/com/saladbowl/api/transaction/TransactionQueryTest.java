@@ -18,7 +18,7 @@ class TransactionQueryTest {
     }
 
     @Test
-    void matchesTypeOnlyAndDifferentPicksPerType() {
+    void matchesTypeAndExcludesOnlyMatchingCategories() {
         var expenseFood = tx(1, TransactionType.EXPENSE, "식비", "점심");
         var expenseTransport = tx(2, TransactionType.EXPENSE, "교통", "버스");
         var incomeFood = tx(3, TransactionType.INCOME, "식비", "환급");
@@ -28,26 +28,25 @@ class TransactionQueryTest {
 
         assertEquals(List.of(expenseTransport, expenseFood), new TransactionQuery(List.of(),
                 List.of(TransactionType.EXPENSE), null).apply(all));
-        assertEquals(List.of(incomeSalary, expenseFood), new TransactionQuery(List.of(
-                new TransactionQuery.Pick(TransactionType.EXPENSE, "식비", null),
-                new TransactionQuery.Pick(TransactionType.INCOME, "급여", "월급")),
+        assertEquals(List.of(incomeSalary, incomeFood, expenseTransport), new TransactionQuery(List.of(
+                new TransactionQuery.Exclude(TransactionType.EXPENSE, "식비", null)),
                 List.of(TransactionType.EXPENSE, TransactionType.INCOME), null).apply(all));
-        assertEquals(List.of(transfer, incomeSalary, incomeFood, expenseFood), new TransactionQuery(List.of(
-                new TransactionQuery.Pick(TransactionType.EXPENSE, "식비", null)), List.of(), null).apply(all));
+        assertEquals(List.of(transfer, incomeSalary, incomeFood, expenseTransport), new TransactionQuery(List.of(
+                new TransactionQuery.Exclude(TransactionType.EXPENSE, "식비", null)), List.of(), null).apply(all));
     }
 
     @Test
-    void matchesExactMinorIncludingEmptyAndMajorPickIncludesAllMinors() {
+    void excludesExactMinorIncludingEmptyAndMajorExcludesAllMinors() {
         var empty = tx(1, TransactionType.EXPENSE, "식비", "");
         var lunch = tx(2, TransactionType.EXPENSE, "식비", "점심");
         var transport = tx(3, TransactionType.EXPENSE, "교통", "");
         var all = List.of(empty, lunch, transport);
 
-        assertEquals(List.of(empty), new TransactionQuery(List.of(
-                new TransactionQuery.Pick(TransactionType.EXPENSE, "식비", "")), List.of(), null).apply(all));
-        assertEquals(List.of(lunch), new TransactionQuery(List.of(
-                new TransactionQuery.Pick(TransactionType.EXPENSE, "식비", "점심")), List.of(), null).apply(all));
-        assertEquals(List.of(lunch, empty), new TransactionQuery(List.of(
-                new TransactionQuery.Pick(TransactionType.EXPENSE, "식비", null)), List.of(), null).apply(all));
+        assertEquals(List.of(transport, lunch), new TransactionQuery(List.of(
+                new TransactionQuery.Exclude(TransactionType.EXPENSE, "식비", "")), List.of(), null).apply(all));
+        assertEquals(List.of(transport, empty), new TransactionQuery(List.of(
+                new TransactionQuery.Exclude(TransactionType.EXPENSE, "식비", "점심")), List.of(), null).apply(all));
+        assertEquals(List.of(transport), new TransactionQuery(List.of(
+                new TransactionQuery.Exclude(TransactionType.EXPENSE, "식비", null)), List.of(), null).apply(all));
     }
 }

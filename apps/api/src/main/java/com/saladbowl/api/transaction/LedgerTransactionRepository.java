@@ -78,4 +78,15 @@ public interface LedgerTransactionRepository extends JpaRepository<LedgerTransac
                      coalesce(t.categoryMinorOverride, t.categoryMinor)
             """)
     List<Object[]> countDisplayCategories(@Param("ownerId") Long ownerId);
+
+    /** 그룹 화면의 전체 기간 공개 거래 카테고리. ownerIds가 비어 있으면 호출하지 않는다. */
+    @Query("""
+            select coalesce(t.typeOverride, t.type), coalesce(t.categoryMajorOverride, t.categoryMajor),
+                   coalesce(t.categoryMinorOverride, t.categoryMinor), count(t)
+            from LedgerTransaction t
+            where t.ownerId in :ownerIds and t.hidden = false
+            group by coalesce(t.typeOverride, t.type), coalesce(t.categoryMajorOverride, t.categoryMajor),
+                     coalesce(t.categoryMinorOverride, t.categoryMinor)
+            """)
+    List<Object[]> countVisibleDisplayCategories(@Param("ownerIds") Collection<Long> ownerIds);
 }

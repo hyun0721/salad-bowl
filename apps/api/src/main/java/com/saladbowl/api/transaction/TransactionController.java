@@ -55,6 +55,11 @@ public class TransactionController {
         return transactionService.categories(userId);
     }
 
+    @GetMapping("/groups/{groupId}/categories")
+    public List<CategoryOption> groupCategories(@CurrentUser Long userId, @PathVariable long groupId) {
+        return transactionService.groupCategories(groupId, userId);
+    }
+
     @PostMapping("/me/transactions")
     public ResponseEntity<TransactionView> addManual(@CurrentUser Long userId,
                                                      @Valid @RequestBody ManualTransactionRequest request) {
@@ -80,20 +85,20 @@ public class TransactionController {
 
     private TransactionQuery transactionQuery(HttpServletRequest request, List<TransactionType> type, TransactionSort sort) {
         // Spring의 List 바인딩은 단일 값을 쉼표로 나누므로 원본 파라미터를 읽어 빈 minor와 쉼표 든 major를 보존한다.
-        String[] values = request.getParameterValues("pick");
-        List<TransactionQuery.Pick> picks = values == null ? List.of() : Arrays.stream(values).map(value -> {
+        String[] values = request.getParameterValues("exclude");
+        List<TransactionQuery.Exclude> excludes = values == null ? List.of() : Arrays.stream(values).map(value -> {
             String[] fields = value.split("\t", -1);
             if (fields.length < 2 || fields.length > 3) {
-                throw new ApiException(ErrorCode.VALIDATION_FAILED, "invalid pick");
+                throw new ApiException(ErrorCode.VALIDATION_FAILED, "invalid exclude");
             }
             try {
-                return new TransactionQuery.Pick(TransactionType.valueOf(fields[0]), fields[1],
+                return new TransactionQuery.Exclude(TransactionType.valueOf(fields[0]), fields[1],
                         fields.length == 3 ? fields[2] : null);
             } catch (IllegalArgumentException e) {
-                throw new ApiException(ErrorCode.VALIDATION_FAILED, "invalid pick type", e);
+                throw new ApiException(ErrorCode.VALIDATION_FAILED, "invalid exclude type", e);
             }
         }).toList();
-        return new TransactionQuery(picks, type, sort);
+        return new TransactionQuery(excludes, type, sort);
     }
 
     @PatchMapping("/transactions/{transactionId}")
