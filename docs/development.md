@@ -26,6 +26,14 @@ cd apps/web && npm ci && npm run dev
 
 브라우저에서 `http://localhost:5173`에 접속한다. 로컬 HTTP에서 Secure 쿠키가 저장되지 않는 문제를 피하도록 `REFRESH_COOKIE_SECURE=false`를 지정한다. 운영에서는 Secure를 유지한다. Vite는 `/api` 접두어를 떼고 `http://localhost:8080`으로 요청을 전달한다.
 
+## 새 worktree 준비
+
+Git이 추적하지 않는 `node_modules`는 worktree마다 따로 있다. 새 worktree를 만들었거나 `main` 갱신으로 lockfile이 바뀌었다면 `apps/web`에서 `npm ci`를 실행한다. API jar는 `up.sh`가 빌드한다.
+
+## Gradle 빌드 문제
+
+`apps/api/gradle.properties`는 Gradle 데몬을 끈다. 이 설정이 없는 옛 브랜치 등에서 실행된 데몬을 재사용하다 `.gradle` 아래에서 `Operation not permitted`가 나면 `cd apps/api && ./gradlew --stop`으로 데몬을 끈다. 이 명령은 같은 Gradle 버전의 데몬을 모두 멈추므로 다른 세션의 빌드도 끊을 수 있다.
+
 ## 테스트
 
 API 테스트는 Docker Desktop을 실행한 상태에서 `apps/api` 디렉터리에서 수행한다.
