@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { useSearchParams } from 'react-router'
 import { menuLabel } from '../app/menu'
 import PageHeader from '../common/PageHeader'
+import Skeleton, { SkeletonRegion } from '../common/Skeleton'
 import ui from '../common/ui.module.css'
 import { formatInstant } from '../common/format'
 import { usePageTitle } from '../common/usePageTitle'
@@ -36,7 +37,9 @@ export default function UploadPage({ today: todayProp }: Props) {
       </section>
       <section aria-labelledby="history-title" className={ui.card}>
         <h2 id="history-title">업로드 이력</h2>
-        {history.isPending && <p className={ui.status}>불러오는 중입니다.</p>}
+        {history.isPending && <SkeletonRegion><ul className={ui.stack}>
+          {[0, 1, 2].map((i) => <li key={i} className={ui.row}><Skeleton width="35%" height="1lh" /><Skeleton width="20%" height="1lh" /><Skeleton width="40%" height="1lh" /></li>)}
+        </ul></SkeletonRegion>}
         {history.isError && (
           <div className={ui.row}>
             <p role="alert" className={ui.alert}>업로드 이력을 불러오지 못했습니다.</p>

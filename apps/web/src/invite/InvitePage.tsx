@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router'
 import { ApiError } from '../api/errors'
 import { errorMessage } from '../common/errorMessage'
 import { formatInstant } from '../common/format'
+import Skeleton, { SkeletonRegion } from '../common/Skeleton'
 import ui from '../common/ui.module.css'
 import { usePageTitle } from '../common/usePageTitle'
 import { rememberSelectedGroup } from '../groups/GroupProvider'
@@ -29,7 +30,12 @@ export default function InvitePage() {
       <main className={`${ui.card} ${styles.card}`}>
         <span className={styles.brand}>Salad Bowl</span>
         <h1>그룹 초대</h1>
-        {preview.isPending && <p className={ui.status}>초대 정보를 불러오는 중입니다.</p>}
+        {preview.isPending && <SkeletonRegion label="초대 정보를 불러오는 중입니다."><div className={ui.stack}>
+          <Skeleton width="60%" height="1lh" />
+          <div className={styles.facts}><Skeleton width={80} height={40} /><Skeleton width={150} height={40} /></div>
+          <Skeleton width="100%" height="var(--control-height)" />
+          <Skeleton width="90%" height="1lh" />
+        </div></SkeletonRegion>}
         {preview.isError && <InviteError error={preview.error} onRetry={() => void preview.refetch()} />}
         {preview.data && (
           <InviteDetails preview={preview.data} joining={accept.isPending} onJoin={() => accept.mutate()} />

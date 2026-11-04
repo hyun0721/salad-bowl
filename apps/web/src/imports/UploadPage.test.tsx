@@ -1,5 +1,5 @@
 import { screen, waitFor, within } from '@testing-library/react'
-import { http, HttpResponse } from 'msw'
+import { delay, http, HttpResponse } from 'msw'
 import { useLocation } from 'react-router'
 import { describe, expect, it } from 'vitest'
 import { server } from '../test/server'
@@ -21,6 +21,17 @@ function coverageByYear(coverage: Record<string, unknown[]>) {
 }
 
 describe('UploadPage', () => {
+  it('shows upload history rows during loading', async () => {
+    server.use(
+      http.get('*/api/me/coverage', () => HttpResponse.json([])),
+      http.get('*/api/imports', async () => { await delay(400); return HttpResponse.json([]) }),
+    )
+    renderPage(<UploadPage today={today} />)
+    const history = await screen.findByRole('region', { name: '업로드 이력' })
+    expect(within(history).getByRole('status')).toHaveAttribute('aria-busy', 'true')
+    expect(within(history).getByRole('status').querySelectorAll('li')).toHaveLength(3)
+    await within(history).findByText('아직 올린 파일이 없습니다.')
+  })
   it('opens the upload dialog for a missing month from the address and clears it', async () => {
     coverageByYear({})
 

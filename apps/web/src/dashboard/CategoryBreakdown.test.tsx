@@ -1,6 +1,7 @@
-import { fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { useState } from 'react'
 import { mockViewport } from '../test/mockViewport'
 import { renderPage } from '../test/renderPage'
 import { server } from '../test/server'
@@ -100,16 +101,60 @@ it('uses compact chart height and keeps the full accessible name on narrow scree
   expect(within(region).getByRole('button', { name: '아주긴카테고리 100% ₩ 1' })).toBeInTheDocument()
 })
 
-it('keeps all twelve category controls accessible on narrow screens', async () => {
+it('shows six largest categories first and expands the rest on narrow screens', async () => {
   mockViewport(true)
   const byCategory = [60, 10, 5, 4, 3, 3, 2, 2, 2, 2, 1, 1].map((expense, index) => ({
     category: `긴 카테고리 이름 ${index + 1}`, expense: expense * 10000,
   }))
+  const { user } = renderPage(<CategoryBreakdown groupId={10} month="2026-10" summary={{ ...summary, byCategory }} />)
+  const region = await screen.findByRole('region', { name: '대분류 분포' })
+  const more = within(region).getByRole('button', { name: '나머지 6개 더 보기' })
+  expect(more).toHaveAttribute('aria-expanded', 'false')
+  expect(within(region).getAllByRole('listitem')).toHaveLength(6)
+  await waitFor(() => expect(chart.setOption).toHaveBeenCalled())
+  expect((chart.setOption.mock.lastCall![0] as { series: { data: unknown[] }[] }).series[0].data).toHaveLength(12)
+  const chartClick = chart.on.mock.calls.find(([name]) => name === 'click')?.[1] as ((event: { name: string }) => void) | undefined
+  const chartHover = chart.on.mock.calls.find(([name]) => name === 'mouseover')?.[1] as ((event: { name: string }) => void) | undefined
+  expect(chartClick).toBeDefined()
+  expect(chartHover).toBeDefined()
+  act(() => chartHover?.({ name: '긴 카테고리 이름 12' }))
+  expect(chart.dispatchAction).toHaveBeenLastCalledWith({ type: 'highlight', seriesIndex: 0, name: '긴 카테고리 이름 12' })
+  server.use(http.get('*/api/groups/10/summary/transactions', () => HttpResponse.json([])))
+  act(() => chartClick?.({ name: '긴 카테고리 이름 12' }))
+  expect(await screen.findByRole('dialog', { name: '긴 카테고리 이름 12' })).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: '닫기' }))
+  expect(within(region).queryByRole('button', { name: /긴 카테고리 이름 12.*₩ 10,000/ })).not.toBeInTheDocument()
+  await user.click(more)
+  expect(more).toHaveAttribute('aria-expanded', 'true')
+  expect(within(region).getAllByRole('listitem')).toHaveLength(12)
+  expect(within(region).getByRole('button', { name: /긴 카테고리 이름 12.*₩ 10,000/ })).toBeInTheDocument()
+  await user.click(within(region).getByRole('button', { name: '접기' }))
+  expect(within(region).getAllByRole('listitem')).toHaveLength(6)
+  expect(region.querySelector('div[aria-hidden="true"]')).toHaveStyle({ height: '272px' })
+})
+
+it('folds the major legend again when the month changes', async () => {
+  const byCategory = Array.from({ length: 7 }, (_, index) => ({ category: `분류 ${index + 1}`, expense: 7 - index }))
+  function MonthSwitch() {
+    const [month, setMonth] = useState('2026-10')
+    return <><button onClick={() => setMonth('2026-09')}>월 변경</button>
+      <CategoryBreakdown groupId={10} month={month} summary={{ ...summary, month, byCategory }} /></>
+  }
+  const { user } = renderPage(<MonthSwitch />)
+  const region = await screen.findByRole('region', { name: '대분류 분포' })
+  await user.click(within(region).getByRole('button', { name: '나머지 1개 더 보기' }))
+  expect(within(region).getAllByRole('listitem')).toHaveLength(7)
+  await user.click(screen.getByRole('button', { name: '월 변경' }))
+  expect(within(region).getAllByRole('listitem')).toHaveLength(6)
+  expect(within(region).getByRole('button', { name: '나머지 1개 더 보기' })).toHaveAttribute('aria-expanded', 'false')
+})
+
+it('shows no expand button for six categories', async () => {
+  const byCategory = Array.from({ length: 6 }, (_, index) => ({ category: `분류 ${index + 1}`, expense: 6 - index }))
   renderPage(<CategoryBreakdown groupId={10} month="2026-10" summary={{ ...summary, byCategory }} />)
   const region = await screen.findByRole('region', { name: '대분류 분포' })
-  expect(within(region).getAllByRole('button')).toHaveLength(12)
-  expect(within(region).getByRole('button', { name: /긴 카테고리 이름 12.*₩ 10,000/ })).toBeInTheDocument()
-  expect(region.querySelector('div[aria-hidden="true"]')).toHaveStyle({ height: '272px' })
+  expect(within(region).getAllByRole('listitem')).toHaveLength(6)
+  expect(within(region).queryByRole('button', { name: /더 보기|접기/ })).not.toBeInTheDocument()
 })
 
 it('switches to member bars, sums minors, and opens category transactions', async () => {

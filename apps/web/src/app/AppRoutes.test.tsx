@@ -230,7 +230,8 @@ describe('AppRoutes', () => {
     expect(await screen.findByRole('button', { name: /그룹/ })).toHaveTextContent('우리집')
   })
 
-  it('shows a loading label while groups are loading', async () => {
+  it.each([false, true])('keeps the group loading label and trigger in one row (narrow: %s)', async (narrow) => {
+    mockViewport(narrow)
     server.use(
       http.post('*/api/auth/refresh', () => HttpResponse.json({ accessToken: 'a1' })),
       http.get('*/api/me', () => HttpResponse.json(me)),
@@ -243,7 +244,10 @@ describe('AppRoutes', () => {
 
     renderApp('/')
 
-    expect(await screen.findByText('그룹 불러오는 중')).toBeInTheDocument()
+    const loading = (await screen.findByText('그룹 불러오는 중')).closest('[role="status"]')!
+    const label = within(loading as HTMLElement).getByText('그룹')
+    expect(label.parentElement).toHaveClass('select')
+    expect(label.nextElementSibling).toHaveStyle({ height: narrow ? '44px' : 'var(--control-height)' })
     expect(screen.queryByText(/그룹 없음/)).not.toBeInTheDocument()
     expect(await screen.findByRole('link', { name: /그룹 없음/ })).toBeInTheDocument()
   })

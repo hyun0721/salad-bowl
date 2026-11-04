@@ -10,6 +10,7 @@ import { errorMessage } from '../common/errorMessage'
 import ConfirmDialog from '../common/ConfirmDialog'
 import { toast } from '../common/Toast'
 import { formatDateTime, formatInstant, formatSignedWon } from '../common/format'
+import Skeleton, { SkeletonRegion } from '../common/Skeleton'
 import ui from '../common/ui.module.css'
 import styles from './TransactionPanel.module.css'
 import { transactionsApi, type AuditView, type TransactionPatch, type TransactionType, type TransactionView } from './transactionsApi'
@@ -112,7 +113,9 @@ export default function TransactionPanel({ tx, onDeleted, onSaved, loadDraft, on
 
       <section aria-labelledby={`audit-${tx.id}`} className={styles.audits}>
         <h3 id={`audit-${tx.id}`}>수정 이력</h3>
-        {audits.isPending && <p className={ui.status}>불러오는 중입니다.</p>}
+        {audits.isPending && <SkeletonRegion><ul className={ui.stack}>
+          {[0, 1, 2].map((i) => <li key={i}><Skeleton width={`${85 - i * 12}%`} height="1lh" /></li>)}
+        </ul></SkeletonRegion>}
         {audits.isError && (
           <div className={ui.row}>
             <p role="alert" className={ui.alert}>수정 이력을 불러오지 못했습니다.</p>

@@ -1,5 +1,5 @@
 import { screen } from '@testing-library/react'
-import { http, HttpResponse } from 'msw'
+import { delay, http, HttpResponse } from 'msw'
 import { Route, Routes } from 'react-router'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { renderPage } from '../test/renderPage'
@@ -23,6 +23,15 @@ beforeEach(() => {
 })
 
 describe('InvitePage', () => {
+  it('shows the invite preview skeleton during loading', async () => {
+    server.use(http.get('*/api/invites/abc', async () => { await delay(400); return HttpResponse.json(preview) }))
+    renderInvite()
+    const heading = await screen.findByRole('heading', { name: '그룹 초대' })
+    const status = heading.parentElement!.querySelector('[role="status"]')
+    expect(status).toHaveAttribute('aria-busy', 'true')
+    expect(status).toHaveTextContent('초대 정보를 불러오는 중입니다.')
+    expect(await screen.findByText('우리집')).toBeInTheDocument()
+  })
   it('shows the invite and joins the group', async () => {
     let accepted = false
     server.use(

@@ -21,6 +21,24 @@ beforeEach(() => {
   server.use(http.get('*/api/groups/10/summary/trend', () => HttpResponse.json({ months: [], categories: [] })))
 })
 describe('SubcategoryTrends', () => {
+  it('folds minor legends and resets them when the major changes', async () => {
+    const rows = ['식비', '여가'].flatMap((major) => Array.from({ length: 7 }, (_, index) => ({
+      month: '2026-10', major, minor: `${major} ${index + 1}`, expense: 7 - index,
+    })))
+    server.use(http.get('*/api/groups/10/summary/subcategories', () => HttpResponse.json(rows)))
+    const { user } = renderPage(<SubcategoryTrends groupId={10} month="2026-10" />, { path: '/dashboard/minor?major=식비' })
+    const share = await screen.findByRole('region', { name: '소분류 분포' })
+    const more = await within(share).findByRole('button', { name: '나머지 1개 더 보기' })
+    expect(more).toHaveAttribute('aria-expanded', 'false')
+    expect(within(share).getAllByRole('listitem')).toHaveLength(6)
+    await user.click(more)
+    expect(within(share).getAllByRole('listitem')).toHaveLength(7)
+    await user.click(screen.getByRole('button', { name: /대분류.*필수/ }))
+    await user.click(screen.getByRole('option', { name: '여가' }))
+    expect(within(share).getByRole('button', { name: '나머지 1개 더 보기' })).toHaveAttribute('aria-expanded', 'false')
+    expect(within(share).getAllByRole('listitem')).toHaveLength(6)
+  })
+
   it('uses the address, separates cards, and requests three months only after selection', async () => {
     const requests: URLSearchParams[] = []
     server.use(http.get('*/api/groups/10/summary/subcategories', ({ request }) => {
@@ -55,6 +73,7 @@ describe('SubcategoryTrends', () => {
     expect(within(share).getByRole('radio', { name: '차트로 보기' })).toHaveAttribute('aria-checked', 'true')
     expect(within(share).getByText('미분류')).toBeInTheDocument()
     expect(within(share).queryByText('간식')).not.toBeInTheDocument()
+    expect(within(share).queryByRole('button', { name: /더 보기|접기/ })).not.toBeInTheDocument()
     await user.click(within(share).getByRole('radio', { name: '목록으로 보기' }))
     expect(within(share).getByText('-₩ 5,000 · 환불 초과')).toBeInTheDocument()
     expect(within(trend).queryByRole('table')).not.toBeInTheDocument()

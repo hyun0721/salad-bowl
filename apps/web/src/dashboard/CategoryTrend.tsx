@@ -3,10 +3,12 @@ import { useQuery } from '@tanstack/react-query'
 import LineChart, { lineStyleFor } from '../common/LineChart'
 import MonthPicker from '../common/MonthPicker'
 import SegmentedControl from '../common/SegmentedControl'
+import { SkeletonRegion } from '../common/Skeleton'
 import { NARROW, useMediaQuery } from '../common/useMediaQuery'
 import ui from '../common/ui.module.css'
 import { dashboardApi, type CategoryTrend as TrendData } from './dashboardApi'
 import ChartViewToggle from './ChartViewToggle'
+import { TrendSkeleton } from './ChartSkeletons'
 import TrendTable from './TrendTable'
 import { presetRange, rangeError, type MonthRange, type RangePreset } from './trendRange'
 import styles from './CategoryTrend.module.css'
@@ -89,7 +91,7 @@ export default function CategoryTrend({ groupId, month, title = '대분류 추�
         </div>
       )}
       {error && <p role="alert" className={ui.alert}>{error}</p>}
-      {!error && trend.isPending && <p className={ui.status}>불러오는 중입니다.</p>}
+      {!error && trend.isPending && <SkeletonRegion><TrendSkeleton compact={compact} /></SkeletonRegion>}
       {!error && trend.isError && (
         <div className={ui.row}>
           <p role="alert" className={ui.alert}>추이를 불러오지 못했습니다.</p>

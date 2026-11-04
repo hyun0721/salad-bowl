@@ -4,10 +4,12 @@ import { useAuth } from '../auth/AuthProvider'
 import { useGroups } from '../groups/GroupProvider'
 import Icon from '../common/Icon'
 import Select from '../common/Select'
+import Skeleton, { SkeletonRegion } from '../common/Skeleton'
 import { useMediaQuery } from '../common/useMediaQuery'
 import AccountSheet from './AccountSheet'
 import BottomTabBar from './BottomTabBar'
-import PageLoading from './PageLoading'
+import { AppPageLoading } from './PageLoading'
+import selectStyles from '../common/Select.module.css'
 import styles from './AppLayout.module.css'
 import { MENU } from './menu'
 
@@ -51,7 +53,11 @@ export default function AppLayout() {
   }
 
   const groupArea = isLoading ? (
-    <span className={styles.groupState}>그룹 불러오는 중</span>
+    <SkeletonRegion label="그룹 불러오는 중">
+      <div className={selectStyles.select}>
+        <span className={selectStyles.label}>그룹</span><Skeleton width={160} height={narrow ? 44 : 'var(--control-height)'} />
+      </div>
+    </SkeletonRegion>
   ) : isError ? (
     <span className={styles.groupState}>
       그룹을 불러오지 못했습니다{' '}
@@ -102,7 +108,7 @@ export default function AppLayout() {
           <p role="alert" className={styles.logoutError}>로그아웃하지 못했습니다. 잠시 후 다시 시도해 주세요.</p>
         )}
         <main ref={mainRef} className={narrow ? `${styles.content} ${styles.withTabBar}` : styles.content}>
-          <Suspense fallback={<PageLoading />}>
+          <Suspense fallback={<AppPageLoading />}>
             <Outlet />
             <FocusHeadingOnRouteChange mainRef={mainRef} />
           </Suspense>

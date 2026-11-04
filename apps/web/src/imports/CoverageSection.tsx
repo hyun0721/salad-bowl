@@ -2,9 +2,11 @@ import { useIsMutating, useQuery } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import Dialog from '../common/Dialog'
 import Icon from '../common/Icon'
+import Skeleton, { SkeletonRegion } from '../common/Skeleton'
 import ui from '../common/ui.module.css'
 import { currentYearMonth, defaultYearMonth, formatMonthLabel, isYearMonth } from '../common/format'
 import CoverageCalendar from './CoverageCalendar'
+import calendarStyles from './CoverageCalendar.module.css'
 import { coverageApi, type CoverageMonth } from './coverageApi'
 import MonthDataDialog from './MonthDataDialog'
 import UploadForm from './UploadForm'
@@ -46,7 +48,11 @@ export default function CoverageSection({ today, initialMonth, onInitialMonthHan
       </div>
       <p className={ui.muted}>거래 일자 기준 · 미등록 월을 누르면 업로드합니다</p>
       {notice && <p role="status" className={ui.status}>{notice}</p>}
-      {coverage.isPending && <p className={ui.status}>불러오는 중입니다.</p>}
+      {coverage.isPending && <SkeletonRegion><ul className={calendarStyles.grid}>
+        {Array.from({ length: 12 }, (_, i) => <li key={i} className={`${calendarStyles.cell} ${calendarStyles.future}`}>
+          <Skeleton width={28} height="1lh" /><Skeleton width="65%" height="1lh" />
+        </li>)}
+      </ul></SkeletonRegion>}
       {coverage.isError && (
         <div className={ui.row}>
           <p role="alert" className={ui.alert}>등록 현황을 불러오지 못했습니다.</p>

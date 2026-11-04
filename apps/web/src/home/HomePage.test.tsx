@@ -1,5 +1,5 @@
 import { screen, within } from '@testing-library/react'
-import { http, HttpResponse } from 'msw'
+import { delay, http, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
 import { Route, Routes } from 'react-router'
 import { server } from '../test/server'
@@ -17,6 +17,19 @@ function handlers({ coverage = {}, transactions = [] }: { coverage?: Record<stri
 }
 
 describe('HomePage', () => {
+  it('shows upload lines and summary cards while both requests load', async () => {
+    server.use(
+      http.get('*/api/me/coverage', async () => { await delay(400); return HttpResponse.json([]) }),
+      http.get('*/api/me/transactions', async () => { await delay(400); return HttpResponse.json([]) }),
+    )
+    renderPage(<HomePage today={today} />)
+    const upload = await screen.findByRole('region', { name: '지난달 업로드' })
+    const summary = screen.getByRole('region', { name: '지난달 내 요약 (2026년 9월)' })
+    expect(within(upload).getByRole('status')).toHaveAttribute('aria-busy', 'true')
+    expect(within(summary).getByRole('status').querySelectorAll('[aria-hidden="true"] span').length).toBeGreaterThan(0)
+    expect(within(summary).getByRole('status').querySelectorAll('[class*="total"]')).toHaveLength(3)
+    await within(summary).findByRole('button', { name: '수입 ₩ 0' })
+  })
   it('says last month is registered with its upload count', async () => {
     handlers({ coverage: { '2026': [{ month: '2026-09', importedCount: 168, manualCount: 2 }] } })
 
