@@ -1,26 +1,46 @@
-import { describe, expect, it } from 'vitest'
-import { queryParams, transactionFilterGroups } from './transactionQuery'
+import { expect, it } from 'vitest'
+import { DEFAULT_FILTER, isFilterApplied, queryParams, readStoredFilter, storeFilter } from './transactionQuery'
 
-const categories = [
-  { major: '식비', count: 3, minors: [{ minor: '외식', count: 2 }] },
-  { major: '교통', count: 1, minors: [{ minor: '버스', count: 1 }] },
-]
+it('omits the default filter and keeps sorting', () => {
+  expect(queryParams(new URLSearchParams(), DEFAULT_FILTER, 'DATE_DESC').toString()).toBe('')
+  expect(queryParams(new URLSearchParams(), DEFAULT_FILTER, 'AMOUNT_ASC').get('sort')).toBe('AMOUNT_ASC')
+})
+it('serializes repeated types and typed excludes, including empty minor, ignoring disabled types', () => {
+  const params = queryParams(new URLSearchParams({ month: '2026-10' }), {
+    types: ['EXPENSE', 'INCOME'], excludes: { EXPENSE: ['식비', '교통\t'], TRANSFER: ['이체'] },
+  }, 'DATE_DESC')
+  expect(params.getAll('type')).toEqual(['EXPENSE', 'INCOME'])
+  expect(params.getAll('exclude')).toEqual(['EXPENSE\t식비', 'EXPENSE\t교통\t'])
+  expect(params.has('major')).toBe(false)
+  expect(params.has('minor')).toBe(false)
+})
 
-describe('transactionQuery', () => {
-  it('appends repeated filter params and omits the default sort', () => {
-    const p = queryParams(new URLSearchParams({ month: '2026-09' }), { major: ['식비', '교통'], minor: [''] }, 'DATE_DESC')
-    expect(p.toString()).toBe('month=2026-09&major=%EC%8B%9D%EB%B9%84&major=%EA%B5%90%ED%86%B5&minor=')
-    expect(queryParams(new URLSearchParams(), {}, 'AMOUNT_ASC').get('sort')).toBe('AMOUNT_ASC')
-  })
+it('stores applied filters, clears the default and rejects malformed values', () => {
+  const filter = { types: ['EXPENSE' as const], excludes: { EXPENSE: ['식비\t외식'] } }
+  storeFilter(filter)
+  expect(readStoredFilter()).toEqual(filter)
+  storeFilter(DEFAULT_FILTER)
+  expect(window.localStorage.getItem('saladbowl.transactionFilter')).toBeNull()
+  expect(readStoredFilter()).toEqual(DEFAULT_FILTER)
+  for (const bad of ['{', '[]', '{"types":["X"],"excludes":{}}', '{"types":["EXPENSE"],"excludes":{"EXPENSE":[1]}}']) {
+    window.localStorage.setItem('saladbowl.transactionFilter', bad)
+    expect(readStoredFilter()).toEqual(DEFAULT_FILTER)
+  }
+})
 
-  it('narrows minor options to the drafted majors and keeps 미분류', () => {
-    const minor = transactionFilterGroups(categories, { major: ['교통'] }).find((g) => g.key === 'minor')!
-    expect(minor.options).toEqual([{ value: '버스', label: '교통 · 버스' }, { value: '', label: '미분류' }])
-    const all = transactionFilterGroups(categories, {}).find((g) => g.key === 'minor')!
-    expect(all.options.map((o) => o.value)).toEqual(['외식', '버스', ''])
-  })
-
-  it('orders groups as 타입, 대분류, 소분류', () => {
-    expect(transactionFilterGroups(categories, {}).map((g) => g.key)).toEqual(['type', 'major', 'minor'])
-  })
+it('only marks active nonempty exclusions as applied', () => {
+  expect(isFilterApplied({ ...DEFAULT_FILTER, excludes: { EXPENSE: [] } })).toBe(false)
+  expect(isFilterApplied({ ...DEFAULT_FILTER, excludes: { EXPENSE: ['식비'] } })).toBe(true)
+})
+it.each([
+  { types: [], excludes: {} },
+  { types: ['EXPENSE'], picks: {} },
+  { types: ['EXPENSE'], excludes: [] },
+  { types: ['EXPENSE'], excludes: { X: [] } },
+  { types: ['EXPENSE'], excludes: { EXPENSE: [''] } },
+  { types: ['EXPENSE'], excludes: { EXPENSE: ['\t외식'] } },
+  { types: ['EXPENSE'], excludes: { EXPENSE: ['식비\t외식\t추가'] } },
+])('rejects invalid stored filter %j', (value) => {
+  window.localStorage.setItem('saladbowl.transactionFilter', JSON.stringify(value))
+  expect(readStoredFilter()).toEqual(DEFAULT_FILTER)
 })

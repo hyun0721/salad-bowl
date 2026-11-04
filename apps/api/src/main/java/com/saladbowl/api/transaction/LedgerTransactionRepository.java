@@ -67,15 +67,26 @@ public interface LedgerTransactionRepository extends JpaRepository<LedgerTransac
                            @Param("from") LocalDateTime from,
                            @Param("to") LocalDateTime to);
 
-    /** 내 거래의 화면 표시 카테고리(override 우선)별 건수. 결과 행은 [대분류, 소분류, 건수]. 숨긴 거래도 센다. */
+    /** 내 거래의 화면 표시 카테고리(override 우선)별 건수. 결과 행은 [타입, 대분류, 소분류, 건수]. 숨긴 거래도 센다. */
     @Query("""
-            select coalesce(t.categoryMajorOverride, t.categoryMajor),
+            select coalesce(t.typeOverride, t.type), coalesce(t.categoryMajorOverride, t.categoryMajor),
                    coalesce(t.categoryMinorOverride, t.categoryMinor),
                    count(t)
             from LedgerTransaction t
             where t.ownerId = :ownerId
-            group by coalesce(t.categoryMajorOverride, t.categoryMajor),
+            group by coalesce(t.typeOverride, t.type), coalesce(t.categoryMajorOverride, t.categoryMajor),
                      coalesce(t.categoryMinorOverride, t.categoryMinor)
             """)
     List<Object[]> countDisplayCategories(@Param("ownerId") Long ownerId);
+
+    /** 그룹 화면의 전체 기간 공개 거래 카테고리. ownerIds가 비어 있으면 호출하지 않는다. */
+    @Query("""
+            select coalesce(t.typeOverride, t.type), coalesce(t.categoryMajorOverride, t.categoryMajor),
+                   coalesce(t.categoryMinorOverride, t.categoryMinor), count(t)
+            from LedgerTransaction t
+            where t.ownerId in :ownerIds and t.hidden = false
+            group by coalesce(t.typeOverride, t.type), coalesce(t.categoryMajorOverride, t.categoryMajor),
+                     coalesce(t.categoryMinorOverride, t.categoryMinor)
+            """)
+    List<Object[]> countVisibleDisplayCategories(@Param("ownerIds") Collection<Long> ownerIds);
 }

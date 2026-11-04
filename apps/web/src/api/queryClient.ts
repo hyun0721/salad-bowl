@@ -11,7 +11,7 @@ export function shouldRetry(failureCount: number, error: unknown): boolean {
 export function isGroupScopedKey(key: readonly unknown[]): boolean {
   const [head, second] = key
   if (head === 'groups') return key.length > 1
-  if (head === 'transactions') return second === 'group'
+  if (head === 'transactions' || head === 'categories') return second === 'group'
   return head === 'summary' || head === 'bans'
 }
 

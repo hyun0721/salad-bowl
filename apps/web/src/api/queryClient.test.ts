@@ -23,18 +23,20 @@ describe('isGroupScopedKey', () => {
     expect(isGroupScopedKey(['summary', 10, '2026-10'])).toBe(true)
     expect(isGroupScopedKey(['bans', 10])).toBe(true)
     expect(isGroupScopedKey(['transactions', 'group', 10, '2026-10', null])).toBe(true)
+    expect(isGroupScopedKey(['categories', 'group', 10])).toBe(true)
+    expect(isGroupScopedKey(['categories'])).toBe(false)
     expect(isGroupScopedKey(['groups'])).toBe(false)
     expect(isGroupScopedKey(['transactions', 'mine', '2026-10'])).toBe(false)
   })
 })
 
 describe('createQueryClient', () => {
-  it('refreshes the group list when a group query answers 404', async () => {
+  it.each([['summary', 10, '2026-10'], ['categories', 'group', 10]])('refreshes groups on 404 for %j', async (...queryKey) => {
     const client = createQueryClient()
     client.setQueryData(['groups'], [{ groupId: 10, name: '우리집', myRole: 'MEMBER', memberCount: 2 }])
 
     await client.prefetchQuery({
-      queryKey: ['summary', 10, '2026-10'],
+      queryKey,
       queryFn: () => Promise.reject(new ApiError(404, 'NOT_FOUND', 'group not found')),
     })
 
@@ -52,4 +54,12 @@ describe('createQueryClient', () => {
 
     expect(client.getQueryState(['groups'])?.isInvalidated).toBe(false)
   })
+})
+
+it('invalidates personal and all group categories by prefix', async () => {
+  const client = createQueryClient()
+  const keys = [['categories'], ['categories', 'group', 10], ['categories', 'group', 20]]
+  keys.forEach((key) => client.setQueryData(key, []))
+  await client.invalidateQueries({ queryKey: ['categories'] })
+  keys.forEach((key) => expect(client.getQueryState(key)?.isInvalidated).toBe(true))
 })

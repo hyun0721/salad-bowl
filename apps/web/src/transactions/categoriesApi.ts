@@ -1,9 +1,12 @@
 import { useQuery } from '@tanstack/react-query'
 import { apiFetch } from '../api/client'
 
-export type CategoryOption = { major: string; count: number; minors: { minor: string; count: number }[] }
+import type { TransactionType } from './transactionsApi'
+
+export type CategoryOption = { type: TransactionType; major: string; count: number; minors: { minor: string; count: number }[] }
 
 export const categoriesApi = {
+  group: (groupId: number) => apiFetch<CategoryOption[]>(`/groups/${groupId}/categories`),
   list: () => apiFetch<CategoryOption[]>('/me/categories'),
 }
 
@@ -13,9 +16,9 @@ export function useCategories() {
 }
 
 export function majorOptions(list: CategoryOption[]): string[] {
-  return list.map((c) => c.major)
+  return [...new Set(list.map((c) => c.major))]
 }
 
 export function minorOptions(list: CategoryOption[], major: string): string[] {
-  return list.find((c) => c.major === major)?.minors.map((m) => m.minor) ?? []
+  return [...new Set(list.filter((c) => c.major === major).flatMap((c) => c.minors.map((m) => m.minor)).filter(Boolean))]
 }

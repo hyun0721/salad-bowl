@@ -3,16 +3,16 @@ import { CheckboxButton, CheckboxField } from 'react-aria-components'
 import Icon from './Icon'
 import styles from './Field.module.css'
 
-type Props = { children: ReactNode; isSelected: boolean; onChange: (value: boolean) => void; isDisabled?: boolean }
+type Props = { children: ReactNode; isSelected: boolean; onChange: (value: boolean) => void; isDisabled?: boolean; isIndeterminate?: boolean }
 
 /** 저장 버튼을 눌러야 반영되는 선택에 쓴다. 누르는 즉시 반영되면 Switch를 쓴다. */
 export default function Checkbox({ children, ...rest }: Props) {
   return (
     <CheckboxField {...rest}>
       <CheckboxButton className={styles.check}>
-        {({ isSelected }) => (
+        {({ isSelected, isIndeterminate }) => (
           <>
-            <span className={styles.box} aria-hidden="true">{isSelected && <Icon name="check" size={16} />}</span>
+            <span className={styles.box} aria-hidden="true">{isIndeterminate ? '−' : isSelected && <Icon name="check" size={16} />}</span>
             {children}
           </>
         )}

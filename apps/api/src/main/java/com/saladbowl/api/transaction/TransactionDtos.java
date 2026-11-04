@@ -67,8 +67,8 @@ public final class TransactionDtos {
     public record MonthDeleteResult(int deletedImported, int deletedManual) {
     }
 
-    /** 내 거래에서 쓴 대분류와 그 소분류. 많이 쓴 순서다. 소분류가 비어 있는 거래는 대분류 count에만 센다. */
-    public record CategoryOption(String major, long count, List<MinorOption> minors) {
+    /** 내 거래에서 쓴 타입별 대분류와 그 소분류. 많이 쓴 순서다. */
+    public record CategoryOption(TransactionType type, String major, long count, List<MinorOption> minors) {
     }
 
     public record MinorOption(String minor, long count) {

@@ -63,7 +63,10 @@ describe('forward', () => {
     }))
 
     expect((await forward(request, 'https://api.example.com')).status).toBe(201)
-    expect(new Uint8Array(fetchMock.mock.calls[0][1].body as ArrayBuffer)).toEqual(bytes)
+    // 1MiB를 toEqual로 비교하면 부하가 큰 CI에서 5초를 넘긴다.
+    const sent = new Uint8Array(fetchMock.mock.calls[0][1].body as ArrayBuffer)
+    expect(sent.length).toBe(LIMIT)
+    expect(sent.every((byte) => byte === 17)).toBe(true)
   })
 
   it('preserves multipart bytes and boundary header', async () => {

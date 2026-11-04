@@ -5,6 +5,7 @@ import type { ReactNode } from 'react'
 // 도메인 아이콘(sheet-upload 등)은 같은 규칙으로 직접 그렸다.
 const ICONS = {
   'chevron-down': <path d="m6 9 6 6 6-6" />,
+  'chevron-up': <path d="m18 15-6-6-6 6" />,
   check: <path d="M20 6 9 17l-5-5" />,
   calendar: (
     <>

@@ -81,21 +81,36 @@ public class TransactionService {
 
     @Transactional(readOnly = true)
     public List<CategoryOption> categories(long userId) {
-        Map<String, Map<String, Long>> byMajor = new HashMap<>();
-        for (Object[] row : transactions.countDisplayCategories(userId)) {
-            byMajor.computeIfAbsent((String) row[0], k -> new HashMap<>())
-                    .merge((String) row[1], ((Number) row[2]).longValue(), Long::sum);
+        return categoryOptions(transactions.countDisplayCategories(userId));
+    }
+
+    @Transactional(readOnly = true)
+    public List<CategoryOption> groupCategories(long groupId, long userId) {
+        access.requireMember(groupId, userId);
+        List<Long> owners = access.sharedOwnerIds(groupId);
+        return owners.isEmpty() ? List.of() : categoryOptions(transactions.countVisibleDisplayCategories(owners));
+    }
+
+    private List<CategoryOption> categoryOptions(List<Object[]> rows) {
+        record CategoryKey(TransactionType type, String major) {}
+        Map<CategoryKey, Map<String, Long>> byMajor = new HashMap<>();
+        for (Object[] row : rows) {
+            byMajor.computeIfAbsent(new CategoryKey((TransactionType) row[0], (String) row[1]), k -> new HashMap<>())
+                    .merge((String) row[2], ((Number) row[3]).longValue(), Long::sum);
         }
-        Comparator<CategoryOption> majorOrder = Comparator.comparingLong(CategoryOption::count).reversed()
+        Comparator<CategoryOption> majorOrder = Comparator.comparingInt((CategoryOption c) -> switch (c.type()) {
+                    case EXPENSE -> 0;
+                    case INCOME -> 1;
+                    case TRANSFER -> 2;
+                }).thenComparing(Comparator.comparingLong(CategoryOption::count).reversed())
                 .thenComparing(CategoryOption::major);
         Comparator<MinorOption> minorOrder = Comparator.comparingLong(MinorOption::count).reversed()
                 .thenComparing(MinorOption::minor);
         return byMajor.entrySet().stream()
                 .map(e -> new CategoryOption(
-                        e.getKey(),
+                        e.getKey().type(), e.getKey().major(),
                         e.getValue().values().stream().mapToLong(Long::longValue).sum(),
                         e.getValue().entrySet().stream()
-                                .filter(m -> !m.getKey().isEmpty())
                                 .map(m -> new MinorOption(m.getKey(), m.getValue()))
                                 .sorted(minorOrder)
                                 .toList()))

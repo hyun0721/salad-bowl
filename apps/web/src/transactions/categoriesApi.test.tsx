@@ -2,8 +2,9 @@ import { describe, expect, it } from 'vitest'
 import { majorOptions, minorOptions, type CategoryOption } from './categoriesApi'
 
 const list: CategoryOption[] = [
-  { major: '식비', count: 4, minors: [{ minor: '카페', count: 2 }, { minor: '점심', count: 1 }] },
-  { major: '교통', count: 3, minors: [{ minor: '버스', count: 2 }] },
+  { type: 'EXPENSE', major: '식비', count: 4, minors: [{ minor: '카페', count: 2 }, { minor: '점심', count: 1 }] },
+  { type: 'INCOME', major: '식비', count: 2, minors: [{ minor: '카페', count: 1 }, { minor: '', count: 1 }, { minor: '환급', count: 1 }] },
+  { type: 'EXPENSE', major: '교통', count: 3, minors: [{ minor: '버스', count: 2 }] },
 ]
 
 describe('category options', () => {
@@ -12,7 +13,7 @@ describe('category options', () => {
   })
 
   it('returns minors only for an exact major', () => {
-    expect(minorOptions(list, '식비')).toEqual(['카페', '점심'])
+    expect(minorOptions(list, '식비')).toEqual(['카페', '점심', '환급'])
     expect(minorOptions(list, '식')).toEqual([])
     expect(minorOptions(list, '')).toEqual([])
   })

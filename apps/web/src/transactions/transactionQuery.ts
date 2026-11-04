@@ -1,6 +1,40 @@
-import type { FilterGroup, FilterValue } from '../common/FilterButton'
 import type { SortOption } from '../common/SortButton'
-import type { CategoryOption } from './categoriesApi'
+import type { TransactionType } from './transactionsApi'
+
+export type TransactionFilterValue = { types: TransactionType[]; excludes: Partial<Record<TransactionType, string[]>> }
+export const TRANSACTION_TYPES: TransactionType[] = ['EXPENSE', 'INCOME', 'TRANSFER']
+export const DEFAULT_FILTER: TransactionFilterValue = { types: TRANSACTION_TYPES, excludes: {} }
+export function isFilterApplied(filter: TransactionFilterValue): boolean {
+  return filter.types.length !== TRANSACTION_TYPES.length || filter.types.some((type) => !!filter.excludes[type]?.length)
+}
+
+const FILTER_STORAGE_KEY = 'saladbowl.transactionFilter'
+
+/** 저장해 둔 필터. 없거나 모양이 틀리면 기본값이다. */
+export function readStoredFilter(): TransactionFilterValue {
+  try {
+    const raw: unknown = JSON.parse(window.localStorage.getItem(FILTER_STORAGE_KEY) ?? 'null')
+    if (!raw || typeof raw !== 'object') return DEFAULT_FILTER
+    const { types, excludes, picks } = raw as Record<string, unknown>
+    if (picks !== undefined || !Array.isArray(types) || types.length === 0 || !types.every((t) => TRANSACTION_TYPES.includes(t)) || !excludes || typeof excludes !== 'object' || Array.isArray(excludes)) return DEFAULT_FILTER
+    const entries = Object.entries(excludes)
+    const valid = entries.every(([t, list]) => TRANSACTION_TYPES.includes(t as TransactionType)
+      && Array.isArray(list) && list.every((p) => typeof p === 'string' && p.split('\t').length <= 2 && p.split('\t')[0].length > 0))
+    return valid ? { types: TRANSACTION_TYPES.filter((t) => types.includes(t)), excludes: Object.fromEntries(entries) } : DEFAULT_FILTER
+  } catch {
+    return DEFAULT_FILTER
+  }
+}
+
+/** 기본값이면 저장한 값을 지운다. */
+export function storeFilter(filter: TransactionFilterValue) {
+  try {
+    if (isFilterApplied(filter)) window.localStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify(filter))
+    else window.localStorage.removeItem(FILTER_STORAGE_KEY)
+  } catch {
+    // 저장소를 못 쓰면 이번 화면 동안만 기억한다.
+  }
+}
 
 export type TransactionSort = 'DATE_DESC' | 'DATE_ASC' | 'AMOUNT_DESC' | 'AMOUNT_ASC'
 export const DEFAULT_SORT: TransactionSort = 'DATE_DESC'
@@ -11,25 +45,11 @@ export const SORT_OPTIONS: SortOption<TransactionSort>[] = [
   { value: 'AMOUNT_ASC', label: '금액 작은 순', direction: 'asc' },
 ]
 
-export function queryParams(params: URLSearchParams, filter: FilterValue, sort: TransactionSort): URLSearchParams {
-  for (const [key, values] of Object.entries(filter)) values.forEach((value) => params.append(key, value))
+export function queryParams(params: URLSearchParams, filter: TransactionFilterValue, sort: TransactionSort): URLSearchParams {
+  if (filter.types.length !== TRANSACTION_TYPES.length) filter.types.forEach((type) => params.append('type', type))
+  for (const type of filter.types) {
+    filter.excludes[type]?.forEach((item) => params.append('exclude', `${type}\t${item}`))
+  }
   if (sort !== DEFAULT_SORT) params.set('sort', sort)
   return params
-}
-
-export function transactionFilterGroups(categories: CategoryOption[], draft: FilterValue): FilterGroup[] {
-  const majors = draft.major ?? []
-  const scoped = majors.length ? categories.filter((category) => majors.includes(category.major)) : categories
-  const minors = [...new Set(scoped.flatMap((category) => category.minors.map((minor) => minor.minor)))]
-  const owner = (minor: string) => scoped.find((category) => category.minors.some((item) => item.minor === minor))!.major
-  return [
-    { key: 'type', label: '타입', options: [
-      { value: 'EXPENSE', label: '지출' }, { value: 'INCOME', label: '수입' }, { value: 'TRANSFER', label: '이체' },
-    ] },
-    { key: 'major', label: '대분류', options: categories.map((category) => ({ value: category.major, label: category.major })) },
-    { key: 'minor', label: '소분류', options: [
-      ...minors.map((minor) => ({ value: minor, label: majors.length ? `${owner(minor)} · ${minor}` : minor })),
-      { value: '', label: '미분류' },
-    ] },
-  ]
 }

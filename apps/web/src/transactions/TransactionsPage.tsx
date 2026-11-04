@@ -2,7 +2,7 @@ import SegmentedControl from '../common/SegmentedControl'
 import { menuLabel } from '../app/menu'
 import PageHeader from '../common/PageHeader'
 import SearchField from '../common/SearchField'
-import FilterButton, { type FilterValue } from '../common/FilterButton'
+import TransactionFilter from './TransactionFilter'
 import SortButton from '../common/SortButton'
 import Select from '../common/Select'
 import { useIsMutating, useQuery } from '@tanstack/react-query'
@@ -22,8 +22,8 @@ import TransactionPanel, { type EditDraft } from './TransactionPanel'
 import panelStyles from './TransactionPanel.module.css'
 import styles from './TransactionsPage.module.css'
 import { transactionsApi } from './transactionsApi'
-import { useCategories } from './categoriesApi'
-import { DEFAULT_SORT, SORT_OPTIONS, transactionFilterGroups, type TransactionSort } from './transactionQuery'
+import { categoriesApi } from './categoriesApi'
+import { DEFAULT_SORT, SORT_OPTIONS, isFilterApplied, readStoredFilter, storeFilter, type TransactionFilterValue, type TransactionSort } from './transactionQuery'
 
 type Scope = 'mine' | 'group'
 type Props = { today?: Date }
@@ -72,10 +72,8 @@ export default function TransactionsPage({ today }: Props) {
   // 멤버 선택은 그룹별로 기억한다. 헤더에서 그룹을 바꾸면 이전 그룹의 멤버 id가 남지 않는다.
   const [member, setMember] = useState<{ groupId: number; userId: number } | null>(null)
   const [search, setSearch] = useState('')
-  const [filter, setFilter] = useState<FilterValue>({})
+  const [filter, setFilter] = useState<TransactionFilterValue>(readStoredFilter)
   const [sort, setSort] = useState<TransactionSort>(DEFAULT_SORT)
-  const [filterDraft, setFilterDraft] = useState<FilterValue>({})
-  const categories = useCategories()
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [adding, setAdding] = useState(false)
   const [view, setView] = useState(readDetailView)
@@ -88,6 +86,11 @@ export default function TransactionsPage({ today }: Props) {
   }
 
   const groupId = scope === 'group' ? selectedGroupId : null
+  const categories = useQuery({
+    queryKey: groupId === null ? ['categories'] : ['categories', 'group', groupId],
+    queryFn: () => groupId === null ? categoriesApi.list() : categoriesApi.group(groupId),
+    staleTime: 5 * 60 * 1000,
+  })
   const inGroup = groupId !== null
   const memberId = member !== null && member.groupId === groupId ? member.userId : null
   const list = useQuery({
@@ -231,8 +234,8 @@ export default function TransactionsPage({ today }: Props) {
             <button type="button" className={ui.button} onClick={() => void detail.refetch()}>멤버 목록 다시 시도</button>
           </>
         )}
-        <FilterButton groups={transactionFilterGroups(categories.data ?? [], filterDraft)} value={filter}
-          onApply={(next) => { setFilter(next); setSelectedId(null) }} onDraftChange={setFilterDraft} />
+        <TransactionFilter categories={categories.data ?? []} value={filter}
+          onApply={(next) => { setFilter(next); storeFilter(next); setSelectedId(null) }} />
         <SortButton options={SORT_OPTIONS} value={sort} defaultValue={DEFAULT_SORT} onApply={setSort} />
         <SearchField label="검색" value={search} onChange={setSearch} placeholder="내용·카테고리 검색" className={styles.search} />
       </div>
@@ -249,7 +252,7 @@ export default function TransactionsPage({ today }: Props) {
             </div>
           )}
           {list.data && items.length === 0 && (
-            <p className={ui.status}>{list.data.length > 0 ? '검색 결과가 없습니다.' : Object.values(filter).some((values) => values.length > 0) ? '조건에 맞는 거래가 없습니다.' : '이 달에 거래가 없습니다.'}</p>
+            <p className={ui.status}>{list.data.length > 0 ? '검색 결과가 없습니다.' : isFilterApplied(filter) ? '조건에 맞는 거래가 없습니다.' : '이 달에 거래가 없습니다.'}</p>
           )}
           {items.length > 0 && (
             <TransactionList key={JSON.stringify([groupId, month, memberId, search, filter, sort])} items={items} showOwner={inGroup} selectedId={selectedId}

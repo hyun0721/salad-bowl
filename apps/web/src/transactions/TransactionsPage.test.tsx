@@ -46,7 +46,10 @@ function renderHistoryPage() {
 describe('TransactionsPage', () => {
   beforeEach(() => {
     try { window.localStorage.clear() } catch { /* storage may be unavailable */ }
-    server.use(http.get('*/api/me/categories', () => HttpResponse.json([])))
+    server.use(
+      http.get('*/api/me/categories', () => HttpResponse.json([])),
+      http.get('*/api/groups/:groupId/categories', () => HttpResponse.json([])),
+    )
   })
 
   it('sends applied filter and sort as query params', async () => {
@@ -63,7 +66,8 @@ describe('TransactionsPage', () => {
 
     await screen.findByRole('row', { name: /김밥/ })
     await user.click(screen.getByRole('button', { name: '필터' }))
-    await user.click(screen.getByRole('checkbox', { name: '지출' }))
+    await user.click(screen.getByRole('button', { name: '수입' }))
+    await user.click(screen.getByRole('button', { name: '이체' }))
     await user.click(screen.getByRole('button', { name: '적용' }))
     await user.click(screen.getByRole('button', { name: /정렬/ }))
     await user.click(screen.getByRole('radio', { name: '금액 큰 순' }))
@@ -71,15 +75,16 @@ describe('TransactionsPage', () => {
 
     await waitFor(() => expect(lastRequestedUrl()).toContain('type=EXPENSE'))
     await waitFor(() => expect(lastRequestedUrl()).toContain('sort=AMOUNT_DESC'))
-    expect(screen.getByRole('button', { name: '필터, 1개 적용됨' })).toBeInTheDocument()
+    expect(new URL(lastRequestedUrl()).searchParams.getAll('type')).toEqual(['EXPENSE'])
+    expect(screen.getByRole('button', { name: '필터, 적용됨' })).toBeInTheDocument()
   })
 
-  it('drops a hidden minor after changing major before applying', async () => {
+  it('sends excluded categories as type-scoped exclusions', async () => {
     const requests: string[] = []
     server.use(
       http.get('*/api/me/categories', () => HttpResponse.json([
-        { major: '교통', count: 1, minors: [{ minor: '버스', count: 1 }] },
-        { major: '식비', count: 1, minors: [{ minor: '외식', count: 1 }] },
+        { type: 'EXPENSE', major: '교통', count: 1, minors: [{ minor: '버스', count: 1 }] },
+        { type: 'EXPENSE', major: '식비', count: 1, minors: [{ minor: '외식', count: 1 }] },
       ])),
       http.get('*/api/me/transactions', ({ request }) => {
         requests.push(request.url)
@@ -89,15 +94,43 @@ describe('TransactionsPage', () => {
     const { user } = renderPage(<TransactionsPage today={today} />, { groups })
     await screen.findByText('이 달에 거래가 없습니다.')
     await user.click(screen.getByRole('button', { name: '필터' }))
+    await user.click(screen.getByRole('button', { name: '지출 카테고리 전체' }))
     await user.click(screen.getByRole('checkbox', { name: '교통' }))
-    await user.click(screen.getByRole('checkbox', { name: '교통 · 버스' }))
-    await user.click(screen.getByRole('checkbox', { name: '교통' }))
-    await user.click(screen.getByRole('checkbox', { name: '식비' }))
-    expect(screen.queryByRole('checkbox', { name: /버스/ })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '확인' }))
     await user.click(screen.getByRole('button', { name: '적용' }))
-    await waitFor(() => expect(new URL(requests.at(-1)!).searchParams.get('major')).toBe('식비'))
-    expect(new URL(requests.at(-1)!).searchParams.has('minor')).toBe(false)
-    expect(screen.getByRole('button', { name: '필터, 1개 적용됨' })).toBeInTheDocument()
+    await waitFor(() => expect(new URL(requests.at(-1)!).searchParams.getAll('exclude')).toEqual(['EXPENSE\t교통']))
+    expect(new URL(requests.at(-1)!).searchParams.has('type')).toBe(false)
+    expect(screen.getByRole('button', { name: '필터, 적용됨' })).toBeInTheDocument()
+  })
+
+  it('uses group candidates and keeps exclusions when changing scope', async () => {
+    const excludes = { EXPENSE: ['개인분류'] }
+    window.localStorage.setItem('saladbowl.transactionFilter', JSON.stringify({ types: ['EXPENSE', 'INCOME', 'TRANSFER'], excludes }))
+    const requests: string[] = []
+    server.use(
+      http.get('*/api/me/transactions', () => HttpResponse.json([])),
+      http.get('*/api/groups/10', () => HttpResponse.json({ groupId: 10, name: '우리집', myRole: 'ADMIN', members: [] })),
+      http.get('*/api/groups/10/categories', () => HttpResponse.json([
+        { type: 'EXPENSE', major: '그룹분류', count: 1, minors: [{ minor: '', count: 1 }] },
+      ])),
+      http.get('*/api/groups/10/transactions', ({ request }) => {
+        requests.push(request.url)
+        return HttpResponse.json([])
+      }),
+    )
+    const { user, client } = renderPage(<TransactionsPage today={today} />, { groups })
+    await user.click(await screen.findByRole('radio', { name: '그룹 거래' }))
+    await waitFor(() => expect(client.getQueryData(['categories', 'group', 10])).toEqual([
+      { type: 'EXPENSE', major: '그룹분류', count: 1, minors: [{ minor: '', count: 1 }] },
+    ]))
+    await user.click(screen.getByRole('button', { name: '필터, 적용됨' }))
+    await user.click(screen.getByRole('button', { name: '지출 카테고리 전체' }))
+    expect(screen.getByRole('checkbox', { name: '그룹분류' })).toBeChecked()
+    await user.click(screen.getByRole('button', { name: '확인' }))
+    await user.click(screen.getByRole('button', { name: '적용' }))
+    expect(new URL(requests.at(-1)!).searchParams.getAll('exclude')).toEqual(['EXPENSE\t개인분류'])
+    await user.click(screen.getByRole('radio', { name: '내 거래' }))
+    expect(JSON.parse(window.localStorage.getItem('saladbowl.transactionFilter')!).excludes).toEqual(excludes)
   })
 
   it('shows a filtered empty state when the server returns no matches', async () => {
@@ -105,7 +138,7 @@ describe('TransactionsPage', () => {
     const { user } = renderPage(<TransactionsPage today={today} />, { groups })
     await screen.findByText('이 달에 거래가 없습니다.')
     await user.click(screen.getByRole('button', { name: '필터' }))
-    await user.click(screen.getByRole('checkbox', { name: '지출' }))
+    await user.click(screen.getByRole('button', { name: '수입' }))
     await user.click(screen.getByRole('button', { name: '적용' }))
     expect(await screen.findByText('조건에 맞는 거래가 없습니다.')).toBeInTheDocument()
   })
