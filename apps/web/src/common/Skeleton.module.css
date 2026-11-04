@@ -1,0 +1,20 @@
+.block {
+  display: block;
+  flex: none;
+  max-width: 100%;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(90deg, var(--line) 30%, var(--surface-100) 50%, var(--line) 70%) 0 0 / 300% 100%;
+  animation: shimmer 1.6s ease-in-out infinite;
+}
+@keyframes shimmer { from { background-position: 100% 0; } to { background-position: 0 0; } }
+
+/* 짧은 응답에서는 스켈레톤이 보이기 전에 데이터가 와서 깜빡이지 않는다. */
+.region { animation: appear 150ms ease-out 200ms both; }
+@keyframes appear { from { opacity: 0; } to { opacity: 1; } }
+
+.srOnly { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+@media (prefers-reduced-motion: reduce) {
+  .block { animation: none; background: var(--line); }
+  .region { animation-duration: 0s; }
+}

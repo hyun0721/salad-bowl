@@ -1,0 +1,5 @@
+/* 도넛 자리는 차트와 같은 높이를 차지하고, 고리 지름은 ECharts 바깥 반지름(넓은 52%, 좁은 46%)에 맞춘다. */
+.donut { display: grid; place-items: center; }
+.ring { aspect-ratio: 1; mask: radial-gradient(circle closest-side, transparent 65%, #000 66%); }
+.legendRow { min-height: var(--control-height); padding: var(--space-2); display: grid; grid-template-columns: 16px minmax(0, 1fr) auto 48px; gap: var(--space-2); align-items: center; }
+.legendAction { display: flex; align-items: center; min-height: var(--control-height); }

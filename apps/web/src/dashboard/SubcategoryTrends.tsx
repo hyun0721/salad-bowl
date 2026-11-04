@@ -5,12 +5,14 @@ import { formatWon, shiftMonth } from '../common/format'
 import DonutChart, { sliceStyle } from '../common/DonutChart'
 import { NARROW, useMediaQuery } from '../common/useMediaQuery'
 import Select from '../common/Select'
+import { SkeletonRegion } from '../common/Skeleton'
 import ui from '../common/ui.module.css'
 import DistributionBars from './DistributionBars'
 import { dashboardApi, type MemberTotal } from './dashboardApi'
 import CategoryTrend from './CategoryTrend'
 import CategoryTransactionsDialog from './CategoryTransactionsDialog'
 import ChartViewToggle from './ChartViewToggle'
+import { DonutLegendSkeleton } from './ChartSkeletons'
 import { percent } from './percent'
 import styles from './SubcategoryTrends.module.css'
 import breakdown from './CategoryBreakdown.module.css'
@@ -23,6 +25,7 @@ export default function SubcategoryTrends({ groupId, month, members = [] }: { gr
   const compact = useMediaQuery(NARROW)
   const [view, setView] = useState('chart')
   const [activeId, setActiveId] = useState<string | null>(null)
+  const [legend, setLegend] = useState({ scope: '', expanded: false })
   const [transactionSelection, setTransactionSelection] = useState<{ month: string; major: string; minor: string } | null>(null)
   const focusSubcategories = state?.focusSubcategories === true
   const titleRef = useRef<HTMLHeadingElement>(null)
@@ -46,6 +49,9 @@ export default function SubcategoryTrends({ groupId, month, members = [] }: { gr
   const majors = [...new Set(data.map((row) => row.major))].sort()
   const selected = params.get('major') ?? ''
   const major = majors.includes(selected) ? selected : ''
+  const scope = JSON.stringify([groupId, month, major])
+  if (legend.scope !== scope) setLegend({ scope, expanded: false })
+  const expanded = legend.scope === scope && legend.expanded
   const minors = [...new Set(data.filter((row) => row.major === major).map((row) => row.minor))].map((minor) => ({
     minor, value: data.find((row) => row.major === major && row.minor === minor && row.month === month)?.expense ?? 0,
   })).sort((a, b) => b.value - a.value || a.minor.localeCompare(b.minor))
@@ -84,7 +90,7 @@ export default function SubcategoryTrends({ groupId, month, members = [] }: { gr
         <h2 id="subcategory-title" ref={titleRef} tabIndex={-1}>소분류 분포</h2>
         <ChartViewToggle title="소분류 분포" value={view} onChange={setView} />
       </div>
-      {query.isPending && <p role="status" className={ui.status}>대분류 목록을 불러오는 중입니다.</p>}
+      {query.isPending && <SkeletonRegion label="대분류 목록을 불러오는 중입니다."><DonutLegendSkeleton compact={compact} /></SkeletonRegion>}
       {query.isError && <div className={ui.row}>
         <p role="alert" className={ui.alert}>대분류 목록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</p>
         <button type="button" className={ui.button} onClick={() => void query.refetch()}>소분류 다시 시도</button>
@@ -97,7 +103,8 @@ export default function SubcategoryTrends({ groupId, month, members = [] }: { gr
           {view === 'chart' ? positiveTotal > 0 && <div className={breakdown.content}>
             <DonutChart compact={compact} slices={slices} centerLabel="총지출" centerValue={formatWon(positiveTotal)}
               activeId={activeId} onActiveChange={setActiveId} onSelect={showTransactions} className={breakdown.chart} />
-            <ul className={breakdown.list}>{slices.map((slice, index) => {
+            <div className={breakdown.legend}>
+              <ul className={breakdown.list}>{(expanded ? slices : slices.slice(0, 6)).map((slice, index) => {
               const swatch = sliceStyle(index)
               return <li key={slice.id}><button type="button" className={breakdown.row}
                 aria-haspopup="dialog" aria-label={`${slice.label} ${slice.detail} ${formatWon(slice.value)}`}
@@ -110,7 +117,10 @@ export default function SubcategoryTrends({ groupId, month, members = [] }: { gr
                 <span className={breakdown.amount}>{formatWon(slice.value)}</span>
                 <span className={breakdown.percent}>{slice.detail}</span>
               </button></li>
-            })}</ul>
+              })}</ul>
+              {slices.length > 6 && <button type="button" className={ui.button} aria-expanded={expanded}
+                onClick={() => setLegend({ scope, expanded: !expanded })}>{expanded ? '접기' : `나머지 ${slices.length - 6}개 더 보기`}</button>}
+            </div>
           </div> : view === 'list' && <DistributionBars positiveTotal={positiveTotal} members={members} onSelect={showTransactions}
             rows={minors.map(({ minor, value }) => ({ id: minor, label: minor || '미분류', value,
               memberExpenses: memberData?.filter((row) => row.major === major && row.minor === minor),

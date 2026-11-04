@@ -25,7 +25,12 @@ export default function CategoryBreakdown({ groupId, month, summary }: Props) {
   const compact = useMediaQuery(NARROW)
   const [activeId, setActiveId] = useState<string | null>(null)
   const [category, setCategory] = useState<string | null>(null)
-  const items = useMemo(() => summary.byCategory.filter((item) => item.expense > 0), [summary.byCategory])
+  const scope = `${groupId}:${month}`
+  const [legend, setLegend] = useState({ scope, expanded: false })
+  if (legend.scope !== scope) setLegend({ scope, expanded: false })
+  const expanded = legend.scope === scope && legend.expanded
+  const items = useMemo(() => summary.byCategory.filter((item) => item.expense > 0)
+    .sort((a, b) => b.expense - a.expense || a.category.localeCompare(b.category)), [summary.byCategory])
   const total = useMemo(() => items.reduce((sum, item) => sum + item.expense, 0), [items])
   const slices = useMemo(() => items.map((item) => ({
     id: item.category, label: item.category, value: item.expense, detail: percent(item.expense, total),
@@ -48,8 +53,9 @@ export default function CategoryBreakdown({ groupId, month, summary }: Props) {
           <DonutChart compact={compact} slices={slices}
             centerLabel="총지출" centerValue={formatWon(summary.expense)} activeId={activeId}
             onActiveChange={setActiveId} onSelect={setCategory} className={styles.chart} />
-          <ul className={styles.list}>
-            {items.map((item, index) => {
+          <div className={styles.legend}>
+            <ul className={styles.list}>
+              {(expanded ? items : items.slice(0, 6)).map((item, index) => {
               const swatch = sliceStyle(index)
               return (
                 <li key={item.category}>
@@ -67,8 +73,11 @@ export default function CategoryBreakdown({ groupId, month, summary }: Props) {
                   </button>
                 </li>
               )
-            })}
-          </ul>
+              })}
+            </ul>
+            {items.length > 6 && <button type="button" className={ui.button} aria-expanded={expanded}
+              onClick={() => setLegend({ scope, expanded: !expanded })}>{expanded ? '접기' : `나머지 ${items.length - 6}개 더 보기`}</button>}
+          </div>
         </div>
       )}
       <CategoryTransactionsDialog groupId={groupId} month={month} category={category} onClose={() => setCategory(null)} />

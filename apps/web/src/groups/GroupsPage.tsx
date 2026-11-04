@@ -4,6 +4,7 @@ import { menuLabel } from '../app/menu'
 import Icon from '../common/Icon'
 import Dialog from '../common/Dialog'
 import PageHeader from '../common/PageHeader'
+import Skeleton, { SkeletonRegion } from '../common/Skeleton'
 import ui from '../common/ui.module.css'
 import { usePageTitle } from '../common/usePageTitle'
 import CreateGroupForm from './CreateGroupForm'
@@ -27,7 +28,9 @@ export default function GroupsPage() {
       <div className={styles.layout}>
         <section aria-labelledby="my-groups-title" className={ui.card}>
           <h2 id="my-groups-title">내 그룹</h2>
-          {isLoading && <p className={ui.status}>불러오는 중입니다.</p>}
+          {isLoading && <SkeletonRegion><ul className={styles.groupList}>
+            {[0, 1, 2].map((i) => <li key={i} className={styles.groupButton}><Skeleton width="60%" height="1lh" /><Skeleton width="35%" height="1lh" /></li>)}
+          </ul></SkeletonRegion>}
           {isError && (
             <div className={ui.row}>
               <p role="alert" className={ui.alert}>그룹을 불러오지 못했습니다.</p>

@@ -20,6 +20,15 @@ function handlers(coverage: CoverageMonth[]) {
 }
 
 describe('CoverageSection', () => {
+  it('shows twelve calendar cells while coverage loads', async () => {
+    server.use(http.get('*/api/me/coverage', async () => { await delay(400); return HttpResponse.json([]) }))
+    renderPage(<CoverageSection today={today} />)
+    const region = await screen.findByRole('region', { name: '월별 등록 현황' })
+    const status = within(region).getByRole('status')
+    expect(status).toHaveAttribute('aria-busy', 'true')
+    expect(status.querySelectorAll('li')).toHaveLength(12)
+    await within(region).findByRole('button', { name: '2026년 1월 미등록, 업로드하기' })
+  })
   it('draws the year buttons as icons', async () => {
     handlers([])
     renderPage(<CoverageSection today={today} />)

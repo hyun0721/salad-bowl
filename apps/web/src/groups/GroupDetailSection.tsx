@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '../auth/AuthProvider'
+import Skeleton, { SkeletonRegion } from '../common/Skeleton'
 import ui from '../common/ui.module.css'
 import BanList from './BanList'
 import { LeaveGroup, RenameForm, ShareToggle } from './GroupSettings'
@@ -13,7 +14,12 @@ export default function GroupDetailSection({ groupId }: { groupId: number }) {
   const detail = useQuery({ queryKey: ['groups', groupId], queryFn: () => groupsApi.detail(groupId) })
 
   if (detail.isPending) {
-    return <section className={ui.card}><p className={ui.status}>불러오는 중입니다.</p></section>
+    return <section className={`${ui.card} ${styles.detail}`}><SkeletonRegion><div className={ui.stack}>
+      <Skeleton width="50%" height="1lh" />
+      <ul className={styles.memberList}>{[0, 1, 2].map((i) => <li key={i} className={styles.member}>
+        <Skeleton width={96} height="1lh" /><Skeleton width="30%" height="1lh" /><Skeleton width={80} height="var(--control-height)" />
+      </li>)}</ul>
+    </div></SkeletonRegion></section>
   }
   if (detail.isError) {
     return (

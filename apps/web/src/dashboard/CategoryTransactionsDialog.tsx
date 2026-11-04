@@ -11,6 +11,7 @@ import ui from '../common/ui.module.css'
 import { NARROW, useMediaQuery } from '../common/useMediaQuery'
 import { TransactionCard, transactionColumns } from '../transactions/transactionRows'
 import TransactionPanel from '../transactions/TransactionPanel'
+import { TransactionListSkeleton } from '../transactions/TransactionList'
 import { DEFAULT_SORT, SORT_OPTIONS, type TransactionSort } from '../transactions/transactionQuery'
 import { dashboardApi } from './dashboardApi'
 import styles from './CategoryBreakdown.module.css'
@@ -92,7 +93,9 @@ export default function CategoryTransactionsDialog({ groupId, month, category, m
           {selected ? <div className={styles.dialogList}>
             <TransactionPanel key={selected.id} tx={selected} onSaved={backToList} onDeleted={backToList} />
           </div> : <>
-          {transactions.isPending && <p className={ui.status}>불러오는 중입니다.</p>}
+          {transactions.isPending && <div className={styles.dialogList}>
+            <TransactionListSkeleton showOwner />
+          </div>}
           {transactions.isError && <div className={ui.row}>
             <p role="alert" className={ui.alert}>거래를 불러오지 못했습니다.</p>
             <button type="button" className={ui.button} onClick={() => void transactions.refetch()}>다시 시도</button>

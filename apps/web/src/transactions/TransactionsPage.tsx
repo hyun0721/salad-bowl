@@ -17,7 +17,7 @@ import { usePageTitle } from '../common/usePageTitle'
 import { useGroups } from '../groups/GroupProvider'
 import { groupsApi } from '../groups/groupsApi'
 import ManualTransactionForm, { type AddDraft } from './ManualTransactionForm'
-import TransactionList from './TransactionList'
+import TransactionList, { TransactionListSkeleton } from './TransactionList'
 import TransactionPanel, { type EditDraft } from './TransactionPanel'
 import panelStyles from './TransactionPanel.module.css'
 import styles from './TransactionsPage.module.css'
@@ -241,7 +241,7 @@ export default function TransactionsPage({ today }: Props) {
       <div className={styles.layout}>
         <section ref={listRef} aria-labelledby="list-title" className={`${ui.card} ${styles.listCard}`}>
           <h2 id="list-title" ref={listHeadingRef} tabIndex={-1} className={styles.visuallyHidden}>거래 목록</h2>
-          {list.isPending && <p className={ui.status}>불러오는 중입니다.</p>}
+          {list.isPending && <TransactionListSkeleton showOwner={inGroup} />}
           {list.isError && (
             <div className={ui.row}>
               <p role="alert" className={ui.alert}>거래를 불러오지 못했습니다.</p>

@@ -4,7 +4,8 @@ import { Navigate, useLocation, useParams, useSearchParams } from 'react-router'
 import { menuLabel } from '../app/menu'
 import MonthPicker from '../common/MonthPicker'
 import PageHeader from '../common/PageHeader'
-import TotalsCards, { type TotalKind } from '../common/TotalsCards'
+import { SkeletonRegion } from '../common/Skeleton'
+import TotalsCards, { TotalsCardsSkeleton, type TotalKind } from '../common/TotalsCards'
 import ui from '../common/ui.module.css'
 import { defaultYearMonth, isYearMonth } from '../common/format'
 import { NARROW, useMediaQuery } from '../common/useMediaQuery'
@@ -12,6 +13,7 @@ import { usePageTitle } from '../common/usePageTitle'
 import { useGroups } from '../groups/GroupProvider'
 import NoGroupNotice from '../groups/NoGroupNotice'
 import CategoryBreakdown from './CategoryBreakdown'
+import { CategoryShareSkeleton } from './ChartSkeletons'
 import CategoryTrend from './CategoryTrend'
 import SubcategoryTrends from './SubcategoryTrends'
 import { dashboardApi, type MonthlySummary } from './dashboardApi'
@@ -47,7 +49,7 @@ export default function DashboardPage({ today }: Props) {
     return (
       <>
         <PageHeader title={menuLabel('/dashboard')} />
-        {isLoading && <p className={ui.status}>불러오는 중입니다.</p>}
+        {isLoading && <SkeletonRegion><TotalsCardsSkeleton /></SkeletonRegion>}
         {isError && (
           <div className={ui.row}>
             <p role="alert" className={ui.alert}>그룹을 불러오지 못했습니다.</p>
@@ -63,7 +65,7 @@ export default function DashboardPage({ today }: Props) {
     <>
       <PageHeader title={menuLabel('/dashboard')} />
       <MonthPicker month={month} onChange={(m) => setSearch((p) => { p.set('month', m); return p }, { replace: true })} />
-      {summary.isPending && <p className={ui.status}>불러오는 중입니다.</p>}
+      {summary.isPending && <SkeletonRegion><TotalsCardsSkeleton /></SkeletonRegion>}
       {summary.isError && (
         <div className={ui.row}>
           <p role="alert" className={ui.alert}>요약을 불러오지 못했습니다.</p>
@@ -77,14 +79,15 @@ export default function DashboardPage({ today }: Props) {
       </>}
       {narrow && <DashboardMenu level={level} />}
       <SummaryView key={selectedGroupId} groupId={selectedGroupId} month={month} summary={summary.data}
-        level={level} view={params.view as View | undefined} />
+        summaryPending={summary.isPending} level={level} view={params.view as View | undefined} />
     </>
   )
 }
 
-function SummaryView({ groupId, month, summary, level, view }: {
-  groupId: number; month: string; summary?: MonthlySummary; level: Level; view?: View
+function SummaryView({ groupId, month, summary, summaryPending, level, view }: {
+  groupId: number; month: string; summary?: MonthlySummary; summaryPending: boolean; level: Level; view?: View
 }) {
+  const compact = useMediaQuery(NARROW)
   const hasSummary = summary !== undefined
   const scrolledWithSummary = useRef<string | null>(null)
   useEffect(() => {
@@ -103,6 +106,7 @@ function SummaryView({ groupId, month, summary, level, view }: {
       ) : (
         <>
           <div id="dashboard-share">
+            {summaryPending && <SkeletonRegion label="대분류 분포를 불러오는 중입니다."><CategoryShareSkeleton compact={compact} /></SkeletonRegion>}
             {summary && <CategoryBreakdown key={`${groupId}:${month}`} groupId={groupId} month={month} summary={summary} />}
           </div>
           <CategoryTrend groupId={groupId} month={month} />

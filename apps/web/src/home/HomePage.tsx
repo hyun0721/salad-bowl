@@ -3,7 +3,8 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { menuLabel } from '../app/menu'
 import PageHeader from '../common/PageHeader'
-import TotalsCards from '../common/TotalsCards'
+import TotalsCards, { TotalsCardsSkeleton } from '../common/TotalsCards'
+import Skeleton, { SkeletonRegion } from '../common/Skeleton'
 import ui from '../common/ui.module.css'
 import { defaultYearMonth, formatMonthLabel } from '../common/format'
 import { usePageTitle } from '../common/usePageTitle'
@@ -36,7 +37,7 @@ export default function HomePage({ today: todayProp }: Props) {
       <div className={styles.twoColumns}>
         <section aria-labelledby="upload-status-title" className={ui.card}>
           <h2 id="upload-status-title">지난달 업로드</h2>
-          {coverage.isPending && <p className={ui.status}>불러오는 중입니다.</p>}
+          {coverage.isPending && <SkeletonRegion><Skeleton width="80%" height="1lh" /></SkeletonRegion>}
           {coverage.isError && (
             <div className={ui.row}>
               <p role="alert" className={ui.alert}>업로드 현황을 불러오지 못했습니다.</p>
@@ -53,7 +54,7 @@ export default function HomePage({ today: todayProp }: Props) {
 
         <section aria-labelledby="summary-title" className={ui.card}>
           <h2 id="summary-title">지난달 내 요약 ({formatMonthLabel(month)})</h2>
-          {mine.isPending && <p className={ui.status}>불러오는 중입니다.</p>}
+          {mine.isPending && <SkeletonRegion><TotalsCardsSkeleton /></SkeletonRegion>}
           {mine.isError && (
             <div className={ui.row}>
               <p role="alert" className={ui.alert}>지난달 거래를 불러오지 못했습니다.</p>

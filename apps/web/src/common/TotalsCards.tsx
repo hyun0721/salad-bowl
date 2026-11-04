@@ -1,4 +1,5 @@
 import { formatWon } from './format'
+import Skeleton from './Skeleton'
 import ui from './ui.module.css'
 import styles from './TotalsCards.module.css'
 
@@ -19,6 +20,19 @@ export default function TotalsCards({ income, expense, onSelect, opensDialog }: 
           <span className={styles.label}>{label}</span>
           <span className={`${styles.value} ${styles[kind]}`}>{formatWon(amounts[kind])}</span>
         </button>
+      ))}
+    </div>
+  )
+}
+
+export function TotalsCardsSkeleton() {
+  return (
+    <div className={styles.totals}>
+      {KINDS.map(([kind]) => (
+        <div key={kind} className={`${ui.card} ${styles.total} ${styles.placeholder}`}>
+          <span className={styles.label}><Skeleton width="2.5em" height="1lh" /></span>
+          <span className={styles.value}><Skeleton width="7em" height="1lh" /></span>
+        </div>
       ))}
     </div>
   )
