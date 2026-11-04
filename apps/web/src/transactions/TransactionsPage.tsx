@@ -22,7 +22,7 @@ import TransactionPanel, { type EditDraft } from './TransactionPanel'
 import panelStyles from './TransactionPanel.module.css'
 import styles from './TransactionsPage.module.css'
 import { transactionsApi } from './transactionsApi'
-import { useCategories } from './categoriesApi'
+import { categoriesApi } from './categoriesApi'
 import { DEFAULT_SORT, SORT_OPTIONS, isFilterApplied, readStoredFilter, storeFilter, type TransactionFilterValue, type TransactionSort } from './transactionQuery'
 
 type Scope = 'mine' | 'group'
@@ -74,7 +74,6 @@ export default function TransactionsPage({ today }: Props) {
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<TransactionFilterValue>(readStoredFilter)
   const [sort, setSort] = useState<TransactionSort>(DEFAULT_SORT)
-  const categories = useCategories()
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [adding, setAdding] = useState(false)
   const [view, setView] = useState(readDetailView)
@@ -87,6 +86,11 @@ export default function TransactionsPage({ today }: Props) {
   }
 
   const groupId = scope === 'group' ? selectedGroupId : null
+  const categories = useQuery({
+    queryKey: groupId === null ? ['categories'] : ['categories', 'group', groupId],
+    queryFn: () => groupId === null ? categoriesApi.list() : categoriesApi.group(groupId),
+    staleTime: 5 * 60 * 1000,
+  })
   const inGroup = groupId !== null
   const memberId = member !== null && member.groupId === groupId ? member.userId : null
   const list = useQuery({

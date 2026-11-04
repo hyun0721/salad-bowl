@@ -6,6 +6,7 @@ import type { TransactionType } from './transactionsApi'
 export type CategoryOption = { type: TransactionType; major: string; count: number; minors: { minor: string; count: number }[] }
 
 export const categoriesApi = {
+  group: (groupId: number) => apiFetch<CategoryOption[]>(`/groups/${groupId}/categories`),
   list: () => apiFetch<CategoryOption[]>('/me/categories'),
 }
 

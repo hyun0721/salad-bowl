@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Button, DialogTrigger } from 'react-aria-components'
 import Checkbox from '../common/Checkbox'
 import Icon from '../common/Icon'
@@ -13,27 +13,27 @@ import { DEFAULT_FILTER, TRANSACTION_TYPES, isFilterApplied, type TransactionFil
 import type { TransactionType } from './transactionsApi'
 
 type Props = { categories: CategoryOption[]; value: TransactionFilterValue; onApply: (next: TransactionFilterValue) => void }
-type Picks = string[] | undefined
+type Excludes = string[] | undefined
 
+const focusButton = (node: HTMLButtonElement | null) => { node?.focus() }
 const key = (major: string, minor: string) => `${major}\t${minor}`
-// picks가 없으면 전체, 'major'는 그 대분류 전체, 'major\tminor'는 소분류 하나다.
-const isPicked = (picks: Picks, major: string, minor: string) => !picks || picks.includes(major) || picks.includes(key(major, minor))
+const isPicked = (excludes: Excludes, major: string, minor: string) => !excludes?.includes(major) && !excludes?.includes(key(major, minor))
 
-/** 고른 (대분류, 소분류) 집합을 압축한다: 다 고른 대분류는 'major' 하나로, 다 고른 타입은 undefined로. */
-function compact(majors: CategoryOption[], selected: Set<string>): Picks {
-  const picks = majors.flatMap((c) => {
-    const keys = c.minors.map((m) => key(c.major, m.minor)).filter((k) => selected.has(k))
-    return keys.length === c.minors.length ? [c.major] : keys
-  })
-  return picks.length === majors.length && picks.every((p, i) => p === majors[i].major) ? undefined : picks
+/** 현재 후보의 제외값만 압축하고 다른 범위의 제외값은 보존한다. */
+function compact(majors: CategoryOption[], selected: Set<string>, excludes: Excludes): string[] {
+  const absent = (excludes ?? []).filter((item) => !majors.some((c) => item === c.major || c.minors.some((m) => item === key(c.major, m.minor))))
+  return [...absent, ...majors.flatMap((c) => {
+    const keys = c.minors.map((m) => key(c.major, m.minor)).filter((k) => !selected.has(k))
+    return keys.length > 0 && keys.length === c.minors.length ? [c.major] : keys
+  })]
 }
 
-/** 대분류 한두 개는 이름으로, 그보다 많으면 고른 수/전체 수로 보여 준다. 일부만 고른 대분류가 있으면 '일부'를 붙인다. */
-function summary(picks: Picks, total: number): string {
-  if (!picks) return '전체'
-  const majors = [...new Set(picks.map((p) => p.split('\t')[0]))]
-  const partial = picks.some((p) => p.includes('\t')) ? ' · 일부' : ''
-  return majors.length === 0 ? '선택 안 함' : majors.length <= 2 ? majors.join(', ') + partial : `${majors.length}/${total}개${partial}`
+function summary(excludes: Excludes, candidates: CategoryOption[]): string {
+  const remaining = candidates.map((c) => ({ major: c.major, count: c.minors.filter((m) => isPicked(excludes, c.major, m.minor)).length, total: c.minors.length }))
+  if (remaining.every((c) => c.count === c.total)) return '전체'
+  const majors = remaining.filter((c) => c.count > 0)
+  const partial = majors.some((c) => c.count < c.total) ? ' · 일부' : ''
+  return majors.length === 0 ? '선택 안 함' : majors.length <= 2 ? majors.map((c) => c.major).join(', ') + partial : `${majors.length}/${candidates.length}개${partial}`
 }
 
 export default function TransactionFilter({ categories, value, onApply }: Props) {
@@ -42,6 +42,7 @@ export default function TransactionFilter({ categories, value, onApply }: Props)
   const [step, setStep] = useState<TransactionType | null>(null)
   const [expanded, setExpanded] = useState<string[]>([])
   const [error, setError] = useState('')
+  const returnType = useRef<TransactionType | null>(null)
   const mobile = useNarrowWhileOpen(open)
   const applied = isFilterApplied(value)
 
@@ -49,8 +50,8 @@ export default function TransactionFilter({ categories, value, onApply }: Props)
     if (next) { setDraft(value); setStep(null); setError('') }
     setOpen(next)
   }
-  function setPicks(type: TransactionType, picks: Picks) {
-    setDraft({ ...draft, picks: { ...draft.picks, [type]: picks } })
+  function setExcludes(type: TransactionType, excludes: string[]) {
+    setDraft({ ...draft, excludes: { ...draft.excludes, [type]: excludes } })
   }
   function toggleType(type: TransactionType) {
     const types = draft.types.includes(type) ? draft.types.filter((t) => t !== type) : TRANSACTION_TYPES.filter((t) => t === type || draft.types.includes(t))
@@ -58,28 +59,30 @@ export default function TransactionFilter({ categories, value, onApply }: Props)
   }
   function apply() {
     if (draft.types.length === 0) return setError('거래 종류를 하나 이상 선택하세요.')
-    if (draft.types.some((t) => draft.picks[t]?.length === 0)) return setError('카테고리를 하나 이상 선택하세요.')
-    const picks = Object.fromEntries(draft.types.filter((t) => draft.picks[t]).map((t) => [t, draft.picks[t]]))
-    onApply({ types: draft.types, picks })
+    if (draft.types.some((t) => {
+      const candidates = categories.filter((c) => c.type === t).flatMap((c) => c.minors.map((m) => isPicked(draft.excludes[t], c.major, m.minor)))
+      return candidates.length > 0 && !candidates.some(Boolean)
+    })) return setError('카테고리를 하나 이상 선택하세요.')
+    onApply(draft)
     setOpen(false)
   }
 
   function categoryStep(type: TransactionType) {
     const majors = categories.filter((c) => c.type === type)
-    const picks = draft.picks[type]
-    const selected = new Set(majors.flatMap((c) => c.minors.filter((m) => isPicked(picks, c.major, m.minor)).map((m) => key(c.major, m.minor))))
+    const excludes = draft.excludes[type]
+    const selected = new Set(majors.flatMap((c) => c.minors.filter((m) => isPicked(excludes, c.major, m.minor)).map((m) => key(c.major, m.minor))))
     const total = majors.reduce((sum, c) => sum + c.minors.length, 0)
     function set(keys: string[], on: boolean) {
       keys.forEach((k) => (on ? selected.add(k) : selected.delete(k)))
-      setPicks(type, compact(majors, selected))
+      setExcludes(type, compact(majors, selected, excludes))
     }
     return (
       <>
-        <button type="button" className={`${ui.button} ${styles.back}`} onClick={() => setStep(null)}>
+        <button type="button" ref={focusButton} className={`${ui.button} ${styles.back}`} onClick={() => setStep(null)}>
           <Icon name="chevron-left" />{TYPE_LABELS[type]} 카테고리
         </button>
         <Checkbox isSelected={selected.size === total} isIndeterminate={selected.size > 0 && selected.size < total}
-          onChange={(on) => setPicks(type, on ? undefined : [])}>모든 카테고리</Checkbox>
+          onChange={(on) => set(majors.flatMap((c) => c.minors.map((m) => key(c.major, m.minor))), on)}>모든 카테고리</Checkbox>
         <div className={styles.list}>
           {majors.map((c) => {
             const keys = c.minors.map((m) => key(c.major, m.minor))
@@ -138,10 +141,10 @@ export default function TransactionFilter({ categories, value, onApply }: Props)
               </div>
               {draft.types.map((t) => {
                 const label = `${TYPE_LABELS[t]} 카테고리`
-                const text = summary(draft.picks[t], categories.filter((c) => c.type === t).length)
+                const text = summary(draft.excludes[t], categories.filter((c) => c.type === t))
                 return (
-                  <button key={t} type="button" className={styles.row} aria-label={`${label} ${text}`}
-                    onClick={() => { setStep(t); setExpanded([]) }}>
+                  <button key={t} type="button" ref={(node) => { if (returnType.current === t && node) { node.focus(); returnType.current = null } }} className={styles.row} aria-label={`${label} ${text}`}
+                    onClick={() => { returnType.current = t; setStep(t); setExpanded([]) }}>
                     <span>{label}</span><span className={styles.summary}>{text}</span><Icon name="chevron-right" />
                   </button>
                 )

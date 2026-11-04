@@ -1,11 +1,11 @@
 import type { SortOption } from '../common/SortButton'
 import type { TransactionType } from './transactionsApi'
 
-export type TransactionFilterValue = { types: TransactionType[]; picks: Partial<Record<TransactionType, string[]>> }
+export type TransactionFilterValue = { types: TransactionType[]; excludes: Partial<Record<TransactionType, string[]>> }
 export const TRANSACTION_TYPES: TransactionType[] = ['EXPENSE', 'INCOME', 'TRANSFER']
-export const DEFAULT_FILTER: TransactionFilterValue = { types: TRANSACTION_TYPES, picks: {} }
+export const DEFAULT_FILTER: TransactionFilterValue = { types: TRANSACTION_TYPES, excludes: {} }
 export function isFilterApplied(filter: TransactionFilterValue): boolean {
-  return filter.types.length !== TRANSACTION_TYPES.length || filter.types.some((type) => filter.picks[type] !== undefined)
+  return filter.types.length !== TRANSACTION_TYPES.length || filter.types.some((type) => !!filter.excludes[type]?.length)
 }
 
 const FILTER_STORAGE_KEY = 'saladbowl.transactionFilter'
@@ -15,12 +15,12 @@ export function readStoredFilter(): TransactionFilterValue {
   try {
     const raw: unknown = JSON.parse(window.localStorage.getItem(FILTER_STORAGE_KEY) ?? 'null')
     if (!raw || typeof raw !== 'object') return DEFAULT_FILTER
-    const { types, picks } = raw as Record<string, unknown>
-    if (!Array.isArray(types) || !types.every((t) => TRANSACTION_TYPES.includes(t)) || !picks || typeof picks !== 'object') return DEFAULT_FILTER
-    const entries = Object.entries(picks)
+    const { types, excludes, picks } = raw as Record<string, unknown>
+    if (picks !== undefined || !Array.isArray(types) || types.length === 0 || !types.every((t) => TRANSACTION_TYPES.includes(t)) || !excludes || typeof excludes !== 'object' || Array.isArray(excludes)) return DEFAULT_FILTER
+    const entries = Object.entries(excludes)
     const valid = entries.every(([t, list]) => TRANSACTION_TYPES.includes(t as TransactionType)
-      && Array.isArray(list) && list.every((p) => typeof p === 'string'))
-    return valid ? { types: TRANSACTION_TYPES.filter((t) => types.includes(t)), picks: Object.fromEntries(entries) } : DEFAULT_FILTER
+      && Array.isArray(list) && list.every((p) => typeof p === 'string' && p.split('\t').length <= 2 && p.split('\t')[0].length > 0))
+    return valid ? { types: TRANSACTION_TYPES.filter((t) => types.includes(t)), excludes: Object.fromEntries(entries) } : DEFAULT_FILTER
   } catch {
     return DEFAULT_FILTER
   }
@@ -48,7 +48,7 @@ export const SORT_OPTIONS: SortOption<TransactionSort>[] = [
 export function queryParams(params: URLSearchParams, filter: TransactionFilterValue, sort: TransactionSort): URLSearchParams {
   if (filter.types.length !== TRANSACTION_TYPES.length) filter.types.forEach((type) => params.append('type', type))
   for (const type of filter.types) {
-    filter.picks[type]?.forEach((pick) => params.append('pick', `${type}\t${pick}`))
+    filter.excludes[type]?.forEach((item) => params.append('exclude', `${type}\t${item}`))
   }
   if (sort !== DEFAULT_SORT) params.set('sort', sort)
   return params
