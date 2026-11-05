@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react'
-import { Cell, Column, Row, Table, TableBody, TableHeader, type Key, type SortDescriptor } from 'react-aria-components'
+import { Cell, Column, Row, Table, TableBody, TableHeader, type Key, type TableProps, type SortDescriptor } from 'react-aria-components'
 import Icon from './Icon'
 import styles from './DataTable.module.css'
 
@@ -21,10 +21,11 @@ type Props<T extends { id: Key }> = {
   pagination?: { page: number; pageSize: number; onSort: () => void }
   rowText: (item: T) => string
   currentId?: Key | null
-  onRowAction: (id: Key) => void
+  onRowAction?: (id: Key) => void
+  selection?: Pick<TableProps, 'selectionMode' | 'selectionBehavior' | 'selectedKeys' | 'onSelectionChange' | 'disabledKeys'>
 }
 
-export default function DataTable<T extends { id: Key }>({ label, columns, items, rowText, currentId, onRowAction, pagination }: Props<T>) {
+export default function DataTable<T extends { id: Key }>({ label, columns, items, rowText, currentId, onRowAction, pagination, selection }: Props<T>) {
   const [sort, setSort] = useState<SortDescriptor>()
   const sorted = useMemo(() => {
     const value = columns.find((c) => c.id === sort?.column)?.sortValue
@@ -39,7 +40,7 @@ export default function DataTable<T extends { id: Key }>({ label, columns, items
 
   const cellClass = (c: DataColumn<T>) => (c.align === 'end' ? `${styles.cell} ${styles.end}` : styles.cell)
   return (
-    <Table aria-label={label} sortDescriptor={sort} onSortChange={(next) => { setSort(next); pagination?.onSort() }} onRowAction={onRowAction} className={styles.table}>
+    <Table selectedKeys={selection?.selectedKeys ?? []} {...selection} aria-label={label} sortDescriptor={sort} onSortChange={(next) => { setSort(next); pagination?.onSort() }} onRowAction={onRowAction} className={styles.table}>
       <TableHeader columns={columns} className={styles.head}>
         {(c) => (
           <Column id={c.id} isRowHeader={c.isRowHeader} allowsSorting={!!c.sortValue} style={{ width: c.width }} className={cellClass(c)}>

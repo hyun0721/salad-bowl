@@ -25,6 +25,8 @@ export type TransactionView = {
 
 export type TransactionPatch = { type?: TransactionType; categoryMajor?: string; categoryMinor?: string; memo?: string; hidden?: boolean }
 
+export type BulkTransactionPatch = Omit<TransactionPatch, 'memo'>
+
 export type ManualTransactionInput = {
   occurredAt: string
   type: TransactionType
@@ -59,6 +61,8 @@ export const transactionsApi = {
     if (memberId !== null) params.set('memberId', String(memberId))
     return apiFetch<TransactionView[]>(`/groups/${groupId}/transactions?${queryParams(params, filter, sort)}`)
   },
+  bulkUpdate: (ids: number[], patch: BulkTransactionPatch) =>
+    apiFetch<{ updated: number }>('/transactions/bulk', { method: 'PATCH', json: { ids, ...patch } }),
   update: (id: number, patch: TransactionPatch) =>
     apiFetch<TransactionView>(`/transactions/${id}`, { method: 'PATCH', json: patch }),
   remove: (id: number) => apiFetch<void>(`/transactions/${id}`, { method: 'DELETE' }),
