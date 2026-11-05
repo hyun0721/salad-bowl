@@ -33,7 +33,7 @@ it.each([false, true])('selects rows without opening details, narrow=%s', async 
   expect(screen.getByText(/1건 선택/)).toBeInTheDocument()
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   expect(screen.getByRole('row', { name: /김밥/ })).toHaveAttribute('aria-selected', 'true')
-  await user.click(screen.getByRole('checkbox', { name: '김밥 선택' }))
+  await user.click(screen.getByRole('checkbox', { name: '선택 김밥' }))
   expect(screen.getByText(/0건 선택/)).toBeInTheDocument()
   act(() => screen.getByRole('row', { name: /김밥/ }).focus())
   await user.keyboard(' ')
@@ -60,7 +60,7 @@ it.each([false, true])('excludes uneditable rows, narrow=%s', async (narrow) => 
   mockViewport(narrow)
   items = [base, { ...base, id: 2, description: '읽기 전용', editable: false }]
   const { user } = await start()
-  expect(screen.getByRole('checkbox', { name: '읽기 전용 선택' })).toBeDisabled()
+  expect(screen.getByRole('checkbox', { name: '선택 읽기 전용' })).toBeDisabled()
   await user.click(screen.getByText('읽기 전용'))
   expect(screen.getByText(/0건 선택/)).toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: '전체 선택' }))
