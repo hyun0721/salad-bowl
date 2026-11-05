@@ -2,6 +2,7 @@ package com.saladbowl.api.transaction;
 
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
@@ -53,6 +54,17 @@ public final class TransactionDtos {
             @Size(max = 100) String categoryMinor,
             @Size(max = 1000) String memo,
             Boolean hidden) {
+    }
+
+    public record BulkUpdateTransactionRequest(
+            @NotEmpty @Size(max = 1000) List<@NotNull Long> ids,
+            TransactionType type,
+            @Size(max = 100) String categoryMajor,
+            @Size(max = 100) String categoryMinor,
+            Boolean hidden) {
+    }
+
+    public record BulkUpdateResult(int updated) {
     }
 
     public record AuditView(long actorId, String actorNickname, String field, String before, String after,

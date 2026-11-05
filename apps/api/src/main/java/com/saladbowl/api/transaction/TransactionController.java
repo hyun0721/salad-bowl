@@ -4,6 +4,8 @@ import com.saladbowl.api.auth.CurrentUser;
 import com.saladbowl.api.common.ApiException;
 import com.saladbowl.api.common.ErrorCode;
 import com.saladbowl.api.transaction.TransactionDtos.AuditView;
+import com.saladbowl.api.transaction.TransactionDtos.BulkUpdateResult;
+import com.saladbowl.api.transaction.TransactionDtos.BulkUpdateTransactionRequest;
 import com.saladbowl.api.transaction.TransactionDtos.CategoryOption;
 import com.saladbowl.api.transaction.TransactionDtos.CoverageMonth;
 import com.saladbowl.api.transaction.TransactionDtos.ManualTransactionRequest;
@@ -105,6 +107,12 @@ public class TransactionController {
     public TransactionView update(@CurrentUser Long userId, @PathVariable long transactionId,
                                   @Valid @RequestBody UpdateTransactionRequest request) {
         return transactionService.update(userId, transactionId, request);
+    }
+
+    @PatchMapping("/transactions/bulk")
+    public BulkUpdateResult bulkUpdate(@CurrentUser Long userId,
+                                       @Valid @RequestBody BulkUpdateTransactionRequest request) {
+        return transactionService.bulkUpdate(userId, request);
     }
 
     @DeleteMapping("/transactions/{transactionId}")
