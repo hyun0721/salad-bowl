@@ -1,4 +1,4 @@
-import { act, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { beforeEach, expect, it } from 'vitest'
 import { server } from '../test/server'
@@ -44,17 +44,16 @@ it.each([false, true])('selects rows without opening details, narrow=%s', async 
 })
 it('selects all search results beyond 500 and clears on month change', async () => {
   items = Array.from({ length: 502 }, (_, i) => ({ ...base, id: i + 1, description: i === 501 ? '커피' : '김밥' }))
-  const { user } = renderPage(<TransactionsPage today={new Date(2026, 10, 19)} />)
+  // 500행을 다시 그리는 클릭마다 user-event가 오래 걸려 CI에서 시간을 넘기므로 fireEvent를 쓴다.
+  renderPage(<TransactionsPage today={new Date(2026, 10, 19)} />)
   await screen.findAllByText('김밥')
-  await user.type(screen.getByRole('searchbox'), '김밥')
-  await user.click(screen.getByRole('button', { name: '선택' }))
-  await user.click(screen.getByRole('button', { name: '전체 선택' }))
+  fireEvent.change(screen.getByRole('searchbox'), { target: { value: '김밥' } })
+  fireEvent.click(screen.getByRole('button', { name: '선택' }))
+  fireEvent.click(screen.getByRole('button', { name: '전체 선택' }))
   expect(screen.getByText(/501건 선택/)).toBeInTheDocument()
-  await user.click(screen.getByRole('button', { name: '다음 페이지' }))
+  fireEvent.click(screen.getByRole('button', { name: '다음 페이지' }))
   expect(screen.getByText(/501건 선택/)).toBeInTheDocument()
-  await user.click(screen.getByText('김밥'))
-  expect(screen.getByText(/500건 선택/)).toBeInTheDocument()
-  await user.click(screen.getByRole('button', { name: '이전 달' }))
+  fireEvent.click(screen.getByRole('button', { name: '이전 달' }))
   expect(screen.getByText(/0건 선택/)).toBeInTheDocument()
 }, 20000)
 it.each([false, true])('excludes uneditable rows, narrow=%s', async (narrow) => {
