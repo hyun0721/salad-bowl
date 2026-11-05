@@ -8,24 +8,27 @@ import SlowServerOverlay from './app/SlowServerOverlay'
 import UpdatePrompt from './app/UpdatePrompt'
 import { AuthProvider } from './auth/AuthProvider'
 import { DialogHistoryProvider } from './common/DialogHistory'
+import { AmountMaskProvider } from './common/AmountMask'
 import ToastRegion from './common/Toast'
 
 export default function App() {
   const [client] = useState(createQueryClient)
   return (
     <QueryClientProvider client={client}>
-      <AuthProvider>
-        <BrowserRouter>
-          <DialogHistoryProvider>
-            <ErrorBoundary>
-              <AppRoutes />
-            </ErrorBoundary>
-            <SlowServerOverlay />
-            <UpdatePrompt />
-            <ToastRegion />
-          </DialogHistoryProvider>
-        </BrowserRouter>
-      </AuthProvider>
+      <AmountMaskProvider>
+        <AuthProvider>
+          <BrowserRouter>
+            <DialogHistoryProvider>
+              <ErrorBoundary>
+                <AppRoutes />
+              </ErrorBoundary>
+              <SlowServerOverlay />
+              <UpdatePrompt />
+              <ToastRegion />
+            </DialogHistoryProvider>
+          </BrowserRouter>
+        </AuthProvider>
+      </AmountMaskProvider>
     </QueryClientProvider>
   )
 }

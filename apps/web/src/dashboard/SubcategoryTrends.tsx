@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router'
-import { formatWon, shiftMonth } from '../common/format'
+import { shiftMonth } from '../common/format'
+import { useAmountFormatter } from '../common/AmountMask'
 import DonutChart, { sliceStyle } from '../common/DonutChart'
 import { NARROW, useMediaQuery } from '../common/useMediaQuery'
 import Select from '../common/Select'
@@ -19,6 +20,7 @@ import breakdown from './CategoryBreakdown.module.css'
 import trendStyles from './CategoryTrend.module.css'
 
 export default function SubcategoryTrends({ groupId, month, members = [] }: { groupId: number; month: string; members?: Pick<MemberTotal, 'userId' | 'nickname'>[] }) {
+  const formatWon = useAmountFormatter('EXPENSE')
   const { pathname, search, state } = useLocation()
   const [params, setParams] = useSearchParams()
   const navigate = useNavigate()
@@ -101,7 +103,7 @@ export default function SubcategoryTrends({ groupId, month, members = [] }: { gr
         : <>
           {positiveTotal === 0 && <p className={ui.status}>이 달에 비율로 표시할 지출이 없습니다.</p>}
           {view === 'chart' ? positiveTotal > 0 && <div className={breakdown.content}>
-            <DonutChart compact={compact} slices={slices} centerLabel="총지출" centerValue={formatWon(positiveTotal)}
+            <DonutChart formatValue={formatWon} compact={compact} slices={slices} centerLabel="총지출" centerValue={formatWon(positiveTotal)}
               activeId={activeId} onActiveChange={setActiveId} onSelect={showTransactions} className={breakdown.chart} />
             <div className={breakdown.legend}>
               <ul className={breakdown.list}>{(expanded ? slices : slices.slice(0, 6)).map((slice, index) => {

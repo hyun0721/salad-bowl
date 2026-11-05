@@ -1,3 +1,4 @@
+import { TransactionAmount } from '../common/AmountMask'
 import Checkbox from '../common/Checkbox'
 import ComboBox from '../common/ComboBox'
 import Select from '../common/Select'
@@ -9,7 +10,7 @@ import { useAuth } from '../auth/AuthProvider'
 import { errorMessage } from '../common/errorMessage'
 import ConfirmDialog from '../common/ConfirmDialog'
 import { toast } from '../common/Toast'
-import { formatDateTime, formatInstant, formatSignedWon } from '../common/format'
+import { formatDateTime, formatInstant } from '../common/format'
 import Skeleton, { SkeletonRegion } from '../common/Skeleton'
 import ui from '../common/ui.module.css'
 import styles from './TransactionPanel.module.css'
@@ -80,7 +81,7 @@ export default function TransactionPanel({ tx, onDeleted, onSaved, loadDraft, on
 
   return (
     <div className={ui.stack}>
-      <p className={styles.amount}>{formatSignedWon(tx.amount)}</p>
+      <p className={styles.amount}><TransactionAmount type={tx.type} amount={tx.amount} /></p>
       <p className={ui.muted}>
         {[formatDateTime(tx.occurredAt), tx.paymentMethod, tx.ownerNickname, tx.source === 'MANUAL' ? '수동' : '엑셀']
           .filter(Boolean).join(' · ')}

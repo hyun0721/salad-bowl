@@ -1,9 +1,11 @@
-import { formatMonthLabel, formatWon } from '../common/format'
+import { formatMonthLabel } from '../common/format'
+import { useAmountFormatter } from '../common/AmountMask'
 import type { CategoryTrend } from './dashboardApi'
 import { expenseChange } from './expenseChange'
 import styles from './CategoryTrend.module.css'
 
 export default function TrendTable({ months, categories, label }: CategoryTrend & { label: string }) {
+  const formatWon = useAmountFormatter('EXPENSE')
   const min = Math.min(0, ...categories.flatMap((row) => row.expenses))
   const max = Math.max(0, ...categories.flatMap((row) => row.expenses))
   const y = (value: number) => 36 - (value - min) / (max - min || 1) * 32

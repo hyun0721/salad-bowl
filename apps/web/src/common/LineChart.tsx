@@ -6,7 +6,7 @@ import { formatMonthLabel, formatWon } from './format'
 
 // styleIndex: 일부만 보여 줄 때도 색이 바뀌지 않도록 전체 목록에서의 순번을 넘긴다. 없으면 배열 순번.
 export type LineSeries = { id: string; label: string; values: number[]; styleIndex?: number }
-type Props = { series: LineSeries[]; months: string[]; compact?: boolean; className?: string }
+type Props = { series: LineSeries[]; months: string[]; compact?: boolean; className?: string; formatValue?: (value: number) => string; hideValueLabels?: boolean }
 
 // oxlint-disable-next-line react/only-export-components
 export function lineStyleFor(index: number): { slot: number; dash: 'solid' | 'dashed' | 'dotted' } {
@@ -39,7 +39,7 @@ function escapeHtml(text: string): string {
 type TooltipItem = { dataIndex?: number; seriesName?: string; value?: number; marker?: string }
 
 // oxlint-disable-next-line react/only-export-components
-export function buildLineOption(series: LineSeries[], months: string[], { theme, compact }: { theme: ChartTheme; compact: boolean }) {
+export function buildLineOption(series: LineSeries[], months: string[], { theme, compact, formatValue = formatWon, hideValueLabels = false }: { theme: ChartTheme; compact: boolean; formatValue?: (value: number) => string; hideValueLabels?: boolean }) {
   return {
     textStyle: { fontFamily: theme.font, color: theme.ink, fontSize: 11 },
     grid: compact ? { left: 32, right: 8, top: 12, bottom: 24 } : { left: 48, right: 16, top: 16, bottom: 32 },
@@ -51,7 +51,7 @@ export function buildLineOption(series: LineSeries[], months: string[], { theme,
     },
     yAxis: {
       type: 'value',
-      axisLabel: { color: theme.inkMuted, formatter: compactWon },
+      axisLabel: { color: theme.inkMuted, show: !hideValueLabels, formatter: (value: number) => hideValueLabels ? '' : compactWon(value) },
       splitLine: { lineStyle: { color: theme.line } },
     },
     tooltip: {
@@ -61,7 +61,7 @@ export function buildLineOption(series: LineSeries[], months: string[], { theme,
         const month = months[params[0]?.dataIndex ?? -1]
         if (!month) return ''
         const rows = [...params].sort((a, b) => (b.value ?? 0) - (a.value ?? 0))
-          .map((item) => `${item.marker ?? ''}${escapeHtml(item.seriesName ?? '')} ${formatWon(item.value ?? 0)}`)
+          .map((item) => `${item.marker ?? ''}${escapeHtml(item.seriesName ?? '')} ${escapeHtml(formatValue(item.value ?? 0))}`)
         return [escapeHtml(formatMonthLabel(month)), ...rows].join('<br/>')
       },
     },
@@ -78,9 +78,9 @@ export function buildLineOption(series: LineSeries[], months: string[], { theme,
   } satisfies ChartOption
 }
 
-export default function LineChart({ series, months, compact = false, className }: Props) {
+export default function LineChart({ series, months, compact = false, className, formatValue = formatWon, hideValueLabels = false }: Props) {
   const theme = useChartTheme()
-  const option = useMemo(() => buildLineOption(series, months, { theme, compact }), [series, months, compact, theme])
+  const option = useMemo(() => buildLineOption(series, months, { theme, compact, formatValue, hideValueLabels }), [series, months, compact, theme, formatValue, hideValueLabels])
   // iOS PWA에서 첫 진입 시 선이 터치 전까지 보이지 않아 최초 애니메이션만 끈다.
   return <EChart option={option} height={compact ? 240 : 300} className={className} skipInitialAnimation />
 }

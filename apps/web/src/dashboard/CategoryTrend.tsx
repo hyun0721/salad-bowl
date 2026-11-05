@@ -1,5 +1,6 @@
 import { useId, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { useAmountFormatter, useAmountMask } from '../common/AmountMask'
 import LineChart, { lineStyleFor } from '../common/LineChart'
 import MonthPicker from '../common/MonthPicker'
 import SegmentedControl from '../common/SegmentedControl'
@@ -31,6 +32,8 @@ const compactPresets: { id: RangePreset; label: string }[] = [
 type Props = { groupId: number; month: string; title?: string; queryKey?: readonly unknown[]; load?: (from: string, to: string) => Promise<TrendData>; label?: string; enabled?: boolean; ready?: boolean }
 
 export default function CategoryTrend({ groupId, month, title = '대분류 추이', queryKey, load, label = '대분류', enabled = true, ready = true }: Props) {
+  const formatValue = useAmountFormatter('EXPENSE')
+  const { hidden } = useAmountMask()
   const [view, setView] = useState('chart')
   const titleId = useId()
   const compact = useMediaQuery(NARROW)
@@ -118,7 +121,7 @@ export default function CategoryTrend({ groupId, month, title = '대분류 추�
           </div>
           {visible.length === 0
             ? <p className={ui.status}>{label}를 하나 이상 고르세요.</p>
-            : <LineChart series={series} months={trend.data.months} compact={compact} className={styles.chart} />}
+            : <LineChart formatValue={formatValue} hideValueLabels={hidden.EXPENSE} series={series} months={trend.data.months} compact={compact} className={styles.chart} />}
           </> : <TrendTable months={trend.data.months} categories={tableCategories} label={label} />}
           </div>
         </>

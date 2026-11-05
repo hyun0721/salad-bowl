@@ -77,3 +77,19 @@ it('uses the wrapper and memoizes options until inputs change', () => {
   expect(chart.setOption).toHaveBeenCalledTimes(3)
   expect(chart.setOption.mock.calls[2][0].series[0].data).toEqual([0, 1])
 })
+
+it('accepts masked tooltip formatting and hides only Y-axis text', () => {
+  const option = buildLineOption(series, months, { ...opts, formatValue: () => '₩ •••••', hideValueLabels: true })
+  expect(option.yAxis.axisLabel.show).toBe(false)
+  expect(option.yAxis.axisLabel.formatter(12345)).toBe('')
+  expect(option.yAxis.splitLine).toEqual(buildLineOption(series, months, opts).yAxis.splitLine)
+  expect(option.series).toEqual(buildLineOption(series, months, opts).series)
+  expect(option.tooltip.formatter([{ dataIndex: 0, value: 12345, seriesName: '식비' }])).toContain('식비 ₩ •••••')
+})
+it('refreshes chart options when formatting changes while mounted', () => {
+  const { rerender } = render(<LineChart series={series} months={months} />)
+  rerender(<LineChart series={series} months={months} formatValue={() => '₩ •••••'} hideValueLabels />)
+  const option = chart.setOption.mock.calls.at(-1)![0]
+  expect(option.yAxis.axisLabel.show).toBe(false)
+  expect(option.tooltip.formatter([{ dataIndex: 0, value: 12345 }])).not.toContain('12,345')
+})

@@ -1,4 +1,4 @@
-import { formatWon } from './format'
+import { useAmountFormatter } from './AmountMask'
 import Skeleton from './Skeleton'
 import ui from './ui.module.css'
 import styles from './TotalsCards.module.css'
@@ -10,15 +10,16 @@ const KINDS: [TotalKind, string][] = [['income', '수입'], ['expense', '지출'
 type Props = { income: number; expense: number; onSelect: (kind: TotalKind) => void; opensDialog?: boolean }
 
 export default function TotalsCards({ income, expense, onSelect, opensDialog }: Props) {
+  const formatters = { income: useAmountFormatter('INCOME'), expense: useAmountFormatter('EXPENSE') }
   const amounts: Record<TotalKind, number> = { income, expense }
   return (
     <div className={styles.totals}>
       {KINDS.map(([kind, label]) => (
         <button key={kind} type="button" aria-haspopup={opensDialog ? 'dialog' : undefined}
-          aria-label={`${label} ${formatWon(amounts[kind])}`}
+          aria-label={`${label} ${formatters[kind](amounts[kind])}`}
           className={`${ui.card} ${styles.total}`} onClick={() => onSelect(kind)}>
           <span className={styles.label}>{label}</span>
-          <span className={`${styles.value} ${styles[kind]}`}>{formatWon(amounts[kind])}</span>
+          <span className={`${styles.value} ${styles[kind]}`}>{formatters[kind](amounts[kind])}</span>
         </button>
       ))}
     </div>
