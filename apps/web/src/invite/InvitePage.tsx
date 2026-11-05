@@ -9,6 +9,7 @@ import { usePageTitle } from '../common/usePageTitle'
 import { rememberSelectedGroup } from '../groups/GroupProvider'
 import { inviteApi, type InvitePreview } from './inviteApi'
 import styles from './InvitePage.module.css'
+import Icon from '../common/Icon'
 
 export default function InvitePage() {
   usePageTitle('그룹 초대')
@@ -53,7 +54,7 @@ function InviteError({ error, onRetry }: { error: unknown; onRetry: () => void }
     <>
       <p role="alert" className={ui.alert}>{errorMessage(error)}</p>
       <div className={ui.row}>
-        {!final && <button type="button" className={ui.button} onClick={onRetry}>다시 시도</button>}
+        {!final && <button type="button" className={ui.button} onClick={onRetry}><Icon name="refresh-cw" size={18} />다시 시도</button>}
         <Link to="/" className={`${ui.button} ${ui.linkButton}`}>홈으로</Link>
       </div>
     </>

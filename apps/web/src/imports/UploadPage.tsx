@@ -10,6 +10,7 @@ import { usePageTitle } from '../common/usePageTitle'
 import CoverageSection from './CoverageSection'
 import { importsApi } from './importsApi'
 import UploadForm from './UploadForm'
+import Icon from '../common/Icon'
 
 type Props = { today?: Date }
 
@@ -43,7 +44,7 @@ export default function UploadPage({ today: todayProp }: Props) {
         {history.isError && (
           <div className={ui.row}>
             <p role="alert" className={ui.alert}>업로드 이력을 불러오지 못했습니다.</p>
-            <button type="button" className={ui.button} onClick={() => void history.refetch()}>다시 시도</button>
+            <button type="button" className={ui.button} onClick={() => void history.refetch()}><Icon name="refresh-cw" size={18} />다시 시도</button>
           </div>
         )}
         {history.data && history.data.length === 0 && <p className={ui.status}>아직 올린 파일이 없습니다.</p>}

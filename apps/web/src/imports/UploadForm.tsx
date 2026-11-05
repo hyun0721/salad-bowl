@@ -61,7 +61,7 @@ export default function UploadForm({ onDone }: Props) {
         )}
       </FileDropZone>
       <div className={styles.actions}>
-        <button type="submit" className={`${ui.button} ${ui.primary}`} disabled={!file || upload.isPending}>
+        <button type="submit" className={`${ui.button} ${ui.primary} ${ui.cta}`} disabled={!file || upload.isPending}>
           <Icon name="upload" size={18} />{upload.isPending ? '올리는 중' : '업로드'}
         </button>
       </div>

@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react'
+import Icon from '../common/Icon'
 import styles from './ErrorBoundary.module.css'
 
 type Props = { children: ReactNode }
@@ -24,7 +25,7 @@ export default class ErrorBoundary extends Component<Props, State> {
         <h1 className={styles.title}>문제가 생겼습니다</h1>
         <p className={styles.text}>화면을 표시하지 못했습니다.</p>
         <button type="button" className={styles.button} onClick={() => window.location.reload()}>
-          다시 불러오기
+          <Icon name="refresh-cw" size={18} />다시 불러오기
         </button>
       </div>
     )

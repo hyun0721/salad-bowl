@@ -10,7 +10,7 @@ function renderSheet() {
       {({ close }) => (
         <>
           <p>나</p>
-          <button type="button" onClick={close}>닫기</button>
+          <button type="button" onClick={close}>완료</button>
         </>
       )}
     </BottomSheet>,
@@ -29,9 +29,22 @@ describe('BottomSheet', () => {
     const dialog = await screen.findByRole('dialog', { name: '계정' })
     expect(dialog).toHaveTextContent('나')
     expect(trigger).toHaveAttribute('aria-expanded', 'true')
-    await user.click(screen.getByRole('button', { name: '닫기' }))
+    await user.click(screen.getByRole('button', { name: '완료' }))
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     expect(trigger).toHaveAttribute('aria-expanded', 'false')
+    await waitFor(() => expect(trigger).toHaveFocus())
+  })
+
+  it('closes with the header close button and restores focus', async () => {
+    const user = renderSheet()
+    const trigger = screen.getByRole('button', { name: '계정' })
+    await user.click(trigger)
+
+    const close = screen.getByRole('button', { name: '닫기' })
+    expect(close).toHaveTextContent('')
+    await user.click(close)
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     await waitFor(() => expect(trigger).toHaveFocus())
   })
 

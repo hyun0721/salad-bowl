@@ -39,9 +39,9 @@ export default function ConfirmDialog(props: Props) {
           <>
             <p>{description}</p>
             {error && <p role="alert" className={ui.alert}>{error}</p>}
-            <div className={ui.row}>
+            <div className={ui.confirmActions}>
               <Button autoFocus className={ui.button} isDisabled={isPending} onPress={close}>취소</Button>
-              <Button aria-label={confirmAriaLabel} className={`${ui.button} ${ui.danger}`} isDisabled={isPending}
+              <Button aria-label={confirmAriaLabel} className={`${ui.button} ${ui.dangerFill} ${ui.cta}`} isDisabled={isPending}
                 onPress={() => onConfirm(close)}>{confirmLabel}</Button>
             </div>
           </>

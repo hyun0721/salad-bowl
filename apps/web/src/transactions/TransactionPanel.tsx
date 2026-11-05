@@ -11,6 +11,7 @@ import { errorMessage } from '../common/errorMessage'
 import ConfirmDialog from '../common/ConfirmDialog'
 import { toast } from '../common/Toast'
 import { formatDateTime, formatInstant } from '../common/format'
+import Icon from '../common/Icon'
 import Skeleton, { SkeletonRegion } from '../common/Skeleton'
 import ui from '../common/ui.module.css'
 import styles from './TransactionPanel.module.css'
@@ -105,7 +106,7 @@ export default function TransactionPanel({ tx, onDeleted, onSaved, loadDraft, on
                 confirmLabel="삭제 확인" isPending={remove.isPending} error={remove.isError ? errorMessage(remove.error) : null}
                 onOpen={() => remove.reset()} onConfirm={(close) => remove.mutate(tx.id, { onSuccess: () => { close(); onDeleted() } })} />
             )}
-            <button type="submit" className={`${ui.button} ${ui.primary} ${styles.save}`} disabled={update.isPending}>저장</button>
+            <button type="submit" className={`${ui.button} ${ui.primary} ${ui.cta} ${styles.save}`} disabled={update.isPending}>저장</button>
           </div>
         </form>
       ) : (
@@ -121,7 +122,7 @@ export default function TransactionPanel({ tx, onDeleted, onSaved, loadDraft, on
         {audits.isError && (
           <div className={ui.row}>
             <p role="alert" className={ui.alert}>수정 이력을 불러오지 못했습니다.</p>
-            <button type="button" className={ui.button} onClick={() => void audits.refetch()}>수정 이력 다시 시도</button>
+            <button type="button" className={ui.button} onClick={() => void audits.refetch()}><Icon name="refresh-cw" size={18} />수정 이력 다시 시도</button>
           </div>
         )}
         {audits.data && audits.data.length === 0 && <p className={ui.muted}>수정한 적이 없습니다.</p>}

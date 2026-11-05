@@ -4,6 +4,7 @@ import { useNarrowWhileOpen } from './useMediaQuery'
 import { useDialogHistory } from './DialogHistory'
 import styles from './Overlay.module.css'
 import ui from './ui.module.css'
+import Icon from './Icon'
 
 type FrameProps = {
   isOpen: boolean
@@ -55,7 +56,7 @@ export default function Dialog({ title, onClose, closeDisabled = false, children
   return (
     <DialogFrame isOpen onOpenChange={(open) => { if (!open && !closeDisabled) onClose() }}
       title={title} closeDisabled={closeDisabled}
-      headerAction={<button type="button" className={ui.button} disabled={closeDisabled} onClick={onClose}>닫기</button>}>
+      headerAction={<button type="button" className={`${ui.button} ${ui.iconButton} ${ui.ghost}`} aria-label="닫기" disabled={closeDisabled} onClick={onClose}><Icon name="x" /></button>}>
       {() => children}
     </DialogFrame>
   )
