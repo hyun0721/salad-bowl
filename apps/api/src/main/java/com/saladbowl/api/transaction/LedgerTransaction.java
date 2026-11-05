@@ -10,6 +10,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.DynamicUpdate;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -19,7 +20,9 @@ import java.util.Objects;
 /**
  * 회원 소유의 거래 한 건. 원본 필드는 import(또는 수동 추가) 값이고 API로 바꾸지 않는다.
  * 화면 값(타입·카테고리·메모)은 *_override와 hidden으로 바꾸며, 재 import가 이 필드를 덮어쓰지 않는다.
+ * 재 import와 웹 수정이 겹쳐도 서로의 컬럼을 되돌리지 않도록 바뀐 컬럼만 UPDATE한다.
  */
+@DynamicUpdate
 @Entity
 @Table(name = "transactions")
 public class LedgerTransaction {

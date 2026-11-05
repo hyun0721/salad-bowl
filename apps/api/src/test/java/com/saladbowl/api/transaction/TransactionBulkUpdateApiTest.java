@@ -131,6 +131,28 @@ class TransactionBulkUpdateApiTest extends IntegrationTest {
     }
 
     @Test
+    void otherUsersTransactionIsIndistinguishableFromMissingId() throws Exception {
+        AuthedUser outsider = TestAuth.signupAndLogin(mvc, "bulk-outsider@test.com", "외부인");
+        long outsiderTx = add(outsider, "외부 거래", -5000);
+        for (String other : new String[]{"" + outsiderTx, "999999999"}) {
+            bulk(member, request(memberTx + "," + other, "\"type\":\"INCOME\""))
+                    .andExpect(status().isNotFound()).andExpect(jsonPath("$.code").value("NOT_FOUND"));
+            bulk(member, request(adminTx + "," + other, "\"categoryMajor\":\"외식\""))
+                    .andExpect(status().isNotFound()).andExpect(jsonPath("$.code").value("NOT_FOUND"));
+        }
+        unchanged(memberTx, adminTx, outsiderTx);
+    }
+
+    @Test
+    void adminUpdatesOwnAndMembersTogether() throws Exception {
+        bulk(admin, request(adminTx + "," + memberTx + "," + secondMemberTx, "\"categoryMajor\":\"외식\""))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.updated").value(3));
+        for (long id : new long[]{adminTx, memberTx, secondMemberTx}) {
+            assertThat(transactions.findById(id).orElseThrow().getCategoryMajorOverride()).isEqualTo("외식");
+        }
+    }
+
+    @Test
     void negativeAmountCannotBecomeIncomeAndRollsBack() throws Exception {
         long positive = add(member, "양수 거래", 5000);
         bulk(member, request(positive + "," + memberTx, "\"type\":\"INCOME\""))
@@ -144,6 +166,7 @@ class TransactionBulkUpdateApiTest extends IntegrationTest {
         for (String json : new String[]{request("", "\"hidden\":true"),
                 request(tooMany, "\"hidden\":true"),
                 request(memberTx + "," + memberTx, "\"hidden\":true"),
+                request("null", "\"hidden\":true"),
                 request("" + memberTx, "\"type\":null,\"categoryMajor\":null,\"categoryMinor\":null,\"hidden\":null")}) {
             bulk(member, json).andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));

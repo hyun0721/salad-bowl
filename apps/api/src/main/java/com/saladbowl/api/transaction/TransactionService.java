@@ -173,18 +173,20 @@ public class TransactionService {
         if (byId.size() != request.ids().size()) {
             throw new ApiException(ErrorCode.NOT_FOUND, "transaction not found");
         }
+        // 수정 전에 전부 확인한다. 요청 순서대로 처리하면 앞 거래의 400·403이 뒤 id의 존재 여부를 드러낸다.
         Map<Long, Boolean> visible = new HashMap<>();
+        for (LedgerTransaction tx : byId.values()) {
+            if (tx.getOwnerId() != actorId && (tx.isHidden() || !visible.computeIfAbsent(tx.getOwnerId(),
+                    ownerId -> access.canViewOwnedBy(actorId, ownerId)))) {
+                throw new ApiException(ErrorCode.NOT_FOUND, "transaction not found");
+            }
+        }
         Map<Long, Boolean> editable = new HashMap<>();
         UpdateTransactionRequest update = new UpdateTransactionRequest(request.type(), request.categoryMajor(),
                 request.categoryMinor(), null, request.hidden());
         for (long id : request.ids()) {
             LedgerTransaction tx = byId.get(id);
-            boolean owner = tx.getOwnerId() == actorId;
-            if (!owner && (tx.isHidden() || !visible.computeIfAbsent(tx.getOwnerId(),
-                    ownerId -> access.canViewOwnedBy(actorId, ownerId)))) {
-                throw new ApiException(ErrorCode.NOT_FOUND, "transaction not found");
-            }
-            updateOne(actorId, tx, update, owner || editable.computeIfAbsent(tx.getOwnerId(),
+            updateOne(actorId, tx, update, tx.getOwnerId() == actorId || editable.computeIfAbsent(tx.getOwnerId(),
                     ownerId -> access.canEditOwnedBy(actorId, ownerId)));
         }
         return new BulkUpdateResult(request.ids().size());

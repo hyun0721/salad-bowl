@@ -51,6 +51,7 @@ export default function TransactionBulkEdit({ items, categories, onClose, onDone
           onSelectionChange={(key) => setType(key === 'unchanged' || key == null ? '' : key as TransactionType)} />
         <ComboBox label="대분류" value={major} onChange={setMajor} options={majorOptions(categories)} maxLength={100} />
         <ComboBox label="소분류" value={minor} onChange={setMinor} options={minorOptions(categories, major.trim())} maxLength={100} />
+        {major.trim() && !minor.trim() && <p className={ui.muted}>소분류는 지금 값 그대로입니다. 함께 바꾸려면 소분류도 입력하세요.</p>}
         {allMine && <Select variant="field" label="그룹에서 숨기기" selectedKey={hidden}
           items={[{ id: 'unchanged', label: '변경 안 함' }, { id: 'hide', label: '숨기기' }, { id: 'show', label: '숨기기 해제' }]}
           onSelectionChange={(key) => setHidden(String(key ?? 'unchanged'))} />}

@@ -10,6 +10,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -27,6 +30,9 @@ class LedgerTransactionRepositoryTest extends IntegrationTest {
 
     @Autowired
     ImportBatchRepository batches;
+
+    @Autowired
+    PlatformTransactionManager transactionManager;
 
     long ownerId;
     long batchId;
@@ -123,5 +129,25 @@ class LedgerTransactionRepositoryTest extends IntegrationTest {
 
         assertThat(owned).extracting(LedgerTransaction::getDescription).containsExactly("야식", "점심", "아침");
         assertThat(visible).extracting(LedgerTransaction::getId).containsExactly(late.getId(), early.getId());
+    }
+
+    @Test
+    void reimportOverlappingWebEditKeepsTheOverride() {
+        TransactionData data = TestLedger.data(TransactionType.EXPENSE, "2026-09-01T12:00:00", "식비", "김밥", -4000);
+        long id = transactions.saveAndFlush(LedgerTransaction.imported(ownerId, batchId, "c".repeat(64), data)).getId();
+        TransactionTemplate webEdit = new TransactionTemplate(transactionManager);
+        webEdit.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+
+        new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+            LedgerTransaction reimported = transactions.findById(id).orElseThrow();
+            webEdit.executeWithoutResult(inner ->
+                    transactions.findById(id).orElseThrow().setCategoryMajorOverride("외식"));
+            reimported.refreshOriginal(TestLedger.data(TransactionType.EXPENSE, "2026-09-01T12:00:00", "간식", "김밥", -4000));
+        });
+
+        LedgerTransaction saved = transactions.findById(id).orElseThrow();
+        assertThat(saved.getCategoryMajorOverride()).isEqualTo("외식");
+        saved.setCategoryMajorOverride(null);
+        assertThat(saved.displayCategory().major()).isEqualTo("간식");
     }
 }
