@@ -169,3 +169,13 @@ it('updates options for changed data while retaining the active highlight', () =
   expect(chart.setOption.mock.calls[0][0].series[0].data[0].value).toBe(240000)
   expect(chart.dispatchAction).toHaveBeenLastCalledWith({ type: 'highlight', seriesIndex: 0, name: '식비' })
 })
+
+it('accepts masked tooltip formatting and updates it while mounted', () => {
+  const formatValue = () => '₩ •••••'
+  expect(buildDonutOption(slices, { ...opts, formatValue }).tooltip.formatter({ name: '식비' })).toBe('음식<br/>₩ ••••• · 48%')
+  const { rerender } = render(<DonutChart {...props} />)
+  rerender(<DonutChart {...props} formatValue={formatValue} centerValue="₩ •••••" />)
+  const option = chart.setOption.mock.calls.at(-1)![0]
+  expect(option.tooltip.formatter({ name: '식비' })).not.toContain('120,000')
+  expect(option.graphic[0].children[1].style.text).toBe('₩ •••••')
+})

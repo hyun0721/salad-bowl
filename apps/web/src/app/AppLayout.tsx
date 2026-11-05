@@ -6,6 +6,7 @@ import Icon from '../common/Icon'
 import Select from '../common/Select'
 import Skeleton, { SkeletonRegion } from '../common/Skeleton'
 import { useMediaQuery } from '../common/useMediaQuery'
+import AmountSettings from './AmountSettings'
 import AccountSheet from './AccountSheet'
 import BottomTabBar from './BottomTabBar'
 import { AppPageLoading } from './PageLoading'
@@ -96,10 +97,14 @@ export default function AppLayout() {
           {narrow && <img src="/logo.svg" alt="Salad Bowl" width="28" height="28" className={styles.headerLogo} />}
           {narrow ? <div className={styles.groupSlot}>{groupArea}</div> : groupArea}
           {narrow ? (
+            <>
+            <AmountSettings narrow />
             <AccountSheet nickname={me?.nickname ?? ''} onLogout={onLogout} logoutFailed={logoutError} onOpen={() => setLogoutError(false)} />
+            </>
           ) : (
             <div className={styles.user}>
               <span>{me?.nickname}</span>
+              <AmountSettings narrow={false} />
               <button type="button" className={styles.logout} onClick={onLogout}><Icon name="log-out" size={18} />로그아웃</button>
             </div>
           )}

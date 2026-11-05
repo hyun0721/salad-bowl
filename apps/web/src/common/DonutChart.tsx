@@ -14,6 +14,7 @@ type Props = {
   onActiveChange: (id: string | null) => void
   onSelect: (id: string) => void
   compact?: boolean
+  formatValue?: (value: number) => string
   className?: string
 }
 
@@ -63,8 +64,8 @@ export function centerValueSize(text: string, count: number, compact: boolean): 
 }
 
 // oxlint-disable-next-line react/only-export-components
-export function buildDonutOption(slices: DonutSlice[], { centerLabel, centerValue, compact, theme }: {
-  centerLabel: string; centerValue: string; compact: boolean; theme: ChartTheme
+export function buildDonutOption(slices: DonutSlice[], { centerLabel, centerValue, compact, theme, formatValue = formatWon }: {
+  centerLabel: string; centerValue: string; compact: boolean; theme: ChartTheme; formatValue?: (value: number) => string
 }) {
   return {
     textStyle: { fontFamily: theme.font, fontSize: 11 },
@@ -73,7 +74,7 @@ export function buildDonutOption(slices: DonutSlice[], { centerLabel, centerValu
       textStyle: { fontSize: 12 },
       formatter: (params: { name?: string; dataIndex?: number }) => {
         const slice = slices.find((item) => item.id === params.name)
-        return slice ? `${escapeHtml(slice.label)}<br/>${formatWon(slice.value)}${slice.detail ? ` · ${escapeHtml(slice.detail)}` : ''}` : ''
+        return slice ? `${escapeHtml(slice.label)}<br/>${escapeHtml(formatValue(slice.value))}${slice.detail ? ` · ${escapeHtml(slice.detail)}` : ''}` : ''
       },
     },
     // 그룹만 중앙에 배치하고 자식 좌표를 고정해야 두 줄이 다시 같은 위치로 정렬되지 않는다.
@@ -117,12 +118,12 @@ export function buildDonutOption(slices: DonutSlice[], { centerLabel, centerValu
   } satisfies ChartOption
 }
 
-export default function DonutChart({ slices, centerLabel, centerValue, activeId, onActiveChange, onSelect, compact = false, className }: Props) {
+export default function DonutChart({ slices, centerLabel, centerValue, activeId, onActiveChange, onSelect, compact = false, className, formatValue = formatWon }: Props) {
   const theme = useChartTheme()
   const chartRef = useRef<ChartInstance | null>(null)
   const previousId = useRef<string | null>(null)
-  const option = useMemo(() => buildDonutOption(slices, { centerLabel, centerValue, compact, theme }),
-    [slices, centerLabel, centerValue, compact, theme])
+  const option = useMemo(() => buildDonutOption(slices, { centerLabel, centerValue, compact, theme, formatValue }),
+    [slices, centerLabel, centerValue, compact, theme, formatValue])
 
   useEffect(() => {
     if (previousId.current !== null) chartRef.current?.dispatchAction({ type: 'downplay', seriesIndex: 0, name: previousId.current })

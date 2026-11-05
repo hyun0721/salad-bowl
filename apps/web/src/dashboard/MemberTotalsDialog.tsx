@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { DialogFrame } from '../common/Dialog'
-import { formatWon } from '../common/format'
+import { useAmountFormatter } from '../common/AmountMask'
 import type { TotalKind } from '../common/TotalsCards'
 import Icon from '../common/Icon'
 import ui from '../common/ui.module.css'
@@ -16,6 +16,7 @@ export default function MemberTotalsDialog({ kind, summary, onClose }: Props) {
   const [lastKind, setLastKind] = useState(kind)
   if (kind !== null && lastKind !== kind) setLastKind(kind)
   const shown = kind ?? lastKind ?? 'income'
+  const formatWon = useAmountFormatter(shown)
   const rows = [...summary.byMember].sort((a, b) => b[shown] - a[shown])
 
   return (

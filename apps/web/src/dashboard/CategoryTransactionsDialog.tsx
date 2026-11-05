@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router'
 import CardList from '../common/CardList'
 import DataTable from '../common/DataTable'
 import { DialogFrame } from '../common/Dialog'
-import { formatWon } from '../common/format'
+import { useAmountFormatter } from '../common/AmountMask'
 import Icon from '../common/Icon'
 import SortButton from '../common/SortButton'
 import ui from '../common/ui.module.css'
@@ -19,6 +19,7 @@ import styles from './CategoryBreakdown.module.css'
 type Props = { groupId: number; month: string; category: string | null; minor?: string | null; onClose: () => void }
 
 export default function CategoryTransactionsDialog({ groupId, month, category, minor, onClose }: Props) {
+  const formatWon = useAmountFormatter('EXPENSE')
   const navigate = useNavigate()
   const narrow = useMediaQuery(NARROW)
   const [selectedId, setSelectedId] = useState<number | null>(null)

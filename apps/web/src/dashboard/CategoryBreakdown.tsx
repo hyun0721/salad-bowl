@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import DonutChart, { sliceStyle } from '../common/DonutChart'
 import { NARROW, useMediaQuery } from '../common/useMediaQuery'
-import { formatWon } from '../common/format'
+import { useAmountFormatter } from '../common/AmountMask'
 import ui from '../common/ui.module.css'
 import { percent } from './percent'
 import styles from './CategoryBreakdown.module.css'
@@ -15,6 +15,7 @@ import trendStyles from './CategoryTrend.module.css'
 type Props = { groupId: number; month: string; summary: MonthlySummary }
 
 export default function CategoryBreakdown({ groupId, month, summary }: Props) {
+  const formatWon = useAmountFormatter('EXPENSE')
   const [view, setView] = useState('chart')
   const memberQuery = useQuery({
     queryKey: ['summary', groupId, month, 'members'],
@@ -50,7 +51,7 @@ export default function CategoryBreakdown({ groupId, month, summary }: Props) {
           })),
         }))} /> : items.length === 0 ? <p className={ui.status}>지출이 없습니다.</p> : (
         <div className={styles.content}>
-          <DonutChart compact={compact} slices={slices}
+          <DonutChart formatValue={formatWon} compact={compact} slices={slices}
             centerLabel="총지출" centerValue={formatWon(summary.expense)} activeId={activeId}
             onActiveChange={setActiveId} onSelect={setCategory} className={styles.chart} />
           <div className={styles.legend}>

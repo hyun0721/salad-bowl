@@ -34,3 +34,7 @@
   .shell:has([data-fit-viewport]) .main { min-height: 0; }
   .content:has(> [data-fit-viewport]) { flex: 1; min-height: 0; overflow: hidden; padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px)); }
 }
+
+.settingsTrigger { min-width: 44px; min-height: 44px; flex: none; }
+.settingsContent { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-3); }
+.settingsContent h3 { margin: 0; font-size: var(--text-sm); }

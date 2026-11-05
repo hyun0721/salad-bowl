@@ -1,4 +1,4 @@
-import { formatWon } from '../common/format'
+import { useAmountFormatter } from '../common/AmountMask'
 import type { MemberTotal } from './dashboardApi'
 import styles from './DistributionBars.module.css'
 
@@ -10,10 +10,11 @@ type Props = {
   rows: Row[]; positiveTotal: number; members: Pick<MemberTotal, 'userId' | 'nickname'>[]
   onSelect?: (id: string) => void
 }
-const amount = (value: number) => `${value < 0 ? '-' : ''}${formatWon(value)}${value < 0 ? ' · 환불 초과' : ''}`
 const color = (index: number) => `var(--chart-${index % 8 + 1})`
 
 export default function DistributionBars({ rows, positiveTotal, members, onSelect }: Props) {
+  const formatWon = useAmountFormatter('EXPENSE')
+  const amount = (value: number) => `${value < 0 ? '-' : ''}${formatWon(value)}${value < 0 ? ' · 환불 초과' : ''}`
   const hasMembers = members.length > 0 && rows.some((row) => row.memberExpenses !== undefined)
   return <>
     {hasMembers && <div className={styles.legend} role="group" aria-label="멤버 범례">

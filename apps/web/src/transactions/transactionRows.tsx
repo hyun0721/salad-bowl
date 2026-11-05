@@ -1,5 +1,6 @@
+import { TransactionAmount } from '../common/AmountMask'
 import type { DataColumn } from '../common/DataTable'
-import { formatDateTime, formatSignedWon } from '../common/format'
+import { formatDateTime } from '../common/format'
 import ui from '../common/ui.module.css'
 import styles from './TransactionsPage.module.css'
 import type { TransactionView } from './transactionsApi'
@@ -22,7 +23,7 @@ export function transactionColumns(showOwner: boolean, showMajor = true): DataCo
     { id: 'description', label: '내용', isRowHeader: true, render: (tx) => <>{tx.description}{hiddenBadge(tx)}</> },
     { id: 'paymentMethod', label: '결제수단', width: '110px', render: (tx) => tx.paymentMethod },
     { id: 'amount', label: '금액', width: '120px', align: 'end', sortValue: (tx) => tx.amount,
-      render: (tx) => <span className={styles.amount}>{formatSignedWon(tx.amount)}</span> },
+      render: (tx) => <span className={styles.amount}><TransactionAmount type={tx.type} amount={tx.amount} /></span> },
   ]
 }
 
@@ -34,7 +35,7 @@ export function TransactionCard({ tx, showOwner, showMajor = true }: { tx: Trans
     <>
       <div className={styles.cardTop}>
         <span>{tx.description}{hiddenBadge(tx)}</span>
-        <span className={styles.amount}>{formatSignedWon(tx.amount)}</span>
+        <span className={styles.amount}><TransactionAmount type={tx.type} amount={tx.amount} /></span>
       </div>
       <div className={styles.cardMeta}>
         <span className={styles.cardInfo}>
