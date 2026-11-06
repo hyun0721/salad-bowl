@@ -291,7 +291,7 @@ export default function TransactionsPage({ today }: Props) {
           <button type="button" className={ui.button} disabled={saving || selectedIds.size === 0}
             onClick={() => setSelectedIds(new Set())}>선택 해제</button>
           <button type="button" className={`${ui.button} ${ui.primary}`} disabled={saving || selectedIds.size === 0 || list.isFetching}
-            onClick={() => setBulkOpen(true)}>{saving ? '저장 중' : '편집'}</button>
+            onClick={() => setBulkOpen(true)}>{saving ? '저장 중' : <><Icon name="pencil" size={18} />편집</>}</button>
           <button type="button" className={ui.button} disabled={saving} onClick={() => changeSelectionMode(false)}>취소</button>
         </div>
       </div>}

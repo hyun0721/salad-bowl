@@ -44,7 +44,7 @@
   .selectionBar { position: fixed; z-index: 4; left: 0; right: 0; bottom: calc(56px + env(safe-area-inset-bottom, 0px)); padding: var(--space-2) max(var(--space-4), env(safe-area-inset-right, 0px)) var(--space-2) max(var(--space-4), env(safe-area-inset-left, 0px)); background: var(--surface-000); border-top: 1px solid var(--line); }
   .selectionBar > span { width: 100%; }
   .selectionBar > div { width: 100%; gap: var(--space-1); }
-  .selectionBar button { flex: 1; padding-inline: var(--space-2); }
+  .selectionBar button { flex: 1; }
   .selecting .layout { margin-bottom: calc(1lh + max(44px, var(--control-height)) + 3 * var(--space-2) + 1px); }
 }
 

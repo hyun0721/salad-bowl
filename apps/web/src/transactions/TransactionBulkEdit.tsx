@@ -56,7 +56,7 @@ export default function TransactionBulkEdit({ items, categories, onClose, onDone
           items={[{ id: 'unchanged', label: '변경 안 함' }, { id: 'hide', label: '숨기기' }, { id: 'show', label: '숨기기 해제' }]}
           onSelectionChange={(key) => setHidden(String(key ?? 'unchanged'))} />}
         {bulkUpdate.isError && <p role="alert" className={ui.alert}>{errorMessage(bulkUpdate.error)}</p>}
-        <button type="submit" className={`${ui.button} ${ui.primary}`} disabled={disabled}>{saving ? '저장 중' : '적용'}</button>
+        <button type="submit" className={`${ui.button} ${ui.primary} ${ui.cta}`} disabled={disabled}>{saving ? '저장 중' : '적용'}</button>
       </form>
     </Dialog>
   )
