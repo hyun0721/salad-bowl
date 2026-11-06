@@ -31,12 +31,10 @@
 }
 
 .listScroll { flex: 1; min-height: 0; overflow: auto; }
-.pagination { flex: none; display: flex; align-items: center; justify-content: flex-end; gap: var(--space-3); padding: var(--space-3) var(--space-4); border-top: 1px solid var(--line); }
 .skeletonCard { cursor: default; }
 .skeletonCard .cardTop, .skeletonCard .cardMeta { min-height: 1lh; align-items: center; }
 .skeletonInset { margin-right: var(--space-2); }
 .skeletonEnd { margin-left: auto; }
-.pageStep { width: var(--control-height); padding: 0; }
 
 .selectionBar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2); }
 .selectionBar > span { font-variant-numeric: tabular-nums; }

@@ -43,17 +43,16 @@ it.each([false, true])('selects rows without opening details, narrow=%s', async 
   await user.click(screen.getByRole('button', { name: '취소' }))
   expect(screen.getByRole('button', { name: '선택' })).toHaveFocus()
 })
-it('selects all search results beyond 500 and clears on month change', async () => {
+it('selects all search results beyond rendered rows and clears on month change', async () => {
   items = Array.from({ length: 502 }, (_, i) => ({ ...base, id: i + 1, description: i === 501 ? '커피' : '김밥' }))
-  // 500행을 다시 그리는 클릭마다 user-event가 오래 걸려 CI에서 시간을 넘기므로 fireEvent를 쓴다.
+  // 300행을 다시 그리는 클릭마다 user-event가 오래 걸려 CI에서 시간을 넘기므로 fireEvent를 쓴다.
   renderPage(<TransactionsPage today={new Date(2026, 10, 19)} />)
   await screen.findAllByText('김밥')
   fireEvent.change(screen.getByRole('searchbox'), { target: { value: '김밥' } })
   fireEvent.click(screen.getByRole('button', { name: '선택' }))
   fireEvent.click(screen.getByRole('button', { name: '전체 선택' }))
   expect(screen.getByText(/501건 선택/)).toBeInTheDocument()
-  fireEvent.click(screen.getByRole('button', { name: '다음 페이지' }))
-  expect(screen.getByText(/501건 선택/)).toBeInTheDocument()
+  expect(screen.getByText('300 / 501건 표시')).toHaveAttribute('role', 'status')
   fireEvent.click(screen.getByRole('button', { name: '이전 달' }))
   expect(screen.getByText(/0건 선택/)).toBeInTheDocument()
 }, 20000)

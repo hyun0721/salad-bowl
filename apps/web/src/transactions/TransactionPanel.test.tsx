@@ -21,7 +21,8 @@ describe('TransactionPanel', () => {
     server.use(http.get('*/api/me/categories', () => HttpResponse.json([])))
   })
 
-  it('sends only the fields that changed', async () => {
+  it('requires a minor after changing major and sends only changed fields', async () => {
+    server.use(http.get('*/api/me/categories', () => HttpResponse.json([{ type: 'EXPENSE', major: '외식', count: 1, minors: [{ minor: '저녁', count: 1 }] }])))
     auditsHandler()
     let body: unknown
     server.use(http.patch('*/api/transactions/7', async ({ request }) => {
@@ -30,13 +31,26 @@ describe('TransactionPanel', () => {
     }))
     const { user } = renderPage(<TransactionPanel tx={mine} onDeleted={vi.fn()} />)
 
-    const major = await screen.findByLabelText('대분류')
-    await user.clear(major)
-    await user.type(major, '외식')
+    await user.click(await screen.findByRole('button', { name: /대분류/ }))
+    await user.click(await screen.findByRole('option', { name: '외식' }))
+    expect(screen.getByRole('button', { name: '저장' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /소분류/ })).toHaveTextContent('선택')
+    await user.click(screen.getByRole('button', { name: /소분류/ }))
+    await user.click(screen.getByRole('option', { name: '저녁' }))
     await user.click(screen.getByRole('button', { name: '저장' }))
 
     expect(await screen.findByText('저장했습니다.')).toBeInTheDocument()
-    expect(body).toEqual({ categoryMajor: '외식' })
+    expect(body).toEqual({ categoryMajor: '외식', categoryMinor: '저녁' })
+  })
+
+  it('keeps current categories absent from candidates and omits major reset for unedited rows', async () => {
+    auditsHandler()
+    const { user } = renderPage(<TransactionPanel tx={mine} onDeleted={vi.fn()} />)
+    expect(await screen.findByRole('button', { name: /대분류/ })).toHaveTextContent('식비')
+    expect(screen.getByRole('button', { name: /소분류/ })).toHaveTextContent('점심')
+    await user.click(screen.getByRole('button', { name: /대분류/ }))
+    expect(screen.getByRole('option', { name: '식비' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.queryByRole('option', { name: '원래 값' })).not.toBeInTheDocument()
   })
 
   it('calls onSaved after a successful update', async () => {
@@ -171,15 +185,19 @@ describe('TransactionPanel', () => {
 
   it('shows the restored original value after clearing an override and saving', async () => {
     auditsHandler()
-    server.use(http.patch('*/api/transactions/7', () => HttpResponse.json(mine)))
+    let body: unknown
+    server.use(http.patch('*/api/transactions/7', async ({ request }) => { body = await request.json(); return HttpResponse.json(mine) }))
     const { user } = renderPage(<TransactionPanel tx={{ ...mine, categoryMajor: '외식', edited: true }} onDeleted={vi.fn()} />)
 
-    const major = await screen.findByLabelText('대분류')
-    await user.clear(major)
+    await user.click(await screen.findByRole('button', { name: /대분류/ }))
+    await user.click(screen.getByRole('option', { name: '원래 값' }))
+    expect(screen.getByRole('button', { name: /소분류/ })).toBeDisabled()
     await user.click(screen.getByRole('button', { name: '저장' }))
 
     await screen.findByText('저장했습니다.')
-    expect(screen.getByLabelText('대분류')).toHaveValue('식비')
+    expect(screen.getByRole('button', { name: /대분류/ })).toHaveTextContent('식비')
+    expect(screen.getByRole('button', { name: /소분류/ })).toHaveTextContent('점심')
+    expect(body).toEqual({ categoryMajor: '', categoryMinor: '' })
   })
 
   it('shows audit times in Seoul time for UTC and offset timestamps', async () => {

@@ -10,7 +10,7 @@ export const categoriesApi = {
   list: () => apiFetch<CategoryOption[]>('/me/categories'),
 }
 
-/** 대분류·소분류 입력칸의 후보. 실패하거나 불러오는 중이면 후보 없이 일반 입력칸처럼 쓴다. */
+/** 대분류·소분류 Select에서 고르는 기존 분류 목록. 로딩·오류 상태는 호출 화면에서 처리한다. */
 export function useCategories() {
   return useQuery({ queryKey: ['categories'], queryFn: categoriesApi.list, staleTime: 5 * 60 * 1000 })
 }

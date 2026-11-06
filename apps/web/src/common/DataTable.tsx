@@ -18,14 +18,14 @@ type Props<T extends { id: Key }> = {
   label: string
   columns: DataColumn<T>[]
   items: T[]
-  pagination?: { page: number; pageSize: number; onSort: () => void }
+  visibleRows?: { count: number; onSort: () => void }
   rowText: (item: T) => string
   currentId?: Key | null
   onRowAction?: (id: Key) => void
   selection?: Pick<TableProps, 'selectionMode' | 'selectionBehavior' | 'selectedKeys' | 'onSelectionChange' | 'disabledKeys'>
 }
 
-export default function DataTable<T extends { id: Key }>({ label, columns, items, rowText, currentId, onRowAction, pagination, selection }: Props<T>) {
+export default function DataTable<T extends { id: Key }>({ label, columns, items, rowText, currentId, onRowAction, visibleRows, selection }: Props<T>) {
   const [sort, setSort] = useState<SortDescriptor>()
   const sorted = useMemo(() => {
     const value = columns.find((c) => c.id === sort?.column)?.sortValue
@@ -40,7 +40,7 @@ export default function DataTable<T extends { id: Key }>({ label, columns, items
 
   const cellClass = (c: DataColumn<T>) => (c.align === 'end' ? `${styles.cell} ${styles.end}` : styles.cell)
   return (
-    <Table selectedKeys={selection?.selectedKeys ?? []} {...selection} aria-label={label} sortDescriptor={sort} onSortChange={(next) => { setSort(next); pagination?.onSort() }} onRowAction={onRowAction} className={styles.table}>
+    <Table selectedKeys={selection?.selectedKeys ?? []} {...selection} aria-label={label} sortDescriptor={sort} onSortChange={(next) => { setSort(next); visibleRows?.onSort() }} onRowAction={onRowAction} className={styles.table}>
       <TableHeader columns={columns} className={styles.head}>
         {(c) => (
           <Column id={c.id} isRowHeader={c.isRowHeader} allowsSorting={!!c.sortValue} style={{ width: c.width }} className={cellClass(c)}>
@@ -53,7 +53,7 @@ export default function DataTable<T extends { id: Key }>({ label, columns, items
           </Column>
         )}
       </TableHeader>
-      <TableBody items={pagination ? sorted.slice(pagination.page * pagination.pageSize, (pagination.page + 1) * pagination.pageSize) : sorted} dependencies={[currentId, columns]}>
+      <TableBody items={visibleRows ? sorted.slice(0, visibleRows.count) : sorted} dependencies={[currentId, columns]}>
         {(item) => (
           <Row id={item.id} columns={columns} textValue={rowText(item)}
             className={item.id === currentId ? `${styles.row} ${styles.current}` : styles.row}>
