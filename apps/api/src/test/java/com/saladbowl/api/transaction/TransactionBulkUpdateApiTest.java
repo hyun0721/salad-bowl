@@ -244,6 +244,27 @@ class TransactionBulkUpdateApiTest extends IntegrationTest {
     }
 
     @Test
+    void memoLengthCountsCodePointsAndOnlyAppliesToChangedMemos() throws Exception {
+        long id = withMemo("😀".repeat(600));
+        bulk(member, request("" + id, "\"hidden\":true")).andExpect(status().isOk());
+        assertThat(transactions.findById(id).orElseThrow().isHidden()).isTrue();
+        long big = withMemo("😀".repeat(950));
+        bulk(member, request("" + big, "\"addTags\":[\"" + "a".repeat(20) + "\",\"" + "b".repeat(20) + "\",\""
+                + "c".repeat(20) + "\"]")).andExpect(status().isBadRequest());
+        long exact = withMemo("😀".repeat(990));
+        bulk(member, request("" + exact, "\"addTags\":[\"" + "a".repeat(8) + "\"]")).andExpect(status().isOk());
+        assertThat(transactions.findById(exact).orElseThrow().displayMemo().codePointCount(0,
+                transactions.findById(exact).orElseThrow().displayMemo().length())).isEqualTo(1000);
+    }
+
+    @Test
+    void removingEveryTagKeepsRemainingLineBreak() throws Exception {
+        long id = withMemo("#여행\n#제주");
+        bulk(member, request("" + id, "\"removeTags\":[\"여행\",\"제주\"]")).andExpect(status().isOk());
+        assertThat(transactions.findById(id).orElseThrow().getMemoOverride()).isEqualTo("\n");
+    }
+
+    @Test
     void categoryPairAndTagValidation() throws Exception {
         for (String fields : new String[]{"\"categoryMajor\":\"식비\"", "\"categoryMinor\":\"\"",
                 "\"categoryMajor\":\" \",\"categoryMinor\":\"\"", "\"addTags\":[\"a b\"]",

@@ -29,3 +29,14 @@ it('matches server normalization, boundaries and whitespace cases', () => {
   for (const raw of ['', '#', '##여행', 'a b', 'a-b', 'a'.repeat(51), null]) expect(normalizeTag(raw)).toBeNull()
   expect(normalizeTag('#' + decomposed)).toBe('결혼준비')
 })
+it('treats the same unicode whitespace set as the server before a tag', () => {
+  for (const space of ['\u00A0', '\u3000', '\uFEFF', '\u2003', '\t', '\u000B']) {
+    expect(extractTags(`숙소${space}#여행`)).toEqual(['여행'])
+    expect(removeTags(`숙소${space}#여행 끝`, ['여행'])).toBe('숙소 끝')
+    expect(addTags(`숙소${space}#여행`, ['여행'])).toBe(`숙소${space}#여행`)
+  }
+  expect(extractTags('a #b')).toEqual(['b'])
+  expect(extractTags('\u200B#여행')).toEqual([])
+  expect(removeTags('\u00A0#여행 끝', ['여행'])).toBe(' 끝')
+  expect(addTags('숙소', ['여행'])).toBe('숙소 #여행')
+})

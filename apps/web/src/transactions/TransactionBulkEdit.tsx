@@ -40,7 +40,7 @@ export default function TransactionBulkEdit({ items, categories, groupId, onClos
     return [...counts].sort(([a, x], [b, y]) => y - x || a.localeCompare(b))
   }, [items])
   const overflowing = addedTags.length || removedTags.length
-    ? items.filter((tx) => addTags(removeTags(tx.memo, removedTags), addedTags).length > 1000).length : 0
+    ? items.filter((tx) => [...addTags(removeTags(tx.memo, removedTags), addedTags)].length > 1000).length : 0
   const allMine = items.every((tx) => tx.ownerId === me?.userId)
   const allowIncome = items.every((tx) => tx.amount > 0 || tx.type === 'INCOME')
   const tooMany = items.length > 1000

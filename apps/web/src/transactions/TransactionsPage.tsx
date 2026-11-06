@@ -124,22 +124,22 @@ export default function TransactionsPage({ today }: Props) {
 
   const selectionScope = JSON.stringify([selectedGroupId, groupId, month, memberId, filter, search])
   const [previousScope, setPreviousScope] = useState(selectionScope)
-  const [previousItems, setPreviousItems] = useState(list.data)
+  const [previousItems, setPreviousItems] = useState(items)
   if (previousScope !== selectionScope) {
     setPreviousScope(selectionScope)
     setSelectedIds(new Set())
     setBulkOpen(false)
   }
-  if (list.data && previousItems !== list.data) {
-    setPreviousItems(list.data)
+  if (list.data && previousItems !== items) {
+    setPreviousItems(items)
     if (previousScope === selectionScope) {
-      const editableIds = new Set(list.data.filter((tx) => tx.editable).map((tx) => tx.id))
+      const editableIds = new Set(items.filter((tx) => tx.editable).map((tx) => tx.id))
       if ([...selectedIds].some((id) => !editableIds.has(id))) {
         setSelectedIds(new Set([...selectedIds].filter((id) => editableIds.has(id))))
       }
     }
   }
-  const selectedItems = (list.data ?? previousItems ?? []).filter((tx) => selectedIds.has(tx.id) && tx.editable)
+  const selectedItems = (list.data ? items : previousItems).filter((tx) => selectedIds.has(tx.id) && tx.editable)
   const total = selectedItems.some((tx) => hiddenAmounts[tx.type])
     ? '₩ •••••' : formatSignedWon(selectedItems.reduce((sum, tx) => sum + tx.amount, 0))
 

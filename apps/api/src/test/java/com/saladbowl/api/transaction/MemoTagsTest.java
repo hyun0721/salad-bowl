@@ -38,4 +38,17 @@ class MemoTagsTest {
         }
         assertThatIllegalArgumentException().isThrownBy(() -> MemoTags.normalizeTag(null));
     }
+
+    @Test
+    void unicodeWhitespaceBeforeTagMatchesWeb() {
+        for (String space : new String[]{"\u00A0", "\u3000", "\uFEFF", "\u2003", "\t", "\u000B"}) {
+            assertThat(MemoTags.extract("숙소" + space + "#여행")).containsExactly("여행");
+            assertThat(MemoTags.remove("숙소" + space + "#여행 끝", List.of("여행"))).isEqualTo("숙소 끝");
+            assertThat(MemoTags.add("숙소" + space + "#여행", List.of("여행"))).isEqualTo("숙소" + space + "#여행");
+        }
+        assertThat(MemoTags.extract("a #b")).containsExactly("b");
+        assertThat(MemoTags.extract("\u200B#여행")).isEmpty();
+        assertThat(MemoTags.remove("\u00A0#여행 끝", List.of("여행"))).isEqualTo(" 끝");
+        assertThat(MemoTags.add("숙소", List.of("여행"))).isEqualTo("숙소 #여행");
+    }
 }

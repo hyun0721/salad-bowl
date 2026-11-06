@@ -1,4 +1,8 @@
-const TAG = /(?<!\S)#([\p{L}\p{N}_]{1,50})(?![\p{L}\p{N}_])/gu
+// 서버(MemoTags.java)와 같은 명시 집합이다. \s는 엔진마다 달라 기본 \S를 쓰지 않는다.
+const SPACE = '\\t\\n\\r\\f\\v \\u00A0\\u1680\\u2000-\\u200A\\u2028\\u2029\\u202F\\u205F\\u3000\\uFEFF'
+const TAG = new RegExp(`(?<![^${SPACE}])#([\\p{L}\\p{N}_]{1,50})(?![\\p{L}\\p{N}_])`, 'gu')
+const REMOVABLE = new RegExp(`^[${SPACE}]$`, 'u')
+const removable = (char: string | undefined) => char !== undefined && char !== '\n' && char !== '\r' && REMOVABLE.test(char)
 
 export function normalizeTag(raw: string | null): string | null {
   if (raw === null) return null
@@ -39,8 +43,8 @@ export function removeTags(memo: string | null, tags: string[]): string {
     if (!removed.has(match[1])) continue
     result += normalized.slice(from, match.index)
     let end = match.index + match[0].length
-    if (result.endsWith(' ')) result = result.slice(0, -1)
-    else if (!result && normalized[end] === ' ') end++
+    if (removable(result.at(-1))) result = result.slice(0, -1)
+    else if (!result && removable(normalized[end])) end++
     from = end
     changed = true
   }

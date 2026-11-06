@@ -317,3 +317,34 @@ it.each([false, true])('tag buttons support keyboard search without opening a tr
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 })
 
+
+it('counts memo length in code points before blocking a tag edit', async () => {
+  items = [{ ...base, memo: '😀'.repeat(990) }, { ...base, id: 2, description: '커피', memo: '😀'.repeat(998) }]
+  const { user } = await openBulk()
+  await user.type(screen.getByRole('textbox', { name: '태그 추가' }), '#여행')
+  expect(screen.getByText('1건은 메모가 1,000자를 넘어 태그를 추가할 수 없습니다.')).toBeInTheDocument()
+  await user.clear(screen.getByRole('textbox', { name: '태그 추가' }))
+  await user.type(screen.getByRole('textbox', { name: '태그 추가' }), '#' + 'a'.repeat(8))
+  expect(screen.getByText('1건은 메모가 1,000자를 넘어 태그를 추가할 수 없습니다.')).toBeInTheDocument()
+})
+it('drops selected rows that a refreshed list no longer matches the search for', async () => {
+  let body: unknown
+  server.use(http.patch('*/api/transactions/bulk', async ({ request }) => {
+    body = await request.json(); return HttpResponse.json({ updated: 1 })
+  }))
+  items = [{ ...base, memo: '#여행' }, { ...base, id: 2, description: '커피', memo: '#여행' }]
+  const { user, client } = renderPage(<TransactionsPage today={new Date(2026, 10, 19)} />)
+  await screen.findByText('김밥')
+  await user.type(screen.getByRole('searchbox'), '#여행')
+  await user.click(screen.getByRole('button', { name: '선택' }))
+  await user.click(screen.getByRole('button', { name: '전체 선택' }))
+  expect(screen.getByText(/2건 선택/)).toBeInTheDocument()
+  items = [{ ...base, memo: '#여행' }, { ...base, id: 2, description: '커피', memo: '#제주' }]
+  await act(async () => { await client.invalidateQueries({ queryKey: ['transactions'] }) })
+  await waitFor(() => expect(screen.getByText(/1건 선택/)).toBeInTheDocument())
+  await user.click(screen.getByRole('button', { name: '편집' }))
+  await user.type(screen.getByRole('textbox', { name: '태그 추가' }), '#새태그')
+  await user.click(screen.getByRole('button', { name: '적용' }))
+  await screen.findByText('1건을 수정했습니다.')
+  expect(body).toEqual({ ids: [1], addTags: ['새태그'] })
+})

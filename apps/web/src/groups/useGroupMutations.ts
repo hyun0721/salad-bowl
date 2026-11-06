@@ -29,6 +29,7 @@ export function useGroupMutations() {
       queryClient.invalidateQueries({ queryKey: ['groups', groupId] }),
       queryClient.invalidateQueries({ queryKey: ['summary', groupId] }),
       queryClient.invalidateQueries({ queryKey: ['transactions', 'group', groupId] }),
+      queryClient.invalidateQueries({ queryKey: ['tags', 'group', groupId] }),
     ]),
   })
   const leave = useMutation({
@@ -46,6 +47,7 @@ export function useGroupMutations() {
       queryClient.invalidateQueries({ queryKey: ['bans', groupId] }),
       queryClient.invalidateQueries({ queryKey: ['summary', groupId] }),
       queryClient.invalidateQueries({ queryKey: ['transactions', 'group', groupId] }),
+      queryClient.invalidateQueries({ queryKey: ['tags', 'group', groupId] }),
     ]),
   })
   const unban = useMutation({

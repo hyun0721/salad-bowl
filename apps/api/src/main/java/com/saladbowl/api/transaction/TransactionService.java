@@ -1,5 +1,7 @@
 package com.saladbowl.api.transaction;
 
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import com.saladbowl.api.common.ApiException;
 import com.saladbowl.api.common.ErrorCode;
 import com.saladbowl.api.group.GroupAccess;
@@ -94,22 +96,29 @@ public class TransactionService {
         return owners.isEmpty() ? List.of() : categoryOptions(transactions.countVisibleDisplayCategories(owners));
     }
 
+    // shortcut: 최근 2만 건 메모만 집계한다. 더 필요하면 DB 집계로 바꾼다.
+    private static final int MAX_TAG_MEMOS = 20_000;
+    private static final int MAX_DISTINCT_TAGS = 20_000;
+    private static final Pageable TAG_SCAN = PageRequest.of(0, MAX_TAG_MEMOS);
+
     @Transactional(readOnly = true)
     public List<TagCount> tags(long userId) {
-        return tagCounts(transactions.findDisplayMemosWithTags(userId));
+        return tagCounts(transactions.findDisplayMemosWithTags(userId, TAG_SCAN));
     }
 
     @Transactional(readOnly = true)
     public List<TagCount> groupTags(long groupId, long userId) {
         access.requireMember(groupId, userId);
         List<Long> owners = access.sharedOwnerIds(groupId);
-        return owners.isEmpty() ? List.of() : tagCounts(transactions.findVisibleDisplayMemosWithTags(owners));
+        return owners.isEmpty() ? List.of() : tagCounts(transactions.findVisibleDisplayMemosWithTags(owners, TAG_SCAN));
     }
 
     private List<TagCount> tagCounts(List<String> memos) {
         Map<String, Long> counts = new HashMap<>();
         for (String memo : memos) {
-            for (String tag : MemoTags.extract(memo)) counts.merge(tag, 1L, Long::sum);
+            for (String tag : MemoTags.extract(memo)) {
+                if (counts.size() < MAX_DISTINCT_TAGS || counts.containsKey(tag)) counts.merge(tag, 1L, Long::sum);
+            }
         }
         return counts.entrySet().stream().map(e -> new TagCount(e.getKey(), e.getValue()))
                 .sorted(Comparator.comparingLong(TagCount::count).reversed().thenComparing(TagCount::tag))
@@ -211,11 +220,19 @@ public class TransactionService {
                 throw new ApiException(ErrorCode.NOT_FOUND, "transaction not found");
             }
         }
+        boolean tagEdit = !addTags.isEmpty() || !removeTags.isEmpty();
         Map<Long, String> memos = new HashMap<>();
-        for (LedgerTransaction tx : byId.values()) {
-            memos.put(tx.getId(), MemoTags.add(MemoTags.remove(tx.displayMemo(), removeTags), addTags));
+        if (tagEdit) {
+            for (LedgerTransaction tx : byId.values()) {
+                memos.put(tx.getId(), MemoTags.add(MemoTags.remove(tx.displayMemo(), removeTags), addTags));
+            }
         }
-        long overflow = memos.values().stream().filter(memo -> memo.length() > 1000).count();
+        // 가져오기와 같이 코드포인트로 센다. 메모가 바뀌는 거래만 검사한다.
+        long overflow = byId.values().stream().filter(tx -> {
+            String memo = memos.get(tx.getId());
+            return memo != null && !memo.equals(Objects.toString(tx.displayMemo(), ""))
+                    && memo.codePointCount(0, memo.length()) > 1000;
+        }).count();
         if (overflow > 0) {
             throw new ApiException(ErrorCode.VALIDATION_FAILED, overflow + " transactions exceed the 1000 character memo limit");
         }
@@ -232,8 +249,8 @@ public class TransactionService {
                         request.categoryMinor().strip(), tx.getCategoryMinor(), tx::setCategoryMinorOverride);
             }
             String memo = memos.get(id);
-            if (!memo.equals(Objects.toString(tx.displayMemo(), ""))) {
-                String next = memo.isBlank() ? (tx.getOriginalMemo() == null || tx.getOriginalMemo().isEmpty() ? null : "")
+            if (memo != null && !memo.equals(Objects.toString(tx.displayMemo(), ""))) {
+                String next = memo.isEmpty() ? (tx.getOriginalMemo() == null || tx.getOriginalMemo().isEmpty() ? null : "")
                         : Objects.equals(memo, tx.getOriginalMemo()) ? null : memo;
                 audits.save(new TransactionAudit(id, actorId, "memo", tx.getMemoOverride(), next));
                 tx.setMemoOverride(next);
