@@ -12,7 +12,7 @@
 .listCard thead th { position: sticky; top: 0; z-index: 1; background: var(--surface-000); box-shadow: inset 0 -1px var(--line); }
 .cardTop { display: flex; justify-content: space-between; gap: var(--space-3); font-weight: 600; }
 .cardTop > :first-child { min-width: 0; overflow-wrap: anywhere; }
-.cardMeta { display: flex; align-items: center; gap: var(--space-3); font-size: var(--text-sm); color: var(--ink-muted); }
+.cardMeta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); font-size: var(--text-sm); color: var(--ink-muted); }
 /* 분류 | 메모는 한 줄로 두고 넘치면 말줄임한다. 메모 전문은 상세 창에서 본다. */
 .cardInfo { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cardMeta .when { flex: none; margin-left: auto; }
@@ -50,3 +50,8 @@
 
 .cardSelection { display: flex; align-items: center; gap: var(--space-3); }
 .cardContent { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-1); }
+
+.categoryFields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }
+
+.tagChip { max-width: 100%; overflow-wrap: anywhere; white-space: normal; margin-left: var(--space-2); }
+.cardMeta .tagChip { margin-left: 0; }

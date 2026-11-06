@@ -1,0 +1,31 @@
+import { expect, it } from 'vitest'
+import { addTags, extractTags, normalizeTag, removeTags } from './memoTags'
+
+it('matches every specification example', () => {
+  expect(extractTags('예식장 #결혼준비 계약금')).toEqual(['결혼준비'])
+  expect(extractTags('a#b #ok, #한글_1')).toEqual(['ok', '한글_1'])
+  expect(addTags('', ['여행'])).toBe('#여행')
+  expect(addTags('숙소', ['여행', '제주'])).toBe('숙소 #여행 #제주')
+  expect(addTags('숙소 #여행', ['여행', '제주'])).toBe('숙소 #여행 #제주')
+  expect(removeTags('예식장 #결혼준비 계약금', ['결혼준비'])).toBe('예식장 계약금')
+  expect(removeTags('#여행 #제주', ['여행'])).toBe('#제주')
+  expect(removeTags('#여행', ['여행'])).toBe('')
+  expect(removeTags('숙소', ['여행'])).toBe('숙소')
+})
+it('matches server normalization, boundaries and whitespace cases', () => {
+  const decomposed = '결혼준비'.normalize('NFD')
+  expect(extractTags('#' + decomposed + ' #결혼준비 #A #a')).toEqual(['결혼준비', 'A', 'a'])
+  expect(extractTags('#' + 'a'.repeat(51))).toEqual([])
+  expect(extractTags('#' + 'a'.repeat(50))).toEqual(['a'.repeat(50)])
+  expect(extractTags(null)).toEqual([])
+  expect(addTags(null, ['#결혼준비', decomposed])).toBe('#결혼준비')
+  expect(addTags('#' + decomposed, ['결혼준비'])).toBe('#' + decomposed)
+  expect(removeTags('#' + decomposed, ['#결혼준비'])).toBe('')
+  expect(removeTags(null, ['여행'])).toBe('')
+  expect(removeTags('숙소\n#여행\n끝', ['여행'])).toBe('숙소\n\n끝')
+  expect(removeTags('숙소  #여행 끝', ['여행'])).toBe('숙소  끝')
+  expect(removeTags('#여행 #제주', ['여행', '제주'])).toBe('')
+  expect(removeTags(decomposed, ['여행'])).toBe(decomposed)
+  for (const raw of ['', '#', '##여행', 'a b', 'a-b', 'a'.repeat(51), null]) expect(normalizeTag(raw)).toBeNull()
+  expect(normalizeTag('#' + decomposed)).toBe('결혼준비')
+})

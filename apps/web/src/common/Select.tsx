@@ -10,6 +10,8 @@ import styles from './Select.module.css'
 
 type Item = { id: string | number; label: string }
 type Props = {
+  placeholder?: string
+  isDisabled?: boolean
   label: string
   variant?: 'inline' | 'field'
   items: Item[]
@@ -17,7 +19,7 @@ type Props = {
   onSelectionChange: SelectProps<Item>['onSelectionChange']
 }
 
-export default function Select({ label, items, selectedKey, onSelectionChange, variant = 'inline' }: Props) {
+export default function Select({ label, items, selectedKey, onSelectionChange, variant = 'inline', placeholder, isDisabled }: Props) {
   const [open, setOpen] = useState(false)
   const mobile = useNarrowWhileOpen(open)
   const list = (
@@ -31,7 +33,7 @@ export default function Select({ label, items, selectedKey, onSelectionChange, v
   )
 
   return (
-    <AriaSelect selectedKey={selectedKey} onSelectionChange={onSelectionChange} data-variant={variant}
+    <AriaSelect placeholder={placeholder} isDisabled={isDisabled} selectedKey={selectedKey} onSelectionChange={onSelectionChange} data-variant={variant}
       className={variant === 'field' ? `${styles.select} ${styles.field}` : styles.select}
       onOpenChange={setOpen}>
       <Label className={styles.label}>{label}</Label>

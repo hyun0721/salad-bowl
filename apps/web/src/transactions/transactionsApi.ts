@@ -25,7 +25,7 @@ export type TransactionView = {
 
 export type TransactionPatch = { type?: TransactionType; categoryMajor?: string; categoryMinor?: string; memo?: string; hidden?: boolean }
 
-export type BulkTransactionPatch = Omit<TransactionPatch, 'memo'>
+export type BulkTransactionPatch = Omit<TransactionPatch, 'memo'> & { addTags?: string[]; removeTags?: string[] }
 
 export type ManualTransactionInput = {
   occurredAt: string
