@@ -20,6 +20,7 @@ type Props = {
   onSelect: (id: number) => void
   selectedIds?: Set<number>
   onSelectionChange?: (ids: Set<number>) => void
+  onTagClick?: (tag: string) => void
   saving?: boolean
 }
 
@@ -27,7 +28,7 @@ const PAGE_SIZE = 500
 
 const selectionCheckbox = () => <Checkbox slot="selection" />
 
-export default function TransactionList({ items, showOwner, selectedId, onSelect, selectedIds, onSelectionChange, saving = false }: Props) {
+export default function TransactionList({ items, showOwner, selectedId, onSelect, selectedIds, onSelectionChange, saving = false, onTagClick }: Props) {
   const narrow = useMediaQuery(NARROW)
   const [requestedPage, setPage] = useState(0)
   const pageCount = Math.ceil(items.length / PAGE_SIZE)
@@ -45,11 +46,11 @@ export default function TransactionList({ items, showOwner, selectedId, onSelect
   } : undefined
   // 선택이 바뀔 때마다 500행을 다시 그리지 않도록 열과 카드 내용의 정체성을 유지한다.
   const columns = useMemo(() => selecting
-    ? [{ id: 'selection', label: '선택', width: '48px', render: selectionCheckbox }, ...transactionColumns(showOwner)]
-    : transactionColumns(showOwner), [selecting, showOwner])
+    ? [{ id: 'selection', label: '선택', width: '48px', render: selectionCheckbox }, ...transactionColumns(showOwner, true, onTagClick)]
+    : transactionColumns(showOwner, true, onTagClick), [selecting, showOwner, onTagClick])
   const renderCard = useCallback((tx: TransactionView) => (selecting
-    ? <div className={styles.cardSelection}>{selectionCheckbox()}<div className={styles.cardContent}><TransactionCard tx={tx} showOwner={showOwner} /></div></div>
-    : <TransactionCard tx={tx} showOwner={showOwner} />), [selecting, showOwner])
+    ? <div className={styles.cardSelection}>{selectionCheckbox()}<div className={styles.cardContent}><TransactionCard tx={tx} showOwner={showOwner} onTagClick={onTagClick} /></div></div>
+    : <TransactionCard tx={tx} showOwner={showOwner} onTagClick={onTagClick} />), [selecting, showOwner, onTagClick])
   const cards = (
     <CardList label="거래 목록" items={items.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)} textValue={(tx) => tx.description} currentId={selectedId}
       selection={selection} onAction={selecting ? undefined : (id) => onSelect(Number(id))}>

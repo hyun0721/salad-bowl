@@ -190,6 +190,9 @@ public class LedgerTransaction {
     public TransactionType getTypeOverride() { return typeOverride; }
     public String getCategoryMajorOverride() { return categoryMajorOverride; }
     public String getCategoryMinorOverride() { return categoryMinorOverride; }
+    public String getOriginalMemo() { return originalMemo; }
+    public String getCategoryMajor() { return categoryMajor; }
+    public String getCategoryMinor() { return categoryMinor; }
     public String getMemoOverride() { return memoOverride; }
     public boolean isHidden() { return hidden; }
 }

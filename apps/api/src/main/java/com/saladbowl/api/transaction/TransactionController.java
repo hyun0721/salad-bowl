@@ -11,6 +11,7 @@ import com.saladbowl.api.transaction.TransactionDtos.CoverageMonth;
 import com.saladbowl.api.transaction.TransactionDtos.ManualTransactionRequest;
 import com.saladbowl.api.transaction.TransactionDtos.MonthDeleteResult;
 import com.saladbowl.api.transaction.TransactionDtos.TransactionView;
+import com.saladbowl.api.transaction.TransactionDtos.TagCount;
 import com.saladbowl.api.transaction.TransactionDtos.UpdateTransactionRequest;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -60,6 +61,16 @@ public class TransactionController {
     @GetMapping("/groups/{groupId}/categories")
     public List<CategoryOption> groupCategories(@CurrentUser Long userId, @PathVariable long groupId) {
         return transactionService.groupCategories(groupId, userId);
+    }
+
+    @GetMapping("/me/tags")
+    public List<TagCount> tags(@CurrentUser Long userId) {
+        return transactionService.tags(userId);
+    }
+
+    @GetMapping("/groups/{groupId}/tags")
+    public List<TagCount> groupTags(@CurrentUser Long userId, @PathVariable long groupId) {
+        return transactionService.groupTags(groupId, userId);
     }
 
     @PostMapping("/me/transactions")

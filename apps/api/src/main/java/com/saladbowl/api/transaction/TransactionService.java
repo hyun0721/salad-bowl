@@ -12,9 +12,12 @@ import com.saladbowl.api.transaction.TransactionDtos.ManualTransactionRequest;
 import com.saladbowl.api.transaction.TransactionDtos.MinorOption;
 import com.saladbowl.api.transaction.TransactionDtos.MonthDeleteResult;
 import com.saladbowl.api.transaction.TransactionDtos.TransactionView;
+import com.saladbowl.api.transaction.TransactionDtos.TagCount;
 import com.saladbowl.api.transaction.TransactionDtos.UpdateTransactionRequest;
 import com.saladbowl.api.user.User;
 import com.saladbowl.api.user.UserRepository;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -93,6 +96,35 @@ public class TransactionService {
         return owners.isEmpty() ? List.of() : categoryOptions(transactions.countVisibleDisplayCategories(owners));
     }
 
+    // shortcut: 최근 2만 건 메모만 집계한다. 더 필요하면 DB 집계로 바꾼다.
+    private static final int MAX_TAG_MEMOS = 20_000;
+    private static final int MAX_DISTINCT_TAGS = 20_000;
+    private static final Pageable TAG_SCAN = PageRequest.of(0, MAX_TAG_MEMOS);
+
+    @Transactional(readOnly = true)
+    public List<TagCount> tags(long userId) {
+        return tagCounts(transactions.findDisplayMemosWithTags(userId, TAG_SCAN));
+    }
+
+    @Transactional(readOnly = true)
+    public List<TagCount> groupTags(long groupId, long userId) {
+        access.requireMember(groupId, userId);
+        List<Long> owners = access.sharedOwnerIds(groupId);
+        return owners.isEmpty() ? List.of() : tagCounts(transactions.findVisibleDisplayMemosWithTags(owners, TAG_SCAN));
+    }
+
+    private List<TagCount> tagCounts(List<String> memos) {
+        Map<String, Long> counts = new HashMap<>();
+        for (String memo : memos) {
+            for (String tag : MemoTags.extract(memo)) {
+                if (counts.size() < MAX_DISTINCT_TAGS || counts.containsKey(tag)) counts.merge(tag, 1L, Long::sum);
+            }
+        }
+        return counts.entrySet().stream().map(e -> new TagCount(e.getKey(), e.getValue()))
+                .sorted(Comparator.comparingLong(TagCount::count).reversed().thenComparing(TagCount::tag))
+                .limit(200).toList();
+    }
+
     private List<CategoryOption> categoryOptions(List<Object[]> rows) {
         record CategoryKey(TransactionType type, String major) {}
         Map<CategoryKey, Map<String, Long>> byMajor = new HashMap<>();
@@ -165,9 +197,16 @@ public class TransactionService {
     public BulkUpdateResult bulkUpdate(long actorId, BulkUpdateTransactionRequest request) {
         if (request.ids().size() != Set.copyOf(request.ids()).size()
                 || request.type() == null && request.categoryMajor() == null
-                && request.categoryMinor() == null && request.hidden() == null) {
+                && request.categoryMinor() == null && request.hidden() == null
+                && isEmpty(request.addTags()) && isEmpty(request.removeTags())) {
             throw new ApiException(ErrorCode.VALIDATION_FAILED, "invalid bulk update");
         }
+        if ((request.categoryMajor() == null) != (request.categoryMinor() == null)
+                || request.categoryMajor() != null && request.categoryMajor().isBlank()) {
+            throw new ApiException(ErrorCode.VALIDATION_FAILED, "categoryMajor and categoryMinor must be provided together");
+        }
+        List<String> addTags = normalizeTags(request.addTags());
+        List<String> removeTags = normalizeTags(request.removeTags());
         Map<Long, LedgerTransaction> byId = new HashMap<>();
         transactions.findAllById(request.ids()).forEach(tx -> byId.put(tx.getId(), tx));
         if (byId.size() != request.ids().size()) {
@@ -181,15 +220,64 @@ public class TransactionService {
                 throw new ApiException(ErrorCode.NOT_FOUND, "transaction not found");
             }
         }
+        boolean tagEdit = !addTags.isEmpty() || !removeTags.isEmpty();
+        Map<Long, String> memos = new HashMap<>();
+        if (tagEdit) {
+            for (LedgerTransaction tx : byId.values()) {
+                memos.put(tx.getId(), MemoTags.add(MemoTags.remove(tx.displayMemo(), removeTags), addTags));
+            }
+        }
+        // 가져오기와 같이 코드포인트로 센다. 메모가 바뀌는 거래만 검사한다.
+        long overflow = byId.values().stream().filter(tx -> {
+            String memo = memos.get(tx.getId());
+            return memo != null && !memo.equals(Objects.toString(tx.displayMemo(), ""))
+                    && memo.codePointCount(0, memo.length()) > 1000;
+        }).count();
+        if (overflow > 0) {
+            throw new ApiException(ErrorCode.VALIDATION_FAILED, overflow + " transactions exceed the 1000 character memo limit");
+        }
         Map<Long, Boolean> editable = new HashMap<>();
-        UpdateTransactionRequest update = new UpdateTransactionRequest(request.type(), request.categoryMajor(),
-                request.categoryMinor(), null, request.hidden());
+        UpdateTransactionRequest update = new UpdateTransactionRequest(request.type(), null, null, null, request.hidden());
         for (long id : request.ids()) {
             LedgerTransaction tx = byId.get(id);
             updateOne(actorId, tx, update, tx.getOwnerId() == actorId || editable.computeIfAbsent(tx.getOwnerId(),
                     ownerId -> access.canEditOwnedBy(actorId, ownerId)));
+            if (request.categoryMajor() != null) {
+                applyBulkOverride(tx, actorId, "categoryMajor", tx.getCategoryMajorOverride(),
+                        request.categoryMajor().strip(), tx.getCategoryMajor(), tx::setCategoryMajorOverride);
+                applyBulkOverride(tx, actorId, "categoryMinor", tx.getCategoryMinorOverride(),
+                        request.categoryMinor().strip(), tx.getCategoryMinor(), tx::setCategoryMinorOverride);
+            }
+            String memo = memos.get(id);
+            if (memo != null && !memo.equals(Objects.toString(tx.displayMemo(), ""))) {
+                String next = memo.isEmpty() ? (tx.getOriginalMemo() == null || tx.getOriginalMemo().isEmpty() ? null : "")
+                        : Objects.equals(memo, tx.getOriginalMemo()) ? null : memo;
+                audits.save(new TransactionAudit(id, actorId, "memo", tx.getMemoOverride(), next));
+                tx.setMemoOverride(next);
+            }
         }
         return new BulkUpdateResult(request.ids().size());
+    }
+
+    private static boolean isEmpty(List<String> tags) {
+        return tags == null || tags.isEmpty();
+    }
+
+    private List<String> normalizeTags(List<String> tags) {
+        try {
+            return tags == null ? List.of() : tags.stream().map(MemoTags::normalizeTag).distinct().toList();
+        } catch (IllegalArgumentException e) {
+            throw new ApiException(ErrorCode.VALIDATION_FAILED, "invalid tag", e);
+        }
+    }
+
+    private void applyBulkOverride(LedgerTransaction tx, long actorId, String field, String current,
+                                   String requested, String original, Consumer<String> setter) {
+        String next = requested.equals(original) ? null : requested;
+        if (!Objects.equals(current, next)) {
+            audits.save(new TransactionAudit(tx.getId(), actorId, field, current, next));
+            setter.accept(next);
+        }
     }
 
     private void updateOne(long actorId, LedgerTransaction tx, UpdateTransactionRequest request,

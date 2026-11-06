@@ -115,11 +115,11 @@ export default function TransactionsPage({ today }: Props) {
   })
 
   const items = useMemo(() => {
-    const keyword = search.trim().toLowerCase()
+    const keyword = search.trim().normalize('NFC').toLowerCase()
     const all = list.data ?? []
     if (!keyword) return all
-    return all.filter((tx) => [tx.description, tx.categoryMajor, tx.categoryMinor]
-      .some((text) => text.toLowerCase().includes(keyword)))
+    return all.filter((tx) => [tx.description, tx.categoryMajor, tx.categoryMinor, tx.memo ?? '']
+      .some((text) => text.normalize('NFC').toLowerCase().includes(keyword)))
   }, [list.data, search])
 
   const selectionScope = JSON.stringify([selectedGroupId, groupId, month, memberId, filter, search])
@@ -204,6 +204,8 @@ export default function TransactionsPage({ today }: Props) {
     requestAnimationFrame(() => selectionButton.current?.focus())
   }
 
+  const searchTag = useCallback((tag: string) => setSearch('#' + tag), [])
+
   const panelTitle = shown === 'add' ? '거래 추가 (수동)' : shown?.description ?? ''
   const body = shown === 'add' ? (
     <ManualTransactionForm loadDraft={() => (draft.current?.key === 'add' ? draft.current.values : undefined)}
@@ -279,7 +281,7 @@ export default function TransactionsPage({ today }: Props) {
         <TransactionFilter categories={categories.data ?? []} value={filter}
           onApply={(next) => { setFilter(next); storeFilter(next); setSelectedId(null) }} />
         <SortButton options={SORT_OPTIONS} value={sort} defaultValue={DEFAULT_SORT} onApply={setSort} />
-        <SearchField label="검색" value={search} onChange={setSearch} placeholder="내용·카테고리 검색" className={styles.search} />
+        <SearchField label="검색" value={search} onChange={setSearch} placeholder="내용·카테고리·메모 검색" className={styles.search} />
       </div>
       {selectedGroupId === null && <p className={ui.muted}>그룹에 속하면 그룹 거래를 볼 수 있습니다.</p>}
 
@@ -295,7 +297,7 @@ export default function TransactionsPage({ today }: Props) {
           <button type="button" className={ui.button} disabled={saving} onClick={() => changeSelectionMode(false)}>취소</button>
         </div>
       </div>}
-      {bulkOpen && <TransactionBulkEdit items={selectedItems} categories={categories.data ?? []}
+      {bulkOpen && <TransactionBulkEdit items={selectedItems} groupId={groupId} categories={categories.data ?? []}
         onClose={() => setBulkOpen(false)} onDone={() => changeSelectionMode(false)} />}
       <div className={styles.layout}>
         <section ref={listRef} aria-labelledby="list-title" className={`${ui.card} ${styles.listCard}`}>
@@ -312,7 +314,7 @@ export default function TransactionsPage({ today }: Props) {
           )}
           {items.length > 0 && (
             <TransactionList key={JSON.stringify([groupId, month, memberId, search, filter, sort])} items={items} showOwner={inGroup} selectedId={selectedId}
-              selectedIds={selecting ? selectedIds : undefined} onSelectionChange={setSelectedIds} saving={saving}
+              selectedIds={selecting ? selectedIds : undefined} onSelectionChange={setSelectedIds} saving={saving} onTagClick={searchTag}
               onSelect={(id) => { setSelectedId(id); setAdding(false) }} />
           )}
         </section>

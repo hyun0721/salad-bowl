@@ -1,3 +1,4 @@
+import { extractTags, removeTags } from './memoTags'
 import { TransactionAmount } from '../common/AmountMask'
 import type { DataColumn } from '../common/DataTable'
 import { formatDateTime } from '../common/format'
@@ -10,17 +11,24 @@ const category = (tx: TransactionView, showMajor: boolean) =>
   [showMajor ? tx.categoryMajor : null, tx.categoryMinor].filter(Boolean).join(' · ')
 const editedBadge = (tx: TransactionView) => tx.edited && <span className={`${ui.badge} ${ui.badgePending}`}>수정됨</span>
 const hiddenBadge = (tx: TransactionView) => tx.hidden && <span className={ui.badge}>숨김</span>
-const memoOf = (tx: TransactionView) => tx.memo?.trim() || null
+function TagChips({ memo, onTagClick }: { memo: string | null; onTagClick?: (tag: string) => void }) {
+  return extractTags(memo).map((tag) => onTagClick
+    ? <button key={tag} type="button" className={styles.tagChip}
+        onPointerDown={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}
+        onKeyUp={(event) => event.stopPropagation()}
+        onClick={(event) => { event.stopPropagation(); onTagClick(tag) }}>#{tag}</button>
+    : <span key={tag} className={ui.badge}>#{tag}</span>)
+}
 
 /** 거래 목록과 대시보드 거래 창이 같이 쓰는 표 열. */
 // oxlint-disable-next-line react/only-export-components
-export function transactionColumns(showOwner: boolean, showMajor = true): DataColumn<TransactionView>[] {
+export function transactionColumns(showOwner: boolean, showMajor = true, onTagClick?: (tag: string) => void): DataColumn<TransactionView>[] {
   return [
     { id: 'occurredAt', label: '일시', width: '110px', sortValue: (tx) => tx.occurredAt,
       render: (tx) => <span className={styles.when}>{formatDateTime(tx.occurredAt)}</span> },
     ...(showOwner ? [{ id: 'owner', label: '멤버', width: '100px', render: (tx: TransactionView) => tx.ownerNickname }] : []),
     { id: 'category', label: showMajor ? '카테고리' : '소분류', render: (tx) => <>{category(tx, showMajor)}{editedBadge(tx)}</> },
-    { id: 'description', label: '내용', isRowHeader: true, render: (tx) => <>{tx.description}{hiddenBadge(tx)}</> },
+    { id: 'description', label: '내용', isRowHeader: true, render: (tx) => <>{tx.description}{hiddenBadge(tx)}<TagChips memo={tx.memo} onTagClick={onTagClick} /></> },
     { id: 'paymentMethod', label: '결제수단', width: '110px', render: (tx) => tx.paymentMethod },
     { id: 'amount', label: '금액', width: '120px', align: 'end', sortValue: (tx) => tx.amount,
       render: (tx) => <span className={styles.amount}><TransactionAmount type={tx.type} amount={tx.amount} /></span> },
@@ -28,9 +36,9 @@ export function transactionColumns(showOwner: boolean, showMajor = true): DataCo
 }
 
 /** 좁은 화면 카드 한 장의 내용. 2줄은 `분류 | 메모`와 일시다. */
-export function TransactionCard({ tx, showOwner, showMajor = true }: { tx: TransactionView; showOwner: boolean; showMajor?: boolean }) {
+export function TransactionCard({ tx, showOwner, showMajor = true, onTagClick }: { tx: TransactionView; showOwner: boolean; showMajor?: boolean; onTagClick?: (tag: string) => void }) {
   const info = [category(tx, showMajor), showOwner ? tx.ownerNickname : null].filter(Boolean).join(' · ')
-  const memo = memoOf(tx)
+  const memo = removeTags(tx.memo, extractTags(tx.memo)).trim()
   return (
     <>
       <div className={styles.cardTop}>
@@ -42,6 +50,7 @@ export function TransactionCard({ tx, showOwner, showMajor = true }: { tx: Trans
           {info}
           {memo && (info ? <>{' '}<span aria-hidden="true">|</span>{' '}{memo}</> : memo)}
         </span>
+        <TagChips memo={tx.memo} onTagClick={onTagClick} />
         {editedBadge(tx)}
         <span className={styles.when}>{formatDateTime(tx.occurredAt)}</span>
       </div>

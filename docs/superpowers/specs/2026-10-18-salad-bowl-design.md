@@ -116,6 +116,9 @@ salad-bowl/
 | POST | `/me/transactions` | 수동 거래 추가 |
 | PATCH | `/transactions/{id}` | 거래 수정 (본인 또는 그룹 ADMIN) |
 | PATCH | `/transactions/bulk` | 최대 1000건의 타입·카테고리·숨김 일괄 수정 (본인 또는 그룹 ADMIN, 숨김은 본인만) |
+| PATCH | `/transactions/bulk` | `addTags`·`removeTags` 각 최대 20개, 카테고리는 대분류·소분류 쌍으로 전송 (빈 소분류 허용) |
+| GET | `/me/tags` | 내 거래 전체(숨김 포함)의 `{tag, count}` 목록, 건수 내림차순·이름순 최대 200개 |
+| GET | `/groups/{groupId}/tags` | 그룹 공개 멤버의 숨기지 않은 거래에서 같은 형식의 태그 목록 |
 | GET | `/groups/{id}/summary?month` | 월간 카테고리별 합계 |
 
 ### 6.3 FE (`apps/web`)

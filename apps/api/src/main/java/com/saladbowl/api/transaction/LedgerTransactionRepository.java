@@ -1,5 +1,6 @@
 package com.saladbowl.api.transaction;
 
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -89,4 +90,18 @@ public interface LedgerTransactionRepository extends JpaRepository<LedgerTransac
                      coalesce(t.categoryMinorOverride, t.categoryMinor)
             """)
     List<Object[]> countVisibleDisplayCategories(@Param("ownerIds") Collection<Long> ownerIds);
+    @Query("""
+            select coalesce(t.memoOverride, t.originalMemo) from LedgerTransaction t
+            where t.ownerId = :ownerId and coalesce(t.memoOverride, t.originalMemo) like '%#%'
+            order by t.occurredAt desc, t.id desc
+            """)
+    List<String> findDisplayMemosWithTags(@Param("ownerId") Long ownerId, Pageable pageable);
+
+    @Query("""
+            select coalesce(t.memoOverride, t.originalMemo) from LedgerTransaction t
+            where t.ownerId in :ownerIds and t.hidden = false
+              and coalesce(t.memoOverride, t.originalMemo) like '%#%'
+            order by t.occurredAt desc, t.id desc
+            """)
+    List<String> findVisibleDisplayMemosWithTags(@Param("ownerIds") Collection<Long> ownerIds, Pageable pageable);
 }
