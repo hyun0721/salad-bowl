@@ -61,7 +61,9 @@ public final class TransactionDtos {
             TransactionType type,
             @Size(max = 100) String categoryMajor,
             @Size(max = 100) String categoryMinor,
-            Boolean hidden) {
+            Boolean hidden,
+            @Size(max = 20) List<String> addTags,
+            @Size(max = 20) List<String> removeTags) {
     }
 
     public record BulkUpdateResult(int updated) {
@@ -81,6 +83,9 @@ public final class TransactionDtos {
 
     /** 내 거래에서 쓴 타입별 대분류와 그 소분류. 많이 쓴 순서다. */
     public record CategoryOption(TransactionType type, String major, long count, List<MinorOption> minors) {
+    }
+
+    public record TagCount(String tag, long count) {
     }
 
     public record MinorOption(String minor, long count) {

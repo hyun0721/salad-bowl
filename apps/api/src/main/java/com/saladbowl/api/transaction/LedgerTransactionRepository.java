@@ -89,4 +89,16 @@ public interface LedgerTransactionRepository extends JpaRepository<LedgerTransac
                      coalesce(t.categoryMinorOverride, t.categoryMinor)
             """)
     List<Object[]> countVisibleDisplayCategories(@Param("ownerIds") Collection<Long> ownerIds);
+    @Query("""
+            select coalesce(t.memoOverride, t.originalMemo) from LedgerTransaction t
+            where t.ownerId = :ownerId and coalesce(t.memoOverride, t.originalMemo) like '%#%'
+            """)
+    List<String> findDisplayMemosWithTags(@Param("ownerId") Long ownerId);
+
+    @Query("""
+            select coalesce(t.memoOverride, t.originalMemo) from LedgerTransaction t
+            where t.ownerId in :ownerIds and t.hidden = false
+              and coalesce(t.memoOverride, t.originalMemo) like '%#%'
+            """)
+    List<String> findVisibleDisplayMemosWithTags(@Param("ownerIds") Collection<Long> ownerIds);
 }
