@@ -29,7 +29,7 @@ export default function SortButton<T extends string>({ options, value, defaultVa
         data-applied={applied || undefined} aria-label={`정렬, ${current?.label ?? ''}`}>
         <Icon name={icon} />
       </Button>
-      <ResponsiveOverlay mobile={mobile} title="정렬">
+      <ResponsiveOverlay mobile={mobile} title="정렬" closeButton>
         <div className={styles.panel}>
           <RadioGroup value={draft} onChange={(v) => setDraft(v as T)} className={styles.group}>
             <Label className={styles.legend}>정렬 기준</Label>
@@ -44,9 +44,9 @@ export default function SortButton<T extends string>({ options, value, defaultVa
               </Radio>
             ))}
           </RadioGroup>
-          <div className={styles.actions}>
+          <div className={`${styles.actions} ${styles.ctaActions}`}>
             <button type="button" className={ui.button} onClick={() => setDraft(defaultValue)}>초기화</button>
-            <button type="button" className={`${ui.button} ${ui.primary}`}
+            <button type="button" className={`${ui.button} ${ui.primary} ${ui.cta}`}
               onClick={() => { onApply(draft); setOpen(false) }}>적용</button>
           </div>
         </div>

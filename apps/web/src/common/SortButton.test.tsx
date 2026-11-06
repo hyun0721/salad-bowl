@@ -58,4 +58,15 @@ describe('SortButton', () => {
     await userEvent.click(screen.getByRole('button', { name: /정렬/ }))
     expect(screen.getByRole('radio', { name: '최신순' })).toBeChecked()
   })
+
+  it.each([false, true])('closes with the X button without applying with mobile=%s', async (mobile) => {
+    mockViewport(mobile)
+    const onApply = vi.fn()
+    render(<SortButton options={options} value="DATE_DESC" defaultValue="DATE_DESC" onApply={onApply} />)
+    await userEvent.click(screen.getByRole('button', { name: /정렬/ }))
+    await userEvent.click(screen.getByRole('radio', { name: '오래된순' }))
+    await userEvent.click(screen.getByRole('button', { name: '닫기' }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(onApply).not.toHaveBeenCalled()
+  })
 })

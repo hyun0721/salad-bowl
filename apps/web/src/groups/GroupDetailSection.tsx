@@ -8,6 +8,7 @@ import { groupsApi } from './groupsApi'
 import styles from './GroupsPage.module.css'
 import InviteSection from './InviteSection'
 import MemberList from './MemberList'
+import Icon from '../common/Icon'
 
 export default function GroupDetailSection({ groupId }: { groupId: number }) {
   const { me } = useAuth()
@@ -26,7 +27,7 @@ export default function GroupDetailSection({ groupId }: { groupId: number }) {
       <section className={ui.card}>
         <div className={ui.row}>
           <p role="alert" className={ui.alert}>그룹 정보를 불러오지 못했습니다.</p>
-          <button type="button" className={ui.button} onClick={() => void detail.refetch()}>그룹 정보 다시 시도</button>
+          <button type="button" className={ui.button} onClick={() => void detail.refetch()}><Icon name="refresh-cw" size={18} />그룹 정보 다시 시도</button>
         </div>
       </section>
     )

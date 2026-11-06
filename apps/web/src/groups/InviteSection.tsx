@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { errorMessage } from '../common/errorMessage'
 import { formatInstant } from '../common/format'
+import Icon from '../common/Icon'
 import { toast } from '../common/Toast'
 import TextField from '../common/TextField'
 import ui from '../common/ui.module.css'
@@ -41,7 +42,7 @@ export default function InviteSection({ groupId, memberCount }: { groupId: numbe
         <div className={ui.row}>
           <TextField label="초대 주소" value={link} onChange={() => {}} isReadOnly className={styles.linkField}
             onFocus={(e) => e.currentTarget.select()} />
-          <button type="button" className={`${ui.button} ${ui.primary}`} onClick={() => void copy(link)}>링크 복사</button>
+          <button type="button" className={`${ui.button} ${ui.primary}`} onClick={() => void copy(link)}><Icon name="copy" size={18} />링크 복사</button>
           <span className={ui.muted}>{formatInstant(invite.expiresAt)}까지</span>
         </div>
       )}

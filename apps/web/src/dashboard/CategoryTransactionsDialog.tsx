@@ -84,7 +84,7 @@ export default function CategoryTransactionsDialog({ groupId, month, category, m
             <Icon name="list-tree" />
           </button>}
           {!selected && <SortButton options={SORT_OPTIONS} value={sort} defaultValue={DEFAULT_SORT} onApply={setSort} />}
-          <button type="button" className={`${ui.button} ${ui.iconButton}`} aria-label="닫기" onClick={close}>
+          <button type="button" className={`${ui.button} ${ui.iconButton} ${ui.ghost}`} aria-label="닫기" onClick={close}>
             <Icon name="x" />
           </button>
         </div>
@@ -99,7 +99,7 @@ export default function CategoryTransactionsDialog({ groupId, month, category, m
           </div>}
           {transactions.isError && <div className={ui.row}>
             <p role="alert" className={ui.alert}>거래를 불러오지 못했습니다.</p>
-            <button type="button" className={ui.button} onClick={() => void transactions.refetch()}>다시 시도</button>
+            <button type="button" className={ui.button} onClick={() => void transactions.refetch()}><Icon name="refresh-cw" size={18} />다시 시도</button>
           </div>}
           {transactions.isSuccess && <>
             <p ref={summaryRef} tabIndex={-1} className={styles.summary}>{items.length}건 · 합계 {formatWon(total)}</p>

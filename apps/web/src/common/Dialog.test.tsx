@@ -15,6 +15,7 @@ describe('Dialog', () => {
     const dialog = screen.getByRole('dialog', { name: '9월 데이터 업로드' })
     expect(dialog).toContainElement(document.activeElement as HTMLElement)
 
+    expect(screen.getByRole('button', { name: '닫기' }).textContent).toBe('')
     await user.keyboard('{Escape}')
     await user.click(screen.getByRole('button', { name: '닫기' }))
     expect(onClose).toHaveBeenCalledTimes(2)
@@ -71,6 +72,7 @@ describe('Dialog', () => {
 
     await user.keyboard('{Escape}')
     expect(screen.getByRole('button', { name: '닫기' })).toBeDisabled()
+    await user.click(screen.getByRole('button', { name: '닫기' }))
     expect(onClose).not.toHaveBeenCalled()
   })
   it('pins the header only when asked', async () => {

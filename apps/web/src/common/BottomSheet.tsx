@@ -2,6 +2,8 @@ import { useRef, type ReactNode } from 'react'
 import { Button, Dialog, DialogTrigger, Heading, Modal, ModalOverlay } from 'react-aria-components'
 import Icon, { type IconName } from './Icon'
 import styles from './BottomSheet.module.css'
+import overlay from './Overlay.module.css'
+import ui from './ui.module.css'
 
 type Props = {
   title: string
@@ -34,7 +36,10 @@ export default function BottomSheet({ title, triggerLabel, triggerIcon, triggerC
             {({ close }) => (
               <>
                 <span className={styles.handle} aria-hidden="true" />
-                <Heading slot="title" className={styles.title}>{title}</Heading>
+                <div className={overlay.header}>
+                  <Heading slot="title" className={styles.title}>{title}</Heading>
+                  <Button aria-label="닫기" className={`${ui.button} ${ui.iconButton} ${ui.ghost}`} onPress={close}><Icon name="x" /></Button>
+                </div>
                 {children({ close })}
               </>
             )}

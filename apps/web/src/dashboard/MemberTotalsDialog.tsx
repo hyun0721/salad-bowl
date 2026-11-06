@@ -22,7 +22,7 @@ export default function MemberTotalsDialog({ kind, summary, onClose }: Props) {
   return (
     <DialogFrame isOpen={kind !== null} title={`멤버별 ${LABELS[shown]}`} onOpenChange={(open) => { if (!open) onClose() }}
       closeOnOutsideClick headerAction={
-        <button type="button" className={`${ui.button} ${ui.iconButton}`} aria-label="닫기" onClick={onClose}>
+        <button type="button" className={`${ui.button} ${ui.iconButton} ${ui.ghost}`} aria-label="닫기" onClick={onClose}>
           <Icon name="x" />
         </button>
       }>

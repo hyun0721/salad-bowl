@@ -62,7 +62,7 @@ export default function AppLayout() {
   ) : isError ? (
     <span className={styles.groupState}>
       그룹을 불러오지 못했습니다{' '}
-      <button type="button" className={styles.logout} onClick={retry}>다시 시도</button>
+      <button type="button" className={styles.logout} onClick={retry}><Icon name="refresh-cw" size={18} />다시 시도</button>
     </span>
   ) : groups.length > 0 ? (
     <Select label="그룹" items={groups.map((g) => ({ id: g.groupId, label: g.name }))}

@@ -34,12 +34,11 @@ const EMPTY: AddDraft = { occurredAt: '', type: 'EXPENSE', major: '', minor: '',
 
 type Props = {
   onDone: (created: TransactionView) => void
-  onCancel: () => void
   loadDraft?: () => AddDraft | undefined
   onDraftChange?: (draft: AddDraft) => void
 }
 
-export default function ManualTransactionForm({ onDone, onCancel, loadDraft, onDraftChange }: Props) {
+export default function ManualTransactionForm({ onDone, loadDraft, onDraftChange }: Props) {
   const { addManual } = useTransactionMutations()
   const categories = useCategories()
   const list = categories.data ?? []
@@ -74,8 +73,8 @@ export default function ManualTransactionForm({ onDone, onCancel, loadDraft, onD
       <TextField label="결제수단" value={payment} onChange={(v) => change({ payment: v })} maxLength={100} />
       <TextAreaField label="메모" value={memo} onChange={(v) => change({ memo: v })} maxLength={1000} rows={2} />
       <div className={styles.actions}>
-        <button type="button" className={ui.button} onClick={onCancel}>취소</button>
-        <button type="submit" className={`${ui.button} ${ui.primary} ${styles.save}`} disabled={addManual.isPending || addManual.isSuccess}>추가</button>
+        {/* 취소는 두지 않는다. 머리의 닫기(X)가 같은 일을 한다. */}
+        <button type="submit" className={`${ui.button} ${ui.primary} ${ui.cta} ${styles.save}`} disabled={addManual.isPending || addManual.isSuccess}>추가</button>
       </div>
       {addManual.isError && <p role="alert" className={ui.alert}>{errorMessage(addManual.error)}</p>}
     </form>

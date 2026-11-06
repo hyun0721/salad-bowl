@@ -26,7 +26,7 @@ describe('ManualTransactionForm', () => {
       return HttpResponse.json({ id: 99, ...body, ownerId: 1, ownerNickname: '나', currency: 'KRW', hidden: false, source: 'MANUAL', edited: false, editable: true, categoryMinor: '', paymentMethod: '현금', memo: null }, { status: 201 })
     }))
     const onDone = vi.fn()
-    const { user } = renderPage(<ManualTransactionForm onDone={onDone} onCancel={vi.fn()} />)
+    const { user } = renderPage(<ManualTransactionForm onDone={onDone} />)
 
     await typeDateTime(user, '202610051330')
     await user.type(screen.getByRole('combobox', { name: '대분류' }), '식비')
@@ -45,7 +45,7 @@ describe('ManualTransactionForm', () => {
   it('shows server validation errors', async () => {
     server.use(http.post('*/api/me/transactions', () =>
       HttpResponse.json({ code: 'VALIDATION_FAILED', message: 'x' }, { status: 400 })))
-    const { user } = renderPage(<ManualTransactionForm onDone={vi.fn()} onCancel={vi.fn()} />)
+    const { user } = renderPage(<ManualTransactionForm onDone={vi.fn()} />)
 
     await typeDateTime(user, '202610051330')
     await user.type(screen.getByRole('combobox', { name: '대분류' }), '식비')
@@ -58,7 +58,7 @@ describe('ManualTransactionForm', () => {
 
   it('suggests my categories for major and minor', async () => {
     server.use(http.get('*/api/me/categories', () => HttpResponse.json([{ major: '식비', count: 3, minors: [{ minor: '점심', count: 2 }] }])))
-    const { user } = renderPage(<ManualTransactionForm onDone={vi.fn()} onCancel={vi.fn()} />)
+    const { user } = renderPage(<ManualTransactionForm onDone={vi.fn()} />)
 
     await user.type(await screen.findByRole('combobox', { name: '대분류' }), '식')
     await user.click(await screen.findByRole('option', { name: '식비' }))
@@ -69,7 +69,7 @@ describe('ManualTransactionForm', () => {
 
   it('still accepts a typed category when the suggestions fail to load', async () => {
     server.use(http.get('*/api/me/categories', () => HttpResponse.json({ code: 'INTERNAL', message: 'x' }, { status: 500 })))
-    const { user } = renderPage(<ManualTransactionForm onDone={vi.fn()} onCancel={vi.fn()} />)
+    const { user } = renderPage(<ManualTransactionForm onDone={vi.fn()} />)
     const major = await screen.findByRole('combobox', { name: '대분류' })
 
     await user.type(major, '새 분류')
@@ -88,7 +88,7 @@ describe('ManualTransactionForm', () => {
       }),
     )
     const onDone = vi.fn()
-    const { user } = renderPage(<ManualTransactionForm onDone={onDone} onCancel={vi.fn()} />)
+    const { user } = renderPage(<ManualTransactionForm onDone={onDone} />)
     await vi.waitFor(() => expect(calls).toBe(1))
 
     await typeDateTime(user, '202610051330')
