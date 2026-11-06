@@ -161,12 +161,12 @@ describe('CategoryTransactionsDialog', () => {
         requests++
         return HttpResponse.json(changed ? [] : [{ ...tx(1, -10000), editable: true }])
       }),
-      http.get('*/api/me/categories', () => HttpResponse.json([{ type: 'EXPENSE', major: '외식', count: 1, minors: [] }])),
+      http.get('*/api/me/categories', () => HttpResponse.json([{ type: 'EXPENSE', major: '외식', count: 1, minors: [{ minor: '저녁', count: 1 }] }])),
       http.get('*/api/transactions/1/audits', () => HttpResponse.json([])),
       http.patch('*/api/transactions/1', async ({ request }) => {
-        expect(await request.json()).toEqual({ categoryMajor: '외식', categoryMinor: '' })
+        expect(await request.json()).toEqual({ categoryMajor: '외식', categoryMinor: '저녁' })
         changed = true
-        return HttpResponse.json({ ...tx(1, -10000), editable: true, categoryMajor: '외식' })
+        return HttpResponse.json({ ...tx(1, -10000), editable: true, categoryMajor: '외식', categoryMinor: '저녁' })
       }),
     )
     const { user } = renderPage(<CategoryTransactionsDialog groupId={10} month="2026-10" category="식비" onClose={() => {}} />)
@@ -181,7 +181,7 @@ describe('CategoryTransactionsDialog', () => {
     await user.click(within(dialog).getByRole('button', { name: /대분류/ }))
     await user.click(screen.getByRole('option', { name: '외식' }))
     await user.click(within(dialog).getByRole('button', { name: /소분류/ }))
-    await user.click(screen.getByRole('option', { name: '원래 값' }))
+    await user.click(screen.getByRole('option', { name: '저녁' }))
     await user.click(within(dialog).getByRole('button', { name: '저장' }))
     await waitFor(() => expect(within(dialog).getByText('거래가 없습니다.')).toBeInTheDocument())
     await waitFor(() => expect(requests).toBeGreaterThan(1))

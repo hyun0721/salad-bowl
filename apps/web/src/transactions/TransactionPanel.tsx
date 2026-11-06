@@ -58,10 +58,14 @@ export default function TransactionPanel({ tx, onDeleted, onSaved, loadDraft, on
   useEffect(() => { onDraftChange?.(values) }, [values, onDraftChange])
   const isOwner = me?.userId === tx.ownerId
   const canDelete = isOwner && tx.source === 'MANUAL'
+  const changingMajor = major !== '' && major !== tx.categoryMajor
+  const minors = minorOptions(list, major)
+  const noMinorOptions = changingMajor && minors.length === 0
+  const invalidMinor = minor === null || (changingMajor && !minors.includes(minor))
 
   function onSave(event: FormEvent) {
     event.preventDefault()
-    if (minor === null) return
+    if (invalidMinor) return
     const patch: TransactionPatch = {}
     if (type !== tx.type) patch.type = type
     if (major !== tx.categoryMajor) patch.categoryMajor = major
@@ -95,20 +99,21 @@ export default function TransactionPanel({ tx, onDeleted, onSaved, loadDraft, on
             items={TYPE_ITEMS.filter((item) => item.id !== 'INCOME' || tx.amount > 0 || tx.type === 'INCOME')}
             onSelectionChange={(key) => { if (key != null) change({ type: key as TransactionType }) }} />
           <div className={listStyles.categoryFields}>
-            <Select variant="field" label="대분류" selectedKey={major ? 'major:' + major : 'original'}
+            <Select variant="field" label="대분류" selectedKey={major ? 'major:' + major : tx.edited ? 'original' : null}
               items={[...(tx.edited ? [{ id: 'original', label: '원래 값' }] : []),
                 ...[...new Set([major, tx.categoryMajor, ...majorOptions(list)])].filter(Boolean).map((value) => ({ id: 'major:' + value, label: value }))]}
               onSelectionChange={(key) => {
                 if (key === 'original') change({ major: '', minor: '' })
                 else if (key != null && String(key).slice(6) !== major) change({ major: String(key).slice(6), minor: null })
               }} />
-            <Select variant="field" label="소분류" placeholder="선택" isDisabled={!major}
+            <Select variant="field" label="소분류" placeholder="선택" isDisabled={!major || noMinorOptions}
               selectedKey={minor === null ? null : minor ? 'minor:' + minor : 'original'}
-              items={[{ id: 'original', label: !tx.edited && tx.categoryMinor === '' ? '소분류 없음' : '원래 값' },
-                ...[...new Set([...(minor ? [minor] : []), ...minorOptions(list, major)])]
+              items={[...(!changingMajor ? [{ id: 'original', label: !tx.edited && tx.categoryMinor === '' ? '소분류 없음' : '원래 값' }] : []),
+                ...[...new Set([...(!changingMajor && minor ? [minor] : []), ...minors])]
                   .map((value) => ({ id: 'minor:' + value, label: value }))]}
               onSelectionChange={(key) => change({ minor: key === null ? null : key === 'original' ? '' : String(key).slice(6) })} />
           </div>
+          {noMinorOptions && <p className={ui.muted}>이 대분류에는 고를 수 있는 소분류가 없습니다.</p>}
           <TextAreaField label="메모" value={memo} onChange={(v) => change({ memo: v })} maxLength={1000} rows={2} />
           <p className={ui.muted}>메모를 비우거나 '원래 값'·원래 타입을 고르고 저장하면 엑셀의 원래 값으로 돌아갑니다.</p>
           {isOwner && (
@@ -120,7 +125,7 @@ export default function TransactionPanel({ tx, onDeleted, onSaved, loadDraft, on
                 confirmLabel="삭제 확인" isPending={remove.isPending} error={remove.isError ? errorMessage(remove.error) : null}
                 onOpen={() => remove.reset()} onConfirm={(close) => remove.mutate(tx.id, { onSuccess: () => { close(); onDeleted() } })} />
             )}
-            <button type="submit" className={`${ui.button} ${ui.primary} ${ui.cta} ${styles.save}`} disabled={update.isPending || minor === null}>저장</button>
+            <button type="submit" className={`${ui.button} ${ui.primary} ${ui.cta} ${styles.save}`} disabled={update.isPending || invalidMinor}>저장</button>
           </div>
         </form>
       ) : (

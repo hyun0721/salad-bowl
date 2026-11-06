@@ -1,4 +1,5 @@
-import { screen, within } from '@testing-library/react'
+import { fireEvent, screen, within } from '@testing-library/react'
+import { useState } from 'react'
 import { http, HttpResponse } from 'msw'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { server } from '../test/server'
@@ -27,7 +28,7 @@ describe('TransactionPanel', () => {
     let body: unknown
     server.use(http.patch('*/api/transactions/7', async ({ request }) => {
       body = await request.json()
-      return HttpResponse.json({ ...mine, categoryMajor: '외식', edited: true })
+      return HttpResponse.json({ ...mine, categoryMajor: '외식', categoryMinor: '저녁', edited: true })
     }))
     const { user } = renderPage(<TransactionPanel tx={mine} onDeleted={vi.fn()} />)
 
@@ -36,6 +37,8 @@ describe('TransactionPanel', () => {
     expect(screen.getByRole('button', { name: '저장' })).toBeDisabled()
     expect(screen.getByRole('button', { name: /소분류/ })).toHaveTextContent('선택')
     await user.click(screen.getByRole('button', { name: /소분류/ }))
+    expect(screen.queryByRole('option', { name: '원래 값' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: '소분류 없음' })).not.toBeInTheDocument()
     await user.click(screen.getByRole('option', { name: '저녁' }))
     await user.click(screen.getByRole('button', { name: '저장' }))
 
@@ -51,6 +54,40 @@ describe('TransactionPanel', () => {
     await user.click(screen.getByRole('button', { name: /대분류/ }))
     expect(screen.getByRole('option', { name: '식비' })).toHaveAttribute('aria-selected', 'true')
     expect(screen.queryByRole('option', { name: '원래 값' })).not.toBeInTheDocument()
+  })
+
+  it.each(['점심', ''])('offers the empty minor again after returning to the current major (%s)', async (categoryMinor) => {
+    auditsHandler()
+    server.use(http.get('*/api/me/categories', () => HttpResponse.json([
+      { type: 'EXPENSE', major: '외식', count: 1, minors: [{ minor: '저녁', count: 1 }] },
+    ])))
+    const { user } = renderPage(<TransactionPanel tx={{ ...mine, categoryMinor }} onDeleted={vi.fn()} />)
+    await user.click(await screen.findByRole('button', { name: /대분류/ }))
+    await user.click(await screen.findByRole('option', { name: '외식' }))
+    await user.click(screen.getByRole('button', { name: /소분류/ }))
+    expect(screen.getAllByRole('option').map((option) => option.textContent)).toEqual(['저녁'])
+    await user.click(screen.getByRole('option', { name: '저녁' }))
+    await user.click(screen.getByRole('button', { name: /대분류/ }))
+    await user.click(screen.getByRole('option', { name: '식비' }))
+    await user.click(screen.getByRole('button', { name: /소분류/ }))
+    await user.click(screen.getByRole('option', { name: categoryMinor ? '원래 값' : '소분류 없음' }))
+    expect(screen.getByRole('button', { name: '저장' })).toBeEnabled()
+  })
+
+  it('disables an empty minor list and explains why saving is blocked', async () => {
+    auditsHandler()
+    const patch = vi.fn(() => HttpResponse.json(mine))
+    server.use(http.get('*/api/me/categories', () => HttpResponse.json([
+      { type: 'EXPENSE', major: '외식', count: 1, minors: [] },
+    ])), http.patch('*/api/transactions/7', patch))
+    const { user } = renderPage(<TransactionPanel tx={mine} onDeleted={vi.fn()} />)
+    await user.click(await screen.findByRole('button', { name: /대분류/ }))
+    await user.click(await screen.findByRole('option', { name: '외식' }))
+    expect(screen.getByText('이 대분류에는 고를 수 있는 소분류가 없습니다.')).toHaveClass('muted')
+    expect(screen.getByRole('button', { name: /소분류/ })).toBeDisabled()
+    expect(screen.getByRole('button', { name: '저장' })).toBeDisabled()
+    fireEvent.submit(screen.getByRole('button', { name: '저장' }).closest('form')!)
+    expect(patch).not.toHaveBeenCalled()
   })
 
   it('calls onSaved after a successful update', async () => {
@@ -187,7 +224,11 @@ describe('TransactionPanel', () => {
     auditsHandler()
     let body: unknown
     server.use(http.patch('*/api/transactions/7', async ({ request }) => { body = await request.json(); return HttpResponse.json(mine) }))
-    const { user } = renderPage(<TransactionPanel tx={{ ...mine, categoryMajor: '외식', edited: true }} onDeleted={vi.fn()} />)
+    function RestoredPanel() {
+      const [tx, setTx] = useState({ ...mine, categoryMajor: '외식', edited: true })
+      return <TransactionPanel tx={tx} onDeleted={vi.fn()} onSaved={() => setTx(mine)} />
+    }
+    const { user } = renderPage(<RestoredPanel />)
 
     await user.click(await screen.findByRole('button', { name: /대분류/ }))
     await user.click(screen.getByRole('option', { name: '원래 값' }))
