@@ -2,6 +2,10 @@
 .sheet { position: fixed !important; inset: auto 0 0 !important; width: 100%; max-height: 70vh !important; max-height: 70dvh !important; overscroll-behavior: contain; overflow: auto; background: var(--surface-000); border-radius: var(--radius-lg) var(--radius-lg) 0 0; padding-bottom: env(safe-area-inset-bottom); box-shadow: 0 0 0 100vmax var(--overlay); }
 .dialog { outline: none; }
 .title { margin: 0; padding: var(--space-4); font-size: var(--text-md); }
+.sheetHeader { display: flex; align-items: center; justify-content: space-between; padding-right: var(--space-2); }
+.close { border: 0; background: none; }
+/* 제목 없는 넓은 화면 팝오버에서는 오른쪽 위에 띄운다. */
+.popover .close { position: absolute; top: var(--space-2); right: var(--space-2); }
 .sheet[data-entering], .modalSheet[data-entering] { animation: slide-in 160ms ease-out; }
 .sheet[data-exiting], .modalSheet[data-exiting] { animation: slide-in 120ms ease-in reverse; }
 @keyframes slide-in { from { transform: translateY(100%); } to { transform: translateY(0); } }

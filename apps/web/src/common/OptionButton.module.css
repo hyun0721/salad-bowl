@@ -4,6 +4,9 @@
 .legend { font-weight: 700; margin-bottom: var(--space-2); }
 .radio { display: flex; align-items: center; gap: var(--space-4); min-height: 40px; cursor: pointer; }
 .actions { display: flex; gap: var(--space-4); justify-content: flex-end; position: sticky; bottom: 0; padding-bottom: var(--space-4); background: var(--surface-000); }
+/* 시트 아래 버튼은 전체 폭. 보조(초기화) : 핵심(적용) = 1 : 2. */
+.ctaActions > button { flex: 1; }
+.ctaActions > button:last-child:not(:first-child) { flex: 2; }
 .trigger[data-focus-visible], .radio[data-focus-visible] { outline: 2px solid var(--brand); outline-offset: 2px; }
 .radioMark { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 20px; height: 20px; border: 1px solid var(--line); border-radius: 50%; }
 .radio[data-selected] .radioMark { border-color: var(--brand); }

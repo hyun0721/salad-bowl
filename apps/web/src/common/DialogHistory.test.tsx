@@ -41,7 +41,7 @@ describe('dialog router history', () => {
   it.each([false, true])('conditional unmount removes the entry (StrictMode: %s)', async (strict) => {
     const h = setup(strict)
     await h.user.click(screen.getByText('열기'))
-    await h.user.click(screen.getByText('닫기'))
+    await h.user.click(screen.getByRole('button', { name: '닫기' }))
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     expect(h.path()).toBe('/current')
     await h.back()

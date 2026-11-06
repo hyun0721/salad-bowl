@@ -18,6 +18,7 @@ import { percent } from './percent'
 import styles from './SubcategoryTrends.module.css'
 import breakdown from './CategoryBreakdown.module.css'
 import trendStyles from './CategoryTrend.module.css'
+import Icon from '../common/Icon'
 
 export default function SubcategoryTrends({ groupId, month, members = [] }: { groupId: number; month: string; members?: Pick<MemberTotal, 'userId' | 'nickname'>[] }) {
   const formatWon = useAmountFormatter('EXPENSE')
@@ -95,7 +96,7 @@ export default function SubcategoryTrends({ groupId, month, members = [] }: { gr
       {query.isPending && <SkeletonRegion label="대분류 목록을 불러오는 중입니다."><DonutLegendSkeleton compact={compact} /></SkeletonRegion>}
       {query.isError && <div className={ui.row}>
         <p role="alert" className={ui.alert}>대분류 목록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</p>
-        <button type="button" className={ui.button} onClick={() => void query.refetch()}>소분류 다시 시도</button>
+        <button type="button" className={ui.button} onClick={() => void query.refetch()}><Icon name="refresh-cw" size={18} />소분류 다시 시도</button>
       </div>}
       {query.isSuccess && (majors.length === 0
         ? <p className={ui.status}>최근 6개월에 공개된 지출이 없습니다.</p>

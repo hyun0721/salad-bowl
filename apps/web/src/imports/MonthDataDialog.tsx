@@ -2,6 +2,7 @@ import { useIsMutating } from '@tanstack/react-query'
 import { useState } from 'react'
 import Checkbox from '../common/Checkbox'
 import Dialog from '../common/Dialog'
+import Icon from '../common/Icon'
 import TextField from '../common/TextField'
 import { errorMessage } from '../common/errorMessage'
 import { formatMonthLabel } from '../common/format'
@@ -50,7 +51,7 @@ export default function MonthDataDialog({ coverage, onClose, onDeleted }: Props)
           <div className={ui.row}>
             <button type="button" className={ui.button} onClick={() => setStep('upload')}>다시 업로드</button>
             <button type="button" className={`${ui.button} ${ui.danger}`} disabled={uploading}
-              onClick={() => setStep('confirm')}>이 달 데이터 삭제</button>
+              onClick={() => setStep('confirm')}><Icon name="trash" size={18} />이 달 데이터 삭제</button>
           </div>
         </div>
       )}
@@ -77,10 +78,10 @@ export default function MonthDataDialog({ coverage, onClose, onDeleted }: Props)
             autoComplete="off" isDisabled={remove.isPending} />
           {uploading && <p className={ui.status}>업로드가 끝난 뒤 삭제할 수 있습니다.</p>}
           {remove.isError && <p role="alert" className={ui.alert}>{errorMessage(remove.error)}</p>}
-          <div className={ui.row}>
+          <div className={ui.confirmActions}>
             <button type="button" className={ui.button} disabled={remove.isPending}
               onClick={cancelConfirm}>취소</button>
-            <button type="button" className={`${ui.button} ${ui.danger}`}
+            <button type="button" className={`${ui.button} ${ui.dangerFill} ${ui.cta}`}
               disabled={typed !== month || uploading || remove.isPending}
               onClick={confirmDelete}>삭제</button>
           </div>

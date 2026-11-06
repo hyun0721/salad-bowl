@@ -56,7 +56,7 @@ export default function CoverageSection({ today, initialMonth, onInitialMonthHan
       {coverage.isError && (
         <div className={ui.row}>
           <p role="alert" className={ui.alert}>등록 현황을 불러오지 못했습니다.</p>
-          <button type="button" className={ui.button} onClick={() => void coverage.refetch()}>다시 시도</button>
+          <button type="button" className={ui.button} onClick={() => void coverage.refetch()}><Icon name="refresh-cw" size={18} />다시 시도</button>
         </div>
       )}
       {coverage.data && (

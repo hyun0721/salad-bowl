@@ -207,7 +207,7 @@ export default function TransactionsPage({ today }: Props) {
   const panelTitle = shown === 'add' ? '거래 추가 (수동)' : shown?.description ?? ''
   const body = shown === 'add' ? (
     <ManualTransactionForm loadDraft={() => (draft.current?.key === 'add' ? draft.current.values : undefined)}
-      onDraftChange={saveAddDraft} onCancel={closePanel} onDone={(created) => {
+      onDraftChange={saveAddDraft} onDone={(created) => {
       // 다른 달에 추가한 거래도 목록과 상세 패널에 보이도록 그 달로 옮긴다.
       setAdding(false)
       setScope('mine')
@@ -234,7 +234,7 @@ export default function TransactionsPage({ today }: Props) {
           <Icon name={inSidebar ? 'panel-center' : 'panel-right'} size={18} />
         </button>
       )}
-      <button type="button" className={ui.button} onClick={closePanel}><Icon name="x" size={18} />닫기</button>
+      <button type="button" className={`${ui.button} ${panelStyles.iconButton} ${ui.ghost}`} aria-label="닫기" onClick={closePanel}><Icon name="x" /></button>
     </div>
   )
 
@@ -273,7 +273,7 @@ export default function TransactionsPage({ today }: Props) {
         {inGroup && detail.isError && (
           <>
             <p role="alert" className={ui.alert}>멤버 목록을 불러오지 못했습니다.</p>
-            <button type="button" className={ui.button} onClick={() => void detail.refetch()}>멤버 목록 다시 시도</button>
+            <button type="button" className={ui.button} onClick={() => void detail.refetch()}><Icon name="refresh-cw" size={18} />멤버 목록 다시 시도</button>
           </>
         )}
         <TransactionFilter categories={categories.data ?? []} value={filter}
@@ -304,7 +304,7 @@ export default function TransactionsPage({ today }: Props) {
           {list.isError && (
             <div className={ui.row}>
               <p role="alert" className={ui.alert}>거래를 불러오지 못했습니다.</p>
-              <button type="button" className={ui.button} onClick={() => void list.refetch()}>다시 시도</button>
+              <button type="button" className={ui.button} onClick={() => void list.refetch()}><Icon name="refresh-cw" size={18} />다시 시도</button>
             </div>
           )}
           {list.data && items.length === 0 && (

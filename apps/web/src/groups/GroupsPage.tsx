@@ -34,7 +34,7 @@ export default function GroupsPage() {
           {isError && (
             <div className={ui.row}>
               <p role="alert" className={ui.alert}>그룹을 불러오지 못했습니다.</p>
-              <button type="button" className={ui.button} onClick={retry}>그룹 목록 다시 시도</button>
+              <button type="button" className={ui.button} onClick={retry}><Icon name="refresh-cw" size={18} />그룹 목록 다시 시도</button>
             </div>
           )}
           {!isLoading && !isError && groups.length === 0 && (

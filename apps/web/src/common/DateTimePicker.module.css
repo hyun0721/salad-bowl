@@ -18,6 +18,7 @@
 .cell[data-selected] { background: var(--brand); color: var(--on-brand); font-weight: 700; }
 @media (max-width: 820px) {
   .group { min-height: 44px; }
+  .input { font-size: var(--text-input); }
   .button { width: 44px; height: 44px; }
   .nav { width: 44px; height: 44px; }
   .grid { width: 100%; }

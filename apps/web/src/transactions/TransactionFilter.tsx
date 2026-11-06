@@ -111,8 +111,8 @@ export default function TransactionFilter({ categories, value, onApply }: Props)
             )
           })}
         </div>
-        <div className={`${optionStyles.actions} ${styles.actions}`}>
-          <button type="button" className={`${ui.button} ${ui.primary}`} onClick={() => setStep(null)}>확인</button>
+        <div className={`${optionStyles.actions} ${optionStyles.ctaActions}`}>
+          <button type="button" className={`${ui.button} ${ui.primary} ${ui.cta}`} onClick={() => setStep(null)}>확인</button>
         </div>
       </>
     )
@@ -124,9 +124,7 @@ export default function TransactionFilter({ categories, value, onApply }: Props)
         data-applied={applied || undefined} aria-label={applied ? '필터, 적용됨' : '필터'}>
         <Icon name={applied ? 'funnel-filled' : 'funnel'} />
       </Button>
-      <ResponsiveOverlay mobile={mobile} title="내역 필터">
-        <button type="button" className={`${ui.button} ${ui.iconButton} ${styles.close}`} aria-label="닫기"
-          onClick={() => setOpen(false)}><Icon name="x" /></button>
+      <ResponsiveOverlay mobile={mobile} title="내역 필터" closeButton>
         <div className={optionStyles.panel}>
           {step ? categoryStep(step) : (
             <>
@@ -134,7 +132,7 @@ export default function TransactionFilter({ categories, value, onApply }: Props)
                 <span className={optionStyles.legend}>거래 종류</span>
                 <div className={styles.types}>
                   {TRANSACTION_TYPES.map((t) => (
-                    <button key={t} type="button" className={ui.button} aria-pressed={draft.types.includes(t)}
+                    <button key={t} type="button" className={styles.type} aria-pressed={draft.types.includes(t)}
                       onClick={() => toggleType(t)}>{TYPE_LABELS[t]}</button>
                   ))}
                 </div>
@@ -150,10 +148,10 @@ export default function TransactionFilter({ categories, value, onApply }: Props)
                 )
               })}
               {error && <p role="alert" className={ui.alert}>{error}</p>}
-              <div className={`${optionStyles.actions} ${styles.actions}`}>
+              <div className={`${optionStyles.actions} ${optionStyles.ctaActions}`}>
                 {/* 초기화는 바로 반영해 저장한 필터도 지운다. */}
                 <button type="button" className={ui.button} onClick={() => { setDraft(DEFAULT_FILTER); setError(''); onApply(DEFAULT_FILTER) }}>초기화</button>
-                <button type="button" className={`${ui.button} ${ui.primary}`} onClick={apply}>적용</button>
+                <button type="button" className={`${ui.button} ${ui.primary} ${ui.cta}`} onClick={apply}>적용</button>
               </div>
             </>
           )}

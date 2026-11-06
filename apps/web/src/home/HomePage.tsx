@@ -12,6 +12,7 @@ import { coverageApi } from '../imports/coverageApi'
 import { summarize } from '../transactions/summary'
 import { transactionsApi } from '../transactions/transactionsApi'
 import styles from './HomePage.module.css'
+import Icon from '../common/Icon'
 
 type Props = { today?: Date }
 
@@ -41,7 +42,7 @@ export default function HomePage({ today: todayProp }: Props) {
           {coverage.isError && (
             <div className={ui.row}>
               <p role="alert" className={ui.alert}>업로드 현황을 불러오지 못했습니다.</p>
-              <button type="button" className={ui.button} aria-label="업로드 현황 다시 시도" onClick={() => void coverage.refetch()}>다시 시도</button>
+              <button type="button" className={ui.button} aria-label="업로드 현황 다시 시도" onClick={() => void coverage.refetch()}><Icon name="refresh-cw" size={18} />다시 시도</button>
             </div>
           )}
           {coverage.data && (entry
@@ -58,7 +59,7 @@ export default function HomePage({ today: todayProp }: Props) {
           {mine.isError && (
             <div className={ui.row}>
               <p role="alert" className={ui.alert}>지난달 거래를 불러오지 못했습니다.</p>
-              <button type="button" className={ui.button} aria-label="요약 다시 시도" onClick={() => void mine.refetch()}>다시 시도</button>
+              <button type="button" className={ui.button} aria-label="요약 다시 시도" onClick={() => void mine.refetch()}><Icon name="refresh-cw" size={18} />다시 시도</button>
             </div>
           )}
           {totals && <TotalsCards income={totals.income} expense={totals.expense} onSelect={() => navigate('/transactions')} />}

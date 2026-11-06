@@ -7,7 +7,7 @@ body {
   color: var(--ink);
   font-family: var(--font-sans);
   font-size: var(--text-base);
-  line-height: 18px;
+  line-height: var(--line-height-base);
 }
 /* 홈 화면 앱(iOS standalone)은 상태바 뒤까지 그린다(black-translucent). 상태바 글자가 흰색이라 그 뒤를 칠하고,
    스크롤한 내용이 상태바 뒤로 비치지 않게 맨 위에 띠를 고정한다. 상태바가 없는 환경에서는 높이가 0이다. */

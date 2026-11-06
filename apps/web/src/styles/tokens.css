@@ -12,6 +12,7 @@
   --pending: #8a5420;
   --pending-tint: #fff8ef;
   --danger: #9a3523;
+  --on-danger: #ffffff;
   --amount-income: light-dark(#b42318, #fda4af);
   --amount-expense: light-dark(#1d4ed8, #93c5fd);
   --overlay: rgb(20 24 21 / 0.45);
@@ -38,6 +39,8 @@
   --text-xs: 11px;
   --text-sm: 12px;
   --text-base: 12px;
+  --line-height-base: 18px;
+  --text-label: 12px;
   --text-md: 13px;
   --text-lg: 15px;
   --text-xl: 16px;
@@ -66,6 +69,7 @@
     --pending: #e3a560;
     --pending-tint: #3a2c1c;
     --danger: #f08c78;
+    --on-danger: #0f1a13;
     --overlay: rgb(0 0 0 / 0.6);
     --status-bar: var(--surface-000);
     --chart-1: #3987e5;
@@ -92,6 +96,7 @@
   --pending: #e3a560;
   --pending-tint: #3a2c1c;
   --danger: #f08c78;
+  --on-danger: #0f1a13;
   --overlay: rgb(0 0 0 / 0.6);
   --status-bar: var(--surface-000);
   --chart-1: #3987e5;
@@ -105,5 +110,5 @@
 }
 
 @media (max-width: 820px) {
-  :root { --control-height: 44px; }
+  :root { --control-height: 44px; --text-base: 13px; --line-height-base: 19px; --text-label: 13px; }
 }

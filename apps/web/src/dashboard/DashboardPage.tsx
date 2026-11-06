@@ -20,6 +20,7 @@ import { dashboardApi, type MonthlySummary } from './dashboardApi'
 import { dashboardRedirect, dashboardTitle, type Level, type View } from './dashboardRoute'
 import DashboardMenu from './DashboardMenu'
 import MemberTotalsDialog from './MemberTotalsDialog'
+import Icon from '../common/Icon'
 
 type Props = { today?: Date }
 
@@ -53,7 +54,7 @@ export default function DashboardPage({ today }: Props) {
         {isError && (
           <div className={ui.row}>
             <p role="alert" className={ui.alert}>그룹을 불러오지 못했습니다.</p>
-            <button type="button" className={ui.button} onClick={retry}>그룹 목록 다시 시도</button>
+            <button type="button" className={ui.button} onClick={retry}><Icon name="refresh-cw" size={18} />그룹 목록 다시 시도</button>
           </div>
         )}
         {!isLoading && !isError && <NoGroupNotice />}
@@ -69,7 +70,7 @@ export default function DashboardPage({ today }: Props) {
       {summary.isError && (
         <div className={ui.row}>
           <p role="alert" className={ui.alert}>요약을 불러오지 못했습니다.</p>
-          <button type="button" className={ui.button} onClick={() => void summary.refetch()}>다시 시도</button>
+          <button type="button" className={ui.button} onClick={() => void summary.refetch()}><Icon name="refresh-cw" size={18} />다시 시도</button>
         </div>
       )}
       {summary.data && <>

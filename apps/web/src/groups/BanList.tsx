@@ -6,6 +6,7 @@ import ui from '../common/ui.module.css'
 import { groupsApi } from './groupsApi'
 import styles from './GroupsPage.module.css'
 import { useGroupMutations } from './useGroupMutations'
+import Icon from '../common/Icon'
 
 export default function BanList({ groupId }: { groupId: number }) {
   const bans = useQuery({ queryKey: ['bans', groupId], queryFn: () => groupsApi.bans(groupId) })
@@ -23,7 +24,7 @@ export default function BanList({ groupId }: { groupId: number }) {
       {bans.isError && (
         <div className={ui.row}>
           <p role="alert" className={ui.alert}>차단 목록을 불러오지 못했습니다.</p>
-          <button type="button" className={ui.button} onClick={() => void bans.refetch()}>차단 목록 다시 시도</button>
+          <button type="button" className={ui.button} onClick={() => void bans.refetch()}><Icon name="refresh-cw" size={18} />차단 목록 다시 시도</button>
         </div>
       )}
       {bans.data?.length === 0 && <p className={ui.status}>차단한 사람이 없습니다.</p>}
