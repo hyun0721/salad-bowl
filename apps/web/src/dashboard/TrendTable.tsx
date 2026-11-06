@@ -12,7 +12,7 @@ export default function TrendTable({ months, categories, label }: CategoryTrend 
   const indexes = months.map((_, index) => index).reverse()
   return <div className={styles.tableScroll}>
     <table className={styles.table}>
-      <caption className={styles.srOnly}>{label}별 전월 대비 증감률</caption>
+      <caption className={styles.srOnly}>{label}별 전월 대비 증감액</caption>
       <thead><tr><th scope="col">{label}</th><th scope="col">추이</th>
         {indexes.map((index) => <th scope="col" key={months[index]}>{Number(months[index].slice(5))}월</th>)}
       </tr></thead>
@@ -25,7 +25,7 @@ export default function TrendTable({ months, categories, label }: CategoryTrend 
         </svg></td>
         {indexes.map((index) => {
           const value = row.expenses[index] ?? 0
-          const change = expenseChange(value, index === 0 ? undefined : row.expenses[index - 1] ?? 0)
+          const change = expenseChange(value, index === 0 ? undefined : row.expenses[index - 1] ?? 0, formatWon)
           const description = `${formatMonthLabel(months[index])} ${value < 0 ? '-' : ''}${formatWon(value)}, ${change.comparison}`
           return <td key={months[index]} title={description} aria-label={description}
             className={change.direction > 0 ? styles.expenseIncrease : change.direction < 0 ? styles.expenseDecrease : undefined}>{change.label}</td>
