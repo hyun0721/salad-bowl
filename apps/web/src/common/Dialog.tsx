@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { Dialog as AriaDialog, Heading, Modal, ModalOverlay } from 'react-aria-components'
 import { useNarrowWhileOpen } from './useMediaQuery'
 import { useDialogHistory } from './DialogHistory'
+import { revealFocusedField } from './revealFocusedField'
 import styles from './Overlay.module.css'
 import ui from './ui.module.css'
 import Icon from './Icon'
@@ -42,7 +43,7 @@ export function DialogFrame(props: FrameProps) {
   return (
     <ModalOverlay isOpen={isOpen} onOpenChange={onOpenChange} isDismissable={closeOnOutsideClick && !closeDisabled}
       isKeyboardDismissDisabled={closeDisabled} className={narrow ? styles.sheetBackdrop : styles.backdrop}>
-      <Modal className={(narrow ? sheetClass : modalClass) + pinned}>
+      <Modal ref={narrow ? revealFocusedField : undefined} className={(narrow ? sheetClass : modalClass) + pinned}>
         <AriaDialog className={styles.content}>{({ close }) => body(close)}</AriaDialog>
       </Modal>
     </ModalOverlay>

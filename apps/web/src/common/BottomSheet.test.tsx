@@ -1,7 +1,8 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import BottomSheet from './BottomSheet'
+import { mockResizeObserver } from '../test/mockResizeObserver'
 
 function renderSheet() {
   const user = userEvent.setup()
@@ -19,6 +20,28 @@ function renderSheet() {
 }
 
 describe('BottomSheet', () => {
+  it('scrolls the focused input back into view on resize and disconnects on close', async () => {
+    const { notify, disconnect } = mockResizeObserver()
+    const user = userEvent.setup()
+    render(
+      <BottomSheet title="계정" triggerLabel="계정" triggerIcon="user">
+        {() => <label>이름<input /></label>}
+      </BottomSheet>,
+    )
+    await user.click(screen.getByRole('button', { name: '계정' }))
+    const input = screen.getByLabelText('이름')
+    const scrollIntoView = vi.fn()
+    input.scrollIntoView = scrollIntoView
+    await user.click(input)
+
+    notify()
+    expect(scrollIntoView).toHaveBeenCalledWith({ block: 'center' })
+
+    await user.click(screen.getByRole('button', { name: '닫기' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(disconnect).toHaveBeenCalledOnce()
+  })
+
   it('opens a titled dialog from an icon button and requests closing from its content', async () => {
     const user = renderSheet()
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()

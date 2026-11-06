@@ -1,6 +1,7 @@
 import { useRef, type ReactNode } from 'react'
 import { Button, Dialog, DialogTrigger, Heading, Modal, ModalOverlay } from 'react-aria-components'
 import Icon, { type IconName } from './Icon'
+import { revealFocusedField } from './revealFocusedField'
 import styles from './BottomSheet.module.css'
 import overlay from './Overlay.module.css'
 import ui from './ui.module.css'
@@ -31,7 +32,7 @@ export default function BottomSheet({ title, triggerLabel, triggerIcon, triggerC
         <Icon name={triggerIcon} />
       </Button>
       <ModalOverlay isDismissable className={styles.backdrop}>
-        <Modal className={styles.sheet}>
+        <Modal ref={revealFocusedField} className={styles.sheet}>
           <Dialog className={styles.content}>
             {({ close }) => (
               <>
