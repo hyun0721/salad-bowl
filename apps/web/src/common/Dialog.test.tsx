@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import Dialog, { DialogFrame } from './Dialog'
 import TextField from './TextField'
+import { mockResizeObserver } from '../test/mockResizeObserver'
 import { mockViewport } from '../test/mockViewport'
 
 describe('Dialog', () => {
@@ -138,4 +139,101 @@ it('keeps the same modal and its input when the width changes while open', async
 
   expect(screen.getByRole('dialog', { name: '그룹 만들기' })).toBe(dialog)
   expect(screen.getByLabelText('이름')).toHaveValue('우리집')
+})
+
+describe('DialogFrame when the sheet resizes', () => {
+  function sheet(title = '그룹 만들기', isOpen = true) {
+    return (
+      <DialogFrame isOpen={isOpen} onOpenChange={() => {}} title={title}>
+        {() => <><label>{`${title} 이름`}<input /></label><button type="button">{`${title} 확인`}</button></>}
+      </DialogFrame>
+    )
+  }
+  function spyOnScroll(element: HTMLElement) {
+    const scrollIntoView = vi.fn()
+    element.scrollIntoView = scrollIntoView
+    return scrollIntoView
+  }
+
+  it('scrolls the focused input back into view', () => {
+    mockViewport(true)
+    const { notify } = mockResizeObserver()
+    render(sheet())
+    const input = screen.getByLabelText('그룹 만들기 이름')
+    const scrollIntoView = spyOnScroll(input)
+    act(() => input.focus())
+
+    notify()
+
+    expect(scrollIntoView).toHaveBeenCalledWith({ block: 'center' })
+  })
+
+  it('asks open popovers to reposition when the sheet scrolls under a focused input', () => {
+    mockViewport(true)
+    mockResizeObserver()
+    render(sheet())
+    const dialogSheet = screen.getByRole('dialog').parentElement!
+    const onResize = vi.fn()
+    window.addEventListener('resize', onResize)
+    try {
+      act(() => screen.getByRole('button', { name: '그룹 만들기 확인' }).focus())
+      fireEvent.scroll(dialogSheet)
+      expect(onResize).not.toHaveBeenCalled()
+
+      act(() => screen.getByLabelText('그룹 만들기 이름').focus())
+      fireEvent.scroll(dialogSheet)
+      expect(onResize).toHaveBeenCalledOnce()
+    } finally {
+      window.removeEventListener('resize', onResize)
+    }
+  })
+
+  it('leaves the scroll alone when focus is not on an editable element', () => {
+    mockViewport(true)
+    const { notify } = mockResizeObserver()
+    render(sheet())
+    const button = screen.getByRole('button', { name: '그룹 만들기 확인' })
+    const scrollIntoView = spyOnScroll(button)
+    act(() => button.focus())
+
+    notify()
+
+    expect(scrollIntoView).not.toHaveBeenCalled()
+  })
+
+  it('reacts only in the sheet that holds the focus', () => {
+    mockViewport(true)
+    const { notify } = mockResizeObserver()
+    render(<>{sheet('아래')}{sheet('위')}</>)
+    const input = screen.getByLabelText('위 이름')
+    const scrollIntoView = spyOnScroll(input)
+    act(() => input.focus())
+
+    notify()
+
+    expect(scrollIntoView).toHaveBeenCalledOnce()
+  })
+
+  it('observes while open and disconnects on close', async () => {
+    mockViewport(true)
+    const { observe, disconnect } = mockResizeObserver()
+    const { rerender } = render(sheet())
+    expect(observe).toHaveBeenCalledWith(screen.getByRole('dialog').parentElement)
+    expect(disconnect).not.toHaveBeenCalled()
+
+    rerender(sheet('그룹 만들기', false))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(disconnect).toHaveBeenCalledOnce()
+
+    rerender(sheet())
+    expect(observe).toHaveBeenCalledTimes(2)
+  })
+
+  it('does not observe a wide-screen modal', () => {
+    mockViewport(false)
+    const { observe } = mockResizeObserver()
+    render(sheet())
+
+    expect(observe).not.toHaveBeenCalled()
+  })
 })
