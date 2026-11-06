@@ -1,6 +1,5 @@
 import { TransactionAmount } from '../common/AmountMask'
 import Checkbox from '../common/Checkbox'
-import ComboBox from '../common/ComboBox'
 import Select from '../common/Select'
 import { TextAreaField } from '../common/TextField'
 import { majorOptions, minorOptions, useCategories } from './categoriesApi'
@@ -15,6 +14,7 @@ import Icon from '../common/Icon'
 import Skeleton, { SkeletonRegion } from '../common/Skeleton'
 import ui from '../common/ui.module.css'
 import styles from './TransactionPanel.module.css'
+import listStyles from './TransactionsPage.module.css'
 import { transactionsApi, type AuditView, type TransactionPatch, type TransactionType, type TransactionView } from './transactionsApi'
 import { useTransactionMutations } from './useTransactionMutations'
 
@@ -42,7 +42,7 @@ function auditLine(a: AuditView): string {
 }
 
 /** 저장하지 않은 입력. 모달↔사이드바를 바꿔 다시 그려져도 페이지가 보관했다가 돌려준다. */
-export type EditDraft = { type: TransactionType; major: string; minor: string; memo: string; hidden: boolean }
+export type EditDraft = { type: TransactionType; major: string; minor: string | null; memo: string; hidden: boolean }
 
 type Props = { tx: TransactionView; onDeleted: () => void; onSaved?: () => void; loadDraft?: () => EditDraft | undefined; onDraftChange?: (draft: EditDraft) => void }
 
@@ -58,9 +58,14 @@ export default function TransactionPanel({ tx, onDeleted, onSaved, loadDraft, on
   useEffect(() => { onDraftChange?.(values) }, [values, onDraftChange])
   const isOwner = me?.userId === tx.ownerId
   const canDelete = isOwner && tx.source === 'MANUAL'
+  const changingMajor = major !== '' && major !== tx.categoryMajor
+  const minors = minorOptions(list, major)
+  const noMinorOptions = changingMajor && minors.length === 0
+  const invalidMinor = minor === null || (changingMajor && !minors.includes(minor))
 
   function onSave(event: FormEvent) {
     event.preventDefault()
+    if (invalidMinor) return
     const patch: TransactionPatch = {}
     if (type !== tx.type) patch.type = type
     if (major !== tx.categoryMajor) patch.categoryMajor = major
@@ -93,10 +98,24 @@ export default function TransactionPanel({ tx, onDeleted, onSaved, loadDraft, on
           <Select variant="field" label="타입" selectedKey={type}
             items={TYPE_ITEMS.filter((item) => item.id !== 'INCOME' || tx.amount > 0 || tx.type === 'INCOME')}
             onSelectionChange={(key) => { if (key != null) change({ type: key as TransactionType }) }} />
-          <ComboBox label="대분류" value={major} onChange={(v) => change({ major: v })} options={majorOptions(list)} maxLength={100} />
-          <ComboBox label="소분류" value={minor} onChange={(v) => change({ minor: v })} options={minorOptions(list, major.trim())} maxLength={100} />
+          <div className={listStyles.categoryFields}>
+            <Select variant="field" label="대분류" selectedKey={major ? 'major:' + major : tx.edited ? 'original' : null}
+              items={[...(tx.edited ? [{ id: 'original', label: '원래 값' }] : []),
+                ...[...new Set([major, tx.categoryMajor, ...majorOptions(list)])].filter(Boolean).map((value) => ({ id: 'major:' + value, label: value }))]}
+              onSelectionChange={(key) => {
+                if (key === 'original') change({ major: '', minor: '' })
+                else if (key != null && String(key).slice(6) !== major) change({ major: String(key).slice(6), minor: null })
+              }} />
+            <Select variant="field" label="소분류" placeholder="선택" isDisabled={!major || noMinorOptions}
+              selectedKey={minor === null ? null : minor ? 'minor:' + minor : 'original'}
+              items={[...(!changingMajor ? [{ id: 'original', label: !tx.edited && tx.categoryMinor === '' ? '소분류 없음' : '원래 값' }] : []),
+                ...[...new Set([...(!changingMajor && minor ? [minor] : []), ...minors])]
+                  .map((value) => ({ id: 'minor:' + value, label: value }))]}
+              onSelectionChange={(key) => change({ minor: key === null ? null : key === 'original' ? '' : String(key).slice(6) })} />
+          </div>
+          {noMinorOptions && <p className={ui.muted}>이 대분류에는 고를 수 있는 소분류가 없습니다.</p>}
           <TextAreaField label="메모" value={memo} onChange={(v) => change({ memo: v })} maxLength={1000} rows={2} />
-          <p className={ui.muted}>비워 두거나 원래 타입을 고르고 저장하면 엑셀의 원래 값으로 돌아갑니다.</p>
+          <p className={ui.muted}>메모를 비우거나 '원래 값'·원래 타입을 고르고 저장하면 엑셀의 원래 값으로 돌아갑니다.</p>
           {isOwner && (
             <Checkbox isSelected={hidden} onChange={(v) => change({ hidden: v })}>그룹 화면에서 숨기기 (본인만)</Checkbox>
           )}
@@ -106,7 +125,7 @@ export default function TransactionPanel({ tx, onDeleted, onSaved, loadDraft, on
                 confirmLabel="삭제 확인" isPending={remove.isPending} error={remove.isError ? errorMessage(remove.error) : null}
                 onOpen={() => remove.reset()} onConfirm={(close) => remove.mutate(tx.id, { onSuccess: () => { close(); onDeleted() } })} />
             )}
-            <button type="submit" className={`${ui.button} ${ui.primary} ${ui.cta} ${styles.save}`} disabled={update.isPending}>저장</button>
+            <button type="submit" className={`${ui.button} ${ui.primary} ${ui.cta} ${styles.save}`} disabled={update.isPending || invalidMinor}>저장</button>
           </div>
         </form>
       ) : (

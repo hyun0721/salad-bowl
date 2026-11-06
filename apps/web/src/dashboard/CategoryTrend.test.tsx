@@ -49,7 +49,7 @@ describe('CategoryTrend', () => {
     expect(screen.getByRole('button', { name: '식비' })).toHaveAttribute('aria-pressed', 'false')
     expect(screen.getByRole('button', { name: '식비' })).not.toHaveTextContent('✓')
     await user.click(screen.getByRole('radio', { name: '표로 보기' }))
-    const table = screen.getByRole('table', { name: '대분류별 전월 대비 증감률' })
+    const table = screen.getByRole('table', { name: '대분류별 전월 대비 증감액' })
     expect(within(table).getByRole('rowheader', { name: '식비' })).toBeInTheDocument()
     expect(within(table).getByRole('rowheader', { name: '교통' })).toBeInTheDocument()
   })
@@ -115,7 +115,7 @@ describe('CategoryTrend', () => {
     release()
   })
 
-  it('shows newest months first with accessible percentage comparisons', async () => {
+  it('shows newest months first with accessible amount comparisons', async () => {
     setup({ months: ['2026-01', '2026-02', '2026-03'], categories: [
       { category: '식비', expenses: [1000, 2000, 1500], total: 4500 },
     ] })
@@ -124,14 +124,14 @@ describe('CategoryTrend', () => {
     expect(screen.getByRole('radio', { name: '차트로 보기' })).toHaveAttribute('aria-checked', 'true')
     expect(screen.queryByRole('table')).not.toBeInTheDocument()
     await user.click(screen.getByRole('radio', { name: '표로 보기' }))
-    const table = screen.getByRole('table', { name: '대분류별 전월 대비 증감률' })
+    const table = screen.getByRole('table', { name: '대분류별 전월 대비 증감액' })
     expect(within(table).getAllByRole('columnheader').map((x) => x.textContent)).toEqual(['대분류', '추이', '3월', '2월', '1월'])
     const cells = within(within(table).getByRole('row', { name: /식비/ })).getAllByRole('cell').slice(1)
-    expect(cells[0]).toHaveTextContent('-25% ↓')
+    expect(cells[0]).toHaveTextContent('-₩ 500 ↓')
     expect(cells[0]).toHaveClass(styles.expenseDecrease)
-    expect(cells[0]).toHaveAttribute('title', '2026년 3월 ₩ 1,500, 전월 대비 25% 감소')
-    expect(cells[0]).toHaveAccessibleName('2026년 3월 ₩ 1,500, 전월 대비 25% 감소')
-    expect(cells[1]).toHaveTextContent('+100% ↑')
+    expect(cells[0]).toHaveAttribute('title', '2026년 3월 ₩ 1,500, 전월 대비 ₩ 500 감소')
+    expect(cells[0]).toHaveAccessibleName('2026년 3월 ₩ 1,500, 전월 대비 ₩ 500 감소')
+    expect(cells[1]).toHaveTextContent('+₩ 1,000 ↑')
     expect(cells[2]).toHaveTextContent('—')
   })
 

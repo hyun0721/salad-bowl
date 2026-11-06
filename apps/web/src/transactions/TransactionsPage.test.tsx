@@ -2,7 +2,7 @@ import { Route, Routes, useLocation, useNavigate, type NavigateFunction } from '
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { useEffect } from 'react'
 import { http, HttpResponse } from 'msw'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { typeDateTime } from '../test/typeDateTime'
 import { server } from '../test/server'
 import { renderPage } from '../test/renderPage'
@@ -47,7 +47,7 @@ describe('TransactionsPage', () => {
   beforeEach(() => {
     try { window.localStorage.clear() } catch { /* storage may be unavailable */ }
     server.use(
-      http.get('*/api/me/categories', () => HttpResponse.json([])),
+      http.get('*/api/me/categories', () => HttpResponse.json([{ type: 'EXPENSE', major: '식비', count: 1, minors: [] }])),
       http.get('*/api/groups/:groupId/categories', () => HttpResponse.json([])),
     )
   })
@@ -187,7 +187,8 @@ describe('TransactionsPage', () => {
     await history.user.click(await screen.findByRole('button', { name: '거래로 이동' }))
     await history.user.click(await screen.findByRole('button', { name: '거래 추가' }))
     await typeDateTime(history.user, '202610051330')
-    await history.user.type(screen.getByRole('combobox', { name: '대분류' }), '식비')
+    await history.user.click(screen.getByRole('button', { name: /대분류/ }))
+    await history.user.click(await screen.findByRole('option', { name: '식비' }))
     await history.user.type(screen.getByLabelText('내용'), '간식')
     await history.user.type(screen.getByLabelText('금액 (원)'), '3000')
     await history.user.click(within(screen.getByRole('dialog')).getByRole('button', { name: '추가' }))
@@ -286,46 +287,59 @@ describe('TransactionsPage', () => {
     expect(add).toHaveTextContent(/^추가$/)
   })
 
-  it.each([false, true])('pages 500 transactions and searches the whole month (narrow: %s)', async (narrow) => {
+  it.each([false, true])('renders more rows on intersection and searches the whole month (narrow: %s)', async (narrow) => {
     mockViewport(narrow)
-    mineHandler(Array.from({ length: 501 }, (_, index) => ({
-      ...base, id: index + 1, description: `거래 ${index + 1}`, amount: -(index + 1),
-    })))
-    const { user } = renderPage(<TransactionsPage today={today} />, { groups })
-    const list = await screen.findByRole('grid', { name: '거래 목록' })
-    expect(within(list).getAllByRole('row')).toHaveLength(narrow ? 500 : 501)
-    expect(screen.getByRole('status')).toHaveTextContent(/^1 \/ 2/)
-    expect(screen.getByRole('status')).toHaveTextContent('1–500 / 501건')
-    expect(screen.getByRole('button', { name: '이전 페이지' })).toBeDisabled()
-    await user.click(screen.getByRole('button', { name: '다음 페이지' }))
-    expect(within(list).getAllByRole('row')).toHaveLength(narrow ? 1 : 2)
-    expect(within(list).getByText('거래 501')).toBeInTheDocument()
-    expect(screen.getByRole('status')).toHaveTextContent(/^2 \/ 2/)
-    expect(screen.getByRole('button', { name: '다음 페이지' })).toBeDisabled()
-
-    if (!narrow) {
-      await user.click(within(list).getByRole('columnheader', { name: /금액/ }))
-      expect(screen.getByRole('status')).toHaveTextContent(/^1 \/ 2/)
-      expect(within(list).getAllByRole('row')[1]).toHaveTextContent('거래 501')
-      await user.click(screen.getByRole('button', { name: '다음 페이지' }))
-      expect(within(list).getByText('거래 1')).toBeInTheDocument()
+    const observers: { callback: IntersectionObserverCallback; options?: IntersectionObserverInit; observe: ReturnType<typeof vi.fn>; disconnect: ReturnType<typeof vi.fn> }[] = []
+    vi.stubGlobal('IntersectionObserver', class {
+      observe = vi.fn()
+      disconnect = vi.fn()
+      constructor(callback: IntersectionObserverCallback, options?: IntersectionObserverInit) {
+        observers.push({ callback, options, observe: this.observe, disconnect: this.disconnect })
+      }
+    })
+    const intersect = () => {
+      const observer = observers.at(-1)!
+      act(() => observer.callback([{ isIntersecting: true } as IntersectionObserverEntry], {} as IntersectionObserver))
     }
-    fireEvent.change(screen.getByRole('searchbox', { name: '검색' }), { target: { value: '거래 501' } })
-    expect(screen.getByRole('status')).toHaveTextContent(/^1 \/ 1/)
-    expect(screen.getByRole('status')).toHaveTextContent('1–1 / 1건')
-    expect(within(screen.getByRole('grid', { name: '거래 목록' })).getByText('거래 501')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '다음 페이지' })).toBeDisabled()
+    const items = Array.from({ length: 601 }, (_, index) => ({
+      ...base, id: index + 1, description: `거래 ${index + 1}`, amount: -(index + 1),
+    }))
+    mineHandler(items)
+    const { client } = renderPage(<TransactionsPage today={today} />, { groups })
+    const list = await screen.findByRole('grid', { name: '거래 목록' })
+    expect(within(list).getAllByRole('row')).toHaveLength(narrow ? 300 : 301)
+    const status = screen.getByRole('status')
+    expect(status).toHaveTextContent('300 / 601건 표시')
+    expect(screen.queryByRole('navigation', { name: '거래 목록 페이지' })).not.toBeInTheDocument()
+    expect(observers.at(-1)!.options?.rootMargin).toBe('600px')
+    expect(observers.at(-1)!.options?.root).toBe(list.closest('[class*=listScroll]'))
+    // 대량 행 클릭은 user-event 대신 fireEvent로 검증한다.
+    intersect()
+    expect(within(list).getAllByRole('row')).toHaveLength(narrow ? 600 : 601)
+    expect(observers[0].disconnect).toHaveBeenCalled()
+    expect(observers.at(-1)!.observe).toHaveBeenCalled()
+    expect(status).toHaveTextContent('600 / 601건 표시')
+    await client.invalidateQueries({ queryKey: ['transactions'] })
+    expect(status).toHaveTextContent('600 / 601건 표시')
+    if (!narrow) {
+      const scrollTo = vi.fn()
+      list.parentElement!.scrollTo = scrollTo
+      fireEvent.click(within(list).getByRole('columnheader', { name: /금액/ }))
+      expect(status).toHaveTextContent('300 / 601건 표시')
+      expect(within(list).getAllByRole('row')[1]).toHaveTextContent('거래 601')
+      expect(scrollTo).toHaveBeenCalledWith({ top: 0 })
+      intersect()
+    }
+    const last = observers.at(-1)!
+    const sentinel = last.observe.mock.calls[0][0] as Element
+    intersect()
+    expect(status).toHaveTextContent('601 / 601건 표시')
+    expect(last.disconnect).toHaveBeenCalled()
+    expect(sentinel).not.toBeInTheDocument()
+    fireEvent.change(screen.getByRole('searchbox', { name: '검색' }), { target: { value: '거래 601' } })
+    expect(screen.getByRole('status')).toHaveTextContent('1 / 1건 표시')
+    expect(within(screen.getByRole('grid', { name: '거래 목록' })).getByText('거래 601')).toBeInTheDocument()
   }, 20000)
-
-  it('shows the page footer as current / total with icon buttons', async () => {
-    mockViewport(true)
-    mineHandler([{ ...base }])
-    renderPage(<TransactionsPage today={today} />, { groups })
-    const footer = await screen.findByRole('navigation', { name: '거래 목록 페이지' })
-    expect(within(footer).getByRole('button', { name: '이전 페이지' })).toHaveTextContent(/^$/)
-    expect(within(footer).getByRole('button', { name: '다음 페이지' })).toHaveTextContent(/^$/)
-    expect(within(footer).getByRole('status')).toHaveTextContent(/^1 \/ 1/)
-  })
 
   it('marks the page so the shell fits the viewport', async () => {
     mineHandler([{ ...base }])
@@ -689,7 +703,8 @@ describe('TransactionsPage', () => {
     await screen.findByText('이 달에 거래가 없습니다.')
     await user.click(screen.getByRole('button', { name: '거래 추가' }))
     await typeDateTime(user, '202609051330')
-    await user.type(screen.getByRole('combobox', { name: '대분류' }), '식비')
+    await user.click(screen.getByRole('button', { name: /대분류/ }))
+    await user.click(await screen.findByRole('option', { name: '식비' }))
     await user.type(screen.getByLabelText('내용'), '9월 간식')
     await user.type(screen.getByLabelText('금액 (원)'), '3000')
     const sheet = screen.getByRole('dialog', { name: '거래 추가 (수동)' })
@@ -736,7 +751,8 @@ describe('TransactionsPage', () => {
     await waitFor(() => expect(screen.getByLabelText('월')).toHaveValue('2026-10'))
     await user.click(screen.getByRole('button', { name: '거래 추가' }))
     await typeDateTime(user, '202609051330')
-    await user.type(screen.getByRole('combobox', { name: '대분류' }), '식비')
+    await user.click(screen.getByRole('button', { name: /대분류/ }))
+    await user.click(await screen.findByRole('option', { name: '식비' }))
     await user.type(screen.getByLabelText('내용'), '9월 간식')
     await user.type(screen.getByLabelText('금액 (원)'), '3000')
     const sheet = screen.getByRole('dialog', { name: '거래 추가 (수동)' })
@@ -802,7 +818,8 @@ describe('TransactionsPage', () => {
     await screen.findByText('이 달에 거래가 없습니다.')
     await user.click(screen.getByRole('button', { name: '거래 추가' }))
     await typeDateTime(user, '202609051330')
-    await user.type(screen.getByRole('combobox', { name: '대분류' }), '식비')
+    await user.click(screen.getByRole('button', { name: /대분류/ }))
+    await user.click(await screen.findByRole('option', { name: '식비' }))
     await user.type(screen.getByLabelText('내용'), '9월 간식')
     await user.type(screen.getByLabelText('금액 (원)'), '3000')
     await user.click(screen.getByRole('button', { name: '추가' }))

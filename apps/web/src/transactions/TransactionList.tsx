@@ -3,11 +3,9 @@ import type { Selection } from 'react-aria-components'
 import Checkbox from '../common/Checkbox'
 import CardList from '../common/CardList'
 import cardStyles from '../common/CardList.module.css'
-import Icon from '../common/Icon'
 import DataTable from '../common/DataTable'
 import tableStyles from '../common/DataTable.module.css'
 import Skeleton, { SkeletonRegion } from '../common/Skeleton'
-import ui from '../common/ui.module.css'
 import { NARROW, useMediaQuery } from '../common/useMediaQuery'
 import styles from './TransactionsPage.module.css'
 import { TransactionCard, transactionColumns } from './transactionRows'
@@ -24,17 +22,24 @@ type Props = {
   saving?: boolean
 }
 
-const PAGE_SIZE = 500
+const RENDER_BATCH = 300
 
 const selectionCheckbox = () => <Checkbox slot="selection" />
 
 export default function TransactionList({ items, showOwner, selectedId, onSelect, selectedIds, onSelectionChange, saving = false, onTagClick }: Props) {
   const narrow = useMediaQuery(NARROW)
-  const [requestedPage, setPage] = useState(0)
-  const pageCount = Math.ceil(items.length / PAGE_SIZE)
-  const page = Math.min(requestedPage, Math.max(0, pageCount - 1))
+  const [visibleCount, setVisibleCount] = useState(RENDER_BATCH)
   const scrollRef = useRef<HTMLDivElement>(null)
-  useEffect(() => { scrollRef.current?.scrollTo?.({ top: 0 }) }, [page])
+  const sentinelRef = useRef<HTMLDivElement>(null)
+  const hasMore = visibleCount < items.length
+  useEffect(() => {
+    if (!hasMore || !sentinelRef.current) return
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) setVisibleCount((count) => count + RENDER_BATCH)
+    }, { root: scrollRef.current, rootMargin: '600px' })
+    observer.observe(sentinelRef.current)
+    return () => observer.disconnect()
+  }, [hasMore, visibleCount])
   const selecting = selectedIds !== undefined
   const select = (keys: Selection) => {
     onSelectionChange?.(new Set(items.filter((tx) => tx.editable && (keys === 'all' || keys.has(tx.id))).map((tx) => tx.id)))
@@ -44,7 +49,7 @@ export default function TransactionList({ items, showOwner, selectedId, onSelect
     selectionMode: 'multiple' as const, selectionBehavior: 'toggle' as const,
     selectedKeys: selectedIds, onSelectionChange: select, disabledKeys,
   } : undefined
-  // 선택이 바뀔 때마다 500행을 다시 그리지 않도록 열과 카드 내용의 정체성을 유지한다.
+  // 선택이 바뀔 때마다 목록을 다시 그리지 않도록 열과 카드 내용의 정체성을 유지한다.
   const columns = useMemo(() => selecting
     ? [{ id: 'selection', label: '선택', width: '48px', render: selectionCheckbox }, ...transactionColumns(showOwner, true, onTagClick)]
     : transactionColumns(showOwner, true, onTagClick), [selecting, showOwner, onTagClick])
@@ -52,7 +57,7 @@ export default function TransactionList({ items, showOwner, selectedId, onSelect
     ? <div className={styles.cardSelection}>{selectionCheckbox()}<div className={styles.cardContent}><TransactionCard tx={tx} showOwner={showOwner} onTagClick={onTagClick} /></div></div>
     : <TransactionCard tx={tx} showOwner={showOwner} onTagClick={onTagClick} />), [selecting, showOwner, onTagClick])
   const cards = (
-    <CardList label="거래 목록" items={items.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)} textValue={(tx) => tx.description} currentId={selectedId}
+    <CardList label="거래 목록" items={items.slice(0, visibleCount)} textValue={(tx) => tx.description} currentId={selectedId}
       selection={selection} onAction={selecting ? undefined : (id) => onSelect(Number(id))}>
       {renderCard}
     </CardList>
@@ -61,19 +66,11 @@ export default function TransactionList({ items, showOwner, selectedId, onSelect
     <>
       <div ref={scrollRef} className={styles.listScroll}>
         {narrow ? cards : <DataTable label="거래 목록" columns={columns} selection={selection} items={items} rowText={(tx) => tx.description}
-          pagination={{ page, pageSize: PAGE_SIZE, onSort: () => setPage(0) }}
+          visibleRows={{ count: visibleCount, onSort: () => { setVisibleCount(RENDER_BATCH); scrollRef.current?.scrollTo?.({ top: 0 }) } }}
           currentId={selectedId} onRowAction={selecting ? undefined : (id) => onSelect(Number(id))} />}
+        {hasMore && <div ref={sentinelRef} aria-hidden="true" style={{ height: 1 }} />}
       </div>
-      <nav aria-label="거래 목록 페이지" className={styles.pagination}>
-        <span role="status">
-          {page + 1} / {pageCount}
-          <span className={styles.visuallyHidden}>, {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, items.length)} / {items.length}건</span>
-        </span>
-        <button type="button" className={`${ui.button} ${styles.pageStep}`} aria-label="이전 페이지"
-          disabled={page === 0} onClick={() => setPage(page - 1)}><Icon name="chevron-left" size={18} /></button>
-        <button type="button" className={`${ui.button} ${styles.pageStep}`} aria-label="다음 페이지"
-          disabled={page + 1 >= pageCount} onClick={() => setPage(page + 1)}><Icon name="chevron-right" size={18} /></button>
-      </nav>
+      <span role="status" className={styles.visuallyHidden}>{Math.min(visibleCount, items.length)} / {items.length}건 표시</span>
     </>
   )
 }
