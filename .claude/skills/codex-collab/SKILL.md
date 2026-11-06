@@ -40,18 +40,22 @@ $C review <base-ref> <out-file> [effort]                 # Codex 기본 리뷰�
 - 프롬프트·출력 파일은 SDD 작업 공간(`.superpowers/sdd/<plan>/`)에 `codex-task-N-*.md` 이름으로 둔다. 컨트롤러 컨텍스트에 붙여 넣지 않는다.
 - 모델은 호출마다 `CODEX_MODEL`로 지정한다(예: `CODEX_MODEL=gpt-6-sol $C write …`). 지정하지 않으면 `gpt-6-astra`다. 어떤 모델·effort를 쓸지는 3장 표를 따른다.
 - 아래 모델 표는 기존 위임 기본값이다. 실제 사용 가능 모델은 현재 계정과 세션에서 확인하고, 필요한 경우 `CODEX_MODEL`로 지정한다. 과거 모델 거부 결과를 영구 제약으로 쓰거나 전역 설정을 바꾸지 않는다.
+- 2026-11-06 확인: `gpt-6-luna`, `gpt-6-sol`, `gpt-6-astra` 호출은 성공했다. `gpt-6.1-sol`은 이 ChatGPT 계정에서 `400 model_not_found`로 거부됐다. 표의 `sol`은 `gpt-6-sol`이며 `gpt-6.1-sol`과 다른 모델이다.
 - 오래 걸릴 수 있으니 Bash `timeout`을 600000으로 주거나 `run_in_background`로 돌린다.
 
 ## 2. 샌드박스 관찰 기록과 현재 환경 확인
 
-아래는 **`write`는 2026-10-20, `api`는 2026-10-29 위임 환경에서 관찰한 결과**다. 현재 환경에서도
-같다고 가정하지 않는다. brief에 위임 범위와 커밋·테스트 책임을 명시한다.
+아래는 **`write`는 2026-10-20, `api`는 2026-10-29 위임 환경에서 관찰한 결과**다. Docker·Gradle 행의
+`write`와 `api`는 codex-cli 0.155.0에서 2026-11-06에 재확인했다. 나머지 행은 기존 관찰 시점 그대로이며,
+현재 환경에서도 같다고 가정하지 않는다. brief에 위임 범위와 커밋·테스트 책임을 명시한다.
 
 | 작업 | `write` | `api` (2026-10-29 확인, codex-cli 0.155.0) |
 |---|---|---|
 | `apps/web`의 `npm test`·`typecheck`·`lint`·`build` | 된다 | 확인 안 함(쓸 일 없음) |
 | `git add`·`git commit` | **안 된다**(worktree의 `.git`이 작업 폴더 밖 — `.lock` 생성 거부) | **안 된다**(일부러 열지 않음) |
-| Docker(Testcontainers), `./gradlew` | **안 된다**(Docker 소켓 `connect: operation not permitted`) | 된다(`ApiApplicationTests`가 Testcontainers Postgres로 통과) |
+| Docker(Testcontainers), `./gradlew` | **안 된다**(Docker 소켓은 `connect: operation not permitted`, `./gradlew`는 `~/.gradle/wrapper` 잠금 파일이 `Operation not permitted`로 막힘) | 된다(`ApiApplicationTests`가 Testcontainers로 통과) |
+
+2026-11-06 재확인 범위는 `ApiApplicationTests` 1건이며, 전체 `./gradlew test`, `memoryTest`, `resume-api`는 그때 실행하지 않았다.
 
 `api` 모드는 샌드박스를 유지한 채 네트워크와 `~/.gradle` 쓰기만 연다. `.git`은 모든 worktree가
 함께 쓰는 폴더라 열지 않고, 커밋은 컨트롤러가 한다. 네트워크는 목적지 제한 없이 열리므로 push·임의 HTTP 전송을,
