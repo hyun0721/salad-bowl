@@ -13,7 +13,7 @@ const editedBadge = (tx: TransactionView) => tx.edited && <span className={`${ui
 const hiddenBadge = (tx: TransactionView) => tx.hidden && <span className={ui.badge}>숨김</span>
 function TagChips({ memo, onTagClick }: { memo: string | null; onTagClick?: (tag: string) => void }) {
   return extractTags(memo).map((tag) => onTagClick
-    ? <button key={tag} type="button" className={`${ui.button} ${styles.tagChip}`}
+    ? <button key={tag} type="button" className={styles.tagChip}
         onPointerDown={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}
         onKeyUp={(event) => event.stopPropagation()}
         onClick={(event) => { event.stopPropagation(); onTagClick(tag) }}>#{tag}</button>

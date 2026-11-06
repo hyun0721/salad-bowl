@@ -101,7 +101,9 @@ export default function TransactionBulkEdit({ items, categories, groupId, onClos
         {tooManyTags && <p role="alert" className={ui.alert}>태그 추가·제거는 각각 최대 20개까지 가능합니다.</p>}
         {overflowing > 0 && <p role="alert" className={ui.alert}>{overflowing}건은 메모가 1,000자를 넘어 태그를 추가할 수 없습니다.</p>}
         {bulkUpdate.isError && <p role="alert" className={ui.alert}>{errorMessage(bulkUpdate.error)}</p>}
-        <button type="submit" className={`${ui.button} ${ui.primary} ${ui.cta}`} disabled={disabled}>{saving ? '저장 중' : '적용'}</button>
+        <div className={styles.bulkActions}>
+          <button type="submit" className={`${ui.button} ${ui.primary} ${ui.cta}`} disabled={disabled}>{saving ? '저장 중' : '적용'}</button>
+        </div>
       </form>
     </Dialog>
   )
