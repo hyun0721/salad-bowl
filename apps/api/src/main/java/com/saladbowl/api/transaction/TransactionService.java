@@ -4,6 +4,8 @@ import com.saladbowl.api.common.ApiException;
 import com.saladbowl.api.common.ErrorCode;
 import com.saladbowl.api.group.GroupAccess;
 import com.saladbowl.api.transaction.TransactionDtos.AuditView;
+import com.saladbowl.api.transaction.TransactionDtos.BulkUpdateResult;
+import com.saladbowl.api.transaction.TransactionDtos.BulkUpdateTransactionRequest;
 import com.saladbowl.api.transaction.TransactionDtos.CategoryOption;
 import com.saladbowl.api.transaction.TransactionDtos.CoverageMonth;
 import com.saladbowl.api.transaction.TransactionDtos.ManualTransactionRequest;
@@ -154,8 +156,46 @@ public class TransactionService {
     @Transactional
     public TransactionView update(long actorId, long transactionId, UpdateTransactionRequest request) {
         LedgerTransaction tx = findVisible(actorId, transactionId);
+        updateOne(actorId, tx, request, tx.getOwnerId() == actorId
+                || access.canEditOwnedBy(actorId, tx.getOwnerId()));
+        return views.toView(tx, true);
+    }
+
+    @Transactional
+    public BulkUpdateResult bulkUpdate(long actorId, BulkUpdateTransactionRequest request) {
+        if (request.ids().size() != Set.copyOf(request.ids()).size()
+                || request.type() == null && request.categoryMajor() == null
+                && request.categoryMinor() == null && request.hidden() == null) {
+            throw new ApiException(ErrorCode.VALIDATION_FAILED, "invalid bulk update");
+        }
+        Map<Long, LedgerTransaction> byId = new HashMap<>();
+        transactions.findAllById(request.ids()).forEach(tx -> byId.put(tx.getId(), tx));
+        if (byId.size() != request.ids().size()) {
+            throw new ApiException(ErrorCode.NOT_FOUND, "transaction not found");
+        }
+        // 수정 전에 전부 확인한다. 요청 순서대로 처리하면 앞 거래의 400·403이 뒤 id의 존재 여부를 드러낸다.
+        Map<Long, Boolean> visible = new HashMap<>();
+        for (LedgerTransaction tx : byId.values()) {
+            if (tx.getOwnerId() != actorId && (tx.isHidden() || !visible.computeIfAbsent(tx.getOwnerId(),
+                    ownerId -> access.canViewOwnedBy(actorId, ownerId)))) {
+                throw new ApiException(ErrorCode.NOT_FOUND, "transaction not found");
+            }
+        }
+        Map<Long, Boolean> editable = new HashMap<>();
+        UpdateTransactionRequest update = new UpdateTransactionRequest(request.type(), request.categoryMajor(),
+                request.categoryMinor(), null, request.hidden());
+        for (long id : request.ids()) {
+            LedgerTransaction tx = byId.get(id);
+            updateOne(actorId, tx, update, tx.getOwnerId() == actorId || editable.computeIfAbsent(tx.getOwnerId(),
+                    ownerId -> access.canEditOwnedBy(actorId, ownerId)));
+        }
+        return new BulkUpdateResult(request.ids().size());
+    }
+
+    private void updateOne(long actorId, LedgerTransaction tx, UpdateTransactionRequest request,
+                           boolean editable) {
         boolean owner = tx.getOwnerId() == actorId;
-        if (!owner && !access.canEditOwnedBy(actorId, tx.getOwnerId())) {
+        if (!editable) {
             throw new ApiException(ErrorCode.FORBIDDEN, "cannot edit this transaction");
         }
         if (!owner && request.hidden() != null) {
@@ -184,7 +224,6 @@ public class TransactionService {
                     Boolean.toString(tx.isHidden()), Boolean.toString(request.hidden())));
             tx.setHidden(request.hidden());
         }
-        return views.toView(tx, true);
     }
 
     @Transactional(readOnly = true)

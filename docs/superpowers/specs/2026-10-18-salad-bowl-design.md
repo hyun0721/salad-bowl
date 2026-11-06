@@ -115,6 +115,7 @@ salad-bowl/
 | GET | `/me/transactions?from&to` | 내 거래 조회 |
 | POST | `/me/transactions` | 수동 거래 추가 |
 | PATCH | `/transactions/{id}` | 거래 수정 (본인 또는 그룹 ADMIN) |
+| PATCH | `/transactions/bulk` | 최대 1000건의 타입·카테고리·숨김 일괄 수정 (본인 또는 그룹 ADMIN, 숨김은 본인만) |
 | GET | `/groups/{id}/summary?month` | 월간 카테고리별 합계 |
 
 ### 6.3 FE (`apps/web`)

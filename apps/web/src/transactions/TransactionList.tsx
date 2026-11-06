@@ -1,4 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { Selection } from 'react-aria-components'
+import Checkbox from '../common/Checkbox'
 import CardList from '../common/CardList'
 import cardStyles from '../common/CardList.module.css'
 import Icon from '../common/Icon'
@@ -16,29 +18,50 @@ type Props = {
   showOwner: boolean
   selectedId: number | null
   onSelect: (id: number) => void
+  selectedIds?: Set<number>
+  onSelectionChange?: (ids: Set<number>) => void
+  saving?: boolean
 }
 
 const PAGE_SIZE = 500
 
-export default function TransactionList({ items, showOwner, selectedId, onSelect }: Props) {
+const selectionCheckbox = () => <Checkbox slot="selection" />
+
+export default function TransactionList({ items, showOwner, selectedId, onSelect, selectedIds, onSelectionChange, saving = false }: Props) {
   const narrow = useMediaQuery(NARROW)
   const [requestedPage, setPage] = useState(0)
   const pageCount = Math.ceil(items.length / PAGE_SIZE)
   const page = Math.min(requestedPage, Math.max(0, pageCount - 1))
   const scrollRef = useRef<HTMLDivElement>(null)
   useEffect(() => { scrollRef.current?.scrollTo?.({ top: 0 }) }, [page])
+  const selecting = selectedIds !== undefined
+  const select = (keys: Selection) => {
+    onSelectionChange?.(new Set(items.filter((tx) => tx.editable && (keys === 'all' || keys.has(tx.id))).map((tx) => tx.id)))
+  }
+  const disabledKeys = useMemo(() => items.filter((tx) => saving || !tx.editable).map((tx) => tx.id), [items, saving])
+  const selection = selectedIds ? {
+    selectionMode: 'multiple' as const, selectionBehavior: 'toggle' as const,
+    selectedKeys: selectedIds, onSelectionChange: select, disabledKeys,
+  } : undefined
+  // 선택이 바뀔 때마다 500행을 다시 그리지 않도록 열과 카드 내용의 정체성을 유지한다.
+  const columns = useMemo(() => selecting
+    ? [{ id: 'selection', label: '선택', width: '48px', render: selectionCheckbox }, ...transactionColumns(showOwner)]
+    : transactionColumns(showOwner), [selecting, showOwner])
+  const renderCard = useCallback((tx: TransactionView) => (selecting
+    ? <div className={styles.cardSelection}>{selectionCheckbox()}<div className={styles.cardContent}><TransactionCard tx={tx} showOwner={showOwner} /></div></div>
+    : <TransactionCard tx={tx} showOwner={showOwner} />), [selecting, showOwner])
   const cards = (
     <CardList label="거래 목록" items={items.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)} textValue={(tx) => tx.description} currentId={selectedId}
-      onAction={(id) => onSelect(Number(id))}>
-      {(tx) => <TransactionCard tx={tx} showOwner={showOwner} />}
+      selection={selection} onAction={selecting ? undefined : (id) => onSelect(Number(id))}>
+      {renderCard}
     </CardList>
   )
   return (
     <>
       <div ref={scrollRef} className={styles.listScroll}>
-        {narrow ? cards : <DataTable label="거래 목록" columns={transactionColumns(showOwner)} items={items} rowText={(tx) => tx.description}
+        {narrow ? cards : <DataTable label="거래 목록" columns={columns} selection={selection} items={items} rowText={(tx) => tx.description}
           pagination={{ page, pageSize: PAGE_SIZE, onSort: () => setPage(0) }}
-          currentId={selectedId} onRowAction={(id) => onSelect(Number(id))} />}
+          currentId={selectedId} onRowAction={selecting ? undefined : (id) => onSelect(Number(id))} />}
       </div>
       <nav aria-label="거래 목록 페이지" className={styles.pagination}>
         <span role="status">

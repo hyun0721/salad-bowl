@@ -1,3 +1,5 @@
+import TransactionBulkEdit from './TransactionBulkEdit'
+import { useAmountMask } from '../common/AmountMask'
 import SegmentedControl from '../common/SegmentedControl'
 import { menuLabel } from '../app/menu'
 import PageHeader from '../common/PageHeader'
@@ -12,7 +14,7 @@ import { DialogFrame } from '../common/Dialog'
 import { useNarrowWhileOpen } from '../common/useMediaQuery'
 import MonthPicker from '../common/MonthPicker'
 import ui from '../common/ui.module.css'
-import { defaultYearMonth } from '../common/format'
+import { defaultYearMonth, formatSignedWon } from '../common/format'
 import { usePageTitle } from '../common/usePageTitle'
 import { useGroups } from '../groups/GroupProvider'
 import { groupsApi } from '../groups/groupsApi'
@@ -77,6 +79,11 @@ export default function TransactionsPage({ today }: Props) {
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [adding, setAdding] = useState(false)
   const [view, setView] = useState(readDetailView)
+  const [selecting, setSelecting] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(() => new Set())
+  const [bulkOpen, setBulkOpen] = useState(false)
+  const selectionButton = useRef<HTMLButtonElement>(null)
+  const { hidden: hiddenAmounts } = useAmountMask()
 
   // 그룹이 없어지면 화면은 '내 거래'로 보이는데, 이미 선택된 것을 눌러도 변경이 없으므로 scope를 맞춰 둔다.
   if (selectedGroupId === null && scope === 'group') {
@@ -114,6 +121,27 @@ export default function TransactionsPage({ today }: Props) {
     return all.filter((tx) => [tx.description, tx.categoryMajor, tx.categoryMinor]
       .some((text) => text.toLowerCase().includes(keyword)))
   }, [list.data, search])
+
+  const selectionScope = JSON.stringify([selectedGroupId, groupId, month, memberId, filter, search])
+  const [previousScope, setPreviousScope] = useState(selectionScope)
+  const [previousItems, setPreviousItems] = useState(items)
+  if (previousScope !== selectionScope) {
+    setPreviousScope(selectionScope)
+    setSelectedIds(new Set())
+    setBulkOpen(false)
+  }
+  if (list.data && previousItems !== items) {
+    setPreviousItems(items)
+    if (previousScope === selectionScope) {
+      const editableIds = new Set(items.filter((tx) => tx.editable).map((tx) => tx.id))
+      if ([...selectedIds].some((id) => !editableIds.has(id))) {
+        setSelectedIds(new Set([...selectedIds].filter((id) => editableIds.has(id))))
+      }
+    }
+  }
+  const selectedItems = (list.data ? items : previousItems).filter((tx) => selectedIds.has(tx.id) && tx.editable)
+  const total = selectedItems.some((tx) => hiddenAmounts[tx.type])
+    ? '₩ •••••' : formatSignedWon(selectedItems.reduce((sum, tx) => sum + tx.amount, 0))
 
   // 선택한 거래는 현재 목록에서 찾는다. 월·멤버·그룹이 바뀌어 목록에 없으면 패널을 보이지 않는다.
   const selected = list.data?.find((tx) => tx.id === selectedId) ?? null
@@ -166,6 +194,16 @@ export default function TransactionsPage({ today }: Props) {
     setSelectedId(null)
   }
 
+  function changeSelectionMode(next: boolean) {
+    closePanel()
+    setSelecting(next)
+    setSelectedIds(new Set())
+    setBulkOpen(false)
+    selectionButton.current?.focus()
+    // 모달이 닫히며 사라진 편집 버튼으로 포커스를 복귀시키는 프레임 뒤에 되돌린다.
+    requestAnimationFrame(() => selectionButton.current?.focus())
+  }
+
   const panelTitle = shown === 'add' ? '거래 추가 (수동)' : shown?.description ?? ''
   const body = shown === 'add' ? (
     <ManualTransactionForm loadDraft={() => (draft.current?.key === 'add' ? draft.current.values : undefined)}
@@ -213,10 +251,14 @@ export default function TransactionsPage({ today }: Props) {
   }
 
   return (
-    <div className={styles.page} data-fit-viewport="">
+    <div className={`${styles.page} ${selecting ? styles.selecting : ''}`} data-fit-viewport="">
       <PageHeader title={title} action={
-        <button type="button" className={`${ui.button} ${ui.primary}`} aria-label="거래 추가"
-          onClick={() => { setAdding(true); setSelectedId(null) }}><Icon name="plus" />추가</button>
+        <div className={ui.row}>
+          <button ref={selectionButton} type="button" className={ui.button} aria-pressed={selecting} disabled={saving}
+            onClick={() => changeSelectionMode(!selecting)}><Icon name="check" />선택</button>
+          <button type="button" className={`${ui.button} ${ui.primary}`} aria-label="거래 추가" disabled={selecting}
+            onClick={() => { setAdding(true); setSelectedId(null) }}><Icon name="plus" />추가</button>
+        </div>
       } />
       <div className={`${ui.row} ${styles.filters}`}>
         <MonthPicker month={month} onChange={changeMonth} />
@@ -241,6 +283,20 @@ export default function TransactionsPage({ today }: Props) {
       </div>
       {selectedGroupId === null && <p className={ui.muted}>그룹에 속하면 그룹 거래를 볼 수 있습니다.</p>}
 
+      {selecting && <div className={styles.selectionBar} role="region" aria-label="거래 선택">
+        <span role="status">{selectedIds.size}건 선택 · 합계 {total}</span>
+        <div className={ui.row}>
+          <button type="button" className={ui.button} disabled={saving}
+            onClick={() => setSelectedIds(new Set(items.filter((tx) => tx.editable).map((tx) => tx.id)))}>전체 선택</button>
+          <button type="button" className={ui.button} disabled={saving || selectedIds.size === 0}
+            onClick={() => setSelectedIds(new Set())}>선택 해제</button>
+          <button type="button" className={`${ui.button} ${ui.primary}`} disabled={saving || selectedIds.size === 0 || list.isFetching}
+            onClick={() => setBulkOpen(true)}>{saving ? '저장 중' : <><Icon name="pencil" size={18} />편집</>}</button>
+          <button type="button" className={ui.button} disabled={saving} onClick={() => changeSelectionMode(false)}>취소</button>
+        </div>
+      </div>}
+      {bulkOpen && <TransactionBulkEdit items={selectedItems} categories={categories.data ?? []}
+        onClose={() => setBulkOpen(false)} onDone={() => changeSelectionMode(false)} />}
       <div className={styles.layout}>
         <section ref={listRef} aria-labelledby="list-title" className={`${ui.card} ${styles.listCard}`}>
           <h2 id="list-title" ref={listHeadingRef} tabIndex={-1} className={styles.visuallyHidden}>거래 목록</h2>
@@ -256,6 +312,7 @@ export default function TransactionsPage({ today }: Props) {
           )}
           {items.length > 0 && (
             <TransactionList key={JSON.stringify([groupId, month, memberId, search, filter, sort])} items={items} showOwner={inGroup} selectedId={selectedId}
+              selectedIds={selecting ? selectedIds : undefined} onSelectionChange={setSelectedIds} saving={saving}
               onSelect={(id) => { setSelectedId(id); setAdding(false) }} />
           )}
         </section>
