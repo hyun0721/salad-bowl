@@ -3,12 +3,16 @@ import {
   Button, Label, ListBox, ListBoxItem,
   Select as AriaSelect, SelectValue, type SelectProps,
 } from 'react-aria-components'
-import Icon from './Icon'
+import Icon, { type IconName } from './Icon'
 import { ResponsiveOverlay } from './ResponsiveOverlay'
 import { useNarrowWhileOpen } from './useMediaQuery'
 import styles from './Select.module.css'
 
-type Item = { id: string | number; label: string }
+type Item = { id: string | number; label: string; icon?: IconName }
+
+function ItemLabel({ item }: { item: Item }) {
+  return item.icon ? <span className={styles.withIcon}><Icon name={item.icon} size={18} />{item.label}</span> : <>{item.label}</>
+}
 type Props = {
   placeholder?: string
   isDisabled?: boolean
@@ -26,7 +30,7 @@ export default function Select({ label, items, selectedKey, onSelectionChange, v
     <ListBox items={items} className={styles.list} aria-label={label}>
       {(item) => (
         <ListBoxItem id={item.id} textValue={item.label} className={styles.item}>
-          {({ isSelected }) => <><span>{item.label}</span>{isSelected && <Icon name="check" size={18} />}</>}
+          {({ isSelected }) => <><span><ItemLabel item={item} /></span>{isSelected && <Icon name="check" size={18} />}</>}
         </ListBoxItem>
       )}
     </ListBox>
@@ -38,7 +42,9 @@ export default function Select({ label, items, selectedKey, onSelectionChange, v
       onOpenChange={setOpen}>
       <Label className={styles.label}>{label}</Label>
       <Button className={styles.trigger}>
-        <SelectValue className={styles.value} />
+        <SelectValue<Item> className={styles.value}>
+          {({ selectedItem, defaultChildren }) => selectedItem ? <ItemLabel item={selectedItem} /> : defaultChildren}
+        </SelectValue>
         <span className={styles.chevron}><Icon name="chevron-down" size={18} /></span>
       </Button>
       <ResponsiveOverlay mobile={mobile} title={label} dialog={false}>{list}</ResponsiveOverlay>
