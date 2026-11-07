@@ -4,6 +4,9 @@ import { I18nProvider } from 'react-aria-components'
 import './styles/tokens.css'
 import './styles/base.css'
 import App from './App'
+import { applyTheme, readTheme } from './common/theme'
+
+applyTheme(readTheme())
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

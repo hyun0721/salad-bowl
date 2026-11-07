@@ -8,6 +8,19 @@ const items = [{ id: 10, label: '우리집' }, { id: 20, label: '커플 가계�
 afterEach(() => vi.unstubAllGlobals())
 
 describe('Select', () => {
+  it('shows an item icon in the trigger and in the option list', async () => {
+    mockViewport(false)
+    const user = userEvent.setup()
+    render(<Select label="화면 모드" items={[{ id: 'light', label: '라이트', icon: 'sun' }, { id: 'dark', label: '다크', icon: 'moon' }]}
+      selectedKey="dark" onSelectionChange={vi.fn()} />)
+    const trigger = screen.getByRole('button', { name: /화면 모드/ })
+    expect(trigger).toHaveTextContent('다크')
+    expect(trigger.querySelector('svg')).not.toBeNull()
+    await user.click(trigger)
+    const option = await screen.findByRole('option', { name: '라이트' })
+    expect(option.querySelector('svg')).not.toBeNull()
+  })
+
   it('opens the mobile sheet without React Aria dialog-title warnings', async () => {
     mockViewport(true)
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
