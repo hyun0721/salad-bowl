@@ -11,6 +11,7 @@
 |---|---|---|
 | 웹 | Cloudflare Pages | React 빌드 결과를 정적 파일로 제공한다. |
 | API 프록시 | Pages Function | `/api/*` 요청에서 `/api` 접두어를 떼고 `API_ORIGIN`(Render)으로 전달한다. |
+| 깨우기 | Cloudflare Worker | 10분마다 Pages 경로의 API health를 호출한다. |
 | API | Render 무료 Web Service(Docker) | Spring Boot API를 실행한다. |
 | DB | Supabase Postgres 무료 | 세션 풀러(포트 5432)로 JDBC 연결한다. Supabase의 Data API·인증 기능은 사용하지 않는다. |
 
@@ -22,11 +23,12 @@
 |---|---|
 | `apps/api` | Java 21·Spring Boot API와 Dockerfile을 관리한다. |
 | `apps/web` | React 웹앱과 Cloudflare Pages Function(`functions/api/[[path]].ts`)을 관리한다. |
+| `apps/web/keepalive` | 예약 실행 Worker와 배포 설정을 관리한다. |
 | `docs` | 이 문서들과 배포 절차서, 잔여 작업을 관리한다. |
 | `docs/superpowers` | 설계 문서와 구현 계획을 관리한다. |
 | `scripts` | 배포 확인용 `smoke.sh` 등을 관리한다. |
 | `render.yaml` | Render Blueprint의 서비스와 자동 배포 조건을 정의한다. |
-| `.github/workflows` | CI(`api-ci`, `web-ci`), 설정값 동기화(`sync-config`), 깨우기(`keepalive`)를 정의한다. |
+| `.github/workflows` | CI(`api-ci`, `web-ci`), 설정값 동기화(`sync-config`), Worker 배포(`keepalive-worker`), 보조 확인(`keepalive`)을 정의한다. |
 
 ## API (`apps/api`)
 
@@ -51,7 +53,8 @@
 | `api-ci` | `apps/api/**` 또는 이 워크플로 파일 변경 시 PR·`main` push | `./gradlew test memoryTest` |
 | `web-ci` | `apps/web/**` 또는 이 워크플로 파일 변경 시 PR·`main` push | lint·typecheck·test·build |
 | `sync-config` | 수동 | 설정값 검증과 Render·Pages 반영, Render 재배포 |
-| `keepalive` | 10분마다·수동 | Pages를 거쳐 API health를 호출해 sleep과 DB 일시정지를 줄인다. |
+| `keepalive-worker` | 관련 파일의 `main` push·수동 | Cloudflare Worker를 배포한다. Worker Cron이 10분마다 Pages를 거쳐 API health를 호출한다. |
+| `keepalive` | GitHub 예약 실행·수동 | Pages 경로 health와 Supabase 활동을 보조 확인한다. 예약 실행 간격은 불규칙하다. |
 | `docs-pages` | `docs/site/**` 또는 워크플로 변경 시 PR·`main` push, 수동 | PR에서 문서 파일 검사, `main`에서 GitHub Pages에 정적 문서 배포 |
 
 `main`에 머지하면 Pages는 `apps/web` 변경을 바로 배포하고, Render는 api-ci가 통과한 커밋만 배포한다. 절차는 [배포 절차서](deploy.md)를 따른다.

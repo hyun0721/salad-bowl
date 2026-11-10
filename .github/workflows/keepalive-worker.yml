@@ -1,0 +1,39 @@
+name: keepalive-worker
+
+on:
+  push:
+    branches: [main]
+    paths: ["apps/web/keepalive/**", ".github/workflows/keepalive-worker.yml"]
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: keepalive-worker
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+      API_HEALTH_URL: ${{ vars.API_HEALTH_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: apps/web/.nvmrc
+      - name: Check deployment values
+        run: |
+          missing=0
+          for name in CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID API_HEALTH_URL; do
+            if [ -z "${!name}" ]; then echo "::error::$name is not set"; missing=1; fi
+          done
+          case "$API_HEALTH_URL" in https://*) ;; *) echo "::error::API_HEALTH_URL must start with https://"; missing=1 ;; esac
+          exit $missing
+      - name: Deploy keepalive Worker
+        working-directory: apps/web/keepalive
+        run: npx --yes wrangler@4.152.0 deploy --var HEALTH_URL:"$API_HEALTH_URL"

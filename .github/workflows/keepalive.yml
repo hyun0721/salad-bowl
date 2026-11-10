@@ -1,5 +1,5 @@
-# Render(15분 유휴 시 sleep, CPU 0.1에서 기동 약 4분)를 10분마다 깨워 두고, Supabase(7일 비활성 시 일시정지)도 막는다.
-# 서비스 1개를 계속 깨워 두면 한 달 약 744시간 — Render 무료 750시간 안이다.
+# 주 깨우기는 keepalive Worker가 맡는다(https://github.com/hyun0721/salad-bowl/issues/92).
+# 이 예약 워크플로는 실행 간격이 불규칙한 보조 확인으로 Pages 경로 health와 Supabase 활동을 점검한다.
 # 저장소 변수(Repository variable) API_HEALTH_URL = https://<Pages 주소>/api/actuator/health (비밀값 아님).
 # Environment 보호 규칙(승인 대기 등)에 막히지 않도록 environment를 쓰지 않는다.
 # 공개 저장소는 60일 동안 활동이 없으면 예약 워크플로가 꺼진다 — docs/deploy.md의 재활성화 절차를 본다.
