@@ -1,4 +1,4 @@
-# 주 깨우기는 keepalive Worker가 맡는다(https://github.com/hyun0721/salad-bowl/issues/92).
+# 5분마다 주 깨우기는 keepalive Worker가 맡는다(https://github.com/hyun0721/salad-bowl/issues/92).
 # 이 예약 워크플로는 실행 간격이 불규칙한 보조 확인으로 Pages 경로 health와 Supabase 활동을 점검한다.
 # 저장소 변수(Repository variable) API_HEALTH_URL = https://<Pages 주소>/api/actuator/health (비밀값 아님).
 # Environment 보호 규칙(승인 대기 등)에 막히지 않도록 environment를 쓰지 않는다.
