@@ -76,12 +76,16 @@ export async function forward(request: Request, apiOrigin: string, proxySecret?:
   }
 
   try {
-    return await fetch(target.toString(), {
+    const response = await fetch(target.toString(), {
       method: request.method,
       headers,
       body,
       redirect: 'manual',
     })
+    if ((response.status === 429 || response.status >= 500) && !response.headers.get('content-type')?.toLowerCase().includes('json')) {
+      return Response.json({ code: 'SERVER_UNAVAILABLE', message: 'API server is not responding' }, { status: 503 })
+    }
+    return response
   } catch {
     return Response.json({ code: 'SERVER_UNAVAILABLE', message: 'API server is unreachable' }, { status: 502 })
   }

@@ -18,6 +18,22 @@ function streamRequest(path: string, stream: ReadableStream<Uint8Array>, headers
 afterEach(() => vi.unstubAllGlobals())
 
 describe('forward', () => {
+  it.each([
+    [429, 'text/html', '<html>challenge</html>', 503, { code: 'SERVER_UNAVAILABLE', message: 'API server is not responding' }],
+    [502, 'text/html', '<html>gateway error</html>', 503, { code: 'SERVER_UNAVAILABLE', message: 'API server is not responding' }],
+    [429, 'application/json', '{"code":"TOO_MANY_ATTEMPTS"}', 429, { code: 'TOO_MANY_ATTEMPTS' }],
+    [500, 'application/json', '{"code":"INTERNAL_ERROR"}', 500, { code: 'INTERNAL_ERROR' }],
+    [200, 'text/html', '<html>ok</html>', 200, '<html>ok</html>'],
+  ] as const)('handles upstream %i %s response', async (status, contentType, body, expectedStatus, expectedBody) => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(body, { status, headers: { 'content-type': contentType } })))
+
+    const response = await forward(new Request('https://salad.pages.dev/api/me'), 'https://api.example.com')
+
+    expect(response.status).toBe(expectedStatus)
+    expect(response.headers.get('content-type')).toContain(expectedStatus === 503 ? 'application/json' : contentType)
+    expect(contentType === 'text/html' && status === 200 ? await response.text() : await response.json()).toEqual(expectedBody)
+  })
+
   it('rejects an oversized Content-Length before pulling the body', async () => {
     const fetchMock = vi.fn()
     vi.stubGlobal('fetch', fetchMock)

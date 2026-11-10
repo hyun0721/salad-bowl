@@ -43,7 +43,7 @@
 | Build watch paths → Include | `apps/web/*` |
 
 3. 첫 배포는 `API_ORIGIN`·`PROXY_SECRET`·`NODE_VERSION`이 아직 없는 상태에서 실행한다. 빌드는 `apps/web/.nvmrc`의 Node 22를 사용하며, `sync-config` 실행과 배포 Retry 전까지 `/api`는 503 `SERVER_UNAVAILABLE`을 반환한다. 배포 후 주소 `https://<project>.pages.dev`, 프로젝트 이름, 계정 ID를 확인한다. 계정 ID는 대시보드 오른쪽 또는 URL에서 확인한다.
-4. My Profile → API Tokens에서 토큰을 만든다. 권한은 **Account · Cloudflare Pages · Edit**로 지정하고 이 계정만 대상으로 제한한다.
+4. My Profile → API Tokens에서 Pages용 토큰을 만든다. 권한은 **Account · Cloudflare Pages · Edit**로 지정하고 이 계정만 대상으로 제한한다. Worker용 토큰은 별도로 만들어 **Account · Workers Scripts · Edit** 권한만 주고 같은 계정으로 제한한다.
 
 `VITE_API_BASE_URL`은 설정하지 않는다. 웹은 기본값 `/api`를 사용한다. `apps/web/functions/api/[[path]].ts`는 `API_ORIGIN`을 읽고 `/api` 접두어를 제거해 Render로 전달하며, `PROXY_SECRET`이 있으면 `X-Proxy-Secret`을 붙인다. `apps/web/public/_routes.json`은 `/api`와 `/api/*`에만 Function을 적용해 정적 요청이 Functions 한도를 사용하지 않도록 한다.
 
@@ -62,6 +62,7 @@
 | Secret | `PROXY_SECRET` | `<별도로 실행한 openssl rand -base64 32 결과>` |
 | Secret | `RENDER_API_KEY` | `<Render API 키>` |
 | Secret | `CLOUDFLARE_API_TOKEN` | `<Cloudflare API 토큰>` |
+| Secret | `CLOUDFLARE_WORKERS_API_TOKEN` | `<Workers Scripts 전용 Cloudflare API 토큰>` |
 | Variable | `RENDER_SERVICE_ID` | `srv-<service-id>` |
 | Variable | `CLOUDFLARE_ACCOUNT_ID` | `<계정 ID>` |
 | Variable | `CLOUDFLARE_PAGES_PROJECT` | `<Pages 프로젝트 이름>` |
@@ -72,6 +73,8 @@ Environment `production` → **Deployment branches and tags**를 **Selected bran
 
 Settings → Secrets and variables → Actions → **Variables(저장소)**에 `API_HEALTH_URL`을 `https://<project>.pages.dev/api/actuator/health`로 등록한다. 예약 실행이 Environment 승인에 막히지 않도록 저장소 변수로 관리한다.
 
+keepalive Worker는 같은 `API_HEALTH_URL`을 5분마다 호출한다. 별도 Worker 토큰을 Environment `production`의 Secret `CLOUDFLARE_WORKERS_API_TOKEN`에 넣는다. 첫 배포는 Actions → `keepalive-worker` → Run workflow에서 `main`을 선택한다. 실행 결과는 Cloudflare 대시보드 → Workers → `salad-bowl-keepalive` → Cron Events(트리거 이벤트)에서 확인한다. Worker Cron 실패는 알림이 없으므로 계속 실패하면 보조 GitHub `keepalive`의 실패 메일로 알게 된다.
+
 아래 1~7단계는 **처음 설치할 때**의 순서다(코드가 이미 `main`에 있다).
 
 1. GitHub Environment `production`에 `PROXY_SECRET`을 비롯한 위 Secret·Variable을 추가한다.
@@ -80,7 +83,7 @@ Settings → Secrets and variables → Actions → **Variables(저장소)**에 `
 4. Pages의 최신 배포를 Retry해 프록시가 `X-Proxy-Secret`을 붙이도록 적용한다.
 5. Render에서 최신 커밋을 Manual Deploy하여 새 API와 `PROXY_SECRET`을 적용한다. Pages 프록시 배포가 먼저 완료됐는지 확인한다.
 6. `https://<render-host>/actuator/health`의 본문이 `{"status":"UP"}`인지 확인한다. 첫 기동에는 약 3~4분을 기다린다.
-7. Actions → `keepalive`를 수동 실행하고 Pages를 거친 health 응답까지 확인한다.
+7. Actions → `keepalive-worker`를 수동 실행하고 Cron Events를 확인한다. `keepalive`도 수동 실행해 Pages를 거친 health 응답을 확인한다.
 
 ### 인증 보강(Plan 12)을 이미 운영 중인 서비스에 배포할 때
 
@@ -160,7 +163,7 @@ Pages 빌드 대상 PR마다 미리보기 주소를 확인한다. 미리보기�
 
 ## 8. 설정값 바꾸기·플랫폼 옮기기
 
-값을 바꿀 때는 GitHub Environment `production`을 수정하고 `sync-config`를 실행한다. `deploy` 기본값이 `false`이므로 Render 값(DB·JWT·프록시 비밀값)을 바로 적용하려면 `deploy=true`로 실행하거나 Render에서 Manual Deploy한다. 플랫폼 대시보드에서 직접 고친 동기화 대상 값은 다음 동기화에서 덮어쓰므로 원본에서 변경한다. `API_HEALTH_URL`은 예외로 저장소 변수를 수정한다. Pages 값은 최신 배포 Retry로 적용한다. `PROXY_SECRET` 교체 시 Render와 Pages에 같은 값을 넣고 Pages를 먼저 재배포한 다음 API를 배포한다.
+값을 바꿀 때는 GitHub Environment `production`을 수정하고 `sync-config`를 실행한다. `deploy` 기본값이 `false`이므로 Render 값(DB·JWT·프록시 비밀값)을 바로 적용하려면 `deploy=true`로 실행하거나 Render에서 Manual Deploy한다. 플랫폼 대시보드에서 직접 고친 동기화 대상 값은 다음 동기화에서 덮어쓰므로 원본에서 변경한다. `API_HEALTH_URL`은 예외로 저장소 변수를 수정한다. `API_HEALTH_URL`을 바꾸면 Actions → `keepalive-worker`를 다시 실행해 Worker에 반영한다. Pages 값은 최신 배포 Retry로 적용한다. `PROXY_SECRET` 교체 시 Render와 Pages에 같은 값을 넣고 Pages를 먼저 재배포한 다음 API를 배포한다.
 
 `JWT_SECRET`을 바꾸면 모든 사용자가 다시 로그인해야 한다. 운영 쿠키는 `Path=/api/auth; SameSite=Lax; Secure`로 고정한다. `CORS_ALLOWED_ORIGINS`는 기본 빈 값이며 같은 출처 프록시를 사용하므로 별도로 설정하지 않는다.
 
@@ -170,13 +173,16 @@ Pages 빌드 대상 PR마다 미리보기 주소를 확인한다. 미리보기�
 
 Pages는 Deployments에서 이전 배포로 Rollback한다. Render는 이전 커밋을 지정해 Manual Deploy한다. DB 마이그레이션(Flyway)은 앱 배포를 되돌려도 되돌리지 않으므로 스키마 변경 PR은 이전 앱과의 호환성을 따로 확인한다.
 
+저장소에서 Worker 파일을 되돌려도 이미 배포된 Worker와 Cron은 남는다. 중지하려면 Cloudflare 대시보드에서 Worker의 Cron Trigger를 지우거나 Worker를 삭제한다.
+
 이 인증 변경 전 API로 되돌리면 `ver` 검사가 없어져 폐기된 refresh 토큰을 다시 받아들인다. 구 API로 되돌릴 때는 GitHub Secret의 `JWT_SECRET`을 새 값으로 바꾸고 `sync-config`를 **`deploy=true`**로 실행해(또는 실행 뒤 Render Manual Deploy) 모든 세션을 끊는다. `deploy=false`로만 실행하면 Render에 적용되지 않아 세션이 끊기지 않는다.
 
 ## 10. 문제 해결
 
 | 증상 | 확인과 조치 |
 |---|---|
-| keepalive가 멈춤 | 공개 저장소는 60일 활동이 없으면 예약 워크플로가 꺼질 수 있으므로 Actions → keepalive → Enable workflow 후 수동 실행한다. `API_HEALTH_URL`이 없으면 경고만 남기고 성공 종료하므로 저장소 변수와 UP 응답도 확인한다. |
+| keepalive가 멈춤 | Cloudflare Workers의 `salad-bowl-keepalive` → Cron Events 실패 여부와 `API_HEALTH_URL`의 UP 응답을 확인한다. 보조 GitHub 예약 실행은 공개 저장소에서 60일 활동이 없으면 꺼질 수 있으므로 Actions → keepalive → Enable workflow 후 수동 실행한다. |
+| sleep 뒤 API가 429 challenge(`cf-mitigated: challenge`)를 반환 | 브라우저로 `https://<render-host>/actuator/health`를 열어 깨우고 3~4분 기다린다. Worker Cron Events 실패 여부를 확인한다. [이슈 #92](https://github.com/hyun0721/salad-bowl/issues/92). |
 | `/api/*`가 HTML을 반환함 | Function 경로, `_routes.json`, `API_ORIGIN`과 Pages 재배포 여부를 확인한다. 화면에는 “요청을 처리하지 못했습니다.”로 표시될 수 있으므로 응답 형식도 확인한다. |
 | health가 계속 실패함 | 약 3~4분의 기동 시간을 기다린 뒤 Render 로그에서 DB 연결, `sslmode=require`, 세션 풀러 사용자 이름을 확인한다. Spring이 빠진 환경변수를 `${DB_USERNAME}` 같은 문자열로 처리할 수 있어 “값 없음” 대신 DB 인증 오류 또는 “app.jwt.secret must be at least 32 bytes”로 나타날 수 있으므로 GitHub Environment 값과 sync-config 실행 여부를 확인한다. |
 | 업로드가 503 `IMPORT_BUSY`로 실패함 | 화면에 “다른 업로드를 처리하고 있습니다. 잠시 후 다시 시도해 주세요.”를 표시한다. import는 서버 전체에서 동시에 1건만 처리하고 20초 대기 후 거절한다. CPU 0.1에서 한도 근처 파일은 1분 이상 걸릴 수 있으므로 기존 작업 완료 후 재시도한다. |
