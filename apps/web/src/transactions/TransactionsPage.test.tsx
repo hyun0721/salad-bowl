@@ -52,6 +52,98 @@ describe('TransactionsPage', () => {
     )
   })
 
+
+  it.each([false, true])('uses the search placeholder for the viewport (narrow: %s)', async (narrow) => {
+    mockViewport(narrow)
+    mineHandler([])
+    renderPage(<TransactionsPage today={today} />, { groups })
+    expect(await screen.findByRole('searchbox', { name: '검색' })).toHaveAttribute(
+      'placeholder', narrow ? '검색' : '내용·카테고리·메모 검색',
+    )
+  })
+
+  it('places narrow actions in two toolbar rows and applies member drafts without storing them', async () => {
+    mockViewport(true)
+    mineHandler([])
+    const requests: string[] = []
+    server.use(
+      http.get('*/api/groups/10', () => HttpResponse.json({
+        groupId: 10, name: '우리집', myRole: 'ADMIN',
+        members: [{ userId: 2, nickname: '짝꿍', role: 'MEMBER', shareEnabled: true }],
+      })),
+      http.get('*/api/groups/10/transactions', ({ request }) => {
+        requests.push(request.url)
+        return HttpResponse.json([])
+      }),
+    )
+    const { user } = renderPage(<TransactionsPage today={today} />, { groups })
+    const add = await screen.findByRole('button', { name: '거래 추가' })
+    expect(add.parentElement).toContainElement(screen.getByLabelText('월'))
+    expect(add.parentElement).toContainElement(screen.getByRole('radio', { name: '내 거래' }))
+    expect(screen.getByRole('radio', { name: '내 거래' })).toHaveTextContent(/^나$/)
+    const selection = screen.getByRole('button', { name: '선택' })
+    expect(selection.textContent).toBe('')
+    expect(selection.parentElement).toContainElement(screen.getByRole('searchbox', { name: '검색' }))
+    expect(selection.parentElement).toContainElement(screen.getByRole('button', { name: '필터' }))
+    expect(selection.parentElement).toContainElement(screen.getByRole('button', { name: /정렬/ }))
+    expect(add.closest('[data-fit-viewport]')?.firstElementChild).toContainElement(add)
+    await user.click(await screen.findByRole('radio', { name: '그룹 거래' }))
+    await waitFor(() => expect(requests.length).toBeGreaterThan(0))
+    expect(screen.queryByRole('button', { name: /멤버/ })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '필터' }))
+    await user.click(await screen.findByRole('button', { name: /멤버/ }))
+    await user.click(screen.getByRole('option', { name: '짝꿍' }))
+    expect(new URL(requests.at(-1)!).searchParams.has('memberId')).toBe(false)
+    await user.click(within(screen.getByRole('dialog', { name: '내역 필터' })).getByRole('button', { name: '닫기' }))
+    await user.click(screen.getByRole('button', { name: '필터' }))
+    expect(screen.getByRole('button', { name: /멤버/ })).toHaveTextContent('전체')
+    await user.click(screen.getByRole('button', { name: /멤버/ }))
+    await user.click(screen.getByRole('option', { name: '짝꿍' }))
+    await user.click(screen.getByRole('button', { name: '수입' }))
+    await user.click(screen.getByRole('button', { name: '적용' }))
+    await waitFor(() => expect(new URL(requests.at(-1)!).searchParams.get('memberId')).toBe('2'))
+    expect(JSON.parse(window.localStorage.getItem('saladbowl.transactionFilter')!)).toEqual({
+      types: ['EXPENSE', 'TRANSFER'], excludes: {},
+    })
+    await user.click(screen.getByRole('button', { name: '필터, 적용됨' }))
+    await user.click(screen.getByRole('button', { name: '수입' }))
+    await user.click(screen.getByRole('button', { name: '적용' }))
+    expect(screen.getByRole('button', { name: '필터, 적용됨' })).toBeInTheDocument()
+    expect(window.localStorage.getItem('saladbowl.transactionFilter')).toBeNull()
+    await user.click(screen.getByRole('button', { name: '필터, 적용됨' }))
+    await user.click(screen.getByRole('button', { name: '초기화' }))
+    await waitFor(() => expect(new URL(requests.at(-1)!).searchParams.has('memberId')).toBe(false))
+    await user.click(screen.getByRole('button', { name: '적용' }))
+    expect(screen.getByRole('button', { name: '필터' })).not.toHaveAttribute('data-applied')
+    await user.click(selection)
+    expect(selection).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('region', { name: '거래 선택' })).toBeInTheDocument()
+  })
+
+
+  it('keeps narrow member loading errors and retry inside the filter sheet', async () => {
+    mockViewport(true)
+    mineHandler([])
+    let failed = true
+    server.use(
+      http.get('*/api/groups/10', () => failed
+        ? HttpResponse.json({}, { status: 500 })
+        : HttpResponse.json({ groupId: 10, name: '우리집', myRole: 'ADMIN', members: [] })),
+      http.get('*/api/groups/10/transactions', () => HttpResponse.json([])),
+    )
+    const { user, client } = renderPage(<TransactionsPage today={today} />, { groups })
+    await user.click(await screen.findByRole('radio', { name: '그룹 거래' }))
+    await waitFor(() => expect(client.getQueryState(['groups', 10])?.status).toBe('error'))
+    expect(screen.queryByText('멤버 목록을 불러오지 못했습니다.')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '필터' }))
+    const sheet = screen.getByRole('dialog', { name: '내역 필터' })
+    expect(within(sheet).getByRole('alert')).toHaveTextContent('멤버 목록을 불러오지 못했습니다.')
+    failed = false
+    await user.click(within(sheet).getByRole('button', { name: '멤버 목록 다시 시도' }))
+    expect(await within(sheet).findByRole('button', { name: /멤버/ })).toHaveTextContent('전체')
+    expect(within(sheet).queryByRole('alert')).not.toBeInTheDocument()
+  })
+
   it('sends applied filter and sort as query params', async () => {
     const requestedUrls: string[] = []
     const lastRequestedUrl = () => requestedUrls.at(-1) ?? ''

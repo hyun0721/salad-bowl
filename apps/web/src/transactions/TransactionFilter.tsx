@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { Button, DialogTrigger } from 'react-aria-components'
+import Select from '../common/Select'
 import Checkbox from '../common/Checkbox'
 import Icon from '../common/Icon'
 import { ResponsiveOverlay } from '../common/ResponsiveOverlay'
@@ -12,7 +13,18 @@ import { TYPE_LABELS } from './TransactionPanel'
 import { DEFAULT_FILTER, TRANSACTION_TYPES, isFilterApplied, type TransactionFilterValue } from './transactionQuery'
 import type { TransactionType } from './transactionsApi'
 
-type Props = { categories: CategoryOption[]; value: TransactionFilterValue; onApply: (next: TransactionFilterValue) => void }
+type Props = {
+  categories: CategoryOption[]
+  value: TransactionFilterValue
+  onApply: (next: TransactionFilterValue) => void
+  member?: {
+    value: number | null
+    items?: { id: number; label: string }[]
+    isError: boolean
+    onRetry: () => void
+    onApply: (id: number | null) => void
+  }
+}
 type Excludes = string[] | undefined
 
 const focusButton = (node: HTMLButtonElement | null) => { node?.focus() }
@@ -36,18 +48,19 @@ function summary(excludes: Excludes, candidates: CategoryOption[]): string {
   return majors.length === 0 ? '선택 안 함' : majors.length <= 2 ? majors.map((c) => c.major).join(', ') + partial : `${majors.length}/${candidates.length}개${partial}`
 }
 
-export default function TransactionFilter({ categories, value, onApply }: Props) {
+export default function TransactionFilter({ categories, value, onApply, member }: Props) {
   const [open, setOpen] = useState(false)
+  const [draftMember, setDraftMember] = useState(member?.value ?? null)
   const [draft, setDraft] = useState(value)
   const [step, setStep] = useState<TransactionType | null>(null)
   const [expanded, setExpanded] = useState<string[]>([])
   const [error, setError] = useState('')
   const returnType = useRef<TransactionType | null>(null)
   const mobile = useNarrowWhileOpen(open)
-  const applied = isFilterApplied(value)
+  const applied = isFilterApplied(value) || member?.value != null
 
   function toggle(next: boolean) {
-    if (next) { setDraft(value); setStep(null); setError('') }
+    if (next) { setDraftMember(member?.value ?? null); setDraft(value); setStep(null); setError('') }
     setOpen(next)
   }
   function setExcludes(type: TransactionType, excludes: string[]) {
@@ -63,6 +76,7 @@ export default function TransactionFilter({ categories, value, onApply }: Props)
       const candidates = categories.filter((c) => c.type === t).flatMap((c) => c.minors.map((m) => isPicked(draft.excludes[t], c.major, m.minor)))
       return candidates.length > 0 && !candidates.some(Boolean)
     })) return setError('카테고리를 하나 이상 선택하세요.')
+    member?.onApply(draftMember)
     onApply(draft)
     setOpen(false)
   }
@@ -128,6 +142,13 @@ export default function TransactionFilter({ categories, value, onApply }: Props)
         <div className={optionStyles.panel}>
           {step ? categoryStep(step) : (
             <>
+              {member?.items && <Select label="멤버" variant="field"
+                items={[{ id: 'all', label: '전체' }, ...member.items]} selectedKey={draftMember ?? 'all'}
+                onSelectionChange={(key) => setDraftMember(key == null || key === 'all' ? null : Number(key))} />}
+              {member?.isError && <>
+                <p role="alert" className={ui.alert}>멤버 목록을 불러오지 못했습니다.</p>
+                <button type="button" className={ui.button} onClick={member.onRetry}><Icon name="refresh-cw" size={18} />멤버 목록 다시 시도</button>
+              </>}
               <div className={optionStyles.group}>
                 <span className={optionStyles.legend}>거래 종류</span>
                 <div className={styles.types}>
@@ -150,7 +171,7 @@ export default function TransactionFilter({ categories, value, onApply }: Props)
               {error && <p role="alert" className={ui.alert}>{error}</p>}
               <div className={`${optionStyles.actions} ${optionStyles.ctaActions}`}>
                 {/* 초기화는 바로 반영해 저장한 필터도 지운다. */}
-                <button type="button" className={ui.button} onClick={() => { setDraft(DEFAULT_FILTER); setError(''); onApply(DEFAULT_FILTER) }}>초기화</button>
+                <button type="button" className={ui.button} onClick={() => { setDraft(DEFAULT_FILTER); setDraftMember(null); setError(''); member?.onApply(null); onApply(DEFAULT_FILTER) }}>초기화</button>
                 <button type="button" className={`${ui.button} ${ui.primary} ${ui.cta}`} onClick={apply}>적용</button>
               </div>
             </>

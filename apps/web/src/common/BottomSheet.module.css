@@ -13,3 +13,6 @@
 .content { display: flex; flex-direction: column; gap: var(--space-3); padding: 0 max(var(--space-4), env(safe-area-inset-right, 0px)) var(--space-4) max(var(--space-4), env(safe-area-inset-left, 0px)); outline: none; }
 .handle { align-self: center; width: 36px; height: 4px; margin: var(--space-2) 0; border-radius: 2px; background: var(--line); }
 .title { margin: 0; font-size: var(--text-md); }
+
+.trigger:has(.triggerText) { gap: var(--space-2); padding: 0 var(--space-2); }
+.triggerText { max-width: 120px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

@@ -1,13 +1,16 @@
 import type { ReactNode } from 'react'
+import { useMediaQuery } from './useMediaQuery'
 import styles from './PageHeader.module.css'
 
 type Props = { title: string; action?: ReactNode }
 
-/** 주 화면 제목 줄. 동작 버튼이 없어도 높이가 같아 화면마다 제목이 같은 자리에 놓인다. */
+/** 좁은 화면의 제목은 앱 헤더에 두고 본문에는 동작 버튼만 남긴다. */
 export default function PageHeader({ title, action }: Props) {
+  const narrow = useMediaQuery('(max-width: 820px)')
+  if (narrow && !action) return null
   return (
-    <div className={styles.header}>
-      <h1 className={styles.title}>{title}</h1>
+    <div className={narrow ? `${styles.header} ${styles.actionsOnly}` : styles.header}>
+      {!narrow && <h1 className={styles.title}>{title}</h1>}
       {action}
     </div>
   )

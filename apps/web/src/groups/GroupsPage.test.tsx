@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { renderPage } from '../test/renderPage'
 import { server } from '../test/server'
 import GroupsPage from './GroupsPage'
+import { mockViewport } from '../test/mockViewport'
 
 const home = { groupId: 10, name: '우리집', myRole: 'ADMIN', memberCount: 2 }
 const friends = { groupId: 20, name: '친구들', myRole: 'MEMBER', memberCount: 2 }
@@ -164,4 +165,14 @@ describe('GroupsPage', () => {
     await user.click(screen.getByRole('button', { name: '취소' }))
     await waitFor(() => expect(screen.getByRole('button', { name: '그룹 나가기' })).toHaveFocus())
   })
+})
+
+it('places the narrow add button beside the my groups heading', async () => {
+  mockViewport(true)
+  const { user } = renderPage(<GroupsPage />, { groups: [] })
+  const card = await screen.findByRole('region', { name: '내 그룹' })
+  const add = within(card).getByRole('button', { name: '그룹 추가' })
+  expect(add.parentElement).toBe(within(card).getByRole('heading', { name: '내 그룹' }).parentElement)
+  await user.click(add)
+  expect(screen.getByRole('dialog', { name: '새 그룹 만들기' })).toBeInTheDocument()
 })

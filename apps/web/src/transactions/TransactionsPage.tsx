@@ -11,7 +11,7 @@ import { useIsMutating, useQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import Icon from '../common/Icon'
 import { DialogFrame } from '../common/Dialog'
-import { useNarrowWhileOpen } from '../common/useMediaQuery'
+import { NARROW, useMediaQuery, useNarrowWhileOpen } from '../common/useMediaQuery'
 import MonthPicker from '../common/MonthPicker'
 import ui from '../common/ui.module.css'
 import { defaultYearMonth, formatSignedWon } from '../common/format'
@@ -66,6 +66,7 @@ function PanelHeader({ title, actions }: { title: string; actions: ReactNode }) 
 }
 
 export default function TransactionsPage({ today }: Props) {
+  const compact = useMediaQuery(NARROW)
   const title = menuLabel('/transactions')
   usePageTitle(title)
   const { selectedGroupId } = useGroups()
@@ -252,36 +253,52 @@ export default function TransactionsPage({ today }: Props) {
     setSelectedId(null)
   }
 
+  const selectionAction = (
+    <button ref={selectionButton} type="button" className={`${ui.button} ${compact ? ui.iconButton : ''}`}
+      aria-label="선택" aria-pressed={selecting} disabled={saving}
+      onClick={() => changeSelectionMode(!selecting)}><Icon name="check" />{!compact && '선택'}</button>
+  )
+  const addAction = (
+    <button type="button" className={`${ui.button} ${ui.primary}`} aria-label="거래 추가" disabled={selecting}
+      onClick={() => { setAdding(true); setSelectedId(null) }}><Icon name="plus" />추가</button>
+  )
+
   return (
     <div className={`${styles.page} ${selecting ? styles.selecting : ''}`} data-fit-viewport="">
-      <PageHeader title={title} action={
-        <div className={ui.row}>
-          <button ref={selectionButton} type="button" className={ui.button} aria-pressed={selecting} disabled={saving}
-            onClick={() => changeSelectionMode(!selecting)}><Icon name="check" />선택</button>
-          <button type="button" className={`${ui.button} ${ui.primary}`} aria-label="거래 추가" disabled={selecting}
-            onClick={() => { setAdding(true); setSelectedId(null) }}><Icon name="plus" />추가</button>
-        </div>
-      } />
+      <PageHeader title={title} action={compact ? undefined : <div className={ui.row}>{selectionAction}{addAction}</div>} />
       <div className={`${ui.row} ${styles.filters}`}>
-        <MonthPicker month={month} onChange={changeMonth} />
-        <SegmentedControl label="범위" items={[{ id: 'mine', label: '내 거래' }, { id: 'group', label: '그룹 거래', isDisabled: selectedGroupId === null }]}
-          selectedKey={inGroup ? 'group' : 'mine'} onSelectionChange={(id) => changeScope(id as Scope)} />
-        {inGroup && detail.data && (
+        <div className={styles.primaryRow}>
+          <MonthPicker month={month} onChange={changeMonth} />
+          <SegmentedControl label="범위" items={[{ id: 'mine', label: compact ? '나' : '내 거래', ariaLabel: '내 거래' }, { id: 'group', label: compact ? '그룹' : '그룹 거래', ariaLabel: '그룹 거래', isDisabled: selectedGroupId === null }]}
+            selectedKey={inGroup ? 'group' : 'mine'} onSelectionChange={(id) => changeScope(id as Scope)} />
+          {compact && addAction}
+        </div>
+        {!compact && inGroup && detail.data && (
           <Select label="멤버"
             items={[{ id: 'all', label: '전체' }, ...detail.data.members.map((m) => ({ id: m.userId, label: m.nickname }))]}
             selectedKey={memberId ?? 'all'}
             onSelectionChange={(key) => setMember(key == null || key === 'all' ? null : { groupId, userId: Number(key) })} />
         )}
-        {inGroup && detail.isError && (
+        {!compact && inGroup && detail.isError && (
           <>
             <p role="alert" className={ui.alert}>멤버 목록을 불러오지 못했습니다.</p>
             <button type="button" className={ui.button} onClick={() => void detail.refetch()}><Icon name="refresh-cw" size={18} />멤버 목록 다시 시도</button>
           </>
         )}
-        <TransactionFilter categories={categories.data ?? []} value={filter}
-          onApply={(next) => { setFilter(next); storeFilter(next); setSelectedId(null) }} />
-        <SortButton options={SORT_OPTIONS} value={sort} defaultValue={DEFAULT_SORT} onApply={setSort} />
-        <SearchField label="검색" value={search} onChange={setSearch} placeholder="내용·카테고리·메모 검색" className={styles.search} />
+        <div className={styles.secondaryRow}>
+          {compact && <SearchField label="검색" value={search} onChange={setSearch} placeholder="검색" className={styles.search} />}
+          <TransactionFilter member={compact && inGroup ? {
+            value: memberId,
+            items: detail.data?.members.map((m) => ({ id: m.userId, label: m.nickname })),
+            isError: detail.isError,
+            onRetry: () => { void detail.refetch() },
+            onApply: (id) => setMember(id === null ? null : { groupId, userId: id }),
+          } : undefined} categories={categories.data ?? []} value={filter}
+            onApply={(next) => { setFilter(next); storeFilter(next); setSelectedId(null) }} />
+          <SortButton options={SORT_OPTIONS} value={sort} defaultValue={DEFAULT_SORT} onApply={setSort} />
+          {!compact && <SearchField label="검색" value={search} onChange={setSearch} placeholder="내용·카테고리·메모 검색" className={styles.search} />}
+          {compact && selectionAction}
+        </div>
       </div>
       {selectedGroupId === null && <p className={ui.muted}>그룹에 속하면 그룹 거래를 볼 수 있습니다.</p>}
 

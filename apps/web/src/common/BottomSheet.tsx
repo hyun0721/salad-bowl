@@ -11,13 +11,15 @@ type Props = {
   triggerLabel: string
   triggerIcon: IconName
   triggerClassName?: string
+  triggerText?: ReactNode
+  isDisabled?: boolean
   onOpen?: () => void
   children: (opts: { close: () => void }) => ReactNode
 }
 
 /** 아이콘 버튼으로 여는 하단 시트. Esc·바깥을 누르면 닫힌다.
  *  RAC Sheet는 안드로이드에서 닫힘이 끝나지 않아 배경이 남으므로 쓸어 닫기 대신 ModalOverlay와 CSS 애니메이션을 쓴다. */
-export default function BottomSheet({ title, triggerLabel, triggerIcon, triggerClassName, onOpen, children }: Props) {
+export default function BottomSheet({ title, triggerLabel, triggerIcon, triggerClassName, triggerText, isDisabled, onOpen, children }: Props) {
   const triggerRef = useRef<HTMLButtonElement>(null)
   // RAC는 시트가 열릴 때 포커스가 있던 요소로 닫힌 뒤 포커스를 돌려준다. 스크린 리더처럼 포커스 없이
   // 누르는 경우(가상 클릭)에는 그 요소가 body라 돌아갈 곳이 없으므로, 열기 직전에 트리거에 포커스를 둔다.
@@ -28,8 +30,9 @@ export default function BottomSheet({ title, triggerLabel, triggerIcon, triggerC
   }
   return (
     <DialogTrigger onOpenChange={onOpenChange}>
-      <Button ref={triggerRef} aria-label={triggerLabel} className={triggerClassName ?? styles.trigger}>
+      <Button isDisabled={isDisabled} ref={triggerRef} aria-label={triggerLabel} className={triggerClassName ?? styles.trigger}>
         <Icon name={triggerIcon} />
+        {triggerText != null && <span className={styles.triggerText}>{triggerText}</span>}
       </Button>
       <ModalOverlay isDismissable className={styles.backdrop}>
         <Modal ref={revealFocusedField} className={styles.sheet}>
