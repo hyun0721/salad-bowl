@@ -12,23 +12,27 @@ import BottomTabBar from './BottomTabBar'
 import { AppPageLoading } from './PageLoading'
 import selectStyles from '../common/Select.module.css'
 import styles from './AppLayout.module.css'
+import BottomSheet from '../common/BottomSheet'
+import { Radio, RadioGroup } from 'react-aria-components'
+import { Indicator } from '../common/SelectionIndicator'
+import optionStyles from '../common/OptionButton.module.css'
 import { MENU } from './menu'
 
 const firstSegment = (pathname: string) => pathname.split('/')[1] ?? ''
 
-function FocusHeadingOnRouteChange({ mainRef }: { mainRef: RefObject<HTMLElement | null> }) {
+function FocusHeadingOnRouteChange({ mainRef, headerRef, narrow }: { mainRef: RefObject<HTMLElement | null>; headerRef: RefObject<HTMLHeadingElement | null>; narrow: boolean }) {
   const location = useLocation()
   const lastSegment = useRef(firstSegment(location.pathname))
   useEffect(() => {
     // 주 메뉴가 바뀔 때만 새 화면 제목으로 포커스를 옮긴다(스크린리더가 바뀐 화면을 읽도록). 하위 메뉴 이동은 링크에 포커스를 남긴다.
     const segment = firstSegment(location.pathname)
     if (lastSegment.current === segment) return
-    const heading = mainRef.current?.querySelector('h1')
+    const heading = narrow ? headerRef.current : mainRef.current?.querySelector('h1')
     if (!heading) return // /dashboard → /dashboard/major 같은 리다이렉트 중에는 제목이 없다.
     lastSegment.current = segment
     heading.setAttribute('tabindex', '-1')
     heading.focus()
-  }, [location.pathname, mainRef])
+  }, [location.pathname, mainRef, headerRef, narrow])
   return null
 }
 
@@ -40,6 +44,9 @@ export default function AppLayout() {
   const { groups, selectedGroupId, selectGroup, isLoading, isError, retry } = useGroups()
   const navigate = useNavigate()
   const mainRef = useRef<HTMLElement>(null)
+  const headerRef = useRef<HTMLHeadingElement>(null)
+  const menu = MENU.find((item) => firstSegment(item.to) === firstSegment(location.pathname))
+  const selectedGroup = isError ? undefined : groups.find((group) => group.groupId === selectedGroupId)
 
   const [logoutError, setLogoutError] = useState(false)
 
@@ -94,8 +101,38 @@ export default function AppLayout() {
       )}
       <div className={styles.main}>
         <header className={styles.header}>
-          {narrow && <img src="/logo.svg" alt="Salad Bowl" width="28" height="28" className={styles.headerLogo} />}
-          {narrow ? <div className={styles.groupSlot}>{groupArea}</div> : groupArea}
+          {narrow && menu && <h1 ref={headerRef} className={styles.headerTitle}>
+            {menu.to === '/' ? <img src="/logo.svg" alt="홈" width="28" height="28" /> : menu.label}
+          </h1>}
+          {narrow ? (
+            <BottomSheet title="그룹 선택" triggerIcon="layers"
+              triggerLabel={selectedGroup ? `그룹 선택, 현재: ${selectedGroup.name}` : '그룹 선택'}
+              triggerText={isLoading ? <Skeleton width={64} height="1em" /> : selectedGroup?.name}
+              isDisabled={isLoading}>
+              {({ close }) => isError ? (
+                <div className={styles.groupState}>
+                  그룹을 불러오지 못했습니다
+                  <button type="button" className={styles.logout} onClick={retry}><Icon name="refresh-cw" size={18} />다시 시도</button>
+                </div>
+              ) : groups.length ? (
+                <RadioGroup aria-label="그룹 선택" value={selectedGroupId == null ? '' : String(selectedGroupId)}
+                  onChange={(id) => { selectGroup(Number(id)); close() }} className={optionStyles.group}>
+                  {groups.map((group) => (
+                    <Radio key={group.groupId} value={String(group.groupId)} className={`${optionStyles.radio} ${styles.groupOption}`}>
+                      {({ isSelected }) => <>
+                        <span className={optionStyles.radioMark} aria-hidden="true">
+                          <Indicator isSelected={isSelected} className={optionStyles.indicator} />
+                        </span>
+                        {group.name}
+                      </>}
+                    </Radio>
+                  ))}
+                </RadioGroup>
+              ) : (
+                <Link to="/groups" onClick={close} className={styles.noGroup}>그룹 없음 · 만들기 또는 초대받기</Link>
+              )}
+            </BottomSheet>
+          ) : groupArea}
           {narrow ? (
             <>
             <AmountSettings narrow />
@@ -115,7 +152,7 @@ export default function AppLayout() {
         <main ref={mainRef} className={narrow ? `${styles.content} ${styles.withTabBar}` : styles.content}>
           <Suspense fallback={<AppPageLoading />}>
             <Outlet />
-            <FocusHeadingOnRouteChange mainRef={mainRef} />
+            <FocusHeadingOnRouteChange mainRef={mainRef} headerRef={headerRef} narrow={narrow} />
           </Suspense>
         </main>
       </div>

@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { menuLabel } from '../app/menu'
 import PageHeader from './PageHeader'
+import { mockViewport } from '../test/mockViewport'
 
 describe('PageHeader', () => {
   it('renders the page heading and an optional action in one row', () => {
@@ -28,4 +29,13 @@ describe('menuLabel', () => {
   it('throws for a path outside the menu', () => {
     expect(() => menuLabel('/nope')).toThrow()
   })
+})
+
+it('omits the narrow heading and leaves only actions, or no row', () => {
+  mockViewport(true)
+  const { container, rerender } = render(<PageHeader title="홈" />)
+  expect(container).toBeEmptyDOMElement()
+  rerender(<PageHeader title="거래 목록" action={<button>추가</button>} />)
+  expect(screen.queryByRole('heading')).not.toBeInTheDocument()
+  expect(screen.getByRole('button', { name: '추가' })).toBeInTheDocument()
 })

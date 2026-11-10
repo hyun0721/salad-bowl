@@ -71,16 +71,15 @@ describe('DashboardPage', () => {
     expect(screen.getByRole('status', { name: '현재 주소' })).toHaveTextContent('/dashboard/major?month=2026-10')
   })
 
-  it('puts the title, month picker and totals above the classification tabs', async () => {
+  it('omits the body title and puts month picker and totals above the classification tabs', async () => {
     mockViewport(true)
     server.use(http.get('*/api/groups/10/summary', () => HttpResponse.json(summary)))
     renderDashboard('/dashboard/major?month=2026-08')
     const income = await screen.findByRole('button', { name: '수입 ₩ 3,000,000' })
-    const heading = screen.getByRole('heading', { level: 1, name: '대시보드' })
+    expect(screen.queryByRole('heading', { level: 1 })).not.toBeInTheDocument()
     const month = screen.getByLabelText('월')
     const menu = screen.getByRole('navigation', { name: '대시보드 메뉴' })
     const follows = (a: Element, b: Element) => Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING)
-    expect(follows(heading, month)).toBe(true)
     expect(follows(month, income)).toBe(true)
     expect(follows(income, menu)).toBe(true)
     expect(screen.queryByText(/공개를 켠 멤버의 원화 거래/)).not.toBeInTheDocument()

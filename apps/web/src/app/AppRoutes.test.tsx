@@ -244,6 +244,15 @@ describe('AppRoutes', () => {
 
     renderApp('/')
 
+    if (narrow) {
+      const trigger = await screen.findByRole('button', { name: '그룹 선택' })
+      expect(trigger).toBeDisabled()
+      expect(trigger.querySelector('[aria-hidden="true"][style]')).toBeInTheDocument()
+      await waitFor(() => expect(trigger).toBeEnabled())
+      await userEvent.setup().click(trigger)
+      expect(screen.getByRole('link', { name: /그룹 없음/ })).toBeInTheDocument()
+      return
+    }
     const loading = (await screen.findByText('그룹 불러오는 중')).closest('[role="status"]')!
     const label = within(loading as HTMLElement).getByText('그룹')
     expect(label.parentElement).toHaveClass('select')
@@ -413,7 +422,8 @@ describe('AppRoutes on a narrow screen', () => {
     const nav = await screen.findByRole('navigation', { name: '주 메뉴' })
     await user.click(within(nav).getByRole('link', { name: '그룹' }))
 
-    expect(await screen.findByRole('heading', { level: 1, name: '그룹 관리' })).toHaveFocus()
+    expect(await within(screen.getByRole('banner')).findByRole('heading', { level: 1, name: '그룹 관리' })).toHaveFocus()
+    expect(within(screen.getByRole('main')).queryByRole('heading', { level: 1 })).not.toBeInTheDocument()
   })
 
   it('signs out from the account sheet', async () => {
