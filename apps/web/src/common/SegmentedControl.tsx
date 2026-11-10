@@ -3,7 +3,7 @@ import styles from './SegmentedControl.module.css'
 
 type Props = {
   label: string
-  items: { id: string; label: string; isDisabled?: boolean }[]
+  items: { id: string; label: string; ariaLabel?: string; isDisabled?: boolean }[]
   selectedKey: string
   onSelectionChange: (id: string) => void
 }
@@ -18,7 +18,7 @@ export default function SegmentedControl({ label, items, selectedKey, onSelectio
         if (key != null && String(key) !== selectedKey) onSelectionChange(String(key))
       }} className={styles.group}>
       {items.map((item) => (
-        <ToggleButton key={item.id} id={item.id} isDisabled={item.isDisabled} className={styles.button}>{item.label}</ToggleButton>
+        <ToggleButton key={item.id} id={item.id} aria-label={item.ariaLabel} isDisabled={item.isDisabled} className={styles.button}>{item.label}</ToggleButton>
       ))}
     </ToggleButtonGroup>
   )

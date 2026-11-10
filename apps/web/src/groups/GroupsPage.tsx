@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { menuLabel } from '../app/menu'
 import Icon from '../common/Icon'
 import Dialog from '../common/Dialog'
+import { NARROW, useMediaQuery } from '../common/useMediaQuery'
 import PageHeader from '../common/PageHeader'
 import Skeleton, { SkeletonRegion } from '../common/Skeleton'
 import ui from '../common/ui.module.css'
@@ -13,21 +14,25 @@ import { useGroups } from './GroupProvider'
 import styles from './GroupsPage.module.css'
 
 export default function GroupsPage() {
+  const narrow = useMediaQuery(NARROW)
   const title = menuLabel('/groups')
   usePageTitle(title)
   const { groups, selectedGroupId, selectGroup, isLoading, isError, retry } = useGroups()
   const [creating, setCreating] = useState(false)
   const createPending = useIsMutating({ mutationKey: ['groups', 'create'] }) > 0
 
+  const addButton = (
+    <button type="button" className={`${ui.button} ${ui.primary}`} aria-label="그룹 추가"
+      onClick={() => setCreating(true)}><Icon name="plus" />추가</button>
+  )
+
   return (
     <>
-      <PageHeader title={title} action={
-        <button type="button" className={`${ui.button} ${ui.primary}`} aria-label="그룹 추가"
-          onClick={() => setCreating(true)}><Icon name="plus" />추가</button>
-      } />
+      <PageHeader title={title} action={narrow ? undefined : addButton} />
       <div className={styles.layout}>
         <section aria-labelledby="my-groups-title" className={ui.card}>
-          <h2 id="my-groups-title">내 그룹</h2>
+          {narrow ? <div className={styles.cardHeader}><h2 id="my-groups-title">내 그룹</h2>{addButton}</div>
+            : <h2 id="my-groups-title">내 그룹</h2>}
           {isLoading && <SkeletonRegion><ul className={styles.groupList}>
             {[0, 1, 2].map((i) => <li key={i} className={styles.groupButton}><Skeleton width="60%" height="1lh" /><Skeleton width="35%" height="1lh" /></li>)}
           </ul></SkeletonRegion>}
