@@ -2,6 +2,7 @@ import { useIsMutating, useQuery } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import Dialog from '../common/Dialog'
 import Icon from '../common/Icon'
+import stepper from '../common/Stepper.module.css'
 import Skeleton, { SkeletonRegion } from '../common/Skeleton'
 import ui from '../common/ui.module.css'
 import { currentYearMonth, defaultYearMonth, formatMonthLabel, isYearMonth } from '../common/format'
@@ -10,7 +11,6 @@ import calendarStyles from './CoverageCalendar.module.css'
 import { coverageApi, type CoverageMonth } from './coverageApi'
 import MonthDataDialog from './MonthDataDialog'
 import UploadForm from './UploadForm'
-import styles from './CoverageSection.module.css'
 
 type Props = { today: Date; initialMonth?: string | null; onInitialMonthHandled?: () => void }
 
@@ -40,10 +40,10 @@ export default function CoverageSection({ today, initialMonth, onInitialMonthHan
     <section aria-labelledby="coverage-title" className={ui.card}>
       <div className={ui.pageHeader}>
         <h2 id="coverage-title">월별 등록 현황</h2>
-        <div className={ui.row}>
-          <button type="button" className={ui.button} aria-label="이전 연도" onClick={() => { setNotice(null); setYear(year - 1) }}><Icon name="chevron-left" size={18} /></button>
-          <span className={styles.year}>{year}년</span>
-          <button type="button" className={ui.button} aria-label="다음 연도" onClick={() => { setNotice(null); setYear(year + 1) }}><Icon name="chevron-right" size={18} /></button>
+        <div className={stepper.stepper}>
+          <button type="button" className={`${ui.button} ${stepper.step}`} aria-label="이전 연도" onClick={() => { setNotice(null); setYear(year - 1) }}><Icon name="chevron-left" size={18} /></button>
+          <span className={`${stepper.value} ${stepper.text} ${stepper.year}`}>{year}년</span>
+          <button type="button" className={`${ui.button} ${stepper.step}`} aria-label="다음 연도" onClick={() => { setNotice(null); setYear(year + 1) }}><Icon name="chevron-right" size={18} /></button>
         </div>
       </div>
       <p className={ui.muted}>거래 일자 기준 · 미등록 월을 누르면 업로드합니다</p>

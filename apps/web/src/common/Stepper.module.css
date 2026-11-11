@@ -1,0 +1,8 @@
+.stepper { position: relative; align-self: flex-start; width: fit-content; display: grid; grid-template-columns: 36px auto 36px; flex: none; gap: 0; }
+.stepper::before { content: ''; position: absolute; inset: 0 0 auto; height: 44px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface-000); pointer-events: none; }
+.stepper .step { position: relative; z-index: 1; width: 36px; min-width: 36px; height: 44px; min-height: 44px; border: 0; border-radius: 0; padding: 0; background: transparent; }
+.stepper .step:first-child { border-right: 1px solid var(--line); }
+.stepper .step:last-of-type { border-left: 1px solid var(--line); }
+.value { position: relative; display: flex; align-items: center; justify-content: center; height: 44px; padding-inline: var(--space-2); }
+.stepper .text { text-align: center; font-variant-numeric: tabular-nums; font-size: var(--text-xl); font-weight: 600; color: var(--ink); white-space: nowrap; }
+.year { min-width: 72px; }
