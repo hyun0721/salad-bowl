@@ -82,10 +82,15 @@ describe('CoverageSection', () => {
     const { user } = renderPage(<CoverageSection today={today} />)
 
     await screen.findByText('등록됨 · 168건')
+    const year = screen.getByText('2026년')
+    expect(year.parentElement?.className).toMatch(/stepper/)
+    expect(year.parentElement?.children).toHaveLength(3)
     await user.click(screen.getByRole('button', { name: '이전 연도' }))
 
     expect(await screen.findByText('2025년')).toBeInTheDocument()
     expect(await screen.findByRole('button', { name: '2025년 9월 미등록, 업로드하기' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '다음 연도' }))
+    expect(await screen.findByText('2026년')).toBeInTheDocument()
   })
 
   it('opens the upload dialog from a missing month and refreshes the calendar after upload', async () => {
