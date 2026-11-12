@@ -33,8 +33,6 @@ a{color:#111}
 .card{border:1px solid #111;background:#fff;padding:12px;border-radius:3px}
 .card>*+*{margin-top:10px}
 .ids{display:inline-block;font:11px/1.4 ui-monospace,monospace;border:1px solid #888;padding:0 4px;color:#333;background:#f3f3f3}
-.ids.prop{border-style:dashed;background:#fff}
-.prop-area{border-style:dashed}
 .note{border:1px dashed #777;background:#f6f6f6;padding:6px 8px;font-size:12px;color:#333}
 .note::before{content:"주석 · ";font-weight:700}
 .badge{display:inline-block;border:1px solid #111;padding:0 6px;font-size:12px;border-radius:10px;white-space:nowrap}
@@ -83,12 +81,16 @@ dl.kv dt{color:#555}
 .subtabs{display:flex;gap:2px;padding:2px;background:#ccc}
 .subtabs button,.subtabs span{flex:1;display:flex;align-items:center;justify-content:center;text-align:center;border:0;min-height:40px;padding:0 12px;font-size:13px;background:transparent;border-radius:2px}
 .subtabs [aria-current]{background:#fff;font-weight:700;border:1px solid #111}
-.tabdemo{width:343px;max-width:100%}
 .cols{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start}
 .cols.wide-left{grid-template-columns:3fr 2fr}
 .cols.third{grid-template-columns:1fr 2fr}
 .cols>*{min-width:0}
-.narrow .cols,.dir2 .dcols,body.narrow dialog .cols{grid-template-columns:1fr}
+.narrow .cols,body.narrow dialog .cols{grid-template-columns:1fr}
+/* 홈: 문서 순서는 요약 → 현황(375px 순서). 데스크톱만 현황을 왼쪽에 둔다. */
+.frame:not(.narrow) .home>:first-child{grid-column:2;grid-row:1}
+.frame:not(.narrow) .home>:last-child{grid-column:1;grid-row:1}
+.dwrap{max-width:720px;margin:0 auto}
+summary{cursor:pointer;min-height:32px}
 .months{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
 .narrow .months{grid-template-columns:repeat(3,1fr)}
 .months>li>*{display:block;width:100%;min-height:56px;border:1px solid #111;padding:4px;text-align:left;border-radius:3px;font-size:12px;background:#fff}
@@ -135,8 +137,7 @@ dialog .foot{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;border
         <option value="A">A. 공통 셸 · 메뉴</option>
         <option value="B">B. 홈 (개편)</option>
         <option value="C">C. 소득공제 › 입력자료</option>
-        <option value="D1">D-1. 분석·지출계획 — 방향 1: 한 화면 개요형</option>
-        <option value="D2">D-2. 분석·지출계획 — 방향 2: 단계형</option>
+        <option value="D">D. 소득공제 › 분석·지출계획 (단계형)</option>
         <option value="E">E. 소득공제 › 연도별 세법 관리 (관리자)</option>
       </select></span>
     <fieldset><legend>폭</legend>
@@ -166,7 +167,7 @@ dialog .foot{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;border
       </select></span>
   </form>
   <p id="c-info" role="status"></p>
-  <p class="muted">범례: <span class="ids">TAX-nn</span> 확정 요구사항 · <span class="ids prop">TAX-nn 제안</span> 사용자 승인 전(확정 아님, 점선 영역) · 금액은 모두 합성값 · 회색 점선 상자는 주석. 상태를 고르면 그 상태가 보이는 화면으로 옮겨 간다.</p>
+  <p class="muted">범례: <span class="ids">TAX-nn</span> 요구사항(2026-11-12에 "제안"까지 모두 확정) · 금액은 모두 합성값 · 회색 점선 상자는 주석. 상태를 고르면 그 상태가 보이는 화면으로 옮겨 간다.</p>
 </div>
 
 <div class="stage">
@@ -175,7 +176,7 @@ dialog .foot{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;border
   <nav class="side" aria-label="주 메뉴">
     <span class="logo">Salad Bowl</span>
     <button type="button" data-go="B">홈</button>
-    <button type="button" data-go="C" data-menu="tax">소득공제</button>
+    <button type="button" data-go="tax" data-menu="tax">소득공제</button>
     <button type="button" class="sub" data-go="C">입력자료</button>
     <button type="button" class="sub" data-go="D">분석·지출계획</button>
     <button type="button" class="sub" data-go="E" data-role="admin">연도별 세법 관리</button>
@@ -202,10 +203,10 @@ dialog .foot{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;border
       <h1 id="page-title" data-w="wide" style="margin-bottom:12px"></h1>
 
       <!-- 소득공제 화면 안 탭: 좁은 화면에서만. 데스크톱은 사이드바 2단 메뉴로 이동한다. -->
-      <nav class="subtabs" aria-label="소득공제 하위 화면" data-screen="A C D1 D2 E" data-w="narrow" style="margin-bottom:12px">
+      <nav class="subtabs" aria-label="소득공제 하위 화면" data-screen="A C D E" data-w="narrow" style="margin-bottom:12px">
         <button type="button" data-go="C">입력자료</button>
         <button type="button" data-go="D">분석·지출계획</button>
-        <button type="button" data-go="E" data-role="admin">연도별 세법 관리</button>
+        <button type="button" data-go="E" data-role="admin">세법 관리</button>
       </nav>
 
       <!-- ================= A. 공통 셸 ================= -->
@@ -216,26 +217,21 @@ dialog .foot{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;border
           <ul class="stack">
             <li><b>주 메뉴 순서</b>: 홈 | 소득공제 | 대시보드 | 거래 | 그룹. 업로드 메뉴 없음.</li>
             <li class="only-wide"><b>데스크톱</b>: 왼쪽 사이드바. 소득공제 아래에 입력자료 / 분석·지출계획<span data-role="admin"> / 연도별 세법 관리</span>를 2단 들여쓰기로 둔다. 화면 안 탭은 없다.</li>
-            <li class="only-narrow"><b>375px</b>: 하단 탭 5칸. "소득공제" 한 칸으로 들어와 위의 화면 안 탭(<span data-role="member">회원 2개</span><span data-role="admin">관리자 3개</span>)으로 하위 화면을 바꾼다.</li>
+            <li class="only-narrow"><b>375px</b>: 하단 탭 5칸. "소득공제" 한 칸으로 들어와 위의 화면 안 탭(<span data-role="member">회원 2개</span><span data-role="admin">관리자 3개 — 세 번째 라벨은 "세법 관리"</span>)으로 하위 화면을 바꾼다.</li>
+            <li><b>소득공제 메뉴를 누르면(D16)</b>: 선택 연도에 연도 기록이 있으면 분석·지출계획 ① 현황, 없으면 입력자료로 간다. 선택 연도는 소득공제 화면이 기억하는 귀속연도, 없으면 올해.
+              <span class="row" style="margin-top:4px"><button type="button" data-try="default">자료 있음으로 눌러 보기</button><button type="button" data-try="nodata">"자료 없음"으로 눌러 보기</button><button type="button" data-try="norecord">"연도 기록 없음"으로 눌러 보기</button></span></li>
             <li><b>지금 보기</b>: <span data-role="member">회원 — 하위 메뉴 2개. "연도별 세법 관리"는 보이지 않는다.</span><span data-role="admin">서비스 관리자 — 하위 메뉴 3개.</span> 위 "보기"에서 바꾼다.</li>
             <li><b>개인 자료 표시</b>: 소득공제 화면은 헤더의 그룹 선택과 무관하다. 각 화면 머리에 <span class="badge">개인 자료 · 그룹과 무관</span>을 둔다.</li>
           </ul>
-          <p class="note">하단 탭·사이드바의 "소득공제"를 누르면 첫 하위 화면인 입력자료로 간다고 가정했다(PRD에 진입 화면 규정 없음 — 열린 질문 1).</p>
-          <p class="note" data-when="nogroup">그룹 미가입: 헤더만 "그룹 없음"으로 바뀐다. 소득공제 메뉴·화면은 그대로 쓸 수 있다. <span class="ids prop">TAX-03 제안</span></p>
+          <p class="note">위 상태 컨트롤에서 상태를 고른 뒤 사이드바·하단 탭의 "소득공제"를 눌러도 같다. 상태 "연도 기록 없음"과 "자료 없음"은 입력자료로, 나머지는 분석·지출계획 ① 현황으로 간다. "자료 없음"(기록은 있고 자료만 없음)을 입력자료로 보낸 것은 가정이다(열린 질문 2).</p>
+          <p class="note" data-when="nogroup">그룹 미가입: 헤더만 "그룹 없음"으로 바뀐다. 소득공제 메뉴·화면은 그대로 쓸 수 있다. <span class="ids">TAX-03</span></p>
         </div>
 
-        <div>
-          <h2>결정 필요 — 좁은 화면 탭 라벨 (관리자, 탭 3개)</h2>
-          <p class="muted">두 안 모두 375px 화면의 본문 폭(343px)으로 그렸다. 탭은 실제 Tabs 부품처럼 같은 폭으로 나누고 글자 13px·좌우 여백 12px를 가정했다.</p>
-          <div class="row" style="align-items:flex-start;gap:16px;margin:8px 0">
-            <div class="tabdemo"><h3>안 1 · "연도별 세법 관리" (메뉴 이름 그대로)</h3>
-              <div class="subtabs" id="demo1"><span>입력자료</span><span>분석·지출계획</span><span aria-current="page">연도별 세법 관리</span></div>
-              <p class="muted" id="demo1-out"></p></div>
-            <div class="tabdemo"><h3>안 2 · "세법 관리" (줄임)</h3>
-              <div class="subtabs" id="demo2"><span>입력자료</span><span>분석·지출계획</span><span aria-current="page">세법 관리</span></div>
-              <p class="muted" id="demo2-out"></p></div>
-          </div>
-          <p class="note">이 파일의 다른 화면은 안 1(확정된 메뉴 이름)로 그렸다. 줄 수는 시스템 글꼴 기준 측정이며 실제 글꼴(IBM Plex Sans KR)에서는 다를 수 있다.</p>
+        <div class="card">
+          <h2>결정: 세법 관리 (2026-11-12)</h2>
+          <p>좁은 화면 탭 세 번째 라벨은 "세법 관리"로 줄인다. 사이드바와 화면 제목은 "연도별 세법 관리"를 유지한다. <span class="ids">TAX-19</span></p>
+          <div class="subtabs" style="width:343px;max-width:100%"><span>입력자료</span><span>분석·지출계획</span><span aria-current="page">세법 관리</span></div>
+          <p class="muted">본문 폭 343px, 관리자 탭 3개 기준 모양.</p>
         </div>
 
         <div class="card">
@@ -246,8 +242,14 @@ dialog .foot{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;border
 
       <!-- ================= B. 홈 ================= -->
       <section data-screen="B" aria-label="B. 홈">
-        <p><span class="ids">TAX-14</span> <span class="ids">TAX-15</span> <span class="ids">TAX-16</span> <span class="ids">TAX-17</span> <span class="ids prop">TAX-18 제안</span></p>
-        <div class="cols wide-left">
+        <p><span class="ids">TAX-14</span> <span class="ids">TAX-15</span> <span class="ids">TAX-16</span> <span class="ids">TAX-17</span> <span class="ids">TAX-18</span></p>
+        <div class="cols wide-left home">
+          <div class="card" role="group" aria-labelledby="sum-title">
+            <h2 id="sum-title">지난달 내 요약 (2026년 10월)</h2>
+            <div class="totals" data-unless="neterr"><div><span class="muted">수입</span><p class="num">3,200,000원</p></div><div><span class="muted">지출</span><p class="num">1,850,000원</p></div></div>
+            <div data-when="neterr" class="row"><p role="alert" class="alert">지난달 거래를 불러오지 못했습니다.</p><button type="button">다시 시도</button></div>
+            <p class="note">기존 카드 그대로. "지난달 업로드" 카드는 월별 등록 현황과 뜻이 겹쳐 없앴다. 375px에서는 이 카드가 위, 월별 등록 현황이 아래다(D24). 데스크톱 2단(현황 왼쪽 | 요약 오른쪽)은 그대로다.</p>
+          </div>
           <div class="card" role="group" aria-labelledby="cov-title">
             <div class="row between">
               <h2 id="cov-title">월별 등록 현황</h2>
@@ -263,20 +265,14 @@ dialog .foot{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;border
             <ul class="months" id="months" data-unless="neterr"></ul>
             <p class="note">업로드 화면에 있던 영역을 그대로 옮긴다. "파일 올리기" 카드는 없고, 업로드는 미등록 월을 눌러 여는 창으로만 한다. 등록 월은 데이터 관리 창(기존과 같음). ≡ 는 업로드 이력 아이콘 버튼 자리.</p>
           </div>
-          <div class="card" role="group" aria-labelledby="sum-title">
-            <h2 id="sum-title">지난달 내 요약 (2026년 10월)</h2>
-            <div class="totals" data-unless="neterr"><div><span class="muted">수입</span><p class="num">3,200,000원</p></div><div><span class="muted">지출</span><p class="num">1,850,000원</p></div></div>
-            <div data-when="neterr" class="row"><p role="alert" class="alert">지난달 거래를 불러오지 못했습니다.</p><button type="button">다시 시도</button></div>
-            <p class="note">기존 카드 그대로. "지난달 업로드" 카드는 월별 등록 현황과 뜻이 겹쳐 없앴다.</p>
-          </div>
         </div>
-        <p class="note" data-when="nogroup">그룹 미가입이어도 홈은 같다. 그룹 미가입 안내의 "홈·업로드·내 거래" 문구에서 "업로드"를 고친다. <span class="ids prop">TAX-18 제안</span></p>
-        <p class="note">옛 경로 /upload?month=YYYY-MM 은 홈으로 보내 그 달 창을 연다 — 제안 상태라 동작은 그리지 않았다. <span class="ids prop">TAX-18 제안</span></p>
+        <p class="note" data-when="nogroup">그룹 미가입이어도 홈은 같다. 그룹 미가입 안내의 "홈·업로드·내 거래" 문구에서 "업로드"를 고친다. <span class="ids">TAX-18</span></p>
+        <p class="note">옛 경로 /upload?month=YYYY-MM 은 홈으로 보내 그 달 창을 연다 — 동작은 그리지 않았다. <span class="ids">TAX-18</span></p>
       </section>
 
       <!-- ================= C. 입력자료 ================= -->
       <section data-screen="C" aria-label="C. 소득공제 › 입력자료">
-        <p><span class="ids">TAX-01</span> <span class="ids">TAX-13</span> <span class="ids">TAX-20</span> <span class="ids">TAX-21</span> <span class="ids">TAX-22</span> <span class="ids">TAX-23</span> <span class="ids">TAX-24</span> <span class="ids">TAX-26</span> <span class="ids">TAX-27</span> <span class="ids">TAX-28</span> <span class="ids">TAX-29</span> <span class="ids">TAX-30</span> <span class="ids prop">TAX-31 제안</span> <span class="ids prop">TAX-25 제안</span></p>
+        <p><span class="ids">TAX-01</span> <span class="ids">TAX-13</span> <span class="ids">TAX-20</span> <span class="ids">TAX-21</span> <span class="ids">TAX-22</span> <span class="ids">TAX-23</span> <span class="ids">TAX-24</span> <span class="ids">TAX-26</span> <span class="ids">TAX-27</span> <span class="ids">TAX-28</span> <span class="ids">TAX-29</span> <span class="ids">TAX-30</span> <span class="ids">TAX-31</span> <span class="ids">TAX-25</span></p>
         <div class="row between">
           <label>귀속연도 <select class="yearsel" aria-label="귀속연도 선택"><option>2025년</option><option>2026년</option><option>2027년</option></select></label>
           <span class="badge">개인 자료 · 그룹과 무관</span>
@@ -327,7 +323,7 @@ dialog .foot{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;border
               <dl class="kv" data-unless="nodata"><dt>기준일</dt><dd>2026-10-31</dd><dt>합계</dt><dd class="num"><span data-unless="zero">600,000</span><span data-when="zero">0</span>원</dd></dl>
               <p data-when="nodata">아직 입력하지 않았습니다. 현금영수증을 쓰지 않았다면 0원으로 채웁니다.</p>
               <div class="row"><button type="button" data-open="dlg-cash"><span data-unless="nodata">편집</span><span data-when="nodata">입력</span></button><button type="button" data-when="nodata">4칸 0원으로 채우기</button></div>
-              <p class="note">한 번도 입력하지 않은 연도는 "자료 없음"이 아니라 "4칸이 빈 미완료"로 본다(TAX-24, D09). 현금영수증 자료에는 삭제 버튼을 두지 않았다 — 연도에 1건이라 비우기는 편집에서 한다고 가정(열린 질문 4).</p>
+              <p class="note">한 번도 입력하지 않은 연도는 "자료 없음"이 아니라 "4칸이 빈 미완료"로 본다(TAX-24, D09). 현금영수증 자료는 편집만 하고 삭제는 없다(D19). 입력 창은 모든 폭에서 가운데 창이다(D26).</p>
             </div>
           </div>
 
@@ -341,7 +337,7 @@ dialog .foot{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;border
               <tbody id="sumbody"></tbody>
             </table>
             <p class="muted only-narrow">375px에서는 행 합계를 소비구분 이름 아래 "계"로 옮겨 세 결제수단 열이 가로 스크롤 없이 보이게 했다.</p>
-            <p class="note">표는 저장하는 값이 아니라 자료를 더해 보여 주는 값이다. "일반"은 전통시장·대중교통·문화체육을 뺀 금액. <span class="ids prop">TAX-25 제안</span></p>
+            <p class="note">표는 저장하는 값이 아니라 자료를 더해 보여 주는 값이다. "일반"은 전통시장·대중교통·문화체육을 뺀 금액. <span class="ids">TAX-25</span></p>
           </div>
         </div>
 
@@ -350,148 +346,169 @@ dialog .foot{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;border
         </div>
       </section>
 
-      <!-- ================= D. 분석·지출계획 (방향 1·2 공용 내용) ================= -->
-      <section data-screen="D1 D2" aria-label="D. 소득공제 › 분석·지출계획">
-        <p><span class="ids">TAX-32</span> <span class="ids">TAX-44</span> <span class="ids">TAX-50</span> <span class="ids">TAX-51</span> <span class="ids">TAX-27</span> <span class="ids">TAX-65</span> <span class="ids">TAX-66</span>
-          <span class="ids prop">TAX-33~36 제안</span> <span class="ids prop">TAX-38 제안</span> <span class="ids prop">TAX-40~43 제안</span> <span class="ids prop">TAX-52~55 제안</span></p>
-        <p class="note" data-dir="1"><b>방향 1 · 한 화면 개요형</b> — 결론(추천)을 맨 위 요약에 올리고 현황·지출계획·추천을 한 화면에 모두 편다. 한눈에 보이고 계획을 고치면 바로 옆 추천이 바뀌지만, 375px에서는 세로로 길다.</p>
-        <p class="note" data-dir="2"><b>방향 2 · 단계형</b> — ① 현황 → ② 지출계획 → ③ 추천을 한 번에 한 단계씩 본다. 375px에서 한 화면에 한 가지 일만 하고 추천이 마지막 결론으로 남지만, 현황과 추천을 함께 볼 수 없고 다시 올 때 누름이 늘어난다.</p>
+      <!-- ================= D. 분석·지출계획 (단계형, 모든 폭) ================= -->
+      <section data-screen="D" class="dwrap" aria-label="D. 소득공제 › 분석·지출계획">
+        <p><span class="ids">TAX-32</span> <span class="ids">TAX-33~36</span> <span class="ids">TAX-38</span> <span class="ids">TAX-40~44</span> <span class="ids">TAX-50~55</span> <span class="ids">TAX-27</span> <span class="ids">TAX-65</span> <span class="ids">TAX-66</span></p>
+        <p class="note"><b>단계형(D23)</b> — ① 현황 → ② 지출계획 → ③ 추천을 한 번에 한 단계씩 본다. 단계 탭으로 바로 옮길 수 있다. 데스크톱도 1단이며 가운데 정렬·최대 폭 720px로 그렸다(폭 값은 가정).</p>
 
         <div class="row between">
           <label>귀속연도 <select class="yearsel" aria-label="귀속연도 선택"><option>2025년</option><option>2026년</option><option>2027년</option></select></label>
           <span class="badge">개인 자료 · 그룹과 무관</span>
         </div>
 
-        <!-- 결과를 보여 주지 않는 상태 -->
         <div data-when="neterr" class="row"><p role="alert" class="alert">분석을 불러오지 못했습니다.</p><button type="button">다시 시도</button></div>
-        <div class="empty" data-when="norecord"><p><b>2026년 귀속 기록이 없습니다.</b></p><p>입력자료에서 기본정보부터 입력합니다.</p><button type="button" class="pri" data-go="C">입력자료로 가기</button></div>
-        <div class="empty" data-when="nodata"><p><b>입력자료를 먼저 등록하세요.</b></p><p>신용·체크 자료와 현금영수증 자료가 있어야 분석합니다.</p><button type="button" class="pri" data-go="C">입력자료로 가기</button></div>
-        <div class="empty" data-when="incomplete"><p><b>미입력 칸이 3개 있어 분석을 확정할 수 없습니다.</b></p><p>B카드 자료 3칸. 사용액이 없으면 0원으로 채웁니다.</p><button type="button" class="pri" data-go="C">빈 칸 채우러 가기</button><p class="note">미완료일 때는 공제액·비율·추천을 숫자로 보여 주지 않는다. <span class="ids prop">TAX-38 제안</span></p></div>
-        <div class="empty" data-when="nolaw"><p><b>세법 준비 중</b></p><p>2027년 귀속 세법이 아직 등록되지 않았습니다. 입력자료는 저장되며, 세법이 등록되면 여기서 분석을 볼 수 있습니다.</p></div>
+        <div class="empty" data-when="norecord"><p><b>2026년 귀속 기록이 없습니다.</b></p><p>입력자료에서 기본정보부터 입력합니다.</p><button type="button" class="pri" data-go="C">입력자료로 가기</button><p class="note">기록이 없는 연도는 소득공제 메뉴가 입력자료로 보내므로(D16), 이 화면은 화면 안 탭·사이드바 하위 메뉴로 직접 들어왔을 때만 본다.</p></div>
 
-        <div data-unless="neterr norecord nodata incomplete nolaw" class="stack">
+        <div data-unless="neterr norecord" class="stack">
           <div class="status" data-when="newlaw">2026년 귀속 세법의 새 버전(v2)이 적용됐습니다. 지금 결과는 v1 기준입니다. <button type="button">새 버전으로 다시 계산</button> <span class="muted">누르기 전에는 v1 결과를 유지합니다.</span></div>
           <p class="alert" data-when="asof" role="status"><span class="badge inv">추정</span> 자료의 기준일이 서로 다릅니다(A카드 10-31, B카드 09-30). 아래 결과는 서로 다른 시점의 누계를 더한 추정입니다. <button type="button" data-go="C">입력자료 보기</button></p>
           <p class="alert" data-when="partial" role="status"><span class="badge inv">근로기간 확인 필요</span> 근로기간이 4월~12월입니다. 근로기간에 쓴 금액만 입력했는지 확인하세요. 계산은 입력한 금액 그대로 합니다.</p>
+          <p class="status" data-when="nolaw">2027년 귀속 세법은 준비 중입니다. 지출계획은 입력·저장할 수 있고, 세법이 등록되면 현황과 추천을 계산합니다. <span class="ids">TAX-65</span></p>
 
-          <p class="muted prop-area" style="border:1px dashed #777;padding:4px 8px">적용 세법: 2026년 귀속 · v1 · 적용일 2026-01-15 &nbsp;|&nbsp; 자료 기준일: <span data-unless="asof">2026-10-31</span><span data-when="asof">2026-09-30 ~ 2026-10-31</span> &nbsp;|&nbsp; 예상 총급여 50,000,000원 <span class="ids prop">TAX-36 제안</span></p>
+          <p class="muted" data-unless="nolaw" style="border:1px solid #999;padding:4px 8px">적용 세법: 2026년 귀속 · v1 · 적용일 2026-01-15 &nbsp;|&nbsp; 자료 기준일: <span data-unless="asof">2026-10-31</span><span data-when="asof">2026-09-30 ~ 2026-10-31</span> &nbsp;|&nbsp; 예상 총급여 50,000,000원 <span class="ids">TAX-36</span></p>
 
-          <!-- 방향 2: 단계 표시 -->
-          <nav class="steps" aria-label="분석 단계" data-dir="2">
+          <nav class="steps" aria-label="분석 단계">
             <button type="button" data-setstep="1">① 현황</button>
             <button type="button" data-setstep="2">② 지출계획</button>
             <button type="button" data-setstep="3">③ 추천</button>
           </nav>
 
-          <!-- 요약: 방향 1은 4칸 모두, 방향 2는 현황 단계에서 -->
-          <div class="strip" data-step="1" role="group" aria-label="현재 요약">
-            <div><span class="muted">현재 소득공제액 <span class="badge inv" data-when="asof">추정</span></span><strong><span data-unless="zero below">1,475,000</span><span data-when="zero below">0</span>원</strong><span class="muted">과세표준에서 빼는 금액 · 환급액 아님</span></div>
-            <div><span class="muted">최저사용금액 달성</span><strong><span data-unless="zero below">달성 · 142.4%</span><span data-when="below">미달 · 74.4%</span><span data-when="zero">미달 · 0.0%</span></strong>
-              <span class="muted"><span data-unless="zero below">17,800,000</span><span data-when="below">9,300,000</span><span data-when="zero">0</span> / 12,500,000원 (총급여의 25%)</span></div>
-            <div><span class="muted">기본한도 사용</span><strong><span data-unless="zero below">49.2%</span><span data-when="zero below">0.0%</span></strong><span class="muted"><span data-unless="zero below">1,475,000</span><span data-when="zero below">0</span> / 3,000,000원 (공제액 기준)</span></div>
-            <div><span class="muted">추가한도 사용</span><strong>0.0%</strong><span class="muted">0 / 3,000,000원 (전통시장·대중교통·문화체육)</span></div>
+          <!-- ① 현황 -->
+          <div class="empty" data-step="1" data-when="incomplete nodata nolaw">
+            <p data-when="incomplete"><b>미입력 칸이 3개 있어 현황을 확정할 수 없습니다.</b></p>
+            <p data-when="incomplete">B카드 자료 3칸. 사용액이 없으면 0원으로 채웁니다.</p>
+            <p data-when="nodata"><b>입력자료를 먼저 등록하세요.</b></p>
+            <p data-when="nodata">신용·체크 자료가 없고 현금영수증 4칸이 비어 있습니다.</p>
+            <p data-when="nolaw"><b>세법 준비 중</b></p>
+            <p data-when="nolaw">2027년 귀속 세법이 등록되면 여기서 현황을 볼 수 있습니다.</p>
+            <button type="button" class="pri" data-go="C" data-when="incomplete nodata">입력자료로 가기</button>
+            <p class="note">공제액·비율은 숫자로 보여 주지 않는다(TAX-38). ② 지출계획 입력은 열려 있다(D25).</p>
           </div>
-          <p class="status" data-when="below" data-step="1">최저사용금액까지 3,200,000원 남았습니다. 전체 사용액이 최저사용금액을 넘어야 공제가 시작됩니다.</p>
-          <div class="card" data-dir="1" data-unless="zero below nodiff">
-            <div class="row between"><p><b>추천</b> 남은 일반 지출 중 바꿀 수 있는 1,200,000원을 체크카드·현금영수증으로 쓰면 연말 예상 공제액이 <b>180,000원</b> 많습니다.</p><a href="#reco">추천 근거 보기</a></div>
-          </div>
-
-          <div class="cols dcols">
-            <!-- ① 현황 -->
-            <div class="stack" data-step="1">
-              <div class="card prop-area" role="group" aria-label="사용 비율">
-                <h2>사용 비율 <span class="ids">TAX-32</span> <span class="ids prop">TAX-33·34 제안</span></h2>
-                <p class="muted">분모: 2026년 전체 입력 공제대상액 <b><span data-unless="zero below">17,800,000</span><span data-when="below">9,300,000</span><span data-when="zero">0</span>원</b> (연도 합계표 12칸의 합). 공제율·한도 사용률과 다른 숫자입니다.</p>
-                <div class="empty" data-when="zero">입력 합계가 0원이라 비율을 계산하지 않습니다. (빈 차트 자리)</div>
-                <div data-unless="zero" class="stack">
-                  <h3>소비구분별</h3>
-                  <table><tbody>
-                    <tr><th scope="row">일반</th><td style="width:40%"><div class="bar"><i style="width:92.7%"></i></div></td><td class="num">92.7%</td></tr>
-                    <tr><th scope="row">전통시장</th><td><div class="bar"><i style="width:3.4%"></i></div></td><td class="num">3.4%</td></tr>
-                    <tr><th scope="row">대중교통</th><td><div class="bar"><i style="width:2.8%"></i></div></td><td class="num">2.8%</td></tr>
-                    <tr><th scope="row">문화체육</th><td><div class="bar"><i style="width:1.1%"></i></div></td><td class="num">1.1%</td></tr>
-                  </tbody></table>
-                  <h3>결제수단별</h3>
-                  <table><tbody>
-                    <tr><th scope="row">신용카드</th><td style="width:40%"><div class="bar"><i style="width:82%"></i></div></td><td class="num">82.0%</td></tr>
-                    <tr><th scope="row">체크카드</th><td><div class="bar"><i style="width:14.6%"></i></div></td><td class="num">14.6%</td></tr>
-                    <tr><th scope="row">현금영수증</th><td><div class="bar"><i style="width:3.4%"></i></div></td><td class="num">3.4%</td></tr>
-                  </tbody></table>
-                  <p class="muted">소수 첫째 자리까지. 반올림 때문에 합이 100.0%가 아닐 수 있습니다.</p>
-                  <p class="note">막대는 차트 자리 표시다(실제는 DonutChart 등 기존 부품). 미달 상태의 막대 값은 기본 예시를 그대로 뒀다.</p>
-                </div>
-              </div>
-              <div class="card prop-area" role="group" aria-label="공제액 계산 내역">
-                <h2>공제액이 나온 과정 <span class="ids prop">TAX-35·40~43 제안</span></h2>
-                <table data-unless="zero below"><tbody>
-                  <tr><th scope="row">신용카드 일반 × 15%</th><td class="num">2,100,000</td></tr>
-                  <tr><th scope="row">체크카드·현금영수증 일반 + 문화체육 × 30%</th><td class="num">810,000</td></tr>
-                  <tr><th scope="row">전통시장 + 대중교통 × 40%</th><td class="num">440,000</td></tr>
-                  <tr><th scope="row">최저사용금액 차감 (12,500,000 × 15%)</th><td class="num">− 1,875,000</td></tr>
-                  <tr><th scope="row">공제 가능 금액</th><td class="num">1,475,000</td></tr>
-                  <tr><th scope="row">기본한도 (총급여 7천만원 이하 · 자녀등 0명)</th><td class="num">3,000,000</td></tr>
-                </tbody><tfoot><tr><th scope="row">소득공제액</th><td class="num">1,475,000원</td></tr></tfoot></table>
-                <p data-when="zero below">전체 사용액이 최저사용금액 이하라 소득공제액은 0원입니다.</p>
-                <p class="muted">참고: 기본한도까지 남은 공제 여유 <span data-unless="zero below">1,525,000</span><span data-when="zero below">3,000,000</span>원. <span class="ids prop">TAX-55 제안</span></p>
-                <p class="note">계산 내역을 어디까지 펼쳐 보여 줄지는 PRD에 없다 — 접힌 영역으로 둘 수 있다(열린 질문 5). 소비를 늘리라는 문구는 쓰지 않는다.</p>
+          <div class="stack" data-step="1" data-unless="incomplete nodata nolaw">
+            <div class="strip" role="group" aria-label="현재 요약">
+              <div><span class="muted">현재 소득공제액 <span class="badge inv" data-when="asof">추정</span></span><strong><span data-unless="zero below">1,475,000</span><span data-when="zero below">0</span>원</strong><span class="muted">과세표준에서 빼는 금액 · 환급액 아님</span></div>
+              <div><span class="muted">최저사용금액 달성</span><strong><span data-unless="zero below">달성 · 142.4%</span><span data-when="below">미달 · 74.4%</span><span data-when="zero">미달 · 0.0%</span></strong>
+                <span class="muted"><span data-unless="zero below">17,800,000</span><span data-when="below">9,300,000</span><span data-when="zero">0</span> / 12,500,000원 (총급여의 25%)</span></div>
+              <div><span class="muted">기본한도 사용</span><strong><span data-unless="zero below">49.2%</span><span data-when="zero below">0.0%</span></strong><span class="muted"><span data-unless="zero below">1,475,000</span><span data-when="zero below">0</span> / 3,000,000원 (공제액 기준)</span></div>
+              <div><span class="muted">추가한도 사용</span><strong>0.0%</strong><span class="muted">0 / 3,000,000원 (전통시장·대중교통·문화체육)</span></div>
+            </div>
+            <p class="status" data-when="below">최저사용금액까지 3,200,000원 남았습니다. 전체 사용액이 최저사용금액을 넘어야 공제가 시작됩니다.</p>
+            <div class="card" role="group" aria-label="사용 비율">
+              <h2>사용 비율 <span class="ids">TAX-32</span> <span class="ids">TAX-33·34</span></h2>
+              <p class="muted">분모: 2026년 전체 입력 공제대상액 <b><span data-unless="zero below">17,800,000</span><span data-when="below">9,300,000</span><span data-when="zero">0</span>원</b> (연도 합계표 12칸의 합). 공제율·한도 사용률과 다른 숫자입니다.</p>
+              <div class="empty" data-when="zero">입력 합계가 0원이라 비율을 계산하지 않습니다. (빈 차트 자리)</div>
+              <div data-unless="zero" class="stack">
+                <h3>소비구분별</h3>
+                <table><tbody>
+                  <tr><th scope="row">일반</th><td style="width:40%"><div class="bar"><i style="width:92.7%"></i></div></td><td class="num">92.7%</td></tr>
+                  <tr><th scope="row">전통시장</th><td><div class="bar"><i style="width:3.4%"></i></div></td><td class="num">3.4%</td></tr>
+                  <tr><th scope="row">대중교통</th><td><div class="bar"><i style="width:2.8%"></i></div></td><td class="num">2.8%</td></tr>
+                  <tr><th scope="row">문화체육</th><td><div class="bar"><i style="width:1.1%"></i></div></td><td class="num">1.1%</td></tr>
+                </tbody></table>
+                <h3>결제수단별</h3>
+                <table><tbody>
+                  <tr><th scope="row">신용카드</th><td style="width:40%"><div class="bar"><i style="width:82%"></i></div></td><td class="num">82.0%</td></tr>
+                  <tr><th scope="row">체크카드</th><td><div class="bar"><i style="width:14.6%"></i></div></td><td class="num">14.6%</td></tr>
+                  <tr><th scope="row">현금영수증</th><td><div class="bar"><i style="width:3.4%"></i></div></td><td class="num">3.4%</td></tr>
+                </tbody></table>
+                <p class="muted">소수 첫째 자리까지. 반올림 때문에 합이 100.0%가 아닐 수 있습니다.</p>
+                <p class="note">막대는 차트 자리 표시다(실제는 DonutChart 등 기존 부품). 미달 상태의 막대 값은 기본 예시를 그대로 뒀다.</p>
               </div>
             </div>
-
-            <div class="stack">
-              <!-- ② 지출계획 -->
-              <div class="card" data-step="2" role="group" aria-label="남은 기간 지출계획">
-                <h2>남은 기간 지출계획 <span class="ids">TAX-51</span></h2>
-                <p class="muted">기준일 다음 날부터 12월 31일까지 쓸 공제대상액을 소비구분별로 적습니다. 결제수단이 정해진 금액과 바꿀 수 있는 금액을 나눕니다. 합계는 자동으로 더합니다. 단위 원.</p>
-                <p class="alert" data-when="conflict" role="alert">다른 곳에서 수정됐습니다. 저장하지 않았습니다. <button type="button">다시 불러오기</button> <span class="ids">TAX-29</span></p>
-                <table class="stackable">
-                  <thead><tr><th scope="col">소비구분</th><th scope="col">신용카드 고정</th><th scope="col">체크카드·현금영수증 고정</th><th scope="col">바꿀 수 있음</th><th scope="col" class="num">합계</th></tr></thead>
-                  <tbody id="planbody"></tbody>
-                  <tfoot><tr><th scope="row">총액</th><td class="num" data-label="신용카드 고정">600,000</td><td class="num" data-label="체크카드·현금영수증 고정">400,000</td><td class="num" data-label="바꿀 수 있음">1,400,000</td><td class="num" data-label="합계">2,400,000</td></tr></tfoot>
-                </table>
-                <div class="row"><button type="button" class="pri">지출계획 저장</button><span class="muted">공제 대상이 아닌 지출(보험료·공과금 등)은 적지 않습니다.</span></div>
-                <p class="note">375px에서는 표를 소비구분별 묶음으로 쌓아 가로 스크롤을 없앴다. 저장 버튼을 둘지, 입력 즉시 추천을 다시 계산할지는 열린 질문 3.</p>
-              </div>
-
-              <!-- ③ 추천 -->
-              <div class="card prop-area" id="reco" data-step="3" role="group" aria-label="추천 결과" tabindex="-1">
-                <h2>추천 결과 <span class="ids">TAX-50</span> <span class="ids prop">TAX-52~54 제안</span></h2>
-                <div data-unless="zero below nodiff" class="stack">
-                  <table>
-                    <caption>연말 예상 소득공제액 (현재 누계 + 지출계획) · 단위 원</caption>
-                    <thead><tr><th scope="col"></th><th scope="col" class="num">현재 계획</th><th scope="col" class="num">추천 배분</th></tr></thead>
-                    <tbody>
-                      <tr><th scope="row">일반 · 바꿀 수 있는 1,200,000</th><td>신용카드</td><td><b>체크카드·현금영수증</b></td></tr>
-                      <tr><th scope="row">전통시장 · 바꿀 수 있는 100,000</th><td colspan="2">어느 결제수단이든 같음 (40%)</td></tr>
-                      <tr><th scope="row">문화체육 · 바꿀 수 있는 100,000</th><td colspan="2">어느 결제수단이든 같음 (30%, 총급여 7천만원 이하)</td></tr>
-                      <tr><th scope="row">남은 기간 총액</th><td class="num">2,400,000</td><td class="num">2,400,000</td></tr>
-                    </tbody>
-                    <tfoot><tr><th scope="row">연말 예상 소득공제액</th><td class="num">1,970,000</td><td class="num">2,150,000</td></tr>
-                      <tr><th scope="row">차이</th><td colspan="2" class="num">+ 180,000원</td></tr></tfoot>
-                  </table>
-                  <p><b>이유</b> 신용카드 사용액(14,000,000원)이 이미 최저사용금액(12,500,000원)을 넘어, 남은 일반 지출은 체크카드·현금영수증이 공제율 30%로 신용카드 15%보다 높습니다.</p>
-                </div>
-                <div data-when="zero below nodiff" class="stack">
-                  <p><span class="badge inv">차이 없음</span> 결제수단을 바꿔도 연말 예상 소득공제액이 같습니다. 현재 계획을 유지합니다.</p>
-                  <p><b>이유</b>
-                    <span data-when="zero below">현재 누계와 지출계획을 더해도 전체 사용액이 최저사용금액(12,500,000원) 이하라 공제액이 0원입니다.</span>
-                    <span data-when="nodiff">바꿀 수 있는 금액이 전통시장·대중교통뿐이라, 결제수단과 무관하게 공제율이 40%로 같습니다.</span></p>
-                  <p class="note" data-when="nodiff">이 상태 예시는 일반·문화체육의 "바꿀 수 있음"이 0원인 계획을 가정한다(위 입력표는 기본 예시 그대로). 다른 이유 문구: 한도 도달.</p>
-                </div>
-                <div>
-                  <h3>가정</h3>
-                  <ul class="muted" style="list-style:disc;padding-left:18px">
-                    <li>예상 총급여 50,000,000원 · 2026년 귀속 세법 v1 · 자료 기준일 <span data-unless="asof">2026-10-31</span><span data-when="asof">서로 다름(추정)</span></li>
-                    <li>남은 기간 총액과 소비구분별 금액은 그대로 두고, 바꿀 수 있는 금액의 결제수단만 비교했습니다.</li>
-                    <li>체크카드와 현금영수증은 공제율이 같아 한 묶음으로 다룹니다.</li>
-                    <li>카드 포인트·할인·연회비·전월실적은 고려하지 않습니다. 결과는 소득공제액이며 환급액이 아닙니다.</li>
-                  </ul>
-                </div>
-                <p class="note">"현재 계획" 열은 바꿀 수 있는 금액을 신용카드로 쓴다고 가정해 그렸다. 지출계획 구조(D07)에는 바꿀 수 있는 금액의 지금 결제수단이 없어, 비교 기준을 정해야 한다(열린 질문 2).</p>
-              </div>
-            </div>
+            <details class="card">
+              <summary><b>계산 과정 보기</b> <span class="ids">TAX-35·40~43</span></summary>
+              <table data-unless="zero below">
+                <caption>현재 소득공제액이 나온 단계 · 단위 원 (최저사용금액 차감 → 공제율 → 한도)</caption>
+                <thead><tr><th scope="col">단계</th><th scope="col">계산</th><th scope="col" class="num">금액</th></tr></thead>
+                <tbody>
+                  <tr><th scope="rowgroup" rowspan="3">1. 최저사용금액 차감</th><td>최저사용금액 = 총급여 50,000,000 × 25%</td><td class="num">12,500,000</td></tr>
+                  <tr><td>전체 사용액이 최저사용금액보다 많아 공제가 시작됩니다</td><td class="num">17,800,000</td></tr>
+                  <tr><td>차감액: 신용카드 일반(14,000,000)이 최저사용금액 이상 → 12,500,000 × 15%</td><td class="num">− 1,875,000</td></tr>
+                  <tr><th scope="rowgroup" rowspan="4">2. 공제율</th><td>신용카드 일반 14,000,000 × 15%</td><td class="num">2,100,000</td></tr>
+                  <tr><td>체크카드·현금영수증 일반 + 문화체육 2,700,000 × 30%</td><td class="num">810,000</td></tr>
+                  <tr><td>전통시장 + 대중교통 1,100,000 × 40%</td><td class="num">440,000</td></tr>
+                  <tr><td>공제 가능 금액 = 2,100,000 + 810,000 + 440,000 − 1,875,000</td><td class="num">1,475,000</td></tr>
+                  <tr><th scope="rowgroup" rowspan="2">3. 한도</th><td>기본한도 (총급여 7천만원 이하 · 자녀등 0명)</td><td class="num">3,000,000</td></tr>
+                  <tr><td>추가 인정액 (공제 가능 금액이 기본한도 이하라 없음)</td><td class="num">0</td></tr>
+                </tbody>
+                <tfoot><tr><th scope="row" colspan="2">소득공제액 = 공제 가능 금액과 기본한도 중 작은 값 + 추가 인정액</th><td class="num">1,475,000원</td></tr></tfoot>
+              </table>
+              <p data-when="zero below">1단계에서 끝납니다. 전체 사용액이 최저사용금액 이하라 소득공제액은 0원입니다.</p>
+              <p class="note">기본은 접혀 있다(D20). 눌러 펼친다.</p>
+            </details>
+            <p class="muted">참고: 기본한도까지 남은 공제 여유 <span data-unless="zero below">1,525,000</span><span data-when="zero below">3,000,000</span>원. <span class="ids">TAX-55</span></p>
           </div>
 
-          <div class="row between" data-dir="2">
+          <!-- ② 지출계획 -->
+          <div class="card" data-step="2" role="group" aria-label="남은 기간 지출계획">
+            <h2>남은 기간 지출계획 <span class="ids">TAX-51</span></h2>
+            <p class="muted">기준일 다음 날부터 12월 31일까지 쓸 공제대상액을 소비구분별로 적습니다. 결제수단이 정해진 금액과 바꿀 수 있는 금액을 나눕니다. 합계는 자동으로 더합니다. 단위 원.</p>
+            <p class="alert" data-when="conflict" role="alert">다른 곳에서 수정됐습니다. 저장하지 않았습니다. <button type="button">다시 불러오기</button> <span class="ids">TAX-29</span></p>
+            <table class="stackable">
+              <thead><tr><th scope="col">소비구분</th><th scope="col">신용카드 고정</th><th scope="col">체크카드·현금영수증 고정</th><th scope="col">바꿀 수 있음</th><th scope="col" class="num">합계</th></tr></thead>
+              <tbody id="planbody"></tbody>
+              <tfoot><tr><th scope="row">총액</th><td class="num" data-label="신용카드 고정">600,000</td><td class="num" data-label="체크카드·현금영수증 고정">400,000</td><td class="num" data-label="바꿀 수 있음">1,400,000</td><td class="num" data-label="합계">2,400,000</td></tr></tfoot>
+            </table>
+            <div class="row"><button type="button" class="pri" id="calc">계산하기</button><span class="muted">지출계획을 저장하고 추천을 다시 계산합니다. 입력하는 동안에는 자동으로 다시 계산하지 않습니다.</span></div>
+            <p class="status" data-when="incomplete nodata nolaw">지금은 [계산하기]가 지출계획을 저장만 합니다. <span data-when="incomplete nodata">자료를 완료하면</span><span data-when="nolaw">세법이 등록되면</span> 추천을 계산합니다.</p>
+            <p class="muted">공제 대상이 아닌 지출(보험료·공과금 등)은 적지 않습니다.</p>
+            <p class="note">375px에서는 표를 소비구분별 묶음으로 쌓아 가로 스크롤을 없앴다. [계산하기]를 누르면 ③ 추천으로 옮기는 것으로 그렸다(D18에는 저장·재계산만 있고 이동은 가정 — 열린 질문 1).</p>
+          </div>
+
+          <!-- ③ 추천 -->
+          <div class="empty" data-step="3" data-when="incomplete nodata nolaw">
+            <p><b><span data-when="incomplete nodata">자료를 완료하면 계산합니다</span><span data-when="nolaw">세법 준비 중</span></b></p>
+            <p data-when="incomplete">빈 칸 3개 (B카드 자료 3칸). 사용액이 없으면 0원으로 채웁니다.</p>
+            <p data-when="nodata">빈 칸 4개 (현금영수증 4칸) · 신용·체크 자료 없음.</p>
+            <p data-when="nolaw">2027년 귀속 세법이 아직 등록되지 않았습니다. 저장한 지출계획은 남습니다.</p>
+            <button type="button" class="pri" data-go="C" data-when="incomplete nodata">입력자료로 가기</button>
+            <p class="note">추천·결과만 숨긴다(D25). 자료 미완료일 때만 빈 칸 수와 [입력자료로 가기]를 보이고, 자료는 완료됐는데 세법이 준비 중이면 "세법 준비 중"만 보인다.</p>
+          </div>
+          <div class="card" id="reco" data-step="3" data-unless="incomplete nodata nolaw" role="group" aria-label="추천 결과">
+            <h2>추천 결과 <span class="ids">TAX-50</span> <span class="ids">TAX-52~54</span></h2>
+            <div data-unless="zero below nodiff" class="stack">
+              <p><b>현재 계획: 지금까지의 결제수단 비율(신용 82.0% · 체크 14.6% · 현금 3.4%)</b> <span class="muted">연도 전체 비율입니다. 소비구분별 현재 계획 금액은 아래 표에 있습니다.</span></p>
+              <table>
+                <caption>연말 예상 소득공제액 (현재 누계 + 지출계획) · 단위 원</caption>
+                <thead><tr><th scope="col">바꿀 수 있는 금액</th><th scope="col">현재 계획</th><th scope="col">추천 배분</th></tr></thead>
+                <tbody>
+                  <tr><th scope="row">일반 1,200,000</th>
+                    <td>신용카드 1,018,183<br>체크카드 145,454<br>현금영수증 36,363</td>
+                    <td><b>체크카드·현금영수증 1,200,000</b><br>신용카드 0</td></tr>
+                  <tr><th scope="row">전통시장 100,000</th>
+                    <td>신용카드 50,001<br>체크카드 33,333<br>현금영수증 16,666</td>
+                    <td>현재 계획 그대로<br><span class="muted">어느 결제수단이든 40%</span></td></tr>
+                  <tr><th scope="row">문화체육 100,000</th>
+                    <td>신용카드 50,000<br>체크카드 50,000</td>
+                    <td>현재 계획 그대로<br><span class="muted">어느 결제수단이든 30% (총급여 7천만원 이하)</span></td></tr>
+                  <tr><th scope="row">남은 기간 총액 <span class="muted">(고정 포함)</span></th><td class="num">2,400,000</td><td class="num">2,400,000</td></tr>
+                </tbody>
+                <tfoot><tr><th scope="row">연말 예상 소득공제액</th><td class="num">1,997,272</td><td class="num">2,150,000</td></tr>
+                  <tr><th scope="row">현재 계획 대비 차이</th><td colspan="2" class="num">+ 152,728원</td></tr></tfoot>
+              </table>
+              <p><b>이유</b> 신용카드 사용액(14,000,000원)이 이미 최저사용금액(12,500,000원)을 넘어, 남은 일반 지출은 체크카드·현금영수증이 공제율 30%로 신용카드 15%보다 높습니다. 현재 계획에서 신용카드로 쓸 일반 1,018,183원을 옮기는 만큼 늘어납니다.</p>
+            </div>
+            <div data-when="zero below nodiff" class="stack">
+              <p><span class="badge inv">차이 없음</span> 결제수단을 바꿔도 연말 예상 소득공제액이 같습니다. 현재 계획을 유지합니다.</p>
+              <p><b>이유</b>
+                <span data-when="zero below">현재 누계와 지출계획을 더해도 전체 사용액이 최저사용금액(12,500,000원) 이하라 공제액이 0원입니다.</span>
+                <span data-when="nodiff">바꿀 수 있는 금액이 전통시장·대중교통뿐이라, 결제수단과 무관하게 공제율이 40%로 같습니다.</span></p>
+              <p class="note" data-when="nodiff">이 상태 예시는 일반·문화체육의 "바꿀 수 있음"이 0원인 계획을 가정한다(② 입력표는 기본 예시 그대로). 다른 이유 문구: 한도 도달.</p>
+            </div>
+            <div>
+              <h3>가정</h3>
+              <ul class="muted" style="list-style:disc;padding-left:18px">
+                <li>예상 총급여 50,000,000원 · 2026년 귀속 세법 v1 · 자료 기준일 <span data-unless="asof">2026-10-31</span><span data-when="asof">서로 다름(추정)</span></li>
+                <li>현재 계획은 바꿀 수 있는 금액을 소비구분마다 지금까지의 결제수단 비율로 나눈 것입니다. 원 미만은 내리고 남는 원은 신용카드에 더합니다.</li>
+                <li>남은 기간 총액과 소비구분별 금액은 그대로 두고, 바꿀 수 있는 금액의 결제수단만 비교했습니다.</li>
+                <li>체크카드와 현금영수증은 공제율이 같아 추천에서는 한 묶음으로 다룹니다.</li>
+                <li>카드 포인트·할인·연회비·전월실적은 고려하지 않습니다. 결과는 소득공제액이며 환급액이 아닙니다.</li>
+              </ul>
+            </div>
+            <p class="note">위 한 줄의 비율은 연도 전체 값이다. 표의 현재 계획 금액은 소비구분마다 그 소비구분의 지금까지 입력액 비율로 나눈 값이라(D17 세부 기본값) 한 줄의 비율과 꼭 같지는 않다. 금액은 원 미만을 마지막에 한 번 버렸다(D08).</p>
+          </div>
+
+          <div class="row between">
             <button type="button" id="stepprev">이전</button>
             <span class="muted" id="steplabel" aria-live="polite"></span>
             <button type="button" class="pri" id="stepnext">다음</button>
@@ -501,13 +518,13 @@ dialog .foot{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;border
 
       <!-- ================= E. 연도별 세법 관리 ================= -->
       <section data-screen="E" aria-label="E. 소득공제 › 연도별 세법 관리">
-        <p><span class="ids">TAX-04</span> <span class="ids">TAX-06</span> <span class="ids">TAX-11</span> <span class="ids">TAX-60</span> <span class="ids">TAX-61</span> <span class="ids">TAX-62</span> <span class="ids">TAX-67</span> <span class="ids prop">TAX-63 제안</span> <span class="ids prop">TAX-64 제안</span> <span class="ids prop">TAX-05 제안</span></p>
+        <p><span class="ids">TAX-04</span> <span class="ids">TAX-06</span> <span class="ids">TAX-11</span> <span class="ids">TAX-60</span> <span class="ids">TAX-61</span> <span class="ids">TAX-62</span> <span class="ids">TAX-67</span> <span class="ids">TAX-63</span> <span class="ids">TAX-64</span> <span class="ids">TAX-05</span></p>
 
         <div class="empty" id="forbidden">
           <p><b>권한 없음</b></p>
           <p>이 화면은 서비스 관리자만 볼 수 있습니다.</p>
           <button type="button" data-go="C">입력자료로 가기</button>
-          <p class="note">회원이 URL로 들어온 경우. 메뉴·탭에는 이 화면이 보이지 않는다. 서버 응답 코드 403은 제안 상태. 그룹 ADMIN도 같은 화면을 본다.</p>
+          <p class="note">회원이 URL로 들어온 경우. 메뉴·탭에는 이 화면이 보이지 않는다. 서버 응답 코드는 403. 그룹 ADMIN도 같은 화면을 본다.</p>
         </div>
 
         <div id="taxadmin" class="stack">
@@ -518,28 +535,29 @@ dialog .foot{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;border
                 <h2 id="ty-title">귀속연도</h2>
                 <ul class="stack">
                   <li class="row between"><span>2027년</span><span class="muted">적용 버전 없음 → 회원 화면 "세법 준비 중"</span></li>
-                  <li class="row between" aria-current="true" style="border:2px solid #111;padding:4px"><b>2026년 (선택됨)</b><span class="muted">적용 v1 · 초안 v2</span></li>
+                  <li class="row between" aria-current="true" style="border:2px solid #111;padding:4px"><b>2026년 (선택됨)</b><span class="muted">적용 v1 · 초안 2개(v3, v2)</span></li>
                   <li class="row between"><span>2025년</span><span class="muted">등록 안 함 (첫 출시는 2026만)</span></li>
                 </ul>
                 <p class="note">연도 전환은 이 와이어프레임에서 동작하지 않는다(2026년만 그림).</p>
               </div>
               <div class="card" role="group" aria-labelledby="tv-title">
-                <div class="row between"><h2 id="tv-title">2026년 버전</h2><button type="button" disabled title="와이어프레임 범위 밖">직전 버전 복사해 초안 만들기</button></div>
+                <div class="row between"><h2 id="tv-title">2026년 버전</h2><button type="button">새 초안 만들기</button></div>
                 <ul class="stack">
-                  <li><button type="button" data-taxv="v2" style="width:100%;text-align:left"><b>v2</b> <span class="badge">초안</span><br><span class="muted">작성 admin-a · 2026-11-05 14:00</span></button></li>
-                  <li><button type="button" data-taxv="v1" style="width:100%;text-align:left"><b>v1</b> <span class="badge inv">적용</span><br><span class="muted">적용 admin-a · 2026-01-15 10:00</span></button></li>
+                  <li class="row"><button type="button" data-taxv="v3" style="flex:1;text-align:left"><b>v3</b> <span class="badge">초안</span><br><span class="muted">작성 admin-b · 2026-11-10 09:30</span></button><button type="button" class="danger" data-delv="v3" aria-label="v3 초안 삭제">삭제</button></li>
+                  <li class="row"><button type="button" data-taxv="v2" style="flex:1;text-align:left"><b>v2</b> <span class="badge">초안</span><br><span class="muted">작성 admin-a · 2026-11-05 14:00</span></button><button type="button" class="danger" data-delv="v2" aria-label="v2 초안 삭제">삭제</button></li>
+                  <li class="row"><button type="button" data-taxv="v1" style="flex:1;text-align:left"><b>v1</b> <span class="badge inv">적용</span><br><span class="muted">적용 admin-a · 2026-01-15 10:00</span></button></li>
                 </ul>
-                <p class="note">초안이 이미 있으면 새 초안을 또 만들 수 있는지는 PRD에 없다(열린 질문 6).</p>
+                <p class="note">초안은 귀속연도마다 여러 개 둘 수 있다(D21). [새 초안 만들기]는 초안이 있어도 늘 켜져 있고, 누르면 다음 번호(v4)의 초안이 생긴다 — 이 와이어프레임에서는 동작하지 않는다. 번호는 다시 쓰지 않는다. 초안만 [삭제]가 있고(확인 한 번) 적용본에는 없다.</p>
               </div>
             </div>
 
             <div class="card" role="group" aria-labelledby="td-title">
               <div class="row between">
-                <h2 id="td-title">2026년 귀속 · <span data-v="v2">v2 <span class="badge">초안</span></span><span data-v="v1">v1 <span class="badge inv">적용 · 읽기 전용</span></span></h2>
+                <h2 id="td-title">2026년 귀속 · <span data-v="v2 v3"><span class="vname"></span> <span class="badge">초안</span></span><span data-v="v1">v1 <span class="badge inv">적용 · 읽기 전용</span></span></h2>
                 <span class="muted">계산 알고리즘 버전 1 (고정)</span>
               </div>
               <p class="status" data-v="v1">적용된 버전은 고칠 수 없습니다. 바꾸려면 새 버전을 만듭니다. 적용 admin-a · 2026-01-15 10:00 / 작성 admin-a · 2026-01-10 09:00</p>
-              <div class="alert" data-when="invalid" data-v="v2" role="alert"><b>검증 실패 — 적용할 수 없습니다.</b>
+              <div class="alert" data-when="invalid" data-v="v2 v3" role="alert"><b>검증 실패 — 적용할 수 없습니다.</b>
                 <ul style="list-style:disc;padding-left:18px"><li>문화체육 공제율 130%: 0~100% 범위여야 합니다.</li><li>기본한도(7천만원 초과 · 자녀등 1명)가 비어 있습니다.</li><li>근거 URL이 비어 있습니다.</li></ul></div>
               <p class="status" id="validok" hidden role="status">검증 통과 — 적용할 수 있습니다.</p>
 
@@ -568,8 +586,8 @@ dialog .foot{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;border
                   <div class="field"><label for="f-add1">추가한도 상한 · 경계 이하 (원)</label><input id="f-add1" class="m" value="3,000,000"></div>
                   <div class="field"><label for="f-add2">추가한도 상한 · 경계 초과 (원)</label><input id="f-add2" class="m" value="2,000,000"></div>
                 </div>
-                <div class="card prop-area">
-                  <h3>근거·적용 대상 기간 <span class="ids prop">TAX-63 제안</span></h3>
+                <div class="card">
+                  <h3>근거·적용 대상 기간 <span class="ids">TAX-63</span></h3>
                   <div class="cols">
                     <div class="field"><label for="f-law">법령명</label><input id="f-law" value="조세특례제한법"></div>
                     <div class="field"><label for="f-art">조문</label><input id="f-art" value="제126조의2"></div>
@@ -583,9 +601,8 @@ dialog .foot{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;border
                 </div>
               </fieldset>
 
-              <div class="row" data-v="v2"><button type="button">초안 저장</button><button type="button" id="validate">검증</button><button type="button" class="pri" data-open="dlg-apply">적용</button></div>
-              <div class="row" data-v="v1"><button type="button" disabled title="와이어프레임 범위 밖">이 버전을 복사해 새 초안 만들기</button></div>
-              <p class="note">검증 규칙(비율 0~100%, 금액 0 이상 정수, 빈 칸 없음)과 근거 필수는 제안 상태다. 초안 삭제 버튼은 PRD에 없어 그리지 않았다. 공제율 열 이름은 회원 화면 명칭에 맞췄다.</p>
+              <div class="row" data-v="v2 v3"><button type="button">초안 저장</button><button type="button" id="validate">검증</button><button type="button" class="pri" data-open="dlg-apply">적용</button></div>
+              <p class="note">검증 규칙은 비율 0~100%, 금액 0 이상 정수, 빈 칸 없음, 근거 필수다. 초안 삭제는 버전 목록에 있다. 새 초안이 어느 버전의 값을 복사해 시작하는지는 정하지 않았다(열린 질문 3). 공제율 열 이름은 회원 화면 명칭에 맞췄다.</p>
             </div>
           </div>
         </div>
@@ -594,7 +611,7 @@ dialog .foot{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;border
 
     <nav class="bottom" aria-label="주 메뉴" data-w="narrow">
       <button type="button" data-go="B">홈</button>
-      <button type="button" data-go="C" data-menu="tax">소득공제</button>
+      <button type="button" data-go="tax" data-menu="tax">소득공제</button>
       <button type="button" disabled>대시보드</button>
       <button type="button" disabled>거래</button>
       <button type="button" disabled>그룹</button>
@@ -644,7 +661,7 @@ dialog .foot{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;border
 
 <dialog id="dlg-card" aria-labelledby="dc-t"><form method="dialog">
   <h2 id="dc-t" data-dyn>신용·체크 자료</h2>
-  <p><span class="ids">TAX-22</span> <span class="ids">TAX-24</span> <span class="ids">TAX-29</span> <span class="ids prop">TAX-25 제안</span></p>
+  <p><span class="ids">TAX-22</span> <span class="ids">TAX-24</span> <span class="ids">TAX-29</span> <span class="ids">TAX-25</span></p>
   <p class="alert" data-when="conflict" role="alert">다른 곳에서 수정됐습니다. 저장하지 않았습니다. 입력한 값은 화면에 남아 있습니다. <button type="button">다시 불러오기</button></p>
   <p class="alert" data-when="neterr" role="alert">저장하지 못했습니다. 입력한 값은 그대로 있습니다. <button type="button">다시 시도</button></p>
   <div class="cols">
@@ -696,26 +713,34 @@ dialog .foot{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;border
 <dialog id="dlg-del-year" aria-labelledby="dy-t"><form method="dialog">
   <h2 id="dy-t">2026년 기록을 삭제할까요? <span class="ids">TAX-28</span></h2>
   <p>2026년 귀속의 기본정보, 신용·체크 자료 2건, 현금영수증 자료, 금액, 지출계획이 모두 지워집니다. 다른 연도의 기록은 남습니다. 복구할 수 없습니다.</p>
-  <p class="note">확인은 한 번(D05). 월 데이터 삭제처럼 연도를 직접 입력하게 할지는 정하지 않았다(열린 질문 7).</p>
-  <div class="foot"><button>취소</button><button class="danger">삭제</button></div>
+  <div class="field"><label for="dy-in">확인을 위해 귀속연도 2026을 입력하세요</label><input id="dy-in" inputmode="numeric" autocomplete="off" aria-describedby="dy-help"><span class="muted" id="dy-help">2026을 정확히 입력하면 [삭제]가 켜집니다.</span></div>
+  <p class="note">귀속연도를 직접 입력해야 [삭제]가 켜진다(D22). 자료 한 건 삭제는 확인 한 번 그대로다.</p>
+  <div class="foot"><button>취소</button><button class="danger" id="dy-del" disabled>삭제</button></div>
 </form></dialog>
 
 <dialog id="dlg-apply" aria-labelledby="da-t"><form method="dialog">
-  <h2 id="da-t">2026년 귀속 v2를 적용할까요? <span class="ids">TAX-61</span> <span class="ids">TAX-66</span></h2>
+  <h2 id="da-t">2026년 귀속 <span class="vname"></span>를 적용할까요? <span class="ids">TAX-61</span> <span class="ids">TAX-66</span></h2>
   <p>적용하면 이 버전은 고칠 수 없습니다. 2026년 귀속 연도 기록에는 "새 세법 버전 있음"이 표시되고, 회원이 직접 눌러야 새 버전으로 다시 계산됩니다.</p>
+  <p>다른 초안은 초안으로 남습니다.</p>
   <div class="foot"><button>취소</button><button class="pri">적용</button></div>
+</form></dialog>
+
+<dialog id="dlg-del-draft" aria-labelledby="dd-t"><form method="dialog">
+  <h2 id="dd-t">2026년 귀속 <span class="vname"></span> 초안을 삭제할까요?</h2>
+  <p>이 초안에 입력한 값이 지워집니다. 적용된 버전과 다른 초안은 남습니다. 복구할 수 없습니다.</p>
+  <div class="foot"><button>취소</button><button class="danger">삭제</button></div>
 </form></dialog>
 
 <script>
 (function () {
-  var S = { screen: 'A', width: 'wide', role: 'member', state: 'default', step: 1, taxv: 'v2', dDir: 'D1', year: 2026 };
+  var S = { screen: 'A', width: 'wide', role: 'member', state: 'default', step: 1, taxv: 'v3', year: 2026 };
   // 상태가 보이는 화면. 지금 화면에 없으면 첫 화면으로 옮긴다.
   var STATE_SCREENS = {
-    nogroup: ['A', 'B', 'C', 'D1', 'D2'], norecord: ['C', 'D1', 'D2'], nodata: ['C', 'D1', 'D2'], incomplete: ['C', 'D1', 'D2'],
-    invalid: ['C', 'E'], asof: ['C', 'D1', 'D2'], zero: ['C', 'D1', 'D2'], below: ['D1', 'D2'], nodiff: ['D1', 'D2'], partial: ['C', 'D1', 'D2'],
-    nolaw: ['C', 'D1', 'D2'], newlaw: ['D1', 'D2'], forbidden: ['E'], neterr: ['B', 'C', 'D1', 'D2', 'E'], conflict: ['C', 'D1', 'D2']
+    nogroup: ['A', 'B', 'C', 'D'], norecord: ['C', 'D'], nodata: ['C', 'D'], incomplete: ['C', 'D'],
+    invalid: ['C', 'E'], asof: ['C', 'D'], zero: ['C', 'D'], below: ['D'], nodiff: ['D'], partial: ['C', 'D'],
+    nolaw: ['C', 'D'], newlaw: ['D'], forbidden: ['E'], neterr: ['B', 'C', 'D', 'E'], conflict: ['C', 'D']
   };
-  var TITLES = { A: '소득공제', B: '홈', C: '입력자료', D1: '분석·지출계획', D2: '분석·지출계획', E: '연도별 세법 관리' };
+  var TITLES = { A: '소득공제', B: '홈', C: '입력자료', D: '분석·지출계획', E: '연도별 세법 관리' };
   var $ = function (q, el) { return (el || document).querySelector(q); };
   var $$ = function (q, el) { return Array.prototype.slice.call((el || document).querySelectorAll(q)); };
   var frame = $('#frame');
@@ -769,20 +794,19 @@ dialog .foot{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;border
   }
 
   function apply() {
-    var nw = narrow(), dir = S.screen === 'D2' ? '2' : '1';
-    frame.className = 'frame' + (nw ? ' narrow' : '') + (dir === '2' ? ' dir2' : '');
+    var nw = narrow();
+    frame.className = 'frame' + (nw ? ' narrow' : '');
     document.body.className = nw ? 'narrow' : '';
     renderSum();
-    $$('[data-screen],[data-when],[data-unless],[data-role],[data-w],[data-dir],[data-step],[data-v]').forEach(function (el) {
+    $$('[data-screen],[data-when],[data-unless],[data-role],[data-w],[data-step],[data-v]').forEach(function (el) {
       var d = el.dataset, hide = false;
       if (d.screen && !has(d.screen, S.screen)) hide = true;
       if (d.when && !has(d.when, S.state)) hide = true;
       if (d.unless && has(d.unless, S.state)) hide = true;
       if (d.role && d.role !== S.role) hide = true;
       if (d.w && d.w !== (nw ? 'narrow' : 'wide')) hide = true;
-      if (d.dir && d.dir !== dir) hide = true;
-      if (d.step && dir === '2' && +d.step !== S.step) hide = true;
-      if (d.v && d.v !== S.taxv) hide = true;
+      if (d.step && +d.step !== S.step) hide = true;
+      if (d.v && !has(d.v, S.taxv)) hide = true;
       el.hidden = hide;
     });
     // 권한 없음: 회원 보기이거나 상태가 권한 없음
@@ -790,6 +814,7 @@ dialog .foot{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;border
     $('#forbidden').hidden = !forbidden;
     $('#taxadmin').hidden = forbidden;
     $('#taxfields').disabled = S.taxv === 'v1';
+    $$('.vname').forEach(function (el) { el.textContent = S.taxv; });
     $$('.yearsel').forEach(function (el) { el.value = S.state === 'nolaw' ? '2027년' : '2026년'; });
     // 잘못된 값 예시
     var inv = S.state === 'invalid';
@@ -799,11 +824,11 @@ dialog .foot{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;border
     $('#f-culture').value = inv ? '130' : '30';
     $('#f-limit').value = inv ? '' : '2,750,000';
     $('#f-url').value = inv ? '' : 'https://www.law.go.kr/';
-    ['f-culture', 'f-limit', 'f-url'].forEach(function (id) { $('#' + id).setAttribute('aria-invalid', inv && S.taxv === 'v2' ? 'true' : 'false'); });
+    ['f-culture', 'f-limit', 'f-url'].forEach(function (id) { $('#' + id).setAttribute('aria-invalid', inv && S.taxv !== 'v1' ? 'true' : 'false'); });
     if (inv) $('#validok').hidden = true;
     // 현재 위치 표시
     $('#head-title').textContent = $('#page-title').textContent = TITLES[S.screen];
-    var cur = S.screen === 'D1' || S.screen === 'D2' ? 'D' : S.screen;
+    var cur = S.screen;
     $$('[data-go]').forEach(function (b) {
       var on = b.closest('.side,.subtabs,.bottom') && (b.dataset.menu === 'tax' ? S.screen !== 'B' : (b.dataset.go === cur && S.screen !== 'A'));
       if (b.dataset.menu === 'tax' && b.closest('.side')) on = S.screen === 'A'; // 사이드바는 하위 항목을 현재 위치로 표시
@@ -819,29 +844,11 @@ dialog .foot{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;border
     $$('input[name=w]').forEach(function (r) { r.checked = r.value === S.width; });
     $$('input[name=role]').forEach(function (r) { r.checked = r.value === S.role; });
     $('#c-info').textContent = '보는 중: ' + $('#c-screen').selectedOptions[0].textContent + ' · ' + (nw ? '375px' : '데스크톱') + ' · ' + (S.role === 'admin' ? '관리자' : '회원') + ' · 상태 ' + $('#c-state').selectedOptions[0].textContent;
-    measure();
-  }
-
-  // 탭 라벨이 한 줄에 들어가는지 잰다(시스템 글꼴 기준).
-  function measure() {
-    ['demo1', 'demo2'].forEach(function (id) {
-      var box = $('#' + id);
-      if (!box.offsetParent) return;
-      var widest = 0;
-      var wraps = $$('span', box).filter(function (s) {
-        var r = document.createRange(); r.selectNodeContents(s);
-        widest = Math.max(widest, r.getBoundingClientRect().width);
-        return r.getClientRects().length > 1;
-      }).map(function (s) { return s.textContent; });
-      var tabW = $('span', box).getBoundingClientRect().width;
-      $('#' + id + '-out').textContent = '측정: ' + (wraps.length ? '두 줄로 넘어가는 라벨 — ' + wraps.join(', ') : '세 라벨 모두 한 줄') +
-        ' · 가장 긴 라벨 글자 폭 ' + widest.toFixed(1) + 'px / 쓸 수 있는 폭 ' + (tabW - 24).toFixed(1) + 'px';
-    });
   }
 
   function go(screen) {
-    if (screen === 'D') screen = S.dDir;
-    if (screen === 'D1' || screen === 'D2') S.dDir = screen;
+    // D16: 소득공제 메뉴는 자료가 있으면 분석 ① 현황, 없으면 입력자료
+    if (screen === 'tax') { screen = S.state === 'norecord' || S.state === 'nodata' ? 'C' : 'D'; S.step = 1; }
     S.screen = screen;
     var ok = STATE_SCREENS[S.state];
     if (ok && ok.indexOf(screen) < 0) S.state = 'default';
@@ -851,9 +858,9 @@ dialog .foot{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;border
     S.state = st;
     var ok = STATE_SCREENS[st];
     if (ok && ok.indexOf(S.screen) < 0) S.screen = ok[0];
-    if (S.screen === 'D2' && (st === 'below' || st === 'zero')) S.step = 1;
-    if (S.screen === 'D2' && st === 'nodiff') S.step = 3;
-    if (S.screen === 'D2' && st === 'conflict') S.step = 2;
+    if (S.screen === 'D' && (st === 'below' || st === 'zero')) S.step = 1;
+    if (S.screen === 'D' && (st === 'nodiff' || st === 'incomplete' || st === 'nodata' || st === 'nolaw')) S.step = 3;
+    if (S.screen === 'D' && st === 'conflict') S.step = 2;
     if (st === 'invalid') S.taxv = 'v2';
     if (S.screen === 'E' && st !== 'forbidden') S.role = 'admin';
     apply();
@@ -863,6 +870,7 @@ dialog .foot{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;border
   function openDlg(id, title) {
     var d = document.getElementById(id), h = $('[data-dyn]', d);
     if (h && title) h.textContent = title;
+    if (id === 'dlg-del-year') { $('#dy-in').value = ''; $('#dy-del').disabled = true; }
     if (!d.open) d.showModal();
   }
 
@@ -876,6 +884,9 @@ dialog .foot{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;border
     if (d.go) go(d.go);
     else if (d.state) setState(d.state);
     else if (d.open) openDlg(d.open, d.title);
+    else if (d.try) { S.state = d.try; go('tax'); }
+    else if (d.delv) { S.taxv = d.delv; apply(); openDlg('dlg-del-draft'); }
+    else if (b.id === 'calc') { S.step = 3; apply(); }
     else if (d.setstep) { S.step = +d.setstep; apply(); }
     else if (d.taxv) { S.taxv = d.taxv; $('#validok').hidden = true; apply(); }
     else if (b.id === 'stepprev') { S.step--; apply(); }
@@ -883,8 +894,8 @@ dialog .foot{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;border
     else if (b.id === 'yprev') { S.year--; renderMonths(); }
     else if (b.id === 'ynext') { S.year++; renderMonths(); }
     else if (b.id === 'validate') { $('#validok').hidden = S.state === 'invalid'; }
-    else if (b.getAttribute('href') === '#reco') { e.preventDefault(); $('#reco').scrollIntoView(); $('#reco').focus(); }
   });
+  $('#dy-in').addEventListener('input', function (e) { $('#dy-del').disabled = e.target.value.trim() !== '2026'; });
   window.addEventListener('resize', apply);
   renderMonths();
   apply();
