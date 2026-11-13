@@ -14,6 +14,7 @@ import TrendTable from './TrendTable'
 import { presetRange, rangeError, type MonthRange, type RangePreset } from './trendRange'
 import styles from './CategoryTrend.module.css'
 import Icon from '../common/Icon'
+import pageStyles from './DashboardPage.module.css'
 
 const presets: { id: RangePreset; label: string }[] = [
   { id: 'prev', label: '전월 비교' },
@@ -97,7 +98,7 @@ export default function CategoryTrend({ groupId, month, title = '대분류 추�
       {error && <p role="alert" className={ui.alert}>{error}</p>}
       {!error && trend.isPending && <SkeletonRegion><TrendSkeleton compact={compact} /></SkeletonRegion>}
       {!error && trend.isError && (
-        <div className={ui.row}>
+        <div className={pageStyles.feedback}>
           <p role="alert" className={ui.alert}>추이를 불러오지 못했습니다.</p>
           <button type="button" className={ui.button} onClick={() => void trend.refetch()}><Icon name="refresh-cw" size={18} />다시 시도</button>
         </div>

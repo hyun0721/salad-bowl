@@ -19,6 +19,7 @@ import styles from './SubcategoryTrends.module.css'
 import breakdown from './CategoryBreakdown.module.css'
 import trendStyles from './CategoryTrend.module.css'
 import Icon from '../common/Icon'
+import pageStyles from './DashboardPage.module.css'
 
 export default function SubcategoryTrends({ groupId, month, members = [] }: { groupId: number; month: string; members?: Pick<MemberTotal, 'userId' | 'nickname'>[] }) {
   const formatWon = useAmountFormatter('EXPENSE')
@@ -94,7 +95,7 @@ export default function SubcategoryTrends({ groupId, month, members = [] }: { gr
         <ChartViewToggle title="소분류 분포" value={view} onChange={setView} />
       </div>
       {query.isPending && <SkeletonRegion label="대분류 목록을 불러오는 중입니다."><DonutLegendSkeleton compact={compact} /></SkeletonRegion>}
-      {query.isError && <div className={ui.row}>
+      {query.isError && <div className={pageStyles.feedback}>
         <p role="alert" className={ui.alert}>대분류 목록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</p>
         <button type="button" className={ui.button} onClick={() => void query.refetch()}><Icon name="refresh-cw" size={18} />소분류 다시 시도</button>
       </div>}
