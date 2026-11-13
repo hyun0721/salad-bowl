@@ -5,23 +5,8 @@
 .table tfoot th, .table tfoot td { font-weight: 700; border-bottom: 0; }
 .table td { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 
-.page {
-  --text-base: var(--text-lg);
-  --text-sm: var(--text-md);
-  --text-label: var(--text-md);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-5);
-  min-width: 0;
-  font-size: var(--text-base);
-  line-height: 1.5;
-}
+.page { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
 .page h2 { min-width: 0; font-size: var(--text-xl); line-height: 1.5; overflow-wrap: anywhere; }
-.page button { font-size: var(--text-card-action); line-height: 1.5; }
-.page label { line-height: 1.5; }
 .feedback { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); }
 .feedback > p { flex: 1 1 160px; overflow-wrap: anywhere; }
 .feedback > button { margin-left: auto; }
-@media (max-width: 820px) {
-  .page button { min-height: 44px; }
-}
