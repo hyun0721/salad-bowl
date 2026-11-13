@@ -41,4 +41,4 @@
 .settingsTrigger { min-width: 44px; min-height: 44px; flex: none; }
 .settingsContent { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-3); }
 .settingsContent label { width: 100%; flex-direction: row-reverse; justify-content: space-between; }
-.settingsContent h3 { margin: 0; font-size: var(--text-sm); }
+.settingsContent h3 { margin: 0; font-size: var(--text-base); }

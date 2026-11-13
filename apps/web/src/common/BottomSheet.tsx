@@ -36,12 +36,12 @@ export default function BottomSheet({ title, triggerLabel, triggerIcon, triggerC
       </Button>
       <ModalOverlay isDismissable className={styles.backdrop}>
         <Modal ref={revealFocusedField} className={styles.sheet}>
-          <Dialog className={styles.content}>
+          <Dialog className={`${styles.content} ${overlay.typography}`}>
             {({ close }) => (
               <>
                 <span className={styles.handle} aria-hidden="true" />
                 <div className={overlay.header}>
-                  <Heading slot="title" className={styles.title}>{title}</Heading>
+                  <Heading slot="title" className={overlay.dialogTitle}>{title}</Heading>
                   <Button aria-label="닫기" className={`${ui.button} ${ui.iconButton} ${ui.ghost}`} onPress={close}><Icon name="x" /></Button>
                 </div>
                 {children({ close })}
