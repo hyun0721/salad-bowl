@@ -337,4 +337,62 @@ describe('CoverageSection', () => {
     await waitFor(() => expect(started).toBe(true))
     release()
     expect(await screen.findByRole('status')).toHaveTextContent('2026년 9월 거래 3건을 삭제했습니다.')
-  })})
+  })
+
+  it('opens the upload history from the icon button next to the year stepper', async () => {
+    handlers([])
+    server.use(http.get('*/api/imports', () => HttpResponse.json([
+      { batchId: 2, fileName: '2026-09.xlsx', totalRows: 168, createdRows: 168, updatedRows: 0, unchangedRows: 0, importedAt: '2026-10-01T00:00:00Z' },
+      { batchId: 1, fileName: '2026-08.xlsx', totalRows: 150, createdRows: 0, updatedRows: 2, unchangedRows: 148, importedAt: '2026-09-01T09:00:00+09:00' },
+    ])))
+    const { user } = renderPage(<CoverageSection today={today} />)
+
+    const region = await screen.findByRole('region', { name: '월별 등록 현황' })
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    const open = within(region).getByRole('button', { name: '업로드 이력' })
+    expect(open.querySelector('svg')).not.toBeNull()
+    await user.click(open)
+
+    const dialog = await screen.findByRole('dialog', { name: '업로드 이력' })
+    const rows = await within(dialog).findAllByRole('listitem')
+    expect(rows[0]).toHaveTextContent('2026-09.xlsx')
+    expect(rows[0]).toHaveTextContent('신규 168')
+    expect(rows[0]).toHaveTextContent('10-01 09:00') // UTC 자정은 서울 오전 9시
+    expect(rows[1]).toHaveTextContent('2026-08.xlsx')
+    expect(rows[1]).toHaveTextContent('변경 없음 148')
+
+    await user.click(within(dialog).getByRole('button', { name: '닫기' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  })
+
+  it('shows three history rows while the history loads, then the empty message', async () => {
+    handlers([])
+    server.use(http.get('*/api/imports', async () => { await delay(400); return HttpResponse.json([]) }))
+    const { user } = renderPage(<CoverageSection today={today} />)
+
+    await user.click(await screen.findByRole('button', { name: '업로드 이력' }))
+
+    const dialog = await screen.findByRole('dialog', { name: '업로드 이력' })
+    expect(within(dialog).getByRole('status')).toHaveAttribute('aria-busy', 'true')
+    expect(within(dialog).getByRole('status').querySelectorAll('li')).toHaveLength(3)
+    expect(await within(dialog).findByText('아직 올린 파일이 없습니다.')).toBeInTheDocument()
+  })
+
+  it('retries the upload history inside the dialog', async () => {
+    let fail = true
+    handlers([])
+    server.use(http.get('*/api/imports', () => fail
+      ? HttpResponse.json({ code: 'X', message: 'x' }, { status: 500 })
+      : HttpResponse.json([])))
+    const { user } = renderPage(<CoverageSection today={today} />)
+
+    await user.click(await screen.findByRole('button', { name: '업로드 이력' }))
+
+    const dialog = await screen.findByRole('dialog', { name: '업로드 이력' })
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('업로드 이력을 불러오지 못했습니다.')
+    fail = false
+    await user.click(within(dialog).getByRole('button', { name: '다시 시도' }))
+    expect(await within(dialog).findByText('아직 올린 파일이 없습니다.')).toBeInTheDocument()
+    expect(within(dialog).queryByRole('alert')).not.toBeInTheDocument()
+  })
+})
