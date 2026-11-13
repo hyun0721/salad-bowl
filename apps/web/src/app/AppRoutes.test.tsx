@@ -81,7 +81,7 @@ describe('AppRoutes', () => {
     renderApp('/')
     const nav = await screen.findByRole('navigation', { name: '주 메뉴' })
     expect(within(nav).getAllByRole('link').map((l) => l.textContent))
-      .toEqual(['홈', '대시보드', '대분류', '소분류', '거래 목록', '업로드', '그룹 관리'])
+      .toEqual(['홈', '대시보드', '대분류', '소분류', '거래 목록', '그룹 관리'])
     expect(within(nav).getByRole('link', { name: '대분류' })).toHaveAttribute('href', '/dashboard/major')
     expect(within(nav).getByRole('link', { name: '소분류' })).toHaveAttribute('href', '/dashboard/minor')
     expect(within(nav).getByRole('link', { name: '대시보드' })).not.toHaveAttribute('aria-current')
@@ -126,13 +126,28 @@ describe('AppRoutes', () => {
 
   it('navigates between menu pages', async () => {
     signedIn([])
-    server.use(http.get('*/api/imports', () => HttpResponse.json([])))
     renderApp('/')
     const user = userEvent.setup()
 
-    await user.click(await screen.findByRole('link', { name: '업로드' }))
+    await user.click(await screen.findByRole('link', { name: '그룹 관리' }))
 
-    expect(await screen.findByRole('heading', { level: 1, name: '업로드' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { level: 1, name: '그룹 관리' })).toBeInTheDocument()
+  })
+
+  it('sends the old upload address to home and opens that month there', async () => {
+    signedIn([])
+    renderApp('/upload?month=2026-01')
+
+    expect(await screen.findByRole('dialog', { name: '2026년 1월 데이터 업로드' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 1, name: '홈', hidden: true })).toBeInTheDocument()
+  })
+
+  it('sends the old upload address without a month to home', async () => {
+    signedIn([])
+    renderApp('/upload')
+
+    expect(await screen.findByRole('heading', { level: 1, name: '홈' })).toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
   it('logs out and returns to login', async () => {
@@ -327,7 +342,7 @@ describe('AppRoutes', () => {
     server.use(http.get('*/api/imports', () =>
       HttpResponse.json({ code: 'UNAUTHORIZED', message: 'x' }, { status: 401 })))
 
-    await user.click(screen.getByRole('link', { name: '업로드' }))
+    await user.click(screen.getByRole('button', { name: '업로드 이력' }))
 
     expect(await screen.findByRole('button', { name: '로그인' })).toBeInTheDocument()
     expect(client.getQueryData(['groups'])).toBeUndefined()
@@ -407,7 +422,7 @@ describe('AppRoutes on a narrow screen', () => {
     const navs = await screen.findAllByRole('navigation', { name: '주 메뉴' })
     expect(navs).toHaveLength(1)
     const names = within(navs[0]).getAllByRole('link').map((link) => link.textContent)
-    expect(names).toEqual(['홈', '대시보드', '거래', '업로드', '그룹'])
+    expect(names).toEqual(['홈', '대시보드', '거래', '그룹'])
     expect(within(navs[0]).getByRole('link', { name: '홈' })).toHaveAttribute('aria-current', 'page')
     // 닉네임과 로그아웃은 상단 바에 없고 계정 시트 안에 있다.
     expect(screen.queryByRole('button', { name: '로그아웃' })).not.toBeInTheDocument()

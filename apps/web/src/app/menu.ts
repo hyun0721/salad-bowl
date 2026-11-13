@@ -12,7 +12,6 @@ export const MENU: MenuItem[] = [
   { to: '/dashboard', label: '대시보드', shortLabel: '대시보드', icon: 'dashboard', end: false,
     children: [{ to: '/dashboard/major', label: '대분류' }, { to: '/dashboard/minor', label: '소분류' }] },
   { to: '/transactions', label: '거래 목록', shortLabel: '거래', icon: 'receipt', end: false },
-  { to: '/upload', label: '업로드', shortLabel: '업로드', icon: 'sheet-upload', end: false },
   { to: '/groups', label: '그룹 관리', shortLabel: '그룹', icon: 'users', end: false },
 ]
 
