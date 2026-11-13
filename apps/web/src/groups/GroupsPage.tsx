@@ -37,13 +37,13 @@ export default function GroupsPage() {
             {[0, 1, 2].map((i) => <li key={i} className={styles.groupButton}><Skeleton width="60%" height="1lh" /><Skeleton width="35%" height="1lh" /></li>)}
           </ul></SkeletonRegion>}
           {isError && (
-            <div className={ui.row}>
+            <div className={styles.actionRow}>
               <p role="alert" className={ui.alert}>그룹을 불러오지 못했습니다.</p>
-              <button type="button" className={ui.button} onClick={retry}><Icon name="refresh-cw" size={18} />그룹 목록 다시 시도</button>
+              <button type="button" className={ui.button} onClick={retry}><Icon name="refresh-cw" size={18} />다시 시도</button>
             </div>
           )}
           {!isLoading && !isError && groups.length === 0 && (
-            <p className={ui.status}>아직 속한 그룹이 없습니다. 위의 추가 버튼으로 새로 만들거나, 받은 초대 링크를 열어 합류합니다.</p>
+            <p className={ui.status}>아직 속한 그룹이 없습니다. 그룹을 추가하거나 초대 링크로 합류하세요.</p>
           )}
           {groups.length > 0 && (
             <ul className={styles.groupList}>

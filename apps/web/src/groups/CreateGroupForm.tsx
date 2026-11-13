@@ -3,6 +3,7 @@ import { errorMessage } from '../common/errorMessage'
 import TextField from '../common/TextField'
 import ui from '../common/ui.module.css'
 import { useGroupMutations } from './useGroupMutations'
+import styles from './GroupsPage.module.css'
 
 type Props = { onCreated: () => void }
 
@@ -19,8 +20,10 @@ export default function CreateGroupForm({ onCreated }: Props) {
   return (
     <form className={ui.stack} onSubmit={onSubmit}>
       <TextField label="그룹 이름" value={name} onChange={setName} isRequired maxLength={50} />
-      <button type="submit" className={`${ui.button} ${ui.primary}`}
-        disabled={create.isPending || name.trim() === ''}>만들기</button>
+      <div className={styles.actions}>
+        <button type="submit" className={`${ui.button} ${ui.primary}`}
+          disabled={create.isPending || name.trim() === ''}>만들기</button>
+      </div>
       {create.isError && <p role="alert" className={ui.alert}>{errorMessage(create.error)}</p>}
     </form>
   )

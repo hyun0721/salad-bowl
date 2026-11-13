@@ -25,6 +25,7 @@
 |---|---|
 | [시스템 아키텍처](docs/architecture.md) | 요청 흐름, 저장소 구조, 인증, 스키마 관리, 배포 자동화 |
 | [로컬 개발](docs/development.md) | 개발 환경 준비, 실행, 테스트, 개인정보 규칙 |
+| [UI 표준](docs/ui-standards.md) | 정보·조작 정렬, 간결한 문구, 도움말, PWA와 접근성 기준 |
 | [테스트 데이터](docs/test-data.md) | 합성 엑셀과 계정·그룹·거래를 만드는 스크립트, 시나리오별 데이터 지도 |
 | [에이전트 공통 규칙](docs/agent-guidelines.md) | Claude·Codex의 작업 범위, 협업, 검증 기준 |
 | [에이전트 도구](docs/agent-tools.md) | Codex 설정과 Graphify·Archify·Ponytail 호환성 |
