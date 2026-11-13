@@ -17,7 +17,7 @@ export function ResponsiveOverlay({ mobile, title, children, dialog = true, clos
   )
   return mobile ? (
     <Popover placement="bottom start" className={styles.sheet}>
-      <Dialog aria-labelledby={titleId} className={styles.dialog}>
+      <Dialog aria-labelledby={titleId} className={`${styles.dialog} ${styles.typography}`}>
         <div className={styles.sheetHeader}>
           <Heading id={titleId} slot="title" className={styles.title}>{title}</Heading>
           {close}
@@ -27,10 +27,10 @@ export function ResponsiveOverlay({ mobile, title, children, dialog = true, clos
     </Popover>
   ) : !dialog ? (
     // 단순 목록(Select)은 대화상자가 아니다. Dialog를 빼도 모달 Popover가 스스로 role=dialog를 단다(isNonModal이면 underlay가 사라져 바깥 클릭이 뚫린다). 이름만 붙인다. DatePicker만 Dialog가 필요하다.
-    <Popover placement="bottom start" offset={4} aria-label={title} className={styles.popover}>{children}</Popover>
+    <Popover placement="bottom start" offset={4} aria-label={title} className={`${styles.popover} ${styles.typography}`}>{children}</Popover>
   ) : (
     <Popover placement="bottom start" offset={4} className={styles.popover}>
-      <Dialog aria-label={title} className={styles.dialog}>{close}{children}</Dialog>
+      <Dialog aria-label={title} className={`${styles.dialog} ${styles.typography}`}>{close}{children}</Dialog>
     </Popover>
   )
 }

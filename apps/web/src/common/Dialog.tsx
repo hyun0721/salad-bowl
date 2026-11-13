@@ -44,7 +44,7 @@ export function DialogFrame(props: FrameProps) {
     <ModalOverlay isOpen={isOpen} onOpenChange={onOpenChange} isDismissable={closeOnOutsideClick && !closeDisabled}
       isKeyboardDismissDisabled={closeDisabled} className={narrow ? styles.sheetBackdrop : styles.backdrop}>
       <Modal ref={narrow ? revealFocusedField : undefined} className={(narrow ? sheetClass : modalClass) + pinned}>
-        <AriaDialog className={styles.content}>{({ close }) => body(close)}</AriaDialog>
+        <AriaDialog className={`${styles.content} ${styles.typography}`}>{({ close }) => body(close)}</AriaDialog>
       </Modal>
     </ModalOverlay>
   )
