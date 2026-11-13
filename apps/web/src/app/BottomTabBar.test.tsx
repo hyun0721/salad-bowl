@@ -14,16 +14,16 @@ function renderAt(path: string) {
 }
 
 describe('BottomTabBar', () => {
-  it('shows five short-named links', () => {
+  it('shows four short-named links', () => {
     const nav = renderAt('/')
     const names = within(nav).getAllByRole('link').map((link) => link.textContent)
-    expect(names).toEqual(['홈', '대시보드', '거래', '업로드', '그룹'])
+    expect(names).toEqual(['홈', '대시보드', '거래', '그룹'])
   })
 
   it('marks only the current screen', () => {
     const nav = renderAt('/transactions')
     expect(within(nav).getByRole('link', { name: '거래' })).toHaveAttribute('aria-current', 'page')
-    for (const name of ['홈', '대시보드', '업로드', '그룹']) {
+    for (const name of ['홈', '대시보드', '그룹']) {
       expect(within(nav).getByRole('link', { name })).not.toHaveAttribute('aria-current')
     }
   })
@@ -36,11 +36,11 @@ describe('BottomTabBar', () => {
       .map((link) => link.textContent)
     expect(indicatorOwners()).toEqual(['홈'])
 
-    await user.click(within(nav).getByRole('link', { name: '업로드' }))
+    await user.click(within(nav).getByRole('link', { name: '그룹' }))
 
-    expect(within(nav).getByRole('link', { name: '업로드' })).toHaveAttribute('aria-current', 'page')
+    expect(within(nav).getByRole('link', { name: '그룹' })).toHaveAttribute('aria-current', 'page')
     expect(within(nav).getByRole('link', { name: '홈' })).not.toHaveAttribute('aria-current')
-    expect(indicatorOwners()).toEqual(['업로드'])
+    expect(indicatorOwners()).toEqual(['그룹'])
   })
 
   it('keeps home current only on the home path', () => {

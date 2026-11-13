@@ -1,2 +1,7 @@
-.twoColumns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }
-@media (max-width: 820px) { .twoColumns { grid-template-columns: minmax(0, 1fr); } }
+.twoColumns { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: var(--space-3); align-items: start; }
+.coverage { grid-column: 1; grid-row: 1; }
+.summary { grid-column: 2; grid-row: 1; }
+@media (max-width: 820px) {
+  .twoColumns { grid-template-columns: minmax(0, 1fr); }
+  .coverage, .summary { grid-column: auto; grid-row: auto; }
+}

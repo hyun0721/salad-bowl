@@ -1,18 +1,18 @@
 import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router'
+import { useNavigate, useSearchParams } from 'react-router'
 import { menuLabel } from '../app/menu'
+import Icon from '../common/Icon'
 import PageHeader from '../common/PageHeader'
+import { SkeletonRegion } from '../common/Skeleton'
 import TotalsCards, { TotalsCardsSkeleton } from '../common/TotalsCards'
-import Skeleton, { SkeletonRegion } from '../common/Skeleton'
 import ui from '../common/ui.module.css'
 import { defaultYearMonth, formatMonthLabel } from '../common/format'
 import { usePageTitle } from '../common/usePageTitle'
-import { coverageApi } from '../imports/coverageApi'
+import CoverageSection from '../imports/CoverageSection'
 import { summarize } from '../transactions/summary'
 import { transactionsApi } from '../transactions/transactionsApi'
 import styles from './HomePage.module.css'
-import Icon from '../common/Icon'
 
 type Props = { today?: Date }
 
@@ -23,37 +23,18 @@ export default function HomePage({ today: todayProp }: Props) {
   const [mountedAt] = useState(() => new Date())
   const today = todayProp ?? mountedAt
   const month = defaultYearMonth(today)
-  // 1월에는 지난달이 작년이므로 지난달이 속한 연도의 등록 현황을 본다.
-  const year = Number(month.slice(0, 4))
+  const [params, setParams] = useSearchParams()
 
-  const coverage = useQuery({ queryKey: ['coverage', year], queryFn: () => coverageApi.get(year) })
   const mine = useQuery({ queryKey: ['transactions', 'mine', month], queryFn: () => transactionsApi.mine(month) })
   const totals = mine.data ? summarize(mine.data) : null
-  const entry = coverage.data?.find((c) => c.month === month && c.importedCount > 0)
 
   return (
     <>
       <PageHeader title={title} />
 
+      {/* 문서 순서는 좁은 화면 순서(요약 → 등록 현황)다. 넓은 화면에서는 CSS 격자가 등록 현황을 왼쪽에 둔다. */}
       <div className={styles.twoColumns}>
-        <section aria-labelledby="upload-status-title" className={ui.card}>
-          <h2 id="upload-status-title">지난달 업로드</h2>
-          {coverage.isPending && <SkeletonRegion><Skeleton width="80%" height="1lh" /></SkeletonRegion>}
-          {coverage.isError && (
-            <div className={ui.row}>
-              <p role="alert" className={ui.alert}>업로드 현황을 불러오지 못했습니다.</p>
-              <button type="button" className={ui.button} aria-label="업로드 현황 다시 시도" onClick={() => void coverage.refetch()}><Icon name="refresh-cw" size={18} />다시 시도</button>
-            </div>
-          )}
-          {coverage.data && (entry
-            ? <p>{formatMonthLabel(month)} 데이터 등록됨 · {entry.importedCount}건</p>
-            : <>
-              <p>{formatMonthLabel(month)} 데이터가 아직 없습니다.</p>
-              <Link to={`/upload?month=${month}`}>업로드하기</Link>
-            </>)}
-        </section>
-
-        <section aria-labelledby="summary-title" className={ui.card}>
+        <section aria-labelledby="summary-title" className={`${ui.card} ${styles.summary}`}>
           <h2 id="summary-title">지난달 내 요약 ({formatMonthLabel(month)})</h2>
           {mine.isPending && <SkeletonRegion><TotalsCardsSkeleton /></SkeletonRegion>}
           {mine.isError && (
@@ -64,6 +45,11 @@ export default function HomePage({ today: todayProp }: Props) {
           )}
           {totals && <TotalsCards income={totals.income} expense={totals.expense} onSelect={() => navigate('/transactions')} />}
         </section>
+
+        <div className={styles.coverage}>
+          <CoverageSection today={today} initialMonth={params.get('month')}
+            onInitialMonthHandled={() => setParams((p) => { p.delete('month'); return p }, { replace: true })} />
+        </div>
       </div>
     </>
   )
