@@ -120,6 +120,16 @@ describe('CoverageSection', () => {
     expect(await screen.findByText('등록됨 · 90건')).toBeInTheDocument()
   })
 
+  it('shows the download and duplicate handling guidance in the upload dialog', async () => {
+    handlers([])
+    const { user } = renderPage(<CoverageSection today={today} />)
+
+    await user.click(await screen.findByRole('button', { name: '2026년 2월 미등록, 업로드하기' }))
+    const dialog = screen.getByRole('dialog', { name: '2026년 2월 데이터 업로드' })
+    expect(within(dialog).getByText('뱅크샐러드 앱에서 기간을 3개월 이하로 골라 가계부 엑셀을 내려받습니다.')).toBeInTheDocument()
+    expect(within(dialog).getByText('이미 있는 거래는 건너뛰고, 내가 고친 카테고리·메모는 유지됩니다.')).toBeInTheDocument()
+  })
+
   it('keeps the upload dialog open while the file is uploading', async () => {
     server.use(
       http.get('*/api/me/coverage', () => HttpResponse.json([])),

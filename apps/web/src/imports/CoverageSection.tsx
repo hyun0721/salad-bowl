@@ -71,6 +71,8 @@ export default function CoverageSection({ today, initialMonth, onInitialMonthHan
       {uploadMonth && (
         <Dialog title={`${formatMonthLabel(uploadMonth)} 데이터 업로드`} onClose={() => setUploadMonth(null)} closeDisabled={uploading}>
           <p className={ui.status}>뱅크샐러드에서 내려받은 엑셀(.xlsx)을 올려주세요. 여러 달이 들어 있어도 거래 일자에 맞게 반영됩니다.</p>
+          <p className={ui.muted}>뱅크샐러드 앱에서 기간을 3개월 이하로 골라 가계부 엑셀을 내려받습니다.</p>
+          <p className={ui.muted}>이미 있는 거래는 건너뛰고, 내가 고친 카테고리·메모는 유지됩니다.</p>
           <UploadForm />
         </Dialog>
       )}
