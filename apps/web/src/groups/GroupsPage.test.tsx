@@ -43,12 +43,20 @@ describe('GroupsPage', () => {
 
     const list = await screen.findByRole('region', { name: '내 그룹' })
     expect(await within(list).findByRole('button', { name: /우리집/ })).toHaveAttribute('aria-pressed', 'true')
-    expect(await screen.findByRole('heading', { level: 2, name: '우리집' })).toBeInTheDocument()
-    expect(screen.getByText('짝꿍')).toBeInTheDocument()
+    const info = await screen.findByRole('region', { name: '그룹 정보' })
+    expect(await within(info).findByRole('textbox', { name: '그룹 이름' })).toHaveValue('우리집')
+    const members = screen.getByRole('region', { name: '멤버 관리' })
+    expect(within(members).getByText('짝꿍')).toBeInTheDocument()
+    expect(within(info).queryByText('짝꿍')).not.toBeInTheDocument()
+    expect(within(members).getByRole('button', { name: '초대 링크 만들기' })).toBeInTheDocument()
+    expect(within(info).getByRole('switch', { name: '내 거래 그룹 공개' })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: '우리집' })).not.toBeInTheDocument()
 
     await user.click(within(list).getByRole('button', { name: /친구들/ }))
 
-    expect(await screen.findByRole('heading', { level: 2, name: '친구들' })).toBeInTheDocument()
+    const friendInfo = await screen.findByRole('region', { name: '그룹 정보' })
+    expect(await within(friendInfo).findByText('친구들')).toBeInTheDocument()
+    expect(within(friendInfo).queryByRole('textbox', { name: '그룹 이름' })).not.toBeInTheDocument()
     expect(within(list).getByRole('button', { name: /친구들/ })).toHaveAttribute('aria-pressed', 'true')
   })
 
@@ -81,9 +89,29 @@ describe('GroupsPage', () => {
     await user.type(within(dialog).getByLabelText('그룹 이름'), '새 그룹')
     await user.click(within(dialog).getByRole('button', { name: '만들기' }))
 
-    expect(await screen.findByRole('heading', { level: 2, name: '새 그룹' })).toBeInTheDocument()
+    const info = await screen.findByRole('region', { name: '그룹 정보' })
+    expect(await within(info).findByRole('textbox', { name: '그룹 이름' })).toHaveValue('새 그룹')
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(body).toEqual({ name: '새 그룹' })
+  })
+
+  it('keeps the group info title on failure and restores both cards after retry', async () => {
+    detailHandlers()
+    let failed = true
+    server.use(http.get('*/api/groups/10', () => failed
+      ? HttpResponse.json({ code: 'INTERNAL_ERROR', message: 'x' }, { status: 500 })
+      : HttpResponse.json(homeDetail)))
+    const { user } = renderPage(<GroupsPage />, { groups: [home] })
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('그룹 정보를 불러오지 못했습니다.')
+    const info = screen.getByRole('region', { name: '그룹 정보' })
+    expect(within(info).getByRole('heading', { name: '그룹 정보' })).toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: '멤버 관리' })).not.toBeInTheDocument()
+    failed = false
+    await user.click(within(info).getByRole('button', { name: '다시 시도' }))
+
+    expect(await screen.findByRole('textbox', { name: '그룹 이름' })).toHaveValue('우리집')
+    expect(screen.getByRole('region', { name: '멤버 관리' })).toBeInTheDocument()
   })
 
   it('lets the admin rename the group', async () => {
@@ -95,7 +123,7 @@ describe('GroupsPage', () => {
     }))
     const { user } = renderPage(<GroupsPage />, { groups: [home] })
 
-    const input = await screen.findByLabelText('새 이름')
+    const input = await screen.findByLabelText('그룹 이름')
     await user.clear(input)
     await user.type(input, '우리 가족')
     await user.click(screen.getByRole('button', { name: '이름 바꾸기' }))
@@ -150,7 +178,7 @@ describe('GroupsPage', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
 
     await user.click(help)
-    await user.click(screen.getByRole('heading', { level: 2, name: '우리집' }))
+    await user.click(screen.getByRole('heading', { level: 2, name: '그룹 정보' }))
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 
@@ -181,9 +209,11 @@ describe('GroupsPage', () => {
     }))
     const { user } = renderPage(<GroupsPage />, { groups: [friends] })
 
-    expect(await screen.findByRole('heading', { level: 2, name: '친구들' })).toBeInTheDocument()
-    expect(screen.queryByLabelText('새 이름')).not.toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: '그룹 나가기' }))
+    const info = await screen.findByRole('region', { name: '그룹 정보' })
+    expect(await within(info).findByText('친구들')).toBeInTheDocument()
+    expect(within(info).queryByRole('textbox', { name: '그룹 이름' })).not.toBeInTheDocument()
+    const members = screen.getByRole('region', { name: '멤버 관리' })
+    await user.click(within(members).getByRole('button', { name: '그룹 나가기' }))
     expect(left).toBe(false)
     await user.click(screen.getByRole('button', { name: '나가기 확인' }))
 
