@@ -45,7 +45,7 @@ Use the built-in browser (`mcp__Claude_Browser__*`).
    - `resize_window` preset `mobile` (375×812) gives the narrow layout: bottom tab bar and account sheet.
    - preset `desktop` gives the sidebar. Reset to `desktop` when you finish.
    - Reload after switching, because the layout is picked from a media query.
-4. Navigate the way a user does: click links inside `navigation "주 메뉴"`. On narrow screens the tabs are labelled 홈/대시보드/거래/업로드/그룹. On wide screens they are 홈/그룹 대시보드/거래 목록/업로드/그룹 관리. The active link has `aria-current="page"`.
+4. Navigate the way a user does: click links inside `navigation "주 메뉴"`. On narrow screens the tabs are labelled 홈/대시보드/거래/그룹. On wide screens they are 홈/대시보드/거래 목록/그룹 관리. The active link has `aria-current="page"`.
 5. Money renders as `₩ 2,351,700`. Read the result with `read_page` or `get_page_text`, and use `find` with accessible names. Avoid coordinates and CSS classes: CSS Modules hash the class names.
 
 Per-feature recipes are in [features/README.md](features/README.md).

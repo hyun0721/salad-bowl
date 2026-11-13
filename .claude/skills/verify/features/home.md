@@ -1,11 +1,16 @@
 # Home
 
-Home (`/`, heading `홈`) shows last month's upload status and a summary of the user's income and expenses for that month.
+Home (`/`, heading `홈`) shows a summary of the user's income and expenses for last month and the yearly monthly upload coverage. Uploading a Banksalad .xlsx export (up to 3 months and 512KB), managing a registered month, and the upload history all start from the coverage calendar.
 
 ## Sub-features
 
-- `home-upload-status` shows the `지난달 업로드` card as `<YYYY년 M월> 데이터 등록됨 · <count>건`, or `<YYYY년 M월> 데이터가 아직 없습니다.` with `업로드하기`, which opens `/upload?month=<YYYY-MM>` and the upload dialog for that month.
 - `home-summary` shows last month's income and expense summary and the 수입·지출 cards (`수입 ₩ …`), which open `/transactions`.
+- `home-coverage` shows the 12-month `월별 등록 현황` calendar and year controls `이전 연도` / `다음 연도`.
+- `home-month-dialog` opens `<YYYY년 M월> 데이터 업로드` for an unregistered month, or `<YYYY년 M월> 데이터` for a registered month with `다시 업로드` and delete actions.
+- `home-upload-form` uses the drop zone `엑셀 파일 업로드` with the button `파일 선택`, then the `업로드` submit, inside the month dialog. The result status reads `업로드가 끝났습니다.` with 전체/신규/갱신/변경 없음.
+- `home-upload-history` opens the `업로드 이력` dialog from the icon button `업로드 이력` to the right of the year controls: file name, time, and 신규/갱신/변경 없음 for every batch.
+- `home-deeplink` accepts `/?month=YYYY-MM`, opens the matching month dialog, then removes `?month=` from the address. The old address `/upload?month=YYYY-MM` redirects here and behaves the same; `/upload` alone lands on home.
+- `home-order` stacks `지난달 내 요약` above `월별 등록 현황` on narrow screens. Wide screens put the coverage on the left (wider) and the summary on the right.
 
 ## How to get to it (user POV)
 
@@ -16,13 +21,19 @@ Home (`/`, heading `홈`) shows last month's upload status and a summary of the 
 
 Preconditions:
 
-- Baseline seed: the previous 12 complete months are registered. 지난달 1,081 rows; relative-month row counts are in [seed-expected.json](seed-expected.json).
+- Baseline seed: the previous 12 complete months are registered, with 12 monthly batches per member (`seed-owner-1.xlsx` through `seed-owner-12.xlsx` for the owner). Row counts per relative month are in [seed-expected.json](seed-expected.json).
 
-- **Upload status (registered).** Open `/`. The `지난달 업로드` card reads `<YYYY년 M월> 데이터 등록됨 · 6건` for last month. The home page has no `월별 등록 현황` or `최근 업로드` section.
-- **Upload status (missing).** Remove last month's data from the upload calendar, confirming the month in the deletion prompt, then return home. The card reads `<YYYY년 M월> 데이터가 아직 없습니다.` and has the link `업로드하기`. Click it; `/upload` opens with the `<YYYY년 M월> 데이터 업로드` dialog.
 - **Summary.** The last-month summary shows income and expense, with the 수입·지출 cards (`수입 ₩ …`), which open `/transactions`.
+- **Order.** At `mobile`, the `h2` order is `지난달 내 요약 (…)` → `월별 등록 현황`. At `desktop`, the coverage card is on the left. There is no `지난달 업로드` card and no `파일 올리기` card.
+- **Coverage.** The calendar shows the seeded months as registered with their row counts (see seed-expected.json). `이전 연도` / `다음 연도` change the year.
+- **Deep link (missing month).** Open `/?month=<YYYY-MM 13 months before today>` (outside the 12 seeded months; check the calendar shows it as 미등록). The `<YYYY년 M월> 데이터 업로드` dialog opens and the address becomes `/`. Reload; no dialog opens.
+- **Old address.** Open `/upload?month=<same month>`. The address becomes `/` and the same dialog opens. Open `/upload`; home shows with no dialog.
+- **History.** Click the icon button `업로드 이력`. The dialog lists 12 batches; the row count of `seed-owner-1.xlsx` matches seed-expected.json.
+- **Registered month.** Click a registered month. The `<YYYY년 M월> 데이터` dialog shows the counts, `다시 업로드`, and the delete action that needs the month typed.
 
 ## Gotchas
 
-- The baseline seed registers the last three months, so the missing state requires deleting last month's data first. Restore it before another journey that expects the seed.
-- The `업로드하기` link is a deep link to `/upload?month=YYYY-MM`; after the dialog opens, the address becomes `/upload`.
+- The built-in browser cannot drive the OS file picker, so UI file selection and submit were not verified. Report the UI submit path as unverified unless a human picks the file.
+- Files over 3 months or 512KB are rejected by the API. The form shows the error as an alert.
+- Deleting a month changes the home summary and the dashboard. Restore it before another journey that expects seeded data.
+- The dialogs slide up from the bottom on narrow screens and are centered on wide screens.
