@@ -218,12 +218,12 @@ dialog .foot{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;border
             <li><b>주 메뉴 순서</b>: 홈 | 소득공제 | 대시보드 | 거래 | 그룹. 업로드 메뉴 없음.</li>
             <li class="only-wide"><b>데스크톱</b>: 왼쪽 사이드바. 소득공제 아래에 입력자료 / 분석·지출계획<span data-role="admin"> / 연도별 세법 관리</span>를 2단 들여쓰기로 둔다. 화면 안 탭은 없다.</li>
             <li class="only-narrow"><b>375px</b>: 하단 탭 5칸. "소득공제" 한 칸으로 들어와 위의 화면 안 탭(<span data-role="member">회원 2개</span><span data-role="admin">관리자 3개 — 세 번째 라벨은 "세법 관리"</span>)으로 하위 화면을 바꾼다.</li>
-            <li><b>소득공제 메뉴를 누르면(D16)</b>: 선택 연도에 연도 기록이 있으면 분석·지출계획 ① 현황, 없으면 입력자료로 간다. 선택 연도는 소득공제 화면이 기억하는 귀속연도, 없으면 올해.
+            <li><b>소득공제 메뉴를 누르면(D16)</b>: 선택 연도의 연도 기록에 입력자료가 1건 이상 있으면 분석·지출계획 ① 현황, 연도 기록이 없거나 "자료 없음"이면 입력자료로 간다. 선택 연도는 소득공제 화면이 기억하는 귀속연도, 없으면 올해.
               <span class="row" style="margin-top:4px"><button type="button" data-try="default">자료 있음으로 눌러 보기</button><button type="button" data-try="nodata">"자료 없음"으로 눌러 보기</button><button type="button" data-try="norecord">"연도 기록 없음"으로 눌러 보기</button></span></li>
             <li><b>지금 보기</b>: <span data-role="member">회원 — 하위 메뉴 2개. "연도별 세법 관리"는 보이지 않는다.</span><span data-role="admin">서비스 관리자 — 하위 메뉴 3개.</span> 위 "보기"에서 바꾼다.</li>
             <li><b>개인 자료 표시</b>: 소득공제 화면은 헤더의 그룹 선택과 무관하다. 각 화면 머리에 <span class="badge">개인 자료 · 그룹과 무관</span>을 둔다.</li>
           </ul>
-          <p class="note">위 상태 컨트롤에서 상태를 고른 뒤 사이드바·하단 탭의 "소득공제"를 눌러도 같다. 상태 "연도 기록 없음"과 "자료 없음"은 입력자료로, 나머지는 분석·지출계획 ① 현황으로 간다. "자료 없음"(기록은 있고 자료만 없음)을 입력자료로 보낸 것은 가정이다(열린 질문 2).</p>
+          <p class="note">위 상태 컨트롤에서 상태를 고른 뒤 사이드바·하단 탭의 "소득공제"를 눌러도 같다. 상태 "연도 기록 없음"과 "자료 없음"은 입력자료로, 나머지는 분석·지출계획 ① 현황으로 간다.</p>
           <p class="note" data-when="nogroup">그룹 미가입: 헤더만 "그룹 없음"으로 바뀐다. 소득공제 메뉴·화면은 그대로 쓸 수 있다. <span class="ids">TAX-03</span></p>
         </div>
 
@@ -452,7 +452,7 @@ dialog .foot{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;border
             <div class="row"><button type="button" class="pri" id="calc">계산하기</button><span class="muted">지출계획을 저장하고 추천을 다시 계산합니다. 입력하는 동안에는 자동으로 다시 계산하지 않습니다.</span></div>
             <p class="status" data-when="incomplete nodata nolaw">지금은 [계산하기]가 지출계획을 저장만 합니다. <span data-when="incomplete nodata">자료를 완료하면</span><span data-when="nolaw">세법이 등록되면</span> 추천을 계산합니다.</p>
             <p class="muted">공제 대상이 아닌 지출(보험료·공과금 등)은 적지 않습니다.</p>
-            <p class="note">375px에서는 표를 소비구분별 묶음으로 쌓아 가로 스크롤을 없앴다. [계산하기]를 누르면 ③ 추천으로 옮기는 것으로 그렸다(D18에는 저장·재계산만 있고 이동은 가정 — 열린 질문 1).</p>
+            <p class="note">375px에서는 표를 소비구분별 묶음으로 쌓아 가로 스크롤을 없앴다. [계산하기]를 누르면 저장·재계산 뒤 ③ 추천으로 넘어간다(D18, 2026-11-12 확정).</p>
           </div>
 
           <!-- ③ 추천 -->
@@ -505,7 +505,7 @@ dialog .foot{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;border
                 <li>카드 포인트·할인·연회비·전월실적은 고려하지 않습니다. 결과는 소득공제액이며 환급액이 아닙니다.</li>
               </ul>
             </div>
-            <p class="note">위 한 줄의 비율은 연도 전체 값이다. 표의 현재 계획 금액은 소비구분마다 그 소비구분의 지금까지 입력액 비율로 나눈 값이라(D17 세부 기본값) 한 줄의 비율과 꼭 같지는 않다. 금액은 원 미만을 마지막에 한 번 버렸다(D08).</p>
+            <p class="note">위 한 줄의 비율은 연도 전체 값이다. 표의 현재 계획 금액은 소비구분마다 그 소비구분의 지금까지 입력액 비율로 나눈 값이라(D17) 한 줄의 비율과 꼭 같지는 않다. 금액은 원 미만을 마지막에 한 번 버렸다(D08).</p>
           </div>
 
           <div class="row between">
@@ -602,7 +602,7 @@ dialog .foot{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;border
               </fieldset>
 
               <div class="row" data-v="v2 v3"><button type="button">초안 저장</button><button type="button" id="validate">검증</button><button type="button" class="pri" data-open="dlg-apply">적용</button></div>
-              <p class="note">검증 규칙은 비율 0~100%, 금액 0 이상 정수, 빈 칸 없음, 근거 필수다. 초안 삭제는 버전 목록에 있다. 새 초안이 어느 버전의 값을 복사해 시작하는지는 정하지 않았다(열린 질문 3). 공제율 열 이름은 회원 화면 명칭에 맞췄다.</p>
+              <p class="note">검증 규칙은 비율 0~100%, 금액 0 이상 정수, 빈 칸 없음, 근거 필수다. 초안 삭제는 버전 목록에 있다. 새 초안은 현재 적용 버전 값을 복사해 시작한다(없으면 빈 값). 공제율 열 이름은 회원 화면 명칭에 맞췄다.</p>
             </div>
           </div>
         </div>
