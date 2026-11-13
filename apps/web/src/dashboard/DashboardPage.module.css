@@ -4,3 +4,9 @@
 .table thead th:first-child, .table tbody th, .table tfoot th { text-align: left; font-weight: 500; }
 .table tfoot th, .table tfoot td { font-weight: 700; border-bottom: 0; }
 .table td { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+.page { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
+.page h2 { min-width: 0; font-size: var(--text-xl); line-height: 1.5; overflow-wrap: anywhere; }
+.feedback { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); }
+.feedback > p { flex: 1 1 160px; overflow-wrap: anywhere; }
+.feedback > button { margin-left: auto; }

@@ -29,5 +29,7 @@
 
 .expenseIncrease { color: var(--danger); font-weight: 600; }
 .expenseDecrease { color: light-dark(#1d4ed8, #93c5fd); font-weight: 600; }
-.header { display: flex; justify-content: space-between; align-items: center; gap: var(--space-3); }
+.header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: var(--space-3); }
 .srOnly { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+.header > :last-child { margin-left: auto; }

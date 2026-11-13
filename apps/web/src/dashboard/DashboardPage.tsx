@@ -21,6 +21,7 @@ import { dashboardRedirect, dashboardTitle, type Level, type View } from './dash
 import DashboardMenu from './DashboardMenu'
 import MemberTotalsDialog from './MemberTotalsDialog'
 import Icon from '../common/Icon'
+import styles from './DashboardPage.module.css'
 
 type Props = { today?: Date }
 
@@ -48,27 +49,27 @@ export default function DashboardPage({ today }: Props) {
 
   if (isLoading || isError || selectedGroupId === null) {
     return (
-      <>
+      <div className={styles.page}>
         <PageHeader title={menuLabel('/dashboard')} />
         {isLoading && <SkeletonRegion><TotalsCardsSkeleton /></SkeletonRegion>}
         {isError && (
-          <div className={ui.row}>
+          <div className={styles.feedback}>
             <p role="alert" className={ui.alert}>그룹을 불러오지 못했습니다.</p>
             <button type="button" className={ui.button} onClick={retry}><Icon name="refresh-cw" size={18} />그룹 목록 다시 시도</button>
           </div>
         )}
         {!isLoading && !isError && <NoGroupNotice />}
-      </>
+      </div>
     )
   }
 
   return (
-    <>
+    <div className={styles.page}>
       <PageHeader title={menuLabel('/dashboard')} />
       <MonthPicker month={month} onChange={(m) => setSearch((p) => { p.set('month', m); return p }, { replace: true })} />
       {summary.isPending && <SkeletonRegion><TotalsCardsSkeleton /></SkeletonRegion>}
       {summary.isError && (
-        <div className={ui.row}>
+        <div className={styles.feedback}>
           <p role="alert" className={ui.alert}>요약을 불러오지 못했습니다.</p>
           <button type="button" className={ui.button} onClick={() => void summary.refetch()}><Icon name="refresh-cw" size={18} />다시 시도</button>
         </div>
@@ -81,7 +82,7 @@ export default function DashboardPage({ today }: Props) {
       {narrow && <DashboardMenu level={level} />}
       <SummaryView key={selectedGroupId} groupId={selectedGroupId} month={month} summary={summary.data}
         summaryPending={summary.isPending} level={level} view={params.view as View | undefined} />
-    </>
+    </div>
   )
 }
 

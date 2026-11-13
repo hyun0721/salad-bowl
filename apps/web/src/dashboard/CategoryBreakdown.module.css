@@ -11,7 +11,7 @@
 .swatch { width: 14px; height: 14px; border-radius: 2px; background: var(--swatch-color); }
 .diag45 { background: repeating-linear-gradient(45deg, var(--swatch-color) 0 4px, var(--surface-000) 4px 6px); }
 .diag135 { background: repeating-linear-gradient(135deg, var(--swatch-color) 0 4px, var(--surface-000) 4px 6px); }
-.name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.name { min-width: 0; overflow-wrap: anywhere; }
 .amount { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .percent { min-width: 48px; color: var(--ink-muted); text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
 /* 창 머리와 요약 줄은 고정하고 목록만 스크롤한다. 넓은 화면 높이는 전과 같다. */
@@ -19,3 +19,5 @@
 .summary { flex: none; margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
 .dialogList { min-height: 0; overflow: auto; }
 .dialogList thead th { position: sticky; top: 0; z-index: 1; background: var(--surface-000); box-shadow: inset 0 -1px var(--line); }
+
+.legend > button { display: flex; margin-left: auto; }
