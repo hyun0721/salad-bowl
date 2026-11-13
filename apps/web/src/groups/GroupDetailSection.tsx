@@ -15,16 +15,26 @@ export default function GroupDetailSection({ groupId }: { groupId: number }) {
   const detail = useQuery({ queryKey: ['groups', groupId], queryFn: () => groupsApi.detail(groupId) })
 
   if (detail.isPending) {
-    return <section className={`${ui.card} ${styles.detail}`}><SkeletonRegion><div className={ui.stack}>
-      <Skeleton width="50%" height="1lh" />
-      <ul className={styles.memberList}>{[0, 1, 2].map((i) => <li key={i} className={styles.member}>
-        <Skeleton width={96} height="1lh" /><Skeleton width="30%" height="1lh" /><Skeleton width={80} height="var(--control-height)" />
-      </li>)}</ul>
-    </div></SkeletonRegion></section>
+    return <div className={styles.detailStack}>
+      <section aria-labelledby="group-detail-title" className={`${ui.card} ${styles.detail}`}>
+        <h2 id="group-detail-title">그룹 정보</h2>
+        <SkeletonRegion><div className={ui.stack}>
+          <Skeleton width="50%" height="var(--control-height)" />
+          <Skeleton width="70%" height="1lh" />
+        </div></SkeletonRegion>
+      </section>
+      <section aria-labelledby="group-members-title" className={`${ui.card} ${styles.detail}`}>
+        <h2 id="group-members-title">멤버 관리</h2>
+        <SkeletonRegion><ul className={styles.memberList}>{[0, 1, 2].map((i) => <li key={i} className={styles.member}>
+          <Skeleton width={96} height="1lh" /><Skeleton width="30%" height="1lh" /><Skeleton width={80} height="var(--control-height)" />
+        </li>)}</ul></SkeletonRegion>
+      </section>
+    </div>
   }
   if (detail.isError) {
     return (
-      <section className={ui.card}>
+      <section aria-labelledby="group-detail-title" className={`${ui.card} ${styles.detail}`}>
+        <h2 id="group-detail-title">그룹 정보</h2>
         <div className={styles.actionRow}>
           <p role="alert" className={ui.alert}>그룹 정보를 불러오지 못했습니다.</p>
           <button type="button" className={ui.button} onClick={() => void detail.refetch()}><Icon name="refresh-cw" size={18} />다시 시도</button>
@@ -37,14 +47,24 @@ export default function GroupDetailSection({ groupId }: { groupId: number }) {
   const isAdmin = group.myRole === 'ADMIN'
   const mine = group.members.find((m) => m.userId === me?.userId)
   return (
-    <section aria-labelledby="group-detail-title" className={`${ui.card} ${styles.detail}`}>
-      <h2 id="group-detail-title">{group.name}</h2>
-      {isAdmin && <RenameForm groupId={groupId} name={group.name} />}
-      {mine && <ShareToggle groupId={groupId} enabled={mine.shareEnabled} />}
-      <MemberList group={group} canRemove={isAdmin} />
-      {isAdmin && <InviteSection groupId={groupId} memberCount={group.members.length} />}
-      {isAdmin && <BanList groupId={groupId} />}
-      {!isAdmin && <LeaveGroup groupId={groupId} name={group.name} />}
-    </section>
+    <div className={styles.detailStack}>
+      <section aria-labelledby="group-detail-title" className={`${ui.card} ${styles.detail}`}>
+        <h2 id="group-detail-title">그룹 정보</h2>
+        {isAdmin ? <RenameForm groupId={groupId} name={group.name} /> : (
+          <div>
+            <p className={styles.nameLabel}>그룹 이름</p>
+            <p className={styles.groupName}>{group.name}</p>
+          </div>
+        )}
+        {mine && <ShareToggle groupId={groupId} enabled={mine.shareEnabled} />}
+      </section>
+      <section aria-labelledby="group-members-title" className={`${ui.card} ${styles.detail}`}>
+        <h2 id="group-members-title">멤버 관리</h2>
+        <MemberList group={group} canRemove={isAdmin} />
+        {isAdmin && <InviteSection groupId={groupId} memberCount={group.members.length} />}
+        {isAdmin && <BanList groupId={groupId} />}
+        {!isAdmin && <LeaveGroup groupId={groupId} name={group.name} />}
+      </section>
+    </div>
   )
 }

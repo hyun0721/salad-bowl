@@ -17,7 +17,7 @@ export function RenameForm({ groupId, name }: { groupId: number; name: string })
 
   return (
     <form className={styles.fieldAction} onSubmit={(e) => { e.preventDefault(); rename.mutate({ groupId, name: trimmed }, { onSuccess: () => toast('이름을 바꿨습니다.') }) }}>
-      <TextField label="새 이름" value={value}
+      <TextField label="그룹 이름" value={value}
         onChange={(v) => { setValue(v); rename.reset() }} isRequired maxLength={50} />
       <button type="submit" className={ui.button}
         disabled={rename.isPending || trimmed === '' || trimmed === name}>이름 바꾸기</button>

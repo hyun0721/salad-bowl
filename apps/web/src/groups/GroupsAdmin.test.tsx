@@ -38,7 +38,7 @@ describe('group admin tools', () => {
     const bans = await screen.findByRole('region', { name: '차단 목록' })
     expect(await within(bans).findByText('짝꿍')).toBeInTheDocument()
     await waitFor(() =>
-      expect(within(screen.getByRole('region', { name: /^멤버/ })).queryByText('짝꿍')).not.toBeInTheDocument())
+      expect(within(screen.getByRole('region', { name: /^멤버 \(/ })).queryByText('짝꿍')).not.toBeInTheDocument())
     await waitFor(() => expect(screen.getByRole('heading', { name: /멤버 \(/ })).toHaveFocus())
   })
 
@@ -159,7 +159,9 @@ describe('group admin tools', () => {
     })))
     renderPage(<GroupsPage />, { groups: [{ groupId: 20, name: '친구들', myRole: 'MEMBER', memberCount: 2 }] })
 
-    expect(await screen.findByRole('heading', { level: 2, name: '친구들' })).toBeInTheDocument()
+    const info = await screen.findByRole('region', { name: '그룹 정보' })
+    expect(await within(info).findByText('친구들')).toBeInTheDocument()
+    expect(within(info).queryByRole('textbox', { name: '그룹 이름' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '초대 링크 만들기' })).not.toBeInTheDocument()
     expect(screen.queryByRole('region', { name: '차단 목록' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '친구 내보내기' })).not.toBeInTheDocument()
