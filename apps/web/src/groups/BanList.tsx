@@ -7,6 +7,7 @@ import { groupsApi } from './groupsApi'
 import styles from './GroupsPage.module.css'
 import { useGroupMutations } from './useGroupMutations'
 import Icon from '../common/Icon'
+import GroupHelp from './GroupHelp'
 
 export default function BanList({ groupId }: { groupId: number }) {
   const bans = useQuery({ queryKey: ['bans', groupId], queryFn: () => groupsApi.bans(groupId) })
@@ -14,17 +15,19 @@ export default function BanList({ groupId }: { groupId: number }) {
 
   return (
     <section aria-labelledby="bans-title" className={ui.stack}>
-      <h3 id="bans-title" className={styles.subTitle}>차단 목록</h3>
-      <p className={ui.muted}>내보낸 사람은 초대 링크로 다시 합류할 수 없습니다. 차단을 해제하면 다시 초대할 수 있습니다.</p>
+      <div className={styles.titleWithHelp}>
+        <h3 id="bans-title" className={styles.subTitle}>차단 목록</h3>
+        <GroupHelp title="차단 목록">내보낸 멤버는 다시 합류할 수 없습니다. 차단을 해제하면 다시 초대할 수 있습니다.</GroupHelp>
+      </div>
       {bans.isPending && <SkeletonRegion><ul className={styles.memberList}>
         {[0, 1].map((i) => <li key={i} className={styles.member}>
           <Skeleton width={96} height="1lh" /><Skeleton width="30%" height="1lh" /><Skeleton width={80} height="var(--control-height)" />
         </li>)}
       </ul></SkeletonRegion>}
       {bans.isError && (
-        <div className={ui.row}>
+        <div className={styles.actionRow}>
           <p role="alert" className={ui.alert}>차단 목록을 불러오지 못했습니다.</p>
-          <button type="button" className={ui.button} onClick={() => void bans.refetch()}><Icon name="refresh-cw" size={18} />차단 목록 다시 시도</button>
+          <button type="button" className={ui.button} onClick={() => void bans.refetch()}><Icon name="refresh-cw" size={18} />다시 시도</button>
         </div>
       )}
       {bans.data?.length === 0 && <p className={ui.status}>차단한 사람이 없습니다.</p>}

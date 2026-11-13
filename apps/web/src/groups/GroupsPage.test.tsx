@@ -113,11 +113,45 @@ describe('GroupsPage', () => {
     }))
     const { user } = renderPage(<GroupsPage />, { groups: [home] })
 
-    const toggle = await screen.findByRole('switch', { name: '내 거래를 이 그룹에 공개' })
+    const toggle = await screen.findByRole('switch', { name: '내 거래 그룹 공개' })
     expect(toggle).toBeChecked()
-    await user.click(toggle)
+    await user.click(screen.getByText('내 거래 그룹 공개'))
 
     await waitFor(() => expect(body).toEqual({ enabled: false }))
+  })
+
+  it('opens sharing help without changing sharing and restores focus when dismissed', async () => {
+    detailHandlers()
+    let saves = 0
+    server.use(http.put('*/api/groups/10/share', () => {
+      saves++
+      return HttpResponse.json({ shareEnabled: false })
+    }))
+    const { user } = renderPage(<GroupsPage />, { groups: [home] })
+    const help = await screen.findByRole('button', { name: '내 거래 그룹 공개 도움말' })
+    const description = '끄면 그룹 대시보드와 그룹 거래에서 내 거래가 제외됩니다. 숨긴 거래는 공개해도 보이지 않습니다.'
+
+    expect(screen.queryByText(description)).not.toBeInTheDocument()
+    await user.click(help)
+    const dialog = await screen.findByRole('dialog', { name: '내 거래 그룹 공개 도움말' })
+    expect(within(dialog).getByText(description)).toBeInTheDocument()
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await waitFor(() => expect(help).toHaveFocus())
+    expect(screen.getByRole('switch', { name: '내 거래 그룹 공개' })).toBeChecked()
+    expect(saves).toBe(0)
+
+    await user.click(help)
+    await user.click(await screen.findByRole('button', { name: '닫기' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+
+    await user.click(help)
+    await user.click(help)
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+
+    await user.click(help)
+    await user.click(screen.getByRole('heading', { level: 2, name: '우리집' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 
   it('disables the share switch while saving', async () => {
@@ -130,12 +164,12 @@ describe('GroupsPage', () => {
     }))
     const { user } = renderPage(<GroupsPage />, { groups: [home] })
 
-    const toggle = await screen.findByRole('switch', { name: '내 거래를 이 그룹에 공개' })
+    const toggle = await screen.findByRole('switch', { name: '내 거래 그룹 공개' })
     await user.click(toggle)
-    await waitFor(() => expect(screen.getByRole('switch', { name: '내 거래를 이 그룹에 공개' })).toBeDisabled())
+    await waitFor(() => expect(screen.getByRole('switch', { name: '내 거래 그룹 공개' })).toBeDisabled())
 
     release()
-    await waitFor(() => expect(screen.getByRole('switch', { name: '내 거래를 이 그룹에 공개' })).toBeEnabled())
+    await waitFor(() => expect(screen.getByRole('switch', { name: '내 거래 그룹 공개' })).toBeEnabled())
   })
 
   it('lets a member leave only after confirming', async () => {
