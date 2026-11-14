@@ -256,3 +256,25 @@ Render·Pages 대시보드에 값을 직접 넣었다면 3~4단계 대신 Render
 Pages와 Render의 자동 배포는 동시에 완료되지 않는다. 새 엔드포인트를 사용하는 기능은 서버를 먼저 배포하는 두 단계 변경으로 진행한다. Render에서 해당 커밋의 배포가 Live인지 확인하고, 테스트 계정으로 실제 엔드포인트가 정상 응답하는지 확인한 뒤 웹 변경을 공개한다. `/actuator/health`의 UP만으로 새 엔드포인트 반영을 판단하지 않는다.
 
 서버·웹 변경을 함께 배포했다면 양쪽 완료 후 첫 조회와 오류 화면의 재시도 복구를 확인한다. 2026-10-28 소분류 기능에서는 웹과 API 반영에 약 4분 차이가 있었다. 분석과 UI 조치는 [소분류 초기 조회 분석](superpowers/plans/2026-10-28-subcategory-loading-review.md)에 기록했다.
+
+## 13. 서비스 관리자 지정·해제
+
+"연도별 세법 관리"는 서비스 관리자만 쓴다. 그룹 ADMIN과 별개의 권한이고 지정·해제 화면이 없다. 운영자가 Supabase SQL Editor에서 직접 바꾼다.
+
+관리자로 지정할 사람이 구글 로그인으로 직접 접속해 화면 또는 `/me`에서 자기 `userId`를 확인하고 운영자에게 알린다. 운영자는 회원 id로 아래 조건을 확인한 뒤 지정한다.
+
+```sql
+-- 지정 전 확인: google_linked와 google_only가 모두 TRUE여야 한다.
+SELECT id, email, google_sub IS NOT NULL AS google_linked, password_hash IS NULL AS google_only FROM users WHERE id = <회원 id>;
+-- 지정
+UPDATE users SET service_admin = TRUE WHERE id = <회원 id> AND google_sub IS NOT NULL AND password_hash IS NULL;
+-- 해제
+UPDATE users SET service_admin = FALSE WHERE id = <회원 id>;
+-- 확인
+SELECT id, email, service_admin FROM users WHERE id = <회원 id>;
+```
+
+- `UPDATE` 결과가 1행인지 확인한다. 0행이면 회원 id 또는 지정 조건을 다시 확인한다.
+- 가입 때 이메일 소유를 확인하지 않으므로, 비밀번호로 먼저 가입된 계정(다른 사람이 선점했을 수 있음)은 지정하지 않는다. 비밀번호가 있는 계정을 관리자로 쓰려면 먼저 그 계정 처리(비밀번호 제거 등)를 별도로 정한다.
+- API는 세법 관리 요청마다 DB의 이 값을 읽는다. 다시 로그인하지 않아도 다음 요청부터 반영된다.
+- 웹은 `/me`의 `serviceAdmin`으로 메뉴를 보인다(PR 5부터). 화면의 메뉴는 새로 고친 뒤에 바뀐다.

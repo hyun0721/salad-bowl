@@ -32,7 +32,7 @@
 
 ## API (`apps/api`)
 
-- 기능 단위 패키지로 나눈다: `auth`, `user`, `group`, `transaction`, `importer`, `common`.
+- 기능 단위 패키지로 나눈다: `auth`, `user`, `group`, `transaction`, `importer`, `tax`, `common`. `tax`는 소득공제이며 `/tax/admin/**`은 서비스 관리자(`users.service_admin`)만 쓴다.
 - 인증은 JWT access 토큰(15분)과 HttpOnly refresh 쿠키(14일)를 사용한다. 운영 쿠키는 `Path=/api/auth; SameSite=Lax; Secure`로 고정한다.
 - 엑셀 import는 Apache POI로 `가계부 내역` 시트만 읽고 기존 거래와 병합한다. 원본 파일은 저장하지 않는다.
 - 스키마는 Flyway가 관리한다. API가 기동할 때 `src/main/resources/db/migration/V*.sql` 중 아직 실행하지 않은 파일을 순서대로 실행한다. 스키마를 바꿀 때는 기존 파일을 고치지 않고 새 버전 파일을 추가한다.

@@ -29,6 +29,7 @@
 - 화면 문구: 결제수단 명칭은 신용카드 / 체크카드 / 현금영수증. "직불·선불 포함" 같은 안내를 넣지 않는다. 주 결과는 "소득공제액"이고 환급액이 아님을 적는다. 소비를 늘리라는 문구를 쓰지 않는다.
 - migration은 `apps/api/src/main/resources/db/migration`의 `V7` 다음인 `V8`부터 추가한다. 기존 파일을 고치지 않는다.
 - 새 의존성·범용 수식 엔진을 추가하지 않는다. 필요해 보이면 멈추고 컨트롤러에게 보고한다.
+- UI 표준: 소득공제 화면(PR 5~7)은 새 UI이므로 [UI 표준](../../ui-standards.md)(2026-11-14 main 반영)을 처음부터 따른다. 와이어프레임은 정보 구조와 흐름의 근거이고, 배치·글자·도움말은 UI 표준이 우선한다. 상세는 아래 "UI 표준 적용(PR 5~7)" 절.
 - UI는 기존 디자인 토큰과 `apps/web/src/common/` 부품을 먼저 쓴다. 금액 입력은 `MoneyField`(`minValue={0}`), 금액 표시는 `useAmountFormatter`(총급여 `'income'`, 공제대상액·공제액 `'expense'`).
 - 검증: 웹 변경은 `cd apps/web && npm run typecheck && npm test && npm run lint && npm run build`, API 변경은 `cd apps/api && ./gradlew test`(업로드 한도·파서·메모리 변경이 있을 때만 `./gradlew memoryTest`도). 화면이 바뀌면 `.claude/skills/verify` 스킬로 375px와 데스크톱을 확인하고 PR용 이전·이후 캡처를 만든다.
 - PR: 제목 `type(scope): 한국어 요약`, 본문 `무엇 / 확인 / 리뷰 / 참고 / 소모값`. 화면이 바뀐 PR은 375px 이전·이후 캡처를 `pr-assets` 브랜치 `pr-<번호>/`에 올린다. 구현하지 않은 쪽의 리뷰 없이 PR을 올리지 않는다. 사용자가 요청하지 않으면 병합하지 않는다.
@@ -53,7 +54,7 @@
 - 웹은 입력자료(PR 5) → 세법 관리(PR 6) → 분석(PR 7) 순이다. 분석 화면이 나가기 전에 운영자가 화면으로 2026 귀속 세법을 등록할 수 있어야 "세법 준비 중"만 보이는 기간이 없다.
 - PR 5~7은 병합할 때마다 운영에 보인다. PR 5 병합 뒤 PR 7 병합 전까지 회원은 입력자료 화면만 본다(중간 노출을 받아들이는 것이 이 계획의 기본값이다. "알려진 제약" 참고).
 
-**PR 2~7의 Task 상세는 그 PR에 착수할 때 컨트롤러가 채운다.** 뒤 PR의 코드는 앞 PR 결과(실제 엔티티·응답 필드 이름)에 의존하기 때문이다. 이 문서에는 PR 2~7의 Task 목록·파일·인터페이스·테스트 대상·검증 명령까지 적었다. PR 1은 실행 가능한 상세까지 적었다.
+**PR 3~7의 Task 상세는 그 PR에 착수할 때 컨트롤러가 채운다(PR 2는 2026-11-14에 채웠다).** 뒤 PR의 코드는 앞 PR 결과(실제 엔티티·응답 필드 이름)에 의존하기 때문이다. 이 문서에는 PR 2~7의 Task 목록·파일·인터페이스·테스트 대상·검증 명령까지 적었다. PR 1은 실행 가능한 상세까지 적었다.
 
 ## 요구사항 추적표
 
@@ -936,64 +937,2427 @@ git commit -m "docs: 검증 지도와 README를 홈 개편에 맞춤" -m "Co-Aut
 
 # PR 2 — 서비스 관리자 권한과 세법 버전 API
 
-**이 PR에 착수할 때 컨트롤러가 Task 상세(테스트 코드·단계)를 채운다.** 반론 리뷰 대상이다(권한·삭제).
+반론 리뷰 대상이다(권한·삭제). 브랜치: `feat/tax-law-api`(최신 `origin/main`에서 만든 worktree). PR 제목 예: `feat(api): 서비스 관리자 권한과 세법 버전 API`.
 
-브랜치 예: `feat/tax-law-api`. 검증: `cd apps/api && ./gradlew test`. 업로드·파서를 건드리지 않으므로 `memoryTest`는 생략하고 PR 본문에 이유를 적는다(API CI는 둘 다 돌린다).
+검증: `cd apps/api && ./gradlew test`. 업로드·파서를 건드리지 않으므로 `memoryTest`는 생략하고 PR 본문에 이유를 적는다(API CI는 둘 다 돌린다). JDK 21과 Docker(Testcontainers)가 필요하다.
 
-데이터 설계
+이 PR의 코드와 테스트는 계획을 쓸 때 저장소 밖 임시 복사본에서 Task 순서대로 실행해 확인했다(2026-11-14, `6486c90` 기준: Task 2.1 RED 10건 중 6건 실패 확인 → Task별 구현 → 마지막에 `./gradlew test` 전체 320건 통과). Task 2.2·2.3의 RED는 컴파일 실패라 따로 돌리지 않았다. 저장소의 앱 코드는 아직 바꾸지 않았다.
 
-- `V8__add_service_admin.sql`: `ALTER TABLE users ADD COLUMN service_admin BOOLEAN NOT NULL DEFAULT FALSE;`
+경로 줄임: `main/` = `apps/api/src/main/java/com/saladbowl/api/`, `test/` = `apps/api/src/test/java/com/saladbowl/api/`, `migration/` = `apps/api/src/main/resources/db/migration/`.
+
+## 데이터 설계
+
+- `V8__add_service_admin.sql`: `users.service_admin BOOLEAN NOT NULL DEFAULT FALSE`.
 - `V9__create_tax_law_versions.sql`
-  - `tax_law_versions`: `id BIGSERIAL PK`, `tax_year INTEGER NOT NULL`, `version_no INTEGER NOT NULL`, `status VARCHAR(10) NOT NULL CHECK (status IN ('DRAFT','APPLIED'))`, `algorithm_version INTEGER NOT NULL DEFAULT 1`, 설정값(모두 NULL 허용 — 초안은 빈 값으로 시작할 수 있다): `min_spend_rate_pct`, `rate_credit_pct`, `rate_debit_cash_pct`, `rate_culture_pct`, `rate_market_pct`, `rate_transit_pct` (`INTEGER`), `bracket_boundary`, `basic_limit_low_0`, `basic_limit_low_1`, `basic_limit_low_2`, `basic_limit_high_0`, `basic_limit_high_1`, `basic_limit_high_2`, `extra_limit_low`, `extra_limit_high` (`BIGINT`), 근거: `basis_law_name VARCHAR(200)`, `basis_article VARCHAR(200)`, `basis_url VARCHAR(500)`, 적용 대상 기간: `period_start DATE`, `period_end DATE`, `memo VARCHAR(1000)`, `created_by BIGINT REFERENCES users (id) ON DELETE SET NULL`, `applied_by BIGINT REFERENCES users (id) ON DELETE SET NULL`, `created_at`, `updated_at`, `applied_at TIMESTAMPTZ`, `row_version BIGINT NOT NULL DEFAULT 0`, `UNIQUE (tax_year, version_no)`.
-  - `tax_law_year_counters (tax_year INTEGER PRIMARY KEY, last_version_no INTEGER NOT NULL)`: 삭제한 번호를 다시 쓰지 않기 위한 연도별 번호 카운터.
-- 서비스 관리자 지정 절차를 `docs/deploy.md`에 적는다: `UPDATE users SET service_admin = TRUE WHERE email = '<관리자 이메일>';`
-- `docs/architecture.md`의 API 패키지 목록에 `tax`를 더한다.
+  - `tax_law_versions`: `id`, `tax_year`, `version_no`, `status`(`DRAFT`/`APPLIED`), `algorithm_version`(기본 1), 설정값 15개(모두 NULL 허용 — 초안은 빈 값으로 시작한다): 비율 6개 `min_spend_rate_pct`, `rate_credit_pct`, `rate_debit_cash_pct`, `rate_culture_pct`, `rate_market_pct`, `rate_transit_pct`(`INTEGER`), 금액 9개 `bracket_boundary`, `basic_limit_low_0~2`, `basic_limit_high_0~2`, `extra_limit_low`, `extra_limit_high`(`BIGINT`), 근거 `basis_law_name`(200)·`basis_article`(200)·`basis_url`(500), 적용 대상 기간 `period_start`·`period_end`(`DATE`), `memo`(1000), `created_by`·`applied_by`(`users` FK, `ON DELETE SET NULL`), `created_at`, `updated_at`, `applied_at`, `row_version`. `UNIQUE (tax_year, version_no)`. `CHECK ((status = 'APPLIED') = (applied_at IS NOT NULL))`.
+  - `tax_law_year_counters (tax_year PK, last_version_no)`: 귀속연도별로 지금까지 내준 가장 큰 번호.
+- `basic_limit_*_0/1/2`는 자녀등 0명 / 1명 / 2명 이상이다. `low`는 급여구간 경계 이하, `high`는 초과다.
 
-HTTP 인터페이스 (웹 PR 5·6이 쓴다)
+## HTTP 인터페이스 (웹 PR 5·6, API PR 3·4가 쓴다)
 
 | 메서드·경로 | 권한 | 동작 |
 |---|---|---|
 | `GET /me` | 로그인 | 응답에 `serviceAdmin: boolean` 추가 |
-| `GET /tax/law-versions/current?year=YYYY` | 로그인 | 그 연도의 현재 적용 버전(가장 최근 `applied_at`). 없으면 404 `NOT_FOUND` |
+| `GET /tax/law-versions/current?year=YYYY` | 로그인 | 그 연도의 현재 적용 버전(가장 최근 `applied_at`). 없으면 404 `NOT_FOUND`. `createdByNickname`·`appliedByNickname`·`memo`는 항상 `null` |
 | `GET /tax/admin/law-versions?year=YYYY` | 서비스 관리자 | 그 연도의 모든 버전(초안·적용), 번호 내림차순 |
-| `POST /tax/admin/law-versions` `{taxYear}` | 서비스 관리자 | 새 초안 201. 현재 적용 버전 값을 복사, 없으면 빈 값. 번호는 카운터 + 1 |
-| `GET /tax/admin/law-versions/{id}` | 서비스 관리자 | 버전 하나 |
-| `PUT /tax/admin/law-versions/{id}` | 서비스 관리자 | 초안 수정(본문에 `rowVersion`). 적용본이면 409 `CONFLICT`, `rowVersion`이 다르면 409 |
-| `POST /tax/admin/law-versions/{id}/validate` | 서비스 관리자 | `{errors: [{field, message}]}` (빈 배열이면 통과) |
-| `POST /tax/admin/law-versions/{id}/apply` | 서비스 관리자 | 검증 통과 시 적용(상태·`applied_by`·`applied_at`). 실패면 400 `VALIDATION_FAILED`. 이미 적용본이면 409 |
-| `DELETE /tax/admin/law-versions/{id}` | 서비스 관리자 | 초안이면 204, 적용본이면 409 |
+| `POST /tax/admin/law-versions` `{taxYear}` | 서비스 관리자 | 새 초안 201. 현재 적용 버전의 설정값·근거·기간을 복사(메모 제외), 없으면 빈 값. 번호는 카운터 + 1 |
+| `GET /tax/admin/law-versions/{id}` | 서비스 관리자 | 버전 하나. 없으면 404 |
+| `PUT /tax/admin/law-versions/{id}` | 서비스 관리자 | 초안 전체 교체(본문에 `rowVersion` 필수, 없는 값은 빈 값이 된다). 적용본이면 409 `CONFLICT`, `rowVersion`이 다르면 409, 형태 오류(단계가 3칸이 아님, 길이 초과, 숫자 아님)는 400 `VALIDATION_FAILED`. 범위 검사는 하지 않는다(적용할 때 한다) |
+| `POST /tax/admin/law-versions/{id}/validate` | 서비스 관리자 | `{errors: [{field, message}]}` (빈 배열이면 통과). 상태를 바꾸지 않는다 |
+| `POST /tax/admin/law-versions/{id}/apply` 본문 `{ "rowVersion": <long> }` 필수 | 서비스 관리자 | `rowVersion` 누락·형식 오류는 400, 현재 값과 다르면 409 `CONFLICT`. 검증 통과 시 적용(상태·`applied_by`·`applied_at`) 200. 검증 실패 400 `VALIDATION_FAILED`(메시지는 첫 오류 `필드: 설명`), 이미 적용본이면 409 `CONFLICT`, 없으면 404 |
+| `DELETE /tax/admin/law-versions/{id}?rowVersion=<long>` (쿼리 필수) | 서비스 관리자 | `rowVersion` 누락·형식 오류는 400, 현재 값과 다르면 409 `CONFLICT`. 초안이면 204, 적용본이면 409 `CONFLICT`, 없으면 404 |
 
-서비스 관리자가 아니면 `/tax/admin/**`은 모두 403 `FORBIDDEN`, 비로그인은 401이다. 버전 응답 필드: `id, taxYear, versionNo, status, algorithmVersion, minSpendRatePct, bracketBoundary, rateCreditPct, rateDebitCashPct, rateCulturePct, rateMarketPct, rateTransitPct, basicLimitLow[3], basicLimitHigh[3], extraLimitLow, extraLimitHigh, basisLawName, basisArticle, basisUrl, periodStart, periodEnd, memo, createdByNickname, appliedByNickname, createdAt, appliedAt, rowVersion`. `childTiersApply`(자녀등 단계 값이 서로 다른지)도 내려 웹이 자녀등 입력란을 보일지 판단한다.
+`/tax/admin/**`은 비로그인 401 `UNAUTHORIZED`, 서비스 관리자가 아니면(일반 회원·그룹 ADMIN) 403 `FORBIDDEN`이다. `year`·`taxYear`는 1000~9999 정수이고 아니면 400 `VALIDATION_FAILED`다.
+
+버전 응답(`VersionResponse`) 필드: `id, taxYear, versionNo, status, algorithmVersion, minSpendRatePct, bracketBoundary, rateCreditPct, rateDebitCashPct, rateCulturePct, rateMarketPct, rateTransitPct, basicLimitLow[3], basicLimitHigh[3], extraLimitLow, extraLimitHigh, childTiersApply, basisLawName, basisArticle, basisUrl, periodStart, periodEnd, memo, createdByNickname, appliedByNickname, createdAt, appliedAt, rowVersion`. `childTiersApply`는 자녀등 단계 값이 서로 다른지이고 웹이 자녀등 입력란을 보일지 판단한다(알려진 제약 8번).
+
+회원용 current는 작성자·적용자 닉네임과 memo를 내리지 않는다.
+
+## 권한과 동시성 설계
+
+- **권한은 경로 한 곳에서 막는다.** `TaxAdminInterceptor`가 `/tax/admin/**`에 걸려 요청마다 `ServiceAdminGuard.require(userId)`로 DB의 `users.service_admin`을 읽는다. 컨트롤러 메서드마다 검사를 넣으면 새 엔드포인트에서 빠질 수 있어서다. 토큰에는 권한 claim이 없고 `JwtAuthenticationFilter`는 회원 id만 꺼내므로, 회수하면 같은 access 토큰의 다음 요청부터 403이다. 비로그인은 그보다 앞선 Spring Security(`anyRequest().authenticated()`)가 401로 끝낸다. `SecurityConfig`는 고치지 않는다.
+- **번호 카운터는 한 문장으로 올리고 받는다.** `INSERT … ON CONFLICT (tax_year) DO UPDATE SET last_version_no = last_version_no + 1 RETURNING last_version_no`. 읽고 나서 쓰는 두 문장이면 동시에 만든 초안이 같은 번호를 받을 수 있다. 이 문장이 잡은 카운터 행 잠금은 커밋까지 유지되므로 같은 연도의 초안 만들기는 차례로 실행되고, 초안 저장이 실패해 롤백되면 번호도 되돌아간다. 초안을 지워도 카운터는 줄지 않는다. `UNIQUE (tax_year, version_no)`가 마지막 방어선이다.
+- **수정·삭제·적용은 버전 행을 잠그고(`SELECT … FOR UPDATE`) 상태를 본다.** `TaxLawVersionRepository.findByIdForUpdate`(기존 `UserGroupRepository.findByIdForUpdate`와 같은 방식)로 잠근 뒤 초안인지 확인하고 바꾼다. 같은 초안을 동시에 두 번 적용하면 두 번째는 잠금이 풀린 뒤 `APPLIED`를 보고 409다. 적용과 삭제가 겹치면 먼저 잠근 쪽만 성공한다(적용이 먼저면 삭제 409, 삭제가 먼저면 적용 404). 상태를 읽고 나서 잠그지 않고 쓰면 적용된 버전이 지워질 수 있다.
+- **`rowVersion`은 화면 사이의 덮어쓰기를 막는다.** `PUT` 본문의 `rowVersion`을 잠금 안에서 저장된 값과 비교해 다르면 409다. 엔티티의 `@Version`이 수정·적용 때마다 값을 올린다.
+- **현재 적용 버전**은 저장하지 않고 조회한다: `status = APPLIED` 가운데 `applied_at`이 가장 늦은 것, 같으면 `id`가 큰 것. 서로 다른 초안 두 개를 동시에 적용하면 둘 다 적용본이 되고(TAX-72), 나중 시각인 쪽이 현재 적용 버전이다.
+- 연도 기록(PR 3)은 적용본만 가리킨다. 초안은 어디서도 참조하지 않으므로 초안 삭제가 FK를 깨지 않는다.
+
+## 계획 초안에서 달라진 점
+
+- 관리자 검사를 서비스 메서드 안의 `ServiceAdminGuard.require` 호출에서 경로 인터셉터(`main/tax/TaxAdminInterceptor.java`, 새 파일)로 옮겼다. `TaxLawService`의 `adminId` 인자는 작성자·적용자 기록에만 쓰고, `updateDraft`·`deleteDraft`에는 없다.
+- 번호 카운터 SQL은 `JdbcTemplate`으로 실행한다(JPA와 같은 트랜잭션·같은 연결). 카운터 테이블에는 엔티티를 두지 않는다.
+- 검증 규칙은 `TaxLawService.validate` 대신 `TaxLawValidator`(순수 함수, DB 없는 단위 테스트)로 뺐다.
+- `/tax/law-versions/current`와 `TaxLawController`를 Task 2.3에서 2.2로 당겼다(조회와 함께). 적용 API가 없는 Task 2.2의 테스트는 SQL로 적용본을 만든다(`TestTaxLaws.markApplied`).
+- `docs/architecture.md` 수정을 Task 2.2에서 2.1로 당겼다(`tax` 패키지가 2.1에서 생긴다).
+- 더한 것: `applied_at` CHECK 제약, 근거 URL이 `http://`·`https://`로 시작하는지 검사(화면이 링크로 그리는 값), 회원용 `current` 응답에서 닉네임 제외.
+
+---
 
 ### Task 2.1: 서비스 관리자 컬럼과 권한 검사 (TAX-05, 06)
 
-**담당:** Codex `gpt-6-sol` / `medium` (`api`), 태그 `impl-api`. 리뷰: Claude Fable 5.2.
+**담당:** Codex `gpt-6-sol` / `medium` (`api`), 태그 `impl-api`. 리뷰: Claude Fable 5.2 (`review-task`).
 
-- Files: Create `V8__add_service_admin.sql`, `user/ServiceAdminGuard.java`, 테스트용 `support/TestAdmins.java`(SQL로 관리자 지정·회수). Modify `user/User.java`(필드 `serviceAdmin`, getter), `user/MeController.java`(`MeResponse`에 `serviceAdmin`), `user/MeApiTest.java`, `docs/deploy.md`.
-- Interfaces — Produces: `ServiceAdminGuard.require(long userId)`: DB에서 `service_admin`을 읽어 아니면 `ApiException(ErrorCode.FORBIDDEN, …)`. `MeResponse(long userId, String email, String nickname, boolean serviceAdmin)`.
-- 테스트 대상: `/me`가 기본 `serviceAdmin=false`, DB에서 켜면 `true`. 가드는 Task 2.2의 API로 확인한다(AC-04, AC-05의 "회수하면 다음 요청부터 403": 같은 access 토큰으로 회수 전 200 → 회수 후 403). 그룹을 만들어 그룹 ADMIN이 된 회원도 403(AC-04).
+**Files:**
+- Create: `migration/V8__add_service_admin.sql`
+- Create: `main/user/ServiceAdminGuard.java`
+- Create: `main/tax/TaxAdminInterceptor.java`
+- Modify: `main/user/User.java`, `main/user/UserRepository.java`, `main/user/MeController.java`
+- Create: `test/support/TestAdmins.java`
+- Test: `test/tax/TaxAdminAccessTest.java`(생성), `test/user/MeApiTest.java`(수정)
+- Modify: `docs/deploy.md`(끝에 13절), `docs/architecture.md:35`
+
+**Interfaces:**
+- Consumes: `UserRepository`(`JpaRepository<User, Long>`), `ApiException(ErrorCode, String)`, `ErrorCode.FORBIDDEN`·`UNAUTHORIZED`, 인증 principal = 회원 id `Long`(`JwtAuthenticationFilter`가 넣는다), 테스트 헬퍼 `TestAuth.signupAndLogin(mvc, email, nickname): AuthedUser(id, email, token)`·`TestGroups.createGroup(mvc, admin, name)`.
+- Produces:
+  - `ServiceAdminGuard.require(long userId)`: DB에서 `service_admin`을 읽어 아니면 `ApiException(ErrorCode.FORBIDDEN, "service admin only")`.
+  - `UserRepository.existsByIdAndServiceAdminTrue(long id): boolean`, `User.isServiceAdmin(): boolean`.
+  - `MeController.MeResponse(long userId, String email, String nickname, boolean serviceAdmin)`.
+  - `/tax/admin/**` 아래의 모든 핸들러는 서비스 관리자만 실행된다. Task 2.2·2.3의 컨트롤러는 권한 코드를 쓰지 않는다.
+  - 테스트 헬퍼 `TestAdmins.grant(JdbcTemplate, long userId)`, `TestAdmins.revoke(JdbcTemplate, long userId)`.
+
+- [ ] **Step 1: 실패하는 테스트 작성**
+
+`test/support/TestAdmins.java`를 만든다.
+
+```java
+package com.saladbowl.api.support;
+
+import org.springframework.jdbc.core.JdbcTemplate;
+
+/** 통합 테스트용: 운영 절차(docs/deploy.md)와 같은 방식으로 DB에서 서비스 관리자를 지정·회수한다. */
+public final class TestAdmins {
+
+    private TestAdmins() {
+    }
+
+    public static void grant(JdbcTemplate jdbc, long userId) {
+        jdbc.update("UPDATE users SET service_admin = TRUE WHERE id = ?", userId);
+    }
+
+    public static void revoke(JdbcTemplate jdbc, long userId) {
+        jdbc.update("UPDATE users SET service_admin = FALSE WHERE id = ?", userId);
+    }
+}
+```
+
+`test/tax/TaxAdminAccessTest.java`를 만든다. 이 Task에는 `/tax/admin` 컨트롤러가 아직 없으므로, 관리자가 문을 통과했다는 것은 "403이 아니라 404"로 확인한다(Task 2.2에서 200으로 바꾼다).
+
+```java
+package com.saladbowl.api.tax;
+
+import com.saladbowl.api.support.IntegrationTest;
+import com.saladbowl.api.support.TestAdmins;
+import com.saladbowl.api.support.TestAuth;
+import com.saladbowl.api.support.TestAuth.AuthedUser;
+import com.saladbowl.api.support.TestGroups;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.web.servlet.MockMvc;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+/** /tax/admin/** 접근 제어(TAX-05, TAX-06, AC-04, AC-05). 경로 아래 어떤 주소·메서드든 같은 규칙이다. */
+class TaxAdminAccessTest extends IntegrationTest {
+
+    private static final String ADMIN_URL = "/tax/admin/law-versions";
+
+    @Autowired
+    MockMvc mvc;
+
+    @Autowired
+    JdbcTemplate jdbc;
+
+    @Test
+    void anonymousGets401() throws Exception {
+        mvc.perform(get(ADMIN_URL).param("year", "2026"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("UNAUTHORIZED"));
+    }
+
+    @Test
+    void ordinaryMemberGets403OnEveryMethod() throws Exception {
+        AuthedUser member = TestAuth.signupAndLogin(mvc, "member@test.com", "회원");
+
+        mvc.perform(get(ADMIN_URL).param("year", "2026").header("Authorization", member.bearer()))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+        mvc.perform(post(ADMIN_URL).header("Authorization", member.bearer())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"taxYear\":2026}"))
+                .andExpect(status().isForbidden());
+        mvc.perform(get(ADMIN_URL + "/1").header("Authorization", member.bearer()))
+                .andExpect(status().isForbidden());
+        mvc.perform(put(ADMIN_URL + "/1").header("Authorization", member.bearer())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"rowVersion\":0}"))
+                .andExpect(status().isForbidden());
+        mvc.perform(post(ADMIN_URL + "/1/validate").header("Authorization", member.bearer()))
+                .andExpect(status().isForbidden());
+        mvc.perform(post(ADMIN_URL + "/1/apply").header("Authorization", member.bearer()))
+                .andExpect(status().isForbidden());
+        mvc.perform(delete(ADMIN_URL + "/1").header("Authorization", member.bearer()))
+                .andExpect(status().isForbidden());
+        mvc.perform(get("/tax/admin/anything/else").header("Authorization", member.bearer()))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void groupAdminIsNotServiceAdmin() throws Exception {
+        AuthedUser groupAdmin = TestAuth.signupAndLogin(mvc, "group-admin@test.com", "그룹장");
+        TestGroups.createGroup(mvc, groupAdmin, "우리집");
+
+        mvc.perform(get(ADMIN_URL).param("year", "2026").header("Authorization", groupAdmin.bearer()))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+    }
+
+    @Test
+    void serviceAdminPassesTheGate() throws Exception {
+        AuthedUser admin = TestAuth.signupAndLogin(mvc, "admin@test.com", "관리자");
+        TestAdmins.grant(jdbc, admin.id());
+
+        // Task 2.1 시점에는 컨트롤러가 없으므로 문을 통과한 요청은 404다. Task 2.2에서 200으로 바꾼다.
+        mvc.perform(get(ADMIN_URL).param("year", "2026").header("Authorization", admin.bearer()))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void revokingTakesEffectOnTheNextRequestWithTheSameToken() throws Exception {
+        AuthedUser admin = TestAuth.signupAndLogin(mvc, "admin@test.com", "관리자");
+        TestAdmins.grant(jdbc, admin.id());
+        mvc.perform(get(ADMIN_URL).param("year", "2026").header("Authorization", admin.bearer()))
+                .andExpect(status().isNotFound());
+
+        TestAdmins.revoke(jdbc, admin.id());
+
+        mvc.perform(get(ADMIN_URL).param("year", "2026").header("Authorization", admin.bearer()))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+    }
+}
+```
+
+`test/user/MeApiTest.java`를 세 곳 고친다.
+
+import에 한 줄을 더한다.
+
+```java
+import org.springframework.jdbc.core.JdbcTemplate;
+```
+
+`MockMvc mvc;` 필드 아래에 더한다.
+
+```java
+    @Autowired
+    JdbcTemplate jdbc;
+```
+
+`meReturnsCurrentUserWithValidToken`을 아래로 바꾸고, 그 아래에 테스트 하나를 더한다.
+
+```java
+    @Test
+    void meReturnsCurrentUserWithValidToken() throws Exception {
+        String token = accessTokenFor("me@test.com");
+
+        mvc.perform(get("/me").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.email").value("me@test.com"))
+                .andExpect(jsonPath("$.nickname").value("me"))
+                .andExpect(jsonPath("$.serviceAdmin").value(false));
+    }
+
+    @Test
+    void meReportsServiceAdminFromTheDatabase() throws Exception {
+        String token = accessTokenFor("admin@test.com");
+        jdbc.update("UPDATE users SET service_admin = TRUE WHERE email = ?", "admin@test.com");
+
+        mvc.perform(get("/me").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.serviceAdmin").value(true));
+    }
+```
+
+- [ ] **Step 2: 실패 확인**
+
+Run: `cd apps/api && ./gradlew test --tests '*TaxAdminAccessTest' --tests '*MeApiTest'`
+Expected: `10 tests completed, 6 failed`. `TaxAdminAccessTest`는 `anonymousGets401`만 PASS이고 4개 FAIL(일반 회원·그룹 ADMIN이 403 대신 404 → `AssertionError`, 관리자 지정 SQL이 `BadSqlGrammarException` — `service_admin` 열 없음). `MeApiTest`는 2개 FAIL(`PathNotFoundException: $.serviceAdmin`, `BadSqlGrammarException`).
+
+- [ ] **Step 3: migration** — `migration/V8__add_service_admin.sql`
+
+```sql
+-- 서비스 관리자(세법 관리 권한). 그룹 ADMIN과 별개이며 지정·해제는 운영자가 DB에서 직접 한다(docs/deploy.md).
+ALTER TABLE users ADD COLUMN service_admin BOOLEAN NOT NULL DEFAULT FALSE;
+```
+
+- [ ] **Step 4: `User`·`UserRepository`·`MeController`**
+
+`main/user/User.java` — `tokenVersion` 필드 아래에 필드를, getter 줄들 끝(`getGoogleSub` 아래)에 getter를 더한다. setter는 만들지 않는다(화면·API로 바꾸는 길이 없어야 한다).
+
+```java
+    // 세법 관리 권한. 그룹 ADMIN과 별개다. 화면 없이 운영자가 DB에서만 바꾼다.
+    @Column(name = "service_admin", nullable = false)
+    private boolean serviceAdmin;
+```
+
+```java
+    public boolean isServiceAdmin() { return serviceAdmin; }
+```
+
+`main/user/UserRepository.java` — `existsByEmail` 아래에 더한다.
+
+```java
+    boolean existsByIdAndServiceAdminTrue(long id);
+```
+
+`main/user/MeController.java` — 레코드와 반환 줄을 바꾼다.
+
+```java
+    public record MeResponse(long userId, String email, String nickname, boolean serviceAdmin) {
+    }
+```
+
+```java
+        return new MeResponse(user.getId(), user.getEmail(), user.getNickname(), user.isServiceAdmin());
+```
+
+- [ ] **Step 5: 가드** — `main/user/ServiceAdminGuard.java`
+
+```java
+package com.saladbowl.api.user;
+
+import com.saladbowl.api.common.ApiException;
+import com.saladbowl.api.common.ErrorCode;
+import org.springframework.stereotype.Component;
+
+/** 서비스 관리자 검사. 토큰에 권한을 넣지 않고 요청마다 DB를 읽으므로 회수하면 다음 요청부터 막힌다. */
+@Component
+public class ServiceAdminGuard {
+
+    private final UserRepository users;
+
+    public ServiceAdminGuard(UserRepository users) {
+        this.users = users;
+    }
+
+    public void require(long userId) {
+        if (!users.existsByIdAndServiceAdminTrue(userId)) {
+            throw new ApiException(ErrorCode.FORBIDDEN, "service admin only");
+        }
+    }
+}
+```
+
+- [ ] **Step 6: 경로 인터셉터** — `main/tax/TaxAdminInterceptor.java`. `ApiException`은 `GlobalExceptionHandler`가 403 `FORBIDDEN` JSON으로 바꾼다. 핸들러가 없는 주소도 정적 자원 핸들러를 거치므로 인터셉터가 먼저 돈다(없는 `/tax/admin/…` 주소도 비관리자에게는 403).
+
+```java
+package com.saladbowl.api.tax;
+
+import com.saladbowl.api.common.ApiException;
+import com.saladbowl.api.common.ErrorCode;
+import com.saladbowl.api.user.ServiceAdminGuard;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.security.core.Authentication;
+import org.springframework.stereotype.Component;
+import org.springframework.web.servlet.HandlerInterceptor;
+import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+
+/**
+ * /tax/admin/** 전체를 서비스 관리자에게만 연다. 컨트롤러 메서드마다 검사를 넣으면 새 엔드포인트에서
+ * 빠질 수 있으므로 경로 한 곳에서 막는다. 비로그인은 이보다 앞선 Spring Security가 401로 끝낸다.
+ */
+@Component
+public class TaxAdminInterceptor implements HandlerInterceptor, WebMvcConfigurer {
+
+    private final ServiceAdminGuard guard;
+
+    public TaxAdminInterceptor(ServiceAdminGuard guard) {
+        this.guard = guard;
+    }
+
+    @Override
+    public void addInterceptors(InterceptorRegistry registry) {
+        registry.addInterceptor(this).addPathPatterns("/tax/admin/**");
+    }
+
+    @Override
+    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
+        if (!(request.getUserPrincipal() instanceof Authentication auth)
+                || !(auth.getPrincipal() instanceof Long userId)) {
+            throw new ApiException(ErrorCode.UNAUTHORIZED, "authentication required");
+        }
+        guard.require(userId);
+        return true;
+    }
+}
+```
+
+- [ ] **Step 7: 통과 확인**
+
+Run: `cd apps/api && ./gradlew test --tests '*TaxAdminAccessTest' --tests '*MeApiTest'`
+Expected: `BUILD SUCCESSFUL`. `TaxAdminAccessTest` 5건, `MeApiTest` 5건 통과.
+
+- [ ] **Step 8: 문서**
+
+`docs/deploy.md` 맨 끝에 절을 더한다.
+
+````markdown
+## 13. 서비스 관리자 지정·해제
+
+"연도별 세법 관리"는 서비스 관리자만 쓴다. 그룹 ADMIN과 별개의 권한이고 지정·해제 화면이 없다. 운영자가 Supabase SQL Editor에서 직접 바꾼다.
+
+```sql
+-- 지정
+UPDATE users SET service_admin = TRUE WHERE email = '<관리자 이메일>';
+-- 해제
+UPDATE users SET service_admin = FALSE WHERE email = '<관리자 이메일>';
+-- 확인
+SELECT id, email, service_admin FROM users WHERE service_admin;
+```
+
+- `UPDATE` 결과가 1행인지 확인한다. 0행이면 이메일이 틀렸거나 아직 가입하지 않은 계정이다.
+- API는 세법 관리 요청마다 DB의 이 값을 읽는다. 다시 로그인하지 않아도 다음 요청부터 반영된다.
+- 웹은 `/me`의 `serviceAdmin`으로 메뉴를 보인다. 화면의 메뉴는 새로 고친 뒤에 바뀐다.
+````
+
+`docs/architecture.md:35`의 패키지 목록 줄을 바꾼다.
+
+```markdown
+- 기능 단위 패키지로 나눈다: `auth`, `user`, `group`, `transaction`, `importer`, `tax`, `common`. `tax`는 소득공제이며 `/tax/admin/**`은 서비스 관리자(`users.service_admin`)만 쓴다.
+```
+
+- [ ] **Step 9: 전체 테스트**
+
+Run: `cd apps/api && ./gradlew test`
+Expected: `BUILD SUCCESSFUL`(기존 테스트 포함. `User`에 열이 늘었으므로 `ddl-auto: validate`와 V8이 맞는지 여기서 확인된다).
+
+- [ ] **Step 10: 커밋(컨트롤러)** — Codex는 커밋하지 않는다. 컨트롤러가 보고와 diff를 확인한 뒤 커밋한다.
+
+```bash
+git add apps/api/src/main/resources/db/migration/V8__add_service_admin.sql apps/api/src/main/java/com/saladbowl/api/user apps/api/src/main/java/com/saladbowl/api/tax apps/api/src/test/java/com/saladbowl/api/support/TestAdmins.java apps/api/src/test/java/com/saladbowl/api/tax apps/api/src/test/java/com/saladbowl/api/user/MeApiTest.java docs/deploy.md docs/architecture.md
+git commit -m "feat(api): 서비스 관리자 컬럼과 세법 관리 경로 권한 검사" -m "Co-Authored-By: Codex (gpt-6-sol) <noreply@openai.com>"
+```
+
+---
 
 ### Task 2.2: 세법 버전 저장소와 초안 만들기·조회·수정·삭제 (TAX-04, 60, 61, 62, 67, 72)
 
-**담당:** Codex `gpt-6-astra` / `medium` (`api`, 설계 판단이 큼), 태그 `impl-api`. 리뷰: Claude Fable 5.2.
+**담당:** Codex `gpt-6-astra` / `medium` (`api`, 설계 판단이 큼), 태그 `impl-api`. 리뷰: Claude Fable 5.2 (`review-task`).
 
-- Files: Create `V9__create_tax_law_versions.sql`, `tax/law/TaxLawVersion.java`, `TaxLawStatus.java`, `TaxLawVersionRepository.java`, `TaxLawService.java`, `TaxLawAdminController.java`, `TaxLawDtos.java`, `tax/law/TaxLawAdminApiTest.java`. Modify `docs/architecture.md`.
-- Interfaces — Consumes: `ServiceAdminGuard.require`. Produces: 위 표의 `GET(list)`, `POST`, `GET(one)`, `PUT`, `DELETE`. `TaxLawService.createDraft(long adminId, int taxYear)`, `updateDraft(long adminId, long id, TaxLawDtos.UpdateRequest)`, `deleteDraft(long adminId, long id)`.
-- 번호: `INSERT INTO tax_law_year_counters … ON CONFLICT (tax_year) DO UPDATE SET last_version_no = tax_law_year_counters.last_version_no + 1 RETURNING last_version_no`로 한 문장에 받는다.
-- 테스트 대상(AC-39, AC-19 일부): 초안이 있는 연도에 또 초안 생성 가능, 번호 = 지금까지 가장 큰 번호 + 1, 초안 삭제 뒤 만든 초안이 삭제한 번호를 다시 쓰지 않음, 초안 삭제 204·적용본 삭제 409, 적용본 `PUT` 409, `rowVersion` 불일치 409, 작성자 기록, 비관리자·그룹 ADMIN 403, 비로그인 401, 연도 범위 밖(4자리 아님) 400.
+**Files:**
+- Create: `migration/V9__create_tax_law_versions.sql`
+- Create: `main/tax/law/TaxLawStatus.java`, `TaxLawVersion.java`, `TaxLawVersionRepository.java`, `TaxLawDtos.java`, `TaxLawService.java`, `TaxLawAdminController.java`, `TaxLawController.java`
+- Create: `test/support/TestTaxLaws.java`
+- Test: `test/tax/law/TaxLawAdminApiTest.java`(생성), `test/tax/law/TaxLawConcurrencyTest.java`(생성), `test/tax/TaxAdminAccessTest.java`(수정)
+
+**Interfaces:**
+- Consumes: Task 2.1의 `/tax/admin/**` 권한 검사(컨트롤러에 권한 코드를 쓰지 않는다), `TestAdmins.grant/revoke`, `@CurrentUser Long userId`, `UserRepository.findById`, `User.getNickname()`, `ApiException`, `ErrorCode.NOT_FOUND`·`CONFLICT`·`VALIDATION_FAILED`.
+- Produces:
+  - `TaxLawStatus { DRAFT, APPLIED }`
+  - `TaxLawVersion`(엔티티): `static draft(int taxYear, int versionNo, long createdBy)`, `copyValuesFrom(TaxLawVersion)`, `edit(TaxLawDtos.UpdateRequest)`, getter(`getMinSpendRatePct(): Integer`, `getBracketBoundary(): Long`, `getBasicLimitLow0()`~`getBasicLimitHigh2(): Long` 등 — PR 4의 `TaxLawValues`가 읽는다).
+  - `TaxLawVersionRepository`: `findByTaxYearOrderByVersionNoDesc(int)`, `findFirstByTaxYearAndStatusOrderByAppliedAtDescIdDesc(int, TaxLawStatus)`, `findByIdForUpdate(long): Optional<TaxLawVersion>`.
+  - `TaxLawDtos.CreateRequest(Integer taxYear)`, `UpdateRequest(Long rowVersion, Integer minSpendRatePct, Long bracketBoundary, Integer rateCreditPct, Integer rateDebitCashPct, Integer rateCulturePct, Integer rateMarketPct, Integer rateTransitPct, List<Long> basicLimitLow, List<Long> basicLimitHigh, Long extraLimitLow, Long extraLimitHigh, String basisLawName, String basisArticle, String basisUrl, LocalDate periodStart, LocalDate periodEnd, String memo)`, `VersionResponse`(위 "HTTP 인터페이스"의 필드, `static of(TaxLawVersion, String createdByNickname, String appliedByNickname)`).
+  - `TaxLawService`: `createDraft(long adminId, int taxYear): VersionResponse`, `list(int taxYear): List<VersionResponse>`, `get(long id): VersionResponse`, `updateDraft(long id, UpdateRequest): VersionResponse`, `deleteDraft(long id): void`, `current(int taxYear): VersionResponse`(없으면 404), `currentApplied(int taxYear): Optional<TaxLawVersion>`(PR 3이 연도 기록의 세법 버전을 정할 때 쓴다), 비공개 `lockDraft(long id): TaxLawVersion`(행 잠금 + 초안 확인. Task 2.3의 `apply`가 쓴다).
+  - HTTP: 위 표의 `GET(list)`, `POST`, `GET(one)`, `PUT`, `DELETE`, `GET /tax/law-versions/current`.
+  - 테스트 헬퍼 `TestTaxLaws.URL`, `values2026(long rowVersion): String`, `createDraft(mvc, admin, taxYear): long`, `createFilledDraft(mvc, admin, taxYear): long`(끝난 뒤 `rowVersion` 1), `markApplied(jdbc, id, adminId)`; `TaxLawConcurrencyTest.runTogether(List<Callable<String>>): List<String>`.
+
+- [ ] **Step 1: 실패하는 테스트 작성**
+
+`test/support/TestTaxLaws.java`를 만든다. 값은 2026 귀속 법령 수치다(최저사용금액 25%, 경계 70,000,000, 공제율 15/30/30/40/40, 기본한도 이하 3,000,000/3,500,000/4,000,000·초과 2,500,000/2,750,000/3,000,000, 추가한도 3,000,000/2,000,000).
+
+```java
+package com.saladbowl.api.support;
+
+import com.jayway.jsonpath.JsonPath;
+import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.web.servlet.MockMvc;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+/** 통합 테스트용 세법 버전 준비 헬퍼. 값은 2026 귀속 법령 수치(공개 수치)다. */
+public final class TestTaxLaws {
+
+    public static final String URL = "/tax/admin/law-versions";
+
+    private TestTaxLaws() {
+    }
+
+    /** 2026 귀속 값으로 채운 수정 요청 본문. */
+    public static String values2026(long rowVersion) {
+        return """
+                {
+                  "rowVersion": %d,
+                  "minSpendRatePct": 25,
+                  "bracketBoundary": 70000000,
+                  "rateCreditPct": 15,
+                  "rateDebitCashPct": 30,
+                  "rateCulturePct": 30,
+                  "rateMarketPct": 40,
+                  "rateTransitPct": 40,
+                  "basicLimitLow": [3000000, 3500000, 4000000],
+                  "basicLimitHigh": [2500000, 2750000, 3000000],
+                  "extraLimitLow": 3000000,
+                  "extraLimitHigh": 2000000,
+                  "basisLawName": "조세특례제한법",
+                  "basisArticle": "제126조의2",
+                  "basisUrl": "https://www.law.go.kr/LSW/lsInfoP.do?lsiSeq=284389",
+                  "periodStart": "2026-01-01",
+                  "periodEnd": "2026-12-31",
+                  "memo": "2026 귀속 최초 등록"
+                }
+                """.formatted(rowVersion);
+    }
+
+    public static long createDraft(MockMvc mvc, TestAuth.AuthedUser admin, int taxYear) throws Exception {
+        String body = mvc.perform(post(URL).header("Authorization", admin.bearer())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"taxYear\":%d}".formatted(taxYear)))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        return ((Number) JsonPath.read(body, "$.id")).longValue();
+    }
+
+    /** 새 초안을 만들고 2026 값으로 채운다. 채운 뒤의 rowVersion은 1이다. */
+    public static long createFilledDraft(MockMvc mvc, TestAuth.AuthedUser admin, int taxYear) throws Exception {
+        long id = createDraft(mvc, admin, taxYear);
+        mvc.perform(put(URL + "/" + id).header("Authorization", admin.bearer())
+                        .contentType(MediaType.APPLICATION_JSON).content(values2026(0)))
+                .andExpect(status().isOk());
+        return id;
+    }
+
+    /** 적용 API(Task 2.3) 없이 적용본을 만든다. 적용본의 수정·삭제 거부와 current 조회 테스트에 쓴다. */
+    public static void markApplied(JdbcTemplate jdbc, long id, long adminId) {
+        jdbc.update("UPDATE tax_law_versions SET status = 'APPLIED', applied_by = ?, applied_at = now() WHERE id = ?",
+                adminId, id);
+    }
+}
+```
+
+`test/tax/law/TaxLawAdminApiTest.java`를 만든다.
+
+```java
+package com.saladbowl.api.tax.law;
+
+import com.saladbowl.api.support.IntegrationTest;
+import com.saladbowl.api.support.TestAdmins;
+import com.saladbowl.api.support.TestAuth;
+import com.saladbowl.api.support.TestAuth.AuthedUser;
+import com.saladbowl.api.support.TestTaxLaws;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.web.servlet.MockMvc;
+
+import static com.saladbowl.api.support.TestTaxLaws.URL;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.nullValue;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+/** 세법 초안 만들기·조회·수정·삭제와 회원용 current 조회(TAX-04, 60~62, 67, 72, AC-39, AC-19 일부). */
+class TaxLawAdminApiTest extends IntegrationTest {
+
+    @Autowired
+    MockMvc mvc;
+
+    @Autowired
+    JdbcTemplate jdbc;
+
+    AuthedUser admin;
+
+    @BeforeEach
+    void createAdmin() throws Exception {
+        admin = TestAuth.signupAndLogin(mvc, "admin@test.com", "관리자");
+        TestAdmins.grant(jdbc, admin.id());
+    }
+
+    @Test
+    void firstDraftOfAYearIsBlankAndNumberedOne() throws Exception {
+        mvc.perform(post(URL).header("Authorization", admin.bearer())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"taxYear\":2026}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").isNumber())
+                .andExpect(jsonPath("$.taxYear").value(2026))
+                .andExpect(jsonPath("$.versionNo").value(1))
+                .andExpect(jsonPath("$.status").value("DRAFT"))
+                .andExpect(jsonPath("$.algorithmVersion").value(1))
+                .andExpect(jsonPath("$.minSpendRatePct").value(nullValue()))
+                .andExpect(jsonPath("$.bracketBoundary").value(nullValue()))
+                .andExpect(jsonPath("$.basicLimitLow", contains(nullValue(), nullValue(), nullValue())))
+                .andExpect(jsonPath("$.basicLimitHigh", contains(nullValue(), nullValue(), nullValue())))
+                .andExpect(jsonPath("$.childTiersApply").value(false))
+                .andExpect(jsonPath("$.basisLawName").value(nullValue()))
+                .andExpect(jsonPath("$.createdByNickname").value("관리자"))
+                .andExpect(jsonPath("$.appliedByNickname").value(nullValue()))
+                .andExpect(jsonPath("$.createdAt").isString())
+                .andExpect(jsonPath("$.appliedAt").value(nullValue()))
+                .andExpect(jsonPath("$.rowVersion").value(0));
+    }
+
+    @Test
+    void versionNumbersGrowPerYearAndAreNeverReused() throws Exception {
+        long first = TestTaxLaws.createDraft(mvc, admin, 2026);
+        TestTaxLaws.createDraft(mvc, admin, 2026);
+        long third = TestTaxLaws.createDraft(mvc, admin, 2026);
+
+        // 가장 큰 번호(3)를 지워도 다음 초안은 4번이다.
+        mvc.perform(delete(URL + "/" + third).header("Authorization", admin.bearer()))
+                .andExpect(status().isNoContent());
+        mvc.perform(post(URL).header("Authorization", admin.bearer())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"taxYear\":2026}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.versionNo").value(4));
+
+        // 중간 번호(1)를 지워도 빈 번호를 채우지 않는다.
+        mvc.perform(delete(URL + "/" + first).header("Authorization", admin.bearer()))
+                .andExpect(status().isNoContent());
+        mvc.perform(post(URL).header("Authorization", admin.bearer())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"taxYear\":2026}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.versionNo").value(5));
+
+        // 번호는 귀속연도마다 따로 센다.
+        mvc.perform(post(URL).header("Authorization", admin.bearer())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"taxYear\":2025}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.versionNo").value(1));
+
+        mvc.perform(get(URL).param("year", "2026").header("Authorization", admin.bearer()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[*].versionNo", contains(5, 4, 2)));
+    }
+
+    @Test
+    void updateReplacesDraftValuesAndBumpsRowVersion() throws Exception {
+        long id = TestTaxLaws.createDraft(mvc, admin, 2026);
+
+        mvc.perform(put(URL + "/" + id).header("Authorization", admin.bearer())
+                        .contentType(MediaType.APPLICATION_JSON).content(TestTaxLaws.values2026(0)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.rowVersion").value(1));
+
+        mvc.perform(get(URL + "/" + id).header("Authorization", admin.bearer()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("DRAFT"))
+                .andExpect(jsonPath("$.minSpendRatePct").value(25))
+                .andExpect(jsonPath("$.bracketBoundary").value(70000000))
+                .andExpect(jsonPath("$.rateCreditPct").value(15))
+                .andExpect(jsonPath("$.rateDebitCashPct").value(30))
+                .andExpect(jsonPath("$.rateCulturePct").value(30))
+                .andExpect(jsonPath("$.rateMarketPct").value(40))
+                .andExpect(jsonPath("$.rateTransitPct").value(40))
+                .andExpect(jsonPath("$.basicLimitLow", contains(3000000, 3500000, 4000000)))
+                .andExpect(jsonPath("$.basicLimitHigh", contains(2500000, 2750000, 3000000)))
+                .andExpect(jsonPath("$.extraLimitLow").value(3000000))
+                .andExpect(jsonPath("$.extraLimitHigh").value(2000000))
+                .andExpect(jsonPath("$.childTiersApply").value(true))
+                .andExpect(jsonPath("$.basisLawName").value("조세특례제한법"))
+                .andExpect(jsonPath("$.basisArticle").value("제126조의2"))
+                .andExpect(jsonPath("$.basisUrl").value("https://www.law.go.kr/LSW/lsInfoP.do?lsiSeq=284389"))
+                .andExpect(jsonPath("$.periodStart").value("2026-01-01"))
+                .andExpect(jsonPath("$.periodEnd").value("2026-12-31"))
+                .andExpect(jsonPath("$.memo").value("2026 귀속 최초 등록"))
+                .andExpect(jsonPath("$.rowVersion").value(1));
+    }
+
+    @Test
+    void omittedValuesBecomeEmpty() throws Exception {
+        long id = TestTaxLaws.createFilledDraft(mvc, admin, 2026);
+
+        mvc.perform(put(URL + "/" + id).header("Authorization", admin.bearer())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"rowVersion\":1,\"basisLawName\":\"   \"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.minSpendRatePct").value(nullValue()))
+                .andExpect(jsonPath("$.basicLimitLow", contains(nullValue(), nullValue(), nullValue())))
+                .andExpect(jsonPath("$.basisLawName").value(nullValue()))
+                .andExpect(jsonPath("$.childTiersApply").value(false))
+                .andExpect(jsonPath("$.rowVersion").value(2));
+    }
+
+    @Test
+    void staleRowVersionReturns409AndKeepsStoredValues() throws Exception {
+        long id = TestTaxLaws.createFilledDraft(mvc, admin, 2026);
+
+        // 다른 곳에서 먼저 고쳐 rowVersion이 1이 됐는데 0으로 보낸다.
+        mvc.perform(put(URL + "/" + id).header("Authorization", admin.bearer())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"rowVersion\":0,\"minSpendRatePct\":99}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("CONFLICT"));
+
+        mvc.perform(get(URL + "/" + id).header("Authorization", admin.bearer()))
+                .andExpect(jsonPath("$.minSpendRatePct").value(25))
+                .andExpect(jsonPath("$.rowVersion").value(1));
+    }
+
+    @Test
+    void malformedUpdateReturns400() throws Exception {
+        long id = TestTaxLaws.createDraft(mvc, admin, 2026);
+
+        // rowVersion 없음
+        mvc.perform(put(URL + "/" + id).header("Authorization", admin.bearer())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"minSpendRatePct\":25}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+        // 자녀등 단계가 3칸이 아님
+        mvc.perform(put(URL + "/" + id).header("Authorization", admin.bearer())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"rowVersion\":0,\"basicLimitLow\":[3000000,3500000]}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+        // 근거 URL이 열 길이(500)를 넘음
+        mvc.perform(put(URL + "/" + id).header("Authorization", admin.bearer())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"rowVersion\":0,\"basisUrl\":\"https://example.com/%s\"}".formatted("a".repeat(500))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+        // 숫자 자리에 문자열
+        mvc.perform(put(URL + "/" + id).header("Authorization", admin.bearer())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"rowVersion\":0,\"minSpendRatePct\":\"많이\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+
+        mvc.perform(get(URL + "/" + id).header("Authorization", admin.bearer()))
+                .andExpect(jsonPath("$.rowVersion").value(0));
+    }
+
+    @Test
+    void appliedVersionCannotBeUpdatedOrDeleted() throws Exception {
+        long id = TestTaxLaws.createFilledDraft(mvc, admin, 2026);
+        TestTaxLaws.markApplied(jdbc, id, admin.id());
+
+        mvc.perform(put(URL + "/" + id).header("Authorization", admin.bearer())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"rowVersion\":1,\"minSpendRatePct\":99}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("CONFLICT"));
+        mvc.perform(delete(URL + "/" + id).header("Authorization", admin.bearer()))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("CONFLICT"));
+
+        mvc.perform(get(URL + "/" + id).header("Authorization", admin.bearer()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("APPLIED"))
+                .andExpect(jsonPath("$.minSpendRatePct").value(25))
+                .andExpect(jsonPath("$.appliedByNickname").value("관리자"));
+    }
+
+    @Test
+    void deletedDraftIsGone() throws Exception {
+        long id = TestTaxLaws.createDraft(mvc, admin, 2026);
+
+        mvc.perform(delete(URL + "/" + id).header("Authorization", admin.bearer()))
+                .andExpect(status().isNoContent());
+
+        mvc.perform(get(URL + "/" + id).header("Authorization", admin.bearer()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("NOT_FOUND"));
+        mvc.perform(delete(URL + "/" + id).header("Authorization", admin.bearer()))
+                .andExpect(status().isNotFound());
+        mvc.perform(put(URL + "/" + id).header("Authorization", admin.bearer())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"rowVersion\":0}"))
+                .andExpect(status().isNotFound());
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM tax_law_versions", Long.class)).isZero();
+    }
+
+    @Test
+    void newDraftCopiesCurrentAppliedValuesButNotMemo() throws Exception {
+        long appliedId = TestTaxLaws.createFilledDraft(mvc, admin, 2026);
+        TestTaxLaws.markApplied(jdbc, appliedId, admin.id());
+        AuthedUser second = TestAuth.signupAndLogin(mvc, "second@test.com", "둘째관리자");
+        TestAdmins.grant(jdbc, second.id());
+
+        mvc.perform(post(URL).header("Authorization", second.bearer())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"taxYear\":2026}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.versionNo").value(2))
+                .andExpect(jsonPath("$.status").value("DRAFT"))
+                .andExpect(jsonPath("$.minSpendRatePct").value(25))
+                .andExpect(jsonPath("$.bracketBoundary").value(70000000))
+                .andExpect(jsonPath("$.rateTransitPct").value(40))
+                .andExpect(jsonPath("$.basicLimitLow", contains(3000000, 3500000, 4000000)))
+                .andExpect(jsonPath("$.basicLimitHigh", contains(2500000, 2750000, 3000000)))
+                .andExpect(jsonPath("$.extraLimitHigh").value(2000000))
+                .andExpect(jsonPath("$.basisLawName").value("조세특례제한법"))
+                .andExpect(jsonPath("$.periodEnd").value("2026-12-31"))
+                .andExpect(jsonPath("$.memo").value(nullValue()))
+                .andExpect(jsonPath("$.createdByNickname").value("둘째관리자"))
+                .andExpect(jsonPath("$.appliedByNickname").value(nullValue()))
+                .andExpect(jsonPath("$.appliedAt").value(nullValue()))
+                .andExpect(jsonPath("$.rowVersion").value(0));
+
+        // 다른 귀속연도는 적용 버전이 없으므로 빈 값으로 시작한다.
+        mvc.perform(post(URL).header("Authorization", second.bearer())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"taxYear\":2027}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.minSpendRatePct").value(nullValue()));
+    }
+
+    @Test
+    void yearMustBeFourDigits() throws Exception {
+        for (String body : new String[]{"{\"taxYear\":999}", "{\"taxYear\":10000}", "{}", "{\"taxYear\":\"올해\"}"}) {
+            mvc.perform(post(URL).header("Authorization", admin.bearer())
+                            .contentType(MediaType.APPLICATION_JSON).content(body))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+        }
+        for (String year : new String[]{"999", "10000", "abc"}) {
+            mvc.perform(get(URL).param("year", year).header("Authorization", admin.bearer()))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+        }
+        mvc.perform(get(URL).header("Authorization", admin.bearer()))
+                .andExpect(status().isBadRequest());
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM tax_law_year_counters", Long.class)).isZero();
+    }
+
+    @Test
+    void nonAdminsCannotReadOrChangeVersions() throws Exception {
+        long id = TestTaxLaws.createFilledDraft(mvc, admin, 2026);
+        AuthedUser member = TestAuth.signupAndLogin(mvc, "member@test.com", "회원");
+
+        mvc.perform(get(URL).param("year", "2026").header("Authorization", member.bearer()))
+                .andExpect(status().isForbidden());
+        mvc.perform(get(URL + "/" + id).header("Authorization", member.bearer()))
+                .andExpect(status().isForbidden());
+        mvc.perform(post(URL).header("Authorization", member.bearer())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"taxYear\":2026}"))
+                .andExpect(status().isForbidden());
+        mvc.perform(put(URL + "/" + id).header("Authorization", member.bearer())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"rowVersion\":1,\"minSpendRatePct\":99}"))
+                .andExpect(status().isForbidden());
+        mvc.perform(delete(URL + "/" + id).header("Authorization", member.bearer()))
+                .andExpect(status().isForbidden());
+        mvc.perform(delete(URL + "/" + id))
+                .andExpect(status().isUnauthorized());
+
+        // 거부된 요청은 아무것도 바꾸지 않았다.
+        mvc.perform(get(URL).param("year", "2026").header("Authorization", admin.bearer()))
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].minSpendRatePct").value(25))
+                .andExpect(jsonPath("$[0].rowVersion").value(1));
+    }
+
+    @Test
+    void revokedAdminIsRejectedOnTheNextRequestWithTheSameToken() throws Exception {
+        long id = TestTaxLaws.createDraft(mvc, admin, 2026);
+
+        TestAdmins.revoke(jdbc, admin.id());
+
+        mvc.perform(delete(URL + "/" + id).header("Authorization", admin.bearer()))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM tax_law_versions", Long.class)).isEqualTo(1);
+    }
+
+    @Test
+    void currentIsReadableByAnyMemberAndNeverShowsDrafts() throws Exception {
+        AuthedUser member = TestAuth.signupAndLogin(mvc, "member@test.com", "회원");
+        long id = TestTaxLaws.createFilledDraft(mvc, admin, 2026);
+
+        mvc.perform(get("/tax/law-versions/current").param("year", "2026"))
+                .andExpect(status().isUnauthorized());
+        // 초안만 있는 연도는 "세법 준비 중"이다.
+        mvc.perform(get("/tax/law-versions/current").param("year", "2026").header("Authorization", member.bearer()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("NOT_FOUND"));
+
+        TestTaxLaws.markApplied(jdbc, id, admin.id());
+        TestTaxLaws.createDraft(mvc, admin, 2026);
+
+        mvc.perform(get("/tax/law-versions/current").param("year", "2026").header("Authorization", member.bearer()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(id))
+                .andExpect(jsonPath("$.versionNo").value(1))
+                .andExpect(jsonPath("$.status").value("APPLIED"))
+                .andExpect(jsonPath("$.minSpendRatePct").value(25))
+                .andExpect(jsonPath("$.childTiersApply").value(true))
+                // 회원에게는 작성자·적용자 닉네임을 내리지 않는다.
+                .andExpect(jsonPath("$.createdByNickname").value(nullValue()))
+                .andExpect(jsonPath("$.appliedByNickname").value(nullValue()));
+        mvc.perform(get("/tax/law-versions/current").param("year", "2025").header("Authorization", member.bearer()))
+                .andExpect(status().isNotFound());
+        mvc.perform(get("/tax/law-versions/current").param("year", "99").header("Authorization", member.bearer()))
+                .andExpect(status().isBadRequest());
+    }
+}
+```
+
+`test/tax/law/TaxLawConcurrencyTest.java`를 만든다. 기존 `group/ConcurrentAcceptTest`와 같은 방식으로 서비스를 여러 스레드에서 직접 부른다.
+
+```java
+package com.saladbowl.api.tax.law;
+
+import com.saladbowl.api.common.ApiException;
+import com.saladbowl.api.support.IntegrationTest;
+import com.saladbowl.api.user.User;
+import com.saladbowl.api.user.UserRepository;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+/** 동시에 들어온 요청이 번호를 겹쳐 쓰지 않는지 실제 트랜잭션으로 확인한다. */
+class TaxLawConcurrencyTest extends IntegrationTest {
+
+    private static final int THREADS = 8;
+
+    @Autowired
+    UserRepository users;
+    @Autowired
+    TaxLawService service;
+    @Autowired
+    TaxLawVersionRepository versions;
+
+    @Test
+    void concurrentDraftsGetDistinctConsecutiveNumbers() throws Exception {
+        long adminId = users.save(new User("admin@test.com", "hash", "관리자")).getId();
+        List<Callable<String>> calls = new ArrayList<>();
+        for (int i = 0; i < THREADS; i++) {
+            calls.add(() -> Integer.toString(service.createDraft(adminId, 2026).versionNo()));
+        }
+
+        List<String> results = runTogether(calls);
+
+        assertThat(results).containsExactlyInAnyOrder("1", "2", "3", "4", "5", "6", "7", "8");
+        assertThat(versions.findByTaxYearOrderByVersionNoDesc(2026)).hasSize(THREADS);
+    }
+
+    /** 모든 호출을 같은 순간에 시작한다. 결과는 반환값, ApiException이면 오류 코드 이름이다. */
+    static List<String> runTogether(List<Callable<String>> calls) throws Exception {
+        ExecutorService pool = Executors.newFixedThreadPool(calls.size());
+        try {
+            CountDownLatch start = new CountDownLatch(1);
+            List<Future<String>> futures = new ArrayList<>();
+            for (Callable<String> call : calls) {
+                futures.add(pool.submit(() -> {
+                    if (!start.await(30, TimeUnit.SECONDS)) {
+                        return "NOT_STARTED";
+                    }
+                    try {
+                        return call.call();
+                    } catch (ApiException e) {
+                        return e.code().name();
+                    } catch (Exception e) {
+                        return e.getClass().getName();
+                    }
+                }));
+            }
+            start.countDown();
+            List<String> results = new ArrayList<>();
+            for (Future<String> future : futures) {
+                results.add(future.get(30, TimeUnit.SECONDS));
+            }
+            return results;
+        } finally {
+            pool.shutdownNow();
+        }
+    }
+}
+```
+
+`test/tax/TaxAdminAccessTest.java`의 두 테스트를 고친다. 컨트롤러가 생겼으므로 관리자는 404가 아니라 200이다.
+
+```java
+    @Test
+    void serviceAdminPassesTheGate() throws Exception {
+        AuthedUser admin = TestAuth.signupAndLogin(mvc, "admin@test.com", "관리자");
+        TestAdmins.grant(jdbc, admin.id());
+
+        mvc.perform(get(ADMIN_URL).param("year", "2026").header("Authorization", admin.bearer()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isEmpty());
+    }
+
+    @Test
+    void revokingTakesEffectOnTheNextRequestWithTheSameToken() throws Exception {
+        AuthedUser admin = TestAuth.signupAndLogin(mvc, "admin@test.com", "관리자");
+        TestAdmins.grant(jdbc, admin.id());
+        mvc.perform(get(ADMIN_URL).param("year", "2026").header("Authorization", admin.bearer()))
+                .andExpect(status().isOk());
+
+        TestAdmins.revoke(jdbc, admin.id());
+
+        mvc.perform(get(ADMIN_URL).param("year", "2026").header("Authorization", admin.bearer()))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+    }
+```
+
+- [ ] **Step 2: 실패 확인**
+
+Run: `cd apps/api && ./gradlew test --tests '*TaxLaw*' --tests '*TaxAdminAccessTest'`
+Expected: `compileTestJava FAILED` — `TaxLawConcurrencyTest`에서 `cannot find symbol: class TaxLawService`, `class TaxLawVersionRepository`.
+
+- [ ] **Step 3: migration** — `migration/V9__create_tax_law_versions.sql`
+
+```sql
+-- 연도별 세법 기준. 전역 데이터이며 회원 소유가 아니다. 초안(DRAFT)은 값이 비어 있을 수 있어 설정값은 NULL을 허용한다.
+CREATE TABLE tax_law_versions (
+    id                  BIGSERIAL PRIMARY KEY,
+    tax_year            INTEGER      NOT NULL,
+    version_no          INTEGER      NOT NULL,
+    status              VARCHAR(10)  NOT NULL CHECK (status IN ('DRAFT', 'APPLIED')),
+    algorithm_version   INTEGER      NOT NULL DEFAULT 1,
+    min_spend_rate_pct  INTEGER,
+    rate_credit_pct     INTEGER,
+    rate_debit_cash_pct INTEGER,
+    rate_culture_pct    INTEGER,
+    rate_market_pct     INTEGER,
+    rate_transit_pct    INTEGER,
+    bracket_boundary    BIGINT,
+    basic_limit_low_0   BIGINT,
+    basic_limit_low_1   BIGINT,
+    basic_limit_low_2   BIGINT,
+    basic_limit_high_0  BIGINT,
+    basic_limit_high_1  BIGINT,
+    basic_limit_high_2  BIGINT,
+    extra_limit_low     BIGINT,
+    extra_limit_high    BIGINT,
+    basis_law_name      VARCHAR(200),
+    basis_article       VARCHAR(200),
+    basis_url           VARCHAR(500),
+    period_start        DATE,
+    period_end          DATE,
+    memo                VARCHAR(1000),
+    created_by          BIGINT REFERENCES users (id) ON DELETE SET NULL,
+    applied_by          BIGINT REFERENCES users (id) ON DELETE SET NULL,
+    created_at          TIMESTAMPTZ  NOT NULL DEFAULT now(),
+    updated_at          TIMESTAMPTZ  NOT NULL DEFAULT now(),
+    applied_at          TIMESTAMPTZ,
+    row_version         BIGINT       NOT NULL DEFAULT 0,
+    CONSTRAINT uq_tax_law_versions_year_no UNIQUE (tax_year, version_no),
+    -- 적용본에는 적용 시각이 있고 초안에는 없다. 현재 적용 버전을 applied_at으로 고르므로 DB에서도 지킨다.
+    CONSTRAINT ck_tax_law_versions_applied_at CHECK ((status = 'APPLIED') = (applied_at IS NOT NULL))
+);
+
+-- 귀속연도별로 지금까지 내준 가장 큰 버전 번호. 초안을 지워도 줄지 않으므로 번호를 다시 쓰지 않는다.
+CREATE TABLE tax_law_year_counters (
+    tax_year        INTEGER PRIMARY KEY,
+    last_version_no INTEGER NOT NULL
+);
+```
+
+- [ ] **Step 4: 상태와 엔티티** — `main/tax/law/TaxLawStatus.java`, `main/tax/law/TaxLawVersion.java`
+
+```java
+package com.saladbowl.api.tax.law;
+
+public enum TaxLawStatus {
+    DRAFT,
+    APPLIED
+}
+```
+
+```java
+package com.saladbowl.api.tax.law;
+
+import com.saladbowl.api.tax.law.TaxLawDtos.UpdateRequest;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
+import jakarta.persistence.Table;
+import jakarta.persistence.Version;
+
+import java.time.LocalDate;
+import java.time.OffsetDateTime;
+import java.util.List;
+
+/** 귀속연도별 세법 기준의 한 버전. 금액은 원 단위 정수, 비율은 정수 퍼센트다. 초안은 값이 비어 있을 수 있다. */
+@Entity
+@Table(name = "tax_law_versions")
+public class TaxLawVersion {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(name = "tax_year", nullable = false)
+    private int taxYear;
+
+    @Column(name = "version_no", nullable = false)
+    private int versionNo;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private TaxLawStatus status;
+
+    @Column(name = "algorithm_version", nullable = false)
+    private int algorithmVersion = 1;
+
+    @Column(name = "min_spend_rate_pct")
+    private Integer minSpendRatePct;
+
+    @Column(name = "rate_credit_pct")
+    private Integer rateCreditPct;
+
+    @Column(name = "rate_debit_cash_pct")
+    private Integer rateDebitCashPct;
+
+    @Column(name = "rate_culture_pct")
+    private Integer rateCulturePct;
+
+    @Column(name = "rate_market_pct")
+    private Integer rateMarketPct;
+
+    @Column(name = "rate_transit_pct")
+    private Integer rateTransitPct;
+
+    @Column(name = "bracket_boundary")
+    private Long bracketBoundary;
+
+    @Column(name = "basic_limit_low_0")
+    private Long basicLimitLow0;
+
+    @Column(name = "basic_limit_low_1")
+    private Long basicLimitLow1;
+
+    @Column(name = "basic_limit_low_2")
+    private Long basicLimitLow2;
+
+    @Column(name = "basic_limit_high_0")
+    private Long basicLimitHigh0;
+
+    @Column(name = "basic_limit_high_1")
+    private Long basicLimitHigh1;
+
+    @Column(name = "basic_limit_high_2")
+    private Long basicLimitHigh2;
+
+    @Column(name = "extra_limit_low")
+    private Long extraLimitLow;
+
+    @Column(name = "extra_limit_high")
+    private Long extraLimitHigh;
+
+    @Column(name = "basis_law_name")
+    private String basisLawName;
+
+    @Column(name = "basis_article")
+    private String basisArticle;
+
+    @Column(name = "basis_url")
+    private String basisUrl;
+
+    @Column(name = "period_start")
+    private LocalDate periodStart;
+
+    @Column(name = "period_end")
+    private LocalDate periodEnd;
+
+    private String memo;
+
+    @Column(name = "created_by")
+    private Long createdBy;
+
+    @Column(name = "applied_by")
+    private Long appliedBy;
+
+    @Column(name = "created_at", nullable = false)
+    private OffsetDateTime createdAt;
+
+    @Column(name = "updated_at", nullable = false)
+    private OffsetDateTime updatedAt;
+
+    @Column(name = "applied_at")
+    private OffsetDateTime appliedAt;
+
+    // 수정 요청의 rowVersion과 비교해 다른 곳에서 먼저 고친 초안을 덮어쓰지 않게 한다.
+    @Version
+    @Column(name = "row_version", nullable = false)
+    private long rowVersion;
+
+    protected TaxLawVersion() {
+    }
+
+    public static TaxLawVersion draft(int taxYear, int versionNo, long createdBy) {
+        TaxLawVersion version = new TaxLawVersion();
+        version.taxYear = taxYear;
+        version.versionNo = versionNo;
+        version.status = TaxLawStatus.DRAFT;
+        version.createdBy = createdBy;
+        return version;
+    }
+
+    /** 새 초안의 시작값. 설정값·근거·적용 대상 기간을 복사한다. 메모는 그 버전에 대한 기록이라 복사하지 않는다. */
+    public void copyValuesFrom(TaxLawVersion source) {
+        algorithmVersion = source.algorithmVersion;
+        minSpendRatePct = source.minSpendRatePct;
+        rateCreditPct = source.rateCreditPct;
+        rateDebitCashPct = source.rateDebitCashPct;
+        rateCulturePct = source.rateCulturePct;
+        rateMarketPct = source.rateMarketPct;
+        rateTransitPct = source.rateTransitPct;
+        bracketBoundary = source.bracketBoundary;
+        basicLimitLow0 = source.basicLimitLow0;
+        basicLimitLow1 = source.basicLimitLow1;
+        basicLimitLow2 = source.basicLimitLow2;
+        basicLimitHigh0 = source.basicLimitHigh0;
+        basicLimitHigh1 = source.basicLimitHigh1;
+        basicLimitHigh2 = source.basicLimitHigh2;
+        extraLimitLow = source.extraLimitLow;
+        extraLimitHigh = source.extraLimitHigh;
+        basisLawName = source.basisLawName;
+        basisArticle = source.basisArticle;
+        basisUrl = source.basisUrl;
+        periodStart = source.periodStart;
+        periodEnd = source.periodEnd;
+    }
+
+    /** 초안 수정. 요청에 없는 값은 빈 값이 된다(전체 교체). 범위 검사는 적용할 때 한다. */
+    public void edit(UpdateRequest request) {
+        minSpendRatePct = request.minSpendRatePct();
+        rateCreditPct = request.rateCreditPct();
+        rateDebitCashPct = request.rateDebitCashPct();
+        rateCulturePct = request.rateCulturePct();
+        rateMarketPct = request.rateMarketPct();
+        rateTransitPct = request.rateTransitPct();
+        bracketBoundary = request.bracketBoundary();
+        basicLimitLow0 = tier(request.basicLimitLow(), 0);
+        basicLimitLow1 = tier(request.basicLimitLow(), 1);
+        basicLimitLow2 = tier(request.basicLimitLow(), 2);
+        basicLimitHigh0 = tier(request.basicLimitHigh(), 0);
+        basicLimitHigh1 = tier(request.basicLimitHigh(), 1);
+        basicLimitHigh2 = tier(request.basicLimitHigh(), 2);
+        extraLimitLow = request.extraLimitLow();
+        extraLimitHigh = request.extraLimitHigh();
+        basisLawName = blankToNull(request.basisLawName());
+        basisArticle = blankToNull(request.basisArticle());
+        basisUrl = blankToNull(request.basisUrl());
+        periodStart = request.periodStart();
+        periodEnd = request.periodEnd();
+        memo = blankToNull(request.memo());
+    }
+
+    private static Long tier(List<Long> tiers, int index) {
+        return tiers == null ? null : tiers.get(index);
+    }
+
+    private static String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
+    }
+
+    @PrePersist
+    void onCreate() {
+        createdAt = updatedAt = OffsetDateTime.now();
+    }
+
+    @PreUpdate
+    void onUpdate() {
+        updatedAt = OffsetDateTime.now();
+    }
+
+    public Long getId() { return id; }
+    public int getTaxYear() { return taxYear; }
+    public int getVersionNo() { return versionNo; }
+    public TaxLawStatus getStatus() { return status; }
+    public int getAlgorithmVersion() { return algorithmVersion; }
+    public Integer getMinSpendRatePct() { return minSpendRatePct; }
+    public Integer getRateCreditPct() { return rateCreditPct; }
+    public Integer getRateDebitCashPct() { return rateDebitCashPct; }
+    public Integer getRateCulturePct() { return rateCulturePct; }
+    public Integer getRateMarketPct() { return rateMarketPct; }
+    public Integer getRateTransitPct() { return rateTransitPct; }
+    public Long getBracketBoundary() { return bracketBoundary; }
+    public Long getBasicLimitLow0() { return basicLimitLow0; }
+    public Long getBasicLimitLow1() { return basicLimitLow1; }
+    public Long getBasicLimitLow2() { return basicLimitLow2; }
+    public Long getBasicLimitHigh0() { return basicLimitHigh0; }
+    public Long getBasicLimitHigh1() { return basicLimitHigh1; }
+    public Long getBasicLimitHigh2() { return basicLimitHigh2; }
+    public Long getExtraLimitLow() { return extraLimitLow; }
+    public Long getExtraLimitHigh() { return extraLimitHigh; }
+    public String getBasisLawName() { return basisLawName; }
+    public String getBasisArticle() { return basisArticle; }
+    public String getBasisUrl() { return basisUrl; }
+    public LocalDate getPeriodStart() { return periodStart; }
+    public LocalDate getPeriodEnd() { return periodEnd; }
+    public String getMemo() { return memo; }
+    public Long getCreatedBy() { return createdBy; }
+    public Long getAppliedBy() { return appliedBy; }
+    public OffsetDateTime getCreatedAt() { return createdAt; }
+    public OffsetDateTime getAppliedAt() { return appliedAt; }
+    public long getRowVersion() { return rowVersion; }
+}
+```
+
+- [ ] **Step 5: 저장소** — `main/tax/law/TaxLawVersionRepository.java`
+
+```java
+package com.saladbowl.api.tax.law;
+
+import jakarta.persistence.LockModeType;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+import java.util.List;
+import java.util.Optional;
+
+public interface TaxLawVersionRepository extends JpaRepository<TaxLawVersion, Long> {
+
+    List<TaxLawVersion> findByTaxYearOrderByVersionNoDesc(int taxYear);
+
+    /** 현재 적용 버전: 번호와 무관하게 가장 최근에 적용한 것. 적용 시각이 같으면 나중에 만든 것. */
+    Optional<TaxLawVersion> findFirstByTaxYearAndStatusOrderByAppliedAtDescIdDesc(int taxYear, TaxLawStatus status);
+
+    /** 수정·삭제·적용이 같은 버전에서 겹칠 때 한 번에 하나만 상태를 보고 바꾸도록 행을 잠근다. */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select v from TaxLawVersion v where v.id = :id")
+    Optional<TaxLawVersion> findByIdForUpdate(@Param("id") long id);
+}
+```
+
+- [ ] **Step 6: DTO** — `main/tax/law/TaxLawDtos.java`. `UpdateRequest`의 Bean Validation은 형태만 본다. 초안은 범위를 벗어난 값도 저장할 수 있어야 한다(AC-21은 "범위를 벗어난 초안은 적용되지 않는다").
+
+```java
+package com.saladbowl.api.tax.law;
+
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+
+import java.time.LocalDate;
+import java.time.OffsetDateTime;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Objects;
+
+public final class TaxLawDtos {
+
+    private TaxLawDtos() {
+    }
+
+    public record CreateRequest(@NotNull @Min(1000) @Max(9999) Integer taxYear) {
+    }
+
+    /**
+     * 초안 전체 교체. 설정값은 비워 둘 수 있고(null) 범위 검사는 적용할 때 한다.
+     * 여기서는 DB 열에 들어갈 수 있는 형태(길이, 단계 3칸)만 본다.
+     */
+    public record UpdateRequest(
+            @NotNull Long rowVersion,
+            Integer minSpendRatePct,
+            Long bracketBoundary,
+            Integer rateCreditPct,
+            Integer rateDebitCashPct,
+            Integer rateCulturePct,
+            Integer rateMarketPct,
+            Integer rateTransitPct,
+            @Size(min = 3, max = 3) List<Long> basicLimitLow,
+            @Size(min = 3, max = 3) List<Long> basicLimitHigh,
+            Long extraLimitLow,
+            Long extraLimitHigh,
+            @Size(max = 200) String basisLawName,
+            @Size(max = 200) String basisArticle,
+            @Size(max = 500) String basisUrl,
+            LocalDate periodStart,
+            LocalDate periodEnd,
+            @Size(max = 1000) String memo) {
+    }
+
+    /** basicLimitLow·basicLimitHigh는 자녀등 0명 / 1명 / 2명 이상 순서의 3칸이다. */
+    public record VersionResponse(
+            long id,
+            int taxYear,
+            int versionNo,
+            TaxLawStatus status,
+            int algorithmVersion,
+            Integer minSpendRatePct,
+            Long bracketBoundary,
+            Integer rateCreditPct,
+            Integer rateDebitCashPct,
+            Integer rateCulturePct,
+            Integer rateMarketPct,
+            Integer rateTransitPct,
+            List<Long> basicLimitLow,
+            List<Long> basicLimitHigh,
+            Long extraLimitLow,
+            Long extraLimitHigh,
+            boolean childTiersApply,
+            String basisLawName,
+            String basisArticle,
+            String basisUrl,
+            LocalDate periodStart,
+            LocalDate periodEnd,
+            String memo,
+            String createdByNickname,
+            String appliedByNickname,
+            OffsetDateTime createdAt,
+            OffsetDateTime appliedAt,
+            long rowVersion) {
+
+        public static VersionResponse of(TaxLawVersion v, String createdByNickname, String appliedByNickname) {
+            // List.of는 null을 받지 않는다. 초안의 빈 칸을 null로 내려야 한다.
+            List<Long> low = Arrays.asList(v.getBasicLimitLow0(), v.getBasicLimitLow1(), v.getBasicLimitLow2());
+            List<Long> high = Arrays.asList(v.getBasicLimitHigh0(), v.getBasicLimitHigh1(), v.getBasicLimitHigh2());
+            return new VersionResponse(v.getId(), v.getTaxYear(), v.getVersionNo(), v.getStatus(),
+                    v.getAlgorithmVersion(), v.getMinSpendRatePct(), v.getBracketBoundary(), v.getRateCreditPct(),
+                    v.getRateDebitCashPct(), v.getRateCulturePct(), v.getRateMarketPct(), v.getRateTransitPct(),
+                    low, high, v.getExtraLimitLow(), v.getExtraLimitHigh(), differs(low) || differs(high),
+                    v.getBasisLawName(), v.getBasisArticle(), v.getBasisUrl(), v.getPeriodStart(), v.getPeriodEnd(),
+                    v.getMemo(), createdByNickname, appliedByNickname, v.getCreatedAt(), v.getAppliedAt(),
+                    v.getRowVersion());
+        }
+
+        private static boolean differs(List<Long> tiers) {
+            return !Objects.equals(tiers.get(0), tiers.get(1)) || !Objects.equals(tiers.get(1), tiers.get(2));
+        }
+    }
+}
+```
+
+- [ ] **Step 7: 서비스** — `main/tax/law/TaxLawService.java`
+
+```java
+package com.saladbowl.api.tax.law;
+
+import com.saladbowl.api.common.ApiException;
+import com.saladbowl.api.common.ErrorCode;
+import com.saladbowl.api.tax.law.TaxLawDtos.UpdateRequest;
+import com.saladbowl.api.tax.law.TaxLawDtos.VersionResponse;
+import com.saladbowl.api.user.User;
+import com.saladbowl.api.user.UserRepository;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.Optional;
+
+/** 세법 버전 관리. 서비스 관리자 검사는 TaxAdminInterceptor가 /tax/admin/** 경로에서 한다. */
+@Service
+public class TaxLawService {
+
+    // 한 문장으로 올리고 받는다. 카운터 행의 잠금이 커밋까지 유지되므로 동시에 만든 초안도 번호가 겹치지 않고,
+    // 초안 저장이 실패해 롤백되면 번호도 함께 되돌아간다.
+    private static final String NEXT_VERSION_NO = """
+            INSERT INTO tax_law_year_counters (tax_year, last_version_no) VALUES (?, 1)
+            ON CONFLICT (tax_year) DO UPDATE SET last_version_no = tax_law_year_counters.last_version_no + 1
+            RETURNING last_version_no
+            """;
+
+    private final TaxLawVersionRepository versions;
+    private final UserRepository users;
+    private final JdbcTemplate jdbc;
+
+    public TaxLawService(TaxLawVersionRepository versions, UserRepository users, JdbcTemplate jdbc) {
+        this.versions = versions;
+        this.users = users;
+        this.jdbc = jdbc;
+    }
+
+    @Transactional
+    public VersionResponse createDraft(long adminId, int taxYear) {
+        Integer versionNo = jdbc.queryForObject(NEXT_VERSION_NO, Integer.class, taxYear);
+        TaxLawVersion draft = TaxLawVersion.draft(taxYear, versionNo, adminId);
+        currentApplied(taxYear).ifPresent(draft::copyValuesFrom);
+        return toAdminResponse(versions.save(draft));
+    }
+
+    @Transactional(readOnly = true)
+    public List<VersionResponse> list(int taxYear) {
+        return versions.findByTaxYearOrderByVersionNoDesc(taxYear).stream().map(this::toAdminResponse).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public VersionResponse get(long id) {
+        return toAdminResponse(versions.findById(id).orElseThrow(TaxLawService::notFound));
+    }
+
+    @Transactional
+    public VersionResponse updateDraft(long id, UpdateRequest request) {
+        TaxLawVersion draft = lockDraft(id);
+        if (draft.getRowVersion() != request.rowVersion()) {
+            throw new ApiException(ErrorCode.CONFLICT, "tax law version was modified elsewhere");
+        }
+        draft.edit(request);
+        // 응답에 올라간 rowVersion을 싣기 위해 여기서 반영한다.
+        return toAdminResponse(versions.saveAndFlush(draft));
+    }
+
+    @Transactional
+    public void deleteDraft(long id) {
+        versions.delete(lockDraft(id));
+    }
+
+    /** 회원용: 그 귀속연도의 현재 적용 버전. 작성자·적용자 닉네임은 내리지 않는다. */
+    @Transactional(readOnly = true)
+    public VersionResponse current(int taxYear) {
+        return currentApplied(taxYear).map(v -> VersionResponse.of(v, null, null))
+                .orElseThrow(TaxLawService::notFound);
+    }
+
+    public Optional<TaxLawVersion> currentApplied(int taxYear) {
+        return versions.findFirstByTaxYearAndStatusOrderByAppliedAtDescIdDesc(taxYear, TaxLawStatus.APPLIED);
+    }
+
+    /** 행을 잠그고 초안인지 확인한다. 잠금 뒤에 상태를 보므로 동시에 적용된 버전은 여기서 409가 된다. */
+    private TaxLawVersion lockDraft(long id) {
+        TaxLawVersion version = versions.findByIdForUpdate(id).orElseThrow(TaxLawService::notFound);
+        if (version.getStatus() == TaxLawStatus.APPLIED) {
+            throw new ApiException(ErrorCode.CONFLICT, "applied tax law version cannot be changed");
+        }
+        return version;
+    }
+
+    private VersionResponse toAdminResponse(TaxLawVersion version) {
+        return VersionResponse.of(version, nickname(version.getCreatedBy()), nickname(version.getAppliedBy()));
+    }
+
+    // shortcut: 버전마다 회원을 따로 읽는다(연도당 버전이 몇 개뿐이다). 목록이 느려지면 한 번에 읽도록 바꾼다.
+    private String nickname(Long userId) {
+        return userId == null ? null : users.findById(userId).map(User::getNickname).orElse(null);
+    }
+
+    private static ApiException notFound() {
+        return new ApiException(ErrorCode.NOT_FOUND, "tax law version not found");
+    }
+}
+```
+
+- [ ] **Step 8: 컨트롤러** — `main/tax/law/TaxLawAdminController.java`, `main/tax/law/TaxLawController.java`. `@RequestParam`의 `@Min`·`@Max` 위반은 `HandlerMethodValidationException`이고 `GlobalExceptionHandler`가 400 `VALIDATION_FAILED`로 바꾼다.
+
+```java
+package com.saladbowl.api.tax.law;
+
+import com.saladbowl.api.auth.CurrentUser;
+import com.saladbowl.api.tax.law.TaxLawDtos.CreateRequest;
+import com.saladbowl.api.tax.law.TaxLawDtos.UpdateRequest;
+import com.saladbowl.api.tax.law.TaxLawDtos.VersionResponse;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
+
+/** 서비스 관리자 전용. 권한은 TaxAdminInterceptor가 /tax/admin/** 에서 요청마다 DB로 확인한다. */
+@RestController
+@RequestMapping("/tax/admin/law-versions")
+public class TaxLawAdminController {
+
+    private final TaxLawService service;
+
+    public TaxLawAdminController(TaxLawService service) {
+        this.service = service;
+    }
+
+    @GetMapping
+    public List<VersionResponse> list(@RequestParam @Min(1000) @Max(9999) int year) {
+        return service.list(year);
+    }
+
+    @PostMapping
+    public ResponseEntity<VersionResponse> create(@CurrentUser Long userId,
+                                                  @Valid @RequestBody CreateRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(service.createDraft(userId, request.taxYear()));
+    }
+
+    @GetMapping("/{id}")
+    public VersionResponse get(@PathVariable long id) {
+        return service.get(id);
+    }
+
+    @PutMapping("/{id}")
+    public VersionResponse update(@PathVariable long id, @Valid @RequestBody UpdateRequest request) {
+        return service.updateDraft(id, request);
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable long id) {
+        service.deleteDraft(id);
+        return ResponseEntity.noContent().build();
+    }
+}
+```
+
+```java
+package com.saladbowl.api.tax.law;
+
+import com.saladbowl.api.tax.law.TaxLawDtos.VersionResponse;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+/** 로그인한 회원 누구나 읽는 적용된 세법 기준. 초안은 이 경로로 나가지 않는다. */
+@RestController
+public class TaxLawController {
+
+    private final TaxLawService service;
+
+    public TaxLawController(TaxLawService service) {
+        this.service = service;
+    }
+
+    @GetMapping("/tax/law-versions/current")
+    public VersionResponse current(@RequestParam @Min(1000) @Max(9999) int year) {
+        return service.current(year);
+    }
+}
+```
+
+- [ ] **Step 9: 통과 확인**
+
+Run: `cd apps/api && ./gradlew test --tests '*TaxLaw*' --tests '*TaxAdminAccessTest'`
+Expected: `BUILD SUCCESSFUL`. `TaxLawAdminApiTest` 13건, `TaxLawConcurrencyTest` 1건, `TaxAdminAccessTest` 5건 통과.
+
+- [ ] **Step 10: 전체 테스트**
+
+Run: `cd apps/api && ./gradlew test`
+Expected: `BUILD SUCCESSFUL`.
+
+- [ ] **Step 11: 커밋(컨트롤러)**
+
+```bash
+git add apps/api/src/main/resources/db/migration/V9__create_tax_law_versions.sql apps/api/src/main/java/com/saladbowl/api/tax/law apps/api/src/test/java/com/saladbowl/api/support/TestTaxLaws.java apps/api/src/test/java/com/saladbowl/api/tax
+git commit -m "feat(api): 세법 버전 초안 만들기·조회·수정·삭제와 현재 적용 버전 조회" -m "Co-Authored-By: Codex (gpt-6-astra) <noreply@openai.com>"
+```
+
+---
 
 ### Task 2.3: 검증·적용·현재 적용 버전 (TAX-63, 64, 61, 72)
 
-**담당:** Codex `gpt-6-sol` / `medium` (`api`), 태그 `impl-api`. 리뷰: Claude Fable 5.2.
+**담당:** Codex `gpt-6-sol` / `medium` (`api`), 태그 `impl-api`. 리뷰: Claude Fable 5.2 (`review-task`).
 
-- Files: Modify `TaxLawService.java`, `TaxLawAdminController.java`, `TaxLawDtos.java`. Create `tax/law/TaxLawController.java`(`/tax/law-versions/current`), `tax/law/TaxLawApplyApiTest.java`.
-- Interfaces — Produces: `TaxLawService.validate(TaxLawVersion): List<FieldError>`, `apply(long adminId, long id)`, `currentApplied(int taxYear): Optional<TaxLawVersion>`. 검증 규칙: 비율 6개는 0~100 정수, 금액 9개는 0 이상 정수, 빈 값 없음, `basisLawName`·`basisArticle`·`basisUrl`·`periodStart`·`periodEnd` 필수(`periodStart ≤ periodEnd`). 메모는 선택이다("알려진 제약" 참고).
-- 테스트 대상(AC-21, AC-19, AC-39): 근거·기간이 비었거나 비율·금액이 범위를 벗어난 초안은 적용 400이고 상태가 초안 그대로, `validate`가 필드별 오류를 돌려줌, 적용 뒤 적용자·시각 기록, 한 초안을 적용해도 다른 초안은 초안, 번호가 낮은 초안을 나중에 적용하면 그것이 현재 적용 버전, 새 초안이 현재 적용 버전 값을 복사, 적용 버전이 없는 연도의 `current`는 404, 일반 회원도 `current`는 200.
+**Files:**
+- Create: `main/tax/law/TaxLawValidator.java`
+- Modify: `main/tax/law/TaxLawDtos.java`, `TaxLawVersion.java`, `TaxLawService.java`, `TaxLawAdminController.java`
+- Test: `test/tax/law/TaxLawValidatorTest.java`(생성), `test/tax/law/TaxLawApplyApiTest.java`(생성), `test/tax/law/TaxLawConcurrencyTest.java`(교체)
+
+**Interfaces:**
+- Consumes: Task 2.2의 `TaxLawVersion`(getter, `draft`, `edit`), `TaxLawService.lockDraft(long id)`(행 잠금 + 초안이 아니면 409), `TaxLawService.currentApplied`, `TaxLawDtos.UpdateRequest`·`VersionResponse`, `TestTaxLaws`, `TaxLawConcurrencyTest.runTogether`.
+- Produces:
+  - `TaxLawDtos.FieldError(String field, String message)`, `TaxLawDtos.ValidationResponse(List<FieldError> errors)`.
+  - `TaxLawValidator.validate(TaxLawVersion): List<FieldError>`(패키지 안에서만 쓴다).
+  - `TaxLawVersion.apply(long adminId, OffsetDateTime now)`.
+  - `TaxLawService.validate(long id): ValidationResponse`, `TaxLawService.apply(long adminId, long id): VersionResponse`.
+  - HTTP: `POST /tax/admin/law-versions/{id}/validate`, `POST /tax/admin/law-versions/{id}/apply`.
+
+검증 규칙(PRD 9장, TAX-63·64, 메모는 선택 — 2026-11-13 확정). 오류의 `field`는 응답 필드 이름이고 단계는 `basicLimitLow[1]`처럼 쓴다. 오류 순서는 아래 표 순서다.
+
+| 대상 | 규칙 | 메시지 |
+|---|---|---|
+| 비율 6개 `minSpendRatePct`, `rateCreditPct`, `rateDebitCashPct`, `rateCulturePct`, `rateMarketPct`, `rateTransitPct` | 빈 값 없음 | `값을 입력해야 합니다` |
+| | 0~100(정수 열이라 정수다) | `0~100 사이여야 합니다` |
+| 금액 9개 `bracketBoundary`, `basicLimitLow[0..2]`, `basicLimitHigh[0..2]`, `extraLimitLow`, `extraLimitHigh` | 빈 값 없음(급여구간 경계·자녀등 단계 포함) | `값을 입력해야 합니다` |
+| | 0 이상 | `0 이상이어야 합니다` |
+| | 9,999,999,999,999 이하 | `9,999,999,999,999원 이하로 입력하세요` |
+| `basisLawName`, `basisArticle`, `basisUrl` | 빈 값·공백만 있는 값 없음 | `값을 입력해야 합니다` |
+| `basisUrl` | `http://` 또는 `https://`로 시작 | `http:// 또는 https://로 시작해야 합니다` |
+| `periodStart`, `periodEnd` | 빈 값 없음 | `값을 입력해야 합니다` |
+| `periodEnd` | `periodStart` ≤ `periodEnd` | `종료일이 시작일보다 빠릅니다` |
+| `memo` | 검사하지 않음 | — |
+
+- [ ] **Step 1: 실패하는 테스트 작성**
+
+`test/tax/law/TaxLawValidatorTest.java`를 만든다(DB 없이 규칙만).
+
+```java
+package com.saladbowl.api.tax.law;
+
+import com.saladbowl.api.tax.law.TaxLawDtos.FieldError;
+import com.saladbowl.api.tax.law.TaxLawDtos.UpdateRequest;
+import org.junit.jupiter.api.Test;
+
+import java.time.LocalDate;
+import java.util.Arrays;
+import java.util.List;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+/** 적용 전 검증 규칙(TAX-63, TAX-64, AC-21). DB 없이 규칙만 본다. */
+class TaxLawValidatorTest {
+
+    private static final LocalDate START = LocalDate.of(2026, 1, 1);
+    private static final LocalDate END = LocalDate.of(2026, 12, 31);
+
+    /** 2026 귀속 값으로 채운 초안. */
+    private static TaxLawVersion draft(UpdateRequest request) {
+        TaxLawVersion version = TaxLawVersion.draft(2026, 1, 1L);
+        version.edit(request);
+        return version;
+    }
+
+    private static UpdateRequest request(Integer minSpend, Integer credit, Integer debitCash, Integer culture,
+                                         Integer market, Integer transit, Long boundary, List<Long> low,
+                                         List<Long> high, Long extraLow, Long extraHigh, String lawName,
+                                         String article, String url, LocalDate start, LocalDate end, String memo) {
+        return new UpdateRequest(0L, minSpend, boundary, credit, debitCash, culture, market, transit, low, high,
+                extraLow, extraHigh, lawName, article, url, start, end, memo);
+    }
+
+    private static UpdateRequest valid2026() {
+        return request(25, 15, 30, 30, 40, 40, 70_000_000L,
+                List.of(3_000_000L, 3_500_000L, 4_000_000L), List.of(2_500_000L, 2_750_000L, 3_000_000L),
+                3_000_000L, 2_000_000L, "조세특례제한법", "제126조의2",
+                "https://www.law.go.kr/LSW/lsInfoP.do?lsiSeq=284389", START, END, null);
+    }
+
+    private static List<String> fields(TaxLawVersion version) {
+        return TaxLawValidator.validate(version).stream().map(FieldError::field).toList();
+    }
+
+    @Test
+    void values2026PassWithoutMemo() {
+        assertThat(TaxLawValidator.validate(draft(valid2026()))).isEmpty();
+    }
+
+    @Test
+    void blankDraftReportsEveryRequiredFieldButNotMemo() {
+        assertThat(fields(TaxLawVersion.draft(2026, 1, 1L))).containsExactly(
+                "minSpendRatePct", "rateCreditPct", "rateDebitCashPct", "rateCulturePct", "rateMarketPct",
+                "rateTransitPct", "bracketBoundary", "basicLimitLow[0]", "basicLimitLow[1]", "basicLimitLow[2]",
+                "basicLimitHigh[0]", "basicLimitHigh[1]", "basicLimitHigh[2]", "extraLimitLow", "extraLimitHigh",
+                "basisLawName", "basisArticle", "basisUrl", "periodStart", "periodEnd");
+    }
+
+    @Test
+    void ratesMustBeBetween0And100() {
+        TaxLawVersion outOfRange = draft(request(101, -1, 30, 30, 40, 40, 70_000_000L,
+                List.of(3_000_000L, 3_500_000L, 4_000_000L), List.of(2_500_000L, 2_750_000L, 3_000_000L),
+                3_000_000L, 2_000_000L, "조세특례제한법", "제126조의2", "https://www.law.go.kr/", START, END, null));
+        assertThat(TaxLawValidator.validate(outOfRange)).containsExactly(
+                new FieldError("minSpendRatePct", "0~100 사이여야 합니다"),
+                new FieldError("rateCreditPct", "0~100 사이여야 합니다"));
+
+        TaxLawVersion edges = draft(request(0, 100, 0, 100, 0, 100, 70_000_000L,
+                List.of(3_000_000L, 3_500_000L, 4_000_000L), List.of(2_500_000L, 2_750_000L, 3_000_000L),
+                3_000_000L, 2_000_000L, "조세특례제한법", "제126조의2", "https://www.law.go.kr/", START, END, null));
+        assertThat(TaxLawValidator.validate(edges)).isEmpty();
+    }
+
+    @Test
+    void amountsMustBeZeroOrMore() {
+        TaxLawVersion negative = draft(request(25, 15, 30, 30, 40, 40, -1L,
+                List.of(3_000_000L, -1L, 4_000_000L), List.of(2_500_000L, 2_750_000L, 3_000_000L),
+                3_000_000L, -1L, "조세특례제한법", "제126조의2", "https://www.law.go.kr/", START, END, null));
+        assertThat(TaxLawValidator.validate(negative)).containsExactly(
+                new FieldError("bracketBoundary", "0 이상이어야 합니다"),
+                new FieldError("basicLimitLow[1]", "0 이상이어야 합니다"),
+                new FieldError("extraLimitHigh", "0 이상이어야 합니다"));
+
+        TaxLawVersion zeros = draft(request(25, 15, 30, 30, 40, 40, 0L,
+                List.of(0L, 0L, 0L), List.of(0L, 0L, 0L), 0L, 0L,
+                "조세특례제한법", "제126조의2", "https://www.law.go.kr/", START, END, null));
+        assertThat(TaxLawValidator.validate(zeros)).isEmpty();
+    }
+
+    @Test
+    void childTiersMustAllBeFilled() {
+        TaxLawVersion missingTier = draft(request(25, 15, 30, 30, 40, 40, 70_000_000L,
+                Arrays.asList(3_000_000L, null, 4_000_000L), Arrays.asList(2_500_000L, 2_750_000L, null),
+                3_000_000L, 2_000_000L, "조세특례제한법", "제126조의2", "https://www.law.go.kr/", START, END, null));
+        assertThat(fields(missingTier)).containsExactly("basicLimitLow[1]", "basicLimitHigh[2]");
+    }
+
+    @Test
+    void basisAndPeriodAreRequired() {
+        TaxLawVersion missing = draft(request(25, 15, 30, 30, 40, 40, 70_000_000L,
+                List.of(3_000_000L, 3_500_000L, 4_000_000L), List.of(2_500_000L, 2_750_000L, 3_000_000L),
+                3_000_000L, 2_000_000L, "   ", null, "", null, null, "메모만 있음"));
+        assertThat(fields(missing))
+                .containsExactly("basisLawName", "basisArticle", "basisUrl", "periodStart", "periodEnd");
+    }
+
+    @Test
+    void basisUrlMustBeHttp() {
+        TaxLawVersion script = draft(request(25, 15, 30, 30, 40, 40, 70_000_000L,
+                List.of(3_000_000L, 3_500_000L, 4_000_000L), List.of(2_500_000L, 2_750_000L, 3_000_000L),
+                3_000_000L, 2_000_000L, "조세특례제한법", "제126조의2", "javascript:alert(1)", START, END, null));
+        assertThat(TaxLawValidator.validate(script))
+                .containsExactly(new FieldError("basisUrl", "http:// 또는 https://로 시작해야 합니다"));
+    }
+
+    @Test
+    void periodStartMustNotBeAfterEnd() {
+        TaxLawVersion reversed = draft(request(25, 15, 30, 30, 40, 40, 70_000_000L,
+                List.of(3_000_000L, 3_500_000L, 4_000_000L), List.of(2_500_000L, 2_750_000L, 3_000_000L),
+                3_000_000L, 2_000_000L, "조세특례제한법", "제126조의2", "https://www.law.go.kr/", END, START, null));
+        assertThat(TaxLawValidator.validate(reversed))
+                .containsExactly(new FieldError("periodEnd", "종료일이 시작일보다 빠릅니다"));
+
+        TaxLawVersion sameDay = draft(request(25, 15, 30, 30, 40, 40, 70_000_000L,
+                List.of(3_000_000L, 3_500_000L, 4_000_000L), List.of(2_500_000L, 2_750_000L, 3_000_000L),
+                3_000_000L, 2_000_000L, "조세특례제한법", "제126조의2", "https://www.law.go.kr/", START, START, null));
+        assertThat(TaxLawValidator.validate(sameDay)).isEmpty();
+    }
+}
+```
+
+`test/tax/law/TaxLawApplyApiTest.java`를 만든다. 권한·삭제 경계(비관리자, 그룹 ADMIN, 회수된 관리자, 지운 초안, 적용본의 수정·삭제·재적용)를 모두 API로 확인한다.
+
+```java
+package com.saladbowl.api.tax.law;
+
+import com.saladbowl.api.support.IntegrationTest;
+import com.saladbowl.api.support.TestAdmins;
+import com.saladbowl.api.support.TestAuth;
+import com.saladbowl.api.support.TestAuth.AuthedUser;
+import com.saladbowl.api.support.TestGroups;
+import com.saladbowl.api.support.TestTaxLaws;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.web.servlet.MockMvc;
+
+import static com.saladbowl.api.support.TestTaxLaws.URL;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.nullValue;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+/** 검증·적용·현재 적용 버전(TAX-61, 63, 64, 67, 72, AC-19, AC-21, AC-39). */
+class TaxLawApplyApiTest extends IntegrationTest {
+
+    private static final String CURRENT = "/tax/law-versions/current";
+
+    @Autowired
+    MockMvc mvc;
+
+    @Autowired
+    JdbcTemplate jdbc;
+
+    AuthedUser admin;
+
+    @BeforeEach
+    void createAdmin() throws Exception {
+        admin = TestAuth.signupAndLogin(mvc, "admin@test.com", "관리자");
+        TestAdmins.grant(jdbc, admin.id());
+    }
+
+    /** 2026 값 본문에서 한 필드만 바꾼다. value는 JSON 표기 그대로다(예: "null", "101", "\"글자\""). */
+    private static String values2026With(String field, String value) {
+        String body = TestTaxLaws.values2026(0);
+        String changed = body.replaceAll("\"" + field + "\": [^\\n]*?(,?)\\n", "\"" + field + "\": " + value + "$1\n");
+        assertThat(changed).as("field %s replaced", field).isNotEqualTo(body);
+        return changed;
+    }
+
+    private String statusOf(long id) {
+        return jdbc.queryForObject("SELECT status FROM tax_law_versions WHERE id = ?", String.class, id);
+    }
+
+    @Test
+    void applyRecordsWhoAndWhenAndMakesTheVersionCurrent() throws Exception {
+        AuthedUser member = TestAuth.signupAndLogin(mvc, "member@test.com", "회원");
+        long id = TestTaxLaws.createFilledDraft(mvc, admin, 2026);
+
+        mvc.perform(post(URL + "/" + id + "/apply").header("Authorization", admin.bearer()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("APPLIED"))
+                .andExpect(jsonPath("$.createdByNickname").value("관리자"))
+                .andExpect(jsonPath("$.appliedByNickname").value("관리자"))
+                .andExpect(jsonPath("$.appliedAt").isString())
+                .andExpect(jsonPath("$.rowVersion").value(2));
+
+        // 일반 회원도 적용된 기준은 읽는다.
+        mvc.perform(get(CURRENT).param("year", "2026").header("Authorization", member.bearer()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(id))
+                .andExpect(jsonPath("$.status").value("APPLIED"))
+                .andExpect(jsonPath("$.minSpendRatePct").value(25))
+                .andExpect(jsonPath("$.basicLimitLow", contains(3000000, 3500000, 4000000)));
+    }
+
+    @Test
+    void appliedVersionRejectsUpdateDeleteAndSecondApply() throws Exception {
+        long id = TestTaxLaws.createFilledDraft(mvc, admin, 2026);
+        mvc.perform(post(URL + "/" + id + "/apply").header("Authorization", admin.bearer()))
+                .andExpect(status().isOk());
+        String appliedAt = jdbc.queryForObject(
+                "SELECT applied_at::text FROM tax_law_versions WHERE id = ?", String.class, id);
+
+        mvc.perform(post(URL + "/" + id + "/apply").header("Authorization", admin.bearer()))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("CONFLICT"));
+        mvc.perform(put(URL + "/" + id).header("Authorization", admin.bearer())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(TestTaxLaws.values2026(2).replace("\"minSpendRatePct\": 25", "\"minSpendRatePct\": 20")))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("CONFLICT"));
+        mvc.perform(delete(URL + "/" + id).header("Authorization", admin.bearer()))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("CONFLICT"));
+
+        mvc.perform(get(URL + "/" + id).header("Authorization", admin.bearer()))
+                .andExpect(jsonPath("$.status").value("APPLIED"))
+                .andExpect(jsonPath("$.minSpendRatePct").value(25))
+                .andExpect(jsonPath("$.rowVersion").value(2));
+        assertThat(jdbc.queryForObject("SELECT applied_at::text FROM tax_law_versions WHERE id = ?", String.class, id))
+                .isEqualTo(appliedAt);
+    }
+
+    @Test
+    void blankDraftIsNotApplied() throws Exception {
+        long id = TestTaxLaws.createDraft(mvc, admin, 2026);
+
+        mvc.perform(post(URL + "/" + id + "/validate").header("Authorization", admin.bearer()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.errors", hasSize(20)))
+                .andExpect(jsonPath("$.errors[0].field").value("minSpendRatePct"))
+                .andExpect(jsonPath("$.errors[0].message").value("값을 입력해야 합니다"));
+        mvc.perform(post(URL + "/" + id + "/apply").header("Authorization", admin.bearer()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+                .andExpect(jsonPath("$.message").value("minSpendRatePct: 값을 입력해야 합니다"));
+
+        assertThat(statusOf(id)).isEqualTo("DRAFT");
+        mvc.perform(get(CURRENT).param("year", "2026").header("Authorization", admin.bearer()))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void draftWithOneBadValueIsNotApplied() throws Exception {
+        // {바꿀 필드, JSON 값, 오류가 나는 필드}
+        String[][] cases = {
+                {"minSpendRatePct", "101", "minSpendRatePct"},
+                {"rateCreditPct", "-1", "rateCreditPct"},
+                {"rateDebitCashPct", "null", "rateDebitCashPct"},
+                {"rateCulturePct", "101", "rateCulturePct"},
+                {"rateMarketPct", "-1", "rateMarketPct"},
+                {"rateTransitPct", "null", "rateTransitPct"},
+                {"bracketBoundary", "-1", "bracketBoundary"},
+                {"basicLimitLow", "[3000000, null, 4000000]", "basicLimitLow[1]"},
+                {"basicLimitHigh", "[2500000, 2750000, -1]", "basicLimitHigh[2]"},
+                {"extraLimitLow", "null", "extraLimitLow"},
+                {"extraLimitHigh", "-1", "extraLimitHigh"},
+                {"basisLawName", "null", "basisLawName"},
+                {"basisArticle", "\"   \"", "basisArticle"},
+                {"basisUrl", "null", "basisUrl"},
+                {"basisUrl", "\"javascript:alert(1)\"", "basisUrl"},
+                {"periodStart", "null", "periodStart"},
+                {"periodEnd", "null", "periodEnd"},
+                {"periodStart", "\"2027-01-01\"", "periodEnd"},
+        };
+        for (String[] c : cases) {
+            long id = TestTaxLaws.createDraft(mvc, admin, 2026);
+            mvc.perform(put(URL + "/" + id).header("Authorization", admin.bearer())
+                            .contentType(MediaType.APPLICATION_JSON).content(values2026With(c[0], c[1])))
+                    .andExpect(status().isOk());
+
+            mvc.perform(post(URL + "/" + id + "/validate").header("Authorization", admin.bearer()))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.errors", hasSize(1)))
+                    .andExpect(jsonPath("$.errors[0].field").value(c[2]));
+            mvc.perform(post(URL + "/" + id + "/apply").header("Authorization", admin.bearer()))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+            assertThat(statusOf(id)).as("%s = %s", c[0], c[1]).isEqualTo("DRAFT");
+        }
+        mvc.perform(get(CURRENT).param("year", "2026").header("Authorization", admin.bearer()))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void memoIsOptional() throws Exception {
+        long id = TestTaxLaws.createDraft(mvc, admin, 2026);
+        mvc.perform(put(URL + "/" + id).header("Authorization", admin.bearer())
+                        .contentType(MediaType.APPLICATION_JSON).content(values2026With("memo", "null")))
+                .andExpect(status().isOk());
+
+        mvc.perform(post(URL + "/" + id + "/validate").header("Authorization", admin.bearer()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.errors").isEmpty());
+        // 검증만으로는 상태가 바뀌지 않는다.
+        assertThat(statusOf(id)).isEqualTo("DRAFT");
+
+        mvc.perform(post(URL + "/" + id + "/apply").header("Authorization", admin.bearer()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("APPLIED"))
+                .andExpect(jsonPath("$.memo").value(nullValue()));
+    }
+
+    @Test
+    void applyingOneDraftLeavesOtherDraftsAsDrafts() throws Exception {
+        long first = TestTaxLaws.createFilledDraft(mvc, admin, 2026);
+        long second = TestTaxLaws.createFilledDraft(mvc, admin, 2026);
+
+        mvc.perform(post(URL + "/" + second + "/apply").header("Authorization", admin.bearer()))
+                .andExpect(status().isOk());
+
+        mvc.perform(get(URL).param("year", "2026").header("Authorization", admin.bearer()))
+                .andExpect(jsonPath("$[*].versionNo", contains(2, 1)))
+                .andExpect(jsonPath("$[*].status", contains("APPLIED", "DRAFT")));
+        // 남은 초안은 계속 고치고 지울 수 있다.
+        mvc.perform(delete(URL + "/" + first).header("Authorization", admin.bearer()))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    void currentIsTheMostRecentlyAppliedRegardlessOfNumber() throws Exception {
+        long first = TestTaxLaws.createDraft(mvc, admin, 2026);
+        long second = TestTaxLaws.createDraft(mvc, admin, 2026);
+        mvc.perform(put(URL + "/" + first).header("Authorization", admin.bearer())
+                        .contentType(MediaType.APPLICATION_JSON).content(values2026With("minSpendRatePct", "20")))
+                .andExpect(status().isOk());
+        mvc.perform(put(URL + "/" + second).header("Authorization", admin.bearer())
+                        .contentType(MediaType.APPLICATION_JSON).content(TestTaxLaws.values2026(0)))
+                .andExpect(status().isOk());
+
+        // 2번을 먼저, 1번을 나중에 적용한다.
+        mvc.perform(post(URL + "/" + second + "/apply").header("Authorization", admin.bearer()))
+                .andExpect(status().isOk());
+        mvc.perform(get(CURRENT).param("year", "2026").header("Authorization", admin.bearer()))
+                .andExpect(jsonPath("$.versionNo").value(2));
+        mvc.perform(post(URL + "/" + first + "/apply").header("Authorization", admin.bearer()))
+                .andExpect(status().isOk());
+
+        mvc.perform(get(CURRENT).param("year", "2026").header("Authorization", admin.bearer()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(first))
+                .andExpect(jsonPath("$.versionNo").value(1))
+                .andExpect(jsonPath("$.minSpendRatePct").value(20));
+        // 새 초안은 번호가 큰 2번이 아니라 현재 적용 버전(1번)의 값을 복사한다.
+        mvc.perform(post(URL).header("Authorization", admin.bearer())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"taxYear\":2026}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.versionNo").value(3))
+                .andExpect(jsonPath("$.minSpendRatePct").value(20));
+        // 다른 귀속연도의 현재 적용 버전에는 영향이 없다.
+        mvc.perform(get(CURRENT).param("year", "2025").header("Authorization", admin.bearer()))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void nonAdminsCannotValidateOrApply() throws Exception {
+        long id = TestTaxLaws.createFilledDraft(mvc, admin, 2026);
+        AuthedUser member = TestAuth.signupAndLogin(mvc, "member@test.com", "회원");
+        AuthedUser groupAdmin = TestAuth.signupAndLogin(mvc, "group-admin@test.com", "그룹장");
+        TestGroups.createGroup(mvc, groupAdmin, "우리집");
+
+        for (AuthedUser user : new AuthedUser[]{member, groupAdmin}) {
+            mvc.perform(post(URL + "/" + id + "/validate").header("Authorization", user.bearer()))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+            mvc.perform(post(URL + "/" + id + "/apply").header("Authorization", user.bearer()))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+        }
+        mvc.perform(post(URL + "/" + id + "/apply"))
+                .andExpect(status().isUnauthorized());
+
+        assertThat(statusOf(id)).isEqualTo("DRAFT");
+    }
+
+    @Test
+    void revokedAdminCannotApplyWithTheSameToken() throws Exception {
+        long id = TestTaxLaws.createFilledDraft(mvc, admin, 2026);
+
+        TestAdmins.revoke(jdbc, admin.id());
+
+        mvc.perform(post(URL + "/" + id + "/apply").header("Authorization", admin.bearer()))
+                .andExpect(status().isForbidden());
+        assertThat(statusOf(id)).isEqualTo("DRAFT");
+    }
+
+    @Test
+    void missingOrDeletedVersionReturns404() throws Exception {
+        long id = TestTaxLaws.createFilledDraft(mvc, admin, 2026);
+        mvc.perform(delete(URL + "/" + id).header("Authorization", admin.bearer()))
+                .andExpect(status().isNoContent());
+
+        mvc.perform(post(URL + "/" + id + "/apply").header("Authorization", admin.bearer()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("NOT_FOUND"));
+        mvc.perform(post(URL + "/" + id + "/validate").header("Authorization", admin.bearer()))
+                .andExpect(status().isNotFound());
+        mvc.perform(post(URL + "/999999/apply").header("Authorization", admin.bearer()))
+                .andExpect(status().isNotFound());
+    }
+}
+```
+
+`test/tax/law/TaxLawConcurrencyTest.java`를 아래 내용으로 통째로 바꾼다(테스트 두 개와 `filledDraft`가 늘었다).
+
+```java
+package com.saladbowl.api.tax.law;
+
+import com.saladbowl.api.common.ApiException;
+import com.saladbowl.api.support.IntegrationTest;
+import com.saladbowl.api.tax.law.TaxLawDtos.UpdateRequest;
+import com.saladbowl.api.user.User;
+import com.saladbowl.api.user.UserRepository;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+/** 동시에 들어온 요청이 번호를 겹쳐 쓰거나 한 버전을 두 번 바꾸지 않는지 실제 트랜잭션으로 확인한다. */
+class TaxLawConcurrencyTest extends IntegrationTest {
+
+    private static final int THREADS = 8;
+    private static final int ROUNDS = 10;
+
+    @Autowired
+    UserRepository users;
+    @Autowired
+    TaxLawService service;
+    @Autowired
+    TaxLawVersionRepository versions;
+
+    @Test
+    void concurrentDraftsGetDistinctConsecutiveNumbers() throws Exception {
+        long adminId = users.save(new User("admin@test.com", "hash", "관리자")).getId();
+        List<Callable<String>> calls = new ArrayList<>();
+        for (int i = 0; i < THREADS; i++) {
+            calls.add(() -> Integer.toString(service.createDraft(adminId, 2026).versionNo()));
+        }
+
+        List<String> results = runTogether(calls);
+
+        assertThat(results).containsExactlyInAnyOrder("1", "2", "3", "4", "5", "6", "7", "8");
+        assertThat(versions.findByTaxYearOrderByVersionNoDesc(2026)).hasSize(THREADS);
+    }
+
+    @Test
+    void concurrentAppliesOfOneDraftSucceedOnce() throws Exception {
+        long adminId = users.save(new User("admin@test.com", "hash", "관리자")).getId();
+        long id = filledDraft(adminId);
+        List<Callable<String>> calls = new ArrayList<>();
+        for (int i = 0; i < THREADS; i++) {
+            calls.add(() -> {
+                service.apply(adminId, id);
+                return "OK";
+            });
+        }
+
+        List<String> results = runTogether(calls);
+
+        assertThat(results).filteredOn("OK"::equals).hasSize(1);
+        assertThat(results).filteredOn("CONFLICT"::equals).hasSize(THREADS - 1);
+        assertThat(versions.findById(id).orElseThrow().getStatus()).isEqualTo(TaxLawStatus.APPLIED);
+    }
+
+    @Test
+    void applyRacingDeleteNeverLosesAnAppliedVersion() throws Exception {
+        long adminId = users.save(new User("admin@test.com", "hash", "관리자")).getId();
+        for (int round = 0; round < ROUNDS; round++) {
+            long id = filledDraft(adminId);
+
+            List<String> results = runTogether(List.of(
+                    () -> {
+                        service.apply(adminId, id);
+                        return "APPLIED";
+                    },
+                    () -> {
+                        service.deleteDraft(id);
+                        return "DELETED";
+                    }));
+
+            // 둘 중 하나만 이긴다. 적용이 이기면 삭제는 409이고 행이 남는다. 삭제가 이기면 적용은 404다.
+            if (results.contains("APPLIED")) {
+                assertThat(results).as("round %d", round).containsExactly("APPLIED", "CONFLICT");
+                assertThat(versions.findById(id).orElseThrow().getStatus()).isEqualTo(TaxLawStatus.APPLIED);
+            } else {
+                assertThat(results).as("round %d", round).containsExactly("NOT_FOUND", "DELETED");
+                assertThat(versions.findById(id)).isEmpty();
+            }
+        }
+    }
+
+    private long filledDraft(long adminId) {
+        long id = service.createDraft(adminId, 2026).id();
+        service.updateDraft(id, new UpdateRequest(0L, 25, 70_000_000L, 15, 30, 30, 40, 40,
+                List.of(3_000_000L, 3_500_000L, 4_000_000L), List.of(2_500_000L, 2_750_000L, 3_000_000L),
+                3_000_000L, 2_000_000L, "조세특례제한법", "제126조의2",
+                "https://www.law.go.kr/LSW/lsInfoP.do?lsiSeq=284389",
+                LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31), null));
+        return id;
+    }
+
+    /** 모든 호출을 같은 순간에 시작한다. 결과는 반환값, ApiException이면 오류 코드 이름이다. */
+    static List<String> runTogether(List<Callable<String>> calls) throws Exception {
+        ExecutorService pool = Executors.newFixedThreadPool(calls.size());
+        try {
+            CountDownLatch start = new CountDownLatch(1);
+            List<Future<String>> futures = new ArrayList<>();
+            for (Callable<String> call : calls) {
+                futures.add(pool.submit(() -> {
+                    if (!start.await(30, TimeUnit.SECONDS)) {
+                        return "NOT_STARTED";
+                    }
+                    try {
+                        return call.call();
+                    } catch (ApiException e) {
+                        return e.code().name();
+                    } catch (Exception e) {
+                        return e.getClass().getName();
+                    }
+                }));
+            }
+            start.countDown();
+            List<String> results = new ArrayList<>();
+            for (Future<String> future : futures) {
+                results.add(future.get(30, TimeUnit.SECONDS));
+            }
+            return results;
+        } finally {
+            pool.shutdownNow();
+        }
+    }
+}
+```
+
+- [ ] **Step 2: 실패 확인**
+
+Run: `cd apps/api && ./gradlew test --tests '*TaxLaw*'`
+Expected: `compileTestJava FAILED` — `cannot find symbol: variable TaxLawValidator`, `class FieldError`, `method apply(long,long)`.
+
+- [ ] **Step 3: DTO 추가** — `main/tax/law/TaxLawDtos.java`의 `UpdateRequest`와 `VersionResponse` 사이에 더한다.
+
+```java
+    public record FieldError(String field, String message) {
+    }
+
+    /** errors가 비어 있으면 적용할 수 있다. */
+    public record ValidationResponse(List<FieldError> errors) {
+    }
+```
+
+- [ ] **Step 4: 검증기** — `main/tax/law/TaxLawValidator.java`
+
+```java
+package com.saladbowl.api.tax.law;
+
+import com.saladbowl.api.tax.law.TaxLawDtos.FieldError;
+
+import java.util.ArrayList;
+import java.util.List;
+
+/** 적용 전 검증(TAX-63, TAX-64). 필드 이름은 응답(VersionResponse)의 이름과 같다. 메모는 선택이라 보지 않는다. */
+final class TaxLawValidator {
+
+    private static final String REQUIRED = "값을 입력해야 합니다";
+
+    private TaxLawValidator() {
+    }
+
+    static List<FieldError> validate(TaxLawVersion v) {
+        List<FieldError> errors = new ArrayList<>();
+        percent(errors, "minSpendRatePct", v.getMinSpendRatePct());
+        percent(errors, "rateCreditPct", v.getRateCreditPct());
+        percent(errors, "rateDebitCashPct", v.getRateDebitCashPct());
+        percent(errors, "rateCulturePct", v.getRateCulturePct());
+        percent(errors, "rateMarketPct", v.getRateMarketPct());
+        percent(errors, "rateTransitPct", v.getRateTransitPct());
+        amount(errors, "bracketBoundary", v.getBracketBoundary());
+        amount(errors, "basicLimitLow[0]", v.getBasicLimitLow0());
+        amount(errors, "basicLimitLow[1]", v.getBasicLimitLow1());
+        amount(errors, "basicLimitLow[2]", v.getBasicLimitLow2());
+        amount(errors, "basicLimitHigh[0]", v.getBasicLimitHigh0());
+        amount(errors, "basicLimitHigh[1]", v.getBasicLimitHigh1());
+        amount(errors, "basicLimitHigh[2]", v.getBasicLimitHigh2());
+        amount(errors, "extraLimitLow", v.getExtraLimitLow());
+        amount(errors, "extraLimitHigh", v.getExtraLimitHigh());
+        required(errors, "basisLawName", v.getBasisLawName());
+        required(errors, "basisArticle", v.getBasisArticle());
+        if (required(errors, "basisUrl", v.getBasisUrl()) && !v.getBasisUrl().matches("(?i)https?://.+")) {
+            // 화면이 링크로 그리는 값이다. javascript: 같은 주소를 막는다.
+            errors.add(new FieldError("basisUrl", "http:// 또는 https://로 시작해야 합니다"));
+        }
+        boolean hasStart = required(errors, "periodStart", v.getPeriodStart());
+        boolean hasEnd = required(errors, "periodEnd", v.getPeriodEnd());
+        if (hasStart && hasEnd && v.getPeriodStart().isAfter(v.getPeriodEnd())) {
+            errors.add(new FieldError("periodEnd", "종료일이 시작일보다 빠릅니다"));
+        }
+        return errors;
+    }
+
+    private static void percent(List<FieldError> errors, String field, Integer value) {
+        if (required(errors, field, value) && (value < 0 || value > 100)) {
+            errors.add(new FieldError(field, "0~100 사이여야 합니다"));
+        }
+    }
+
+    private static void amount(List<FieldError> errors, String field, Long value) {
+        if (required(errors, field, value) && value < 0) {
+            errors.add(new FieldError(field, "0 이상이어야 합니다"));
+        }
+    }
+
+    /** 값이 있으면 true. 없으면 오류를 더하고 false. */
+    private static boolean required(List<FieldError> errors, String field, Object value) {
+        if (value == null || (value instanceof String text && text.isBlank())) {
+            errors.add(new FieldError(field, REQUIRED));
+            return false;
+        }
+        return true;
+    }
+}
+```
+
+- [ ] **Step 5: 엔티티에 적용 메서드** — `main/tax/law/TaxLawVersion.java`의 `edit` 메서드 아래에 더한다.
+
+```java
+    /** 초안 → 적용. 호출 전에 행 잠금과 검증을 끝낸다(TaxLawService.apply). */
+    public void apply(long adminId, OffsetDateTime now) {
+        status = TaxLawStatus.APPLIED;
+        appliedBy = adminId;
+        appliedAt = now;
+    }
+```
+
+- [ ] **Step 6: 서비스에 검증·적용** — `main/tax/law/TaxLawService.java`. import 세 줄을 더하고, `deleteDraft` 아래에 메서드 두 개를 더한다.
+
+```java
+import com.saladbowl.api.tax.law.TaxLawDtos.FieldError;
+import com.saladbowl.api.tax.law.TaxLawDtos.ValidationResponse;
+import java.time.OffsetDateTime;
+```
+
+```java
+    @Transactional(readOnly = true)
+    public ValidationResponse validate(long id) {
+        return new ValidationResponse(
+                TaxLawValidator.validate(versions.findById(id).orElseThrow(TaxLawService::notFound)));
+    }
+
+    /**
+     * 검증을 통과한 초안을 적용한다. 행 잠금 안에서 상태 확인·검증·변경을 하므로 같은 버전에 대한
+     * 동시 적용은 한 번만 성공하고, 동시에 온 삭제·수정과도 순서가 정해진다.
+     */
+    @Transactional
+    public VersionResponse apply(long adminId, long id) {
+        TaxLawVersion draft = lockDraft(id);
+        List<FieldError> errors = TaxLawValidator.validate(draft);
+        if (!errors.isEmpty()) {
+            FieldError first = errors.get(0);
+            throw new ApiException(ErrorCode.VALIDATION_FAILED, first.field() + ": " + first.message());
+        }
+        draft.apply(adminId, OffsetDateTime.now());
+        return toAdminResponse(versions.saveAndFlush(draft));
+    }
+```
+
+- [ ] **Step 7: 컨트롤러에 두 경로** — `main/tax/law/TaxLawAdminController.java`. import 한 줄을 더하고, `update`와 `delete` 사이에 더한다.
+
+```java
+import com.saladbowl.api.tax.law.TaxLawDtos.ValidationResponse;
+```
+
+```java
+    @PostMapping("/{id}/validate")
+    public ValidationResponse validate(@PathVariable long id) {
+        return service.validate(id);
+    }
+
+    @PostMapping("/{id}/apply")
+    public VersionResponse apply(@CurrentUser Long userId, @PathVariable long id) {
+        return service.apply(userId, id);
+    }
+```
+
+- [ ] **Step 8: 통과 확인**
+
+Run: `cd apps/api && ./gradlew test --tests '*TaxLaw*' --tests '*TaxAdminAccessTest'`
+Expected: `BUILD SUCCESSFUL`. `TaxLawValidatorTest` 8건, `TaxLawApplyApiTest` 10건, `TaxLawConcurrencyTest` 3건, `TaxLawAdminApiTest` 13건, `TaxAdminAccessTest` 5건 통과.
+
+- [ ] **Step 9: 전체 테스트**
+
+Run: `cd apps/api && ./gradlew test`
+Expected: `BUILD SUCCESSFUL`(임시 복사본에서는 전체 320건 통과).
+
+- [ ] **Step 10: 커밋(컨트롤러)**
+
+```bash
+git add apps/api/src/main/java/com/saladbowl/api/tax/law apps/api/src/test/java/com/saladbowl/api/tax/law
+git commit -m "feat(api): 세법 초안 검증과 적용" -m "Co-Authored-By: Codex (gpt-6-sol) <noreply@openai.com>"
+```
+
+---
 
 ### PR 2 마무리 (컨트롤러)
 
-- `cd apps/api && ./gradlew test` 확인. `~/.gradle/init.d`·`gradle.properties`가 바뀌지 않았는지 확인(`api` 모드 규칙).
-- 브랜치 최종 리뷰: Claude Fable 5.2 한 번. **반론 리뷰: Codex `gpt-6-astra` / `xhigh` (`read`, 템플릿 F, 태그 `review-risk`)** — 볼 것: 관리자 검사 누락 경로, 토큰만으로 권한이 유지되는지, 초안/적용본 상태 경합(동시에 적용·삭제), 번호 카운터 경합.
+- [ ] `cd apps/api && ./gradlew test` 결과를 구현 보고와 대조한다(이미 통과한 것은 변경 없이 다시 돌리지 않는다). `memoryTest`는 생략하고 PR 본문 "확인"에 이유(업로드 한도·파서·메모리 변경 없음)를 적는다.
+- [ ] `api` 모드 뒤처리: `git status`에 `apps/api`·`docs/deploy.md`·`docs/architecture.md` 밖의 변경이 없는지, `~/.gradle/init.d`·`~/.gradle/gradle.properties`가 바뀌지 않았는지 확인한다.
+- [ ] 브랜치 최종 리뷰: Claude Fable 5.2 서브에이전트 한 번(`review-final`). 볼 것: 요구사항 추적표의 PR 2 항목(TAX-04·05·06·60~64·67·72, AC-04·05·19·21·39)이 테스트로 덮였는지, "HTTP 인터페이스" 표와 실제 응답 필드가 같은지.
+- [ ] **반론 리뷰: Codex `gpt-6-astra` / `xhigh` (`read`, 템플릿 F, 태그 `review-risk`)**. 대상은 `origin/main..HEAD`의 `apps/api` 변경이다. 깨 보라고 요청할 것:
+  - 권한 우회
+    - `/tax/admin/**` 인터셉터가 걸리지 않는 주소 표기가 있는가: 끝 슬래시(`/tax/admin/law-versions/`), 이중 슬래시, 대소문자(`/TAX/admin`), 퍼센트 인코딩(`%61dmin`), `;` 경로 매개변수, `/tax/admin`(뒤에 아무것도 없는 주소). 인터셉터의 경로 매칭과 `@RequestMapping`의 매칭이 같은 규칙인지.
+    - ERROR dispatch·`OPTIONS` 프리플라이트·`HEAD`로 핸들러가 실행되는 길이 있는가.
+    - 토큰만으로 권한이 유지되는 길: access 토큰 claim, refresh로 다시 받은 토큰, 응답 캐시. 회수 직후 같은 토큰의 요청이 403인지(테스트 `revokedAdminCannotApplyWithTheSameToken`).
+    - 그룹 ADMIN·그룹 멤버 자격이 어디선가 세법 권한으로 쓰이는가(`GroupAccess` 참조가 `tax` 패키지에 없어야 한다).
+    - `service_admin`을 API로 바꾸는 길이 있는가: 가입·구글 로그인·`/me`·요청 본문 바인딩으로 `User.serviceAdmin`이 채워질 수 있는가.
+    - 회원용 `GET /tax/law-versions/current`가 초안이나 관리자 정보(닉네임)를 내보내는가.
+  - 초안 삭제·적용 경합
+    - 같은 초안에 적용과 삭제가 동시에 오면 "적용됐는데 행이 없는" 결과가 나오는가. `findByIdForUpdate` 뒤에 상태를 다시 읽는지, 잠금 없이 상태를 읽는 쓰기 경로가 있는지(`lockDraft`를 거치지 않는 `save`·`delete`).
+    - 같은 초안을 동시에 두 번 적용하면 `applied_by`·`applied_at`이 두 번 쓰이는가.
+    - 적용과 수정(`PUT`)이 겹칠 때 검증을 통과하지 않은 값이 적용본에 남는가(검증과 상태 변경이 같은 잠금·같은 트랜잭션인지).
+    - 적용본을 `PUT`·`DELETE`로 바꿀 수 있는 다른 길(`rowVersion` 맞추기, 상태를 본문으로 보내기)이 있는가.
+    - 번호 카운터: 동시에 만든 초안의 번호가 겹치거나, 삭제·롤백 뒤 번호가 다시 쓰이는가. 카운터와 초안 INSERT가 같은 트랜잭션인지.
+    - 서로 다른 초안 둘을 동시에 적용했을 때 현재 적용 버전이 하나로 정해지는가(`applied_at` 같을 때 `id`).
+    - 초안을 지울 때 다른 테이블이 그 행을 가리킬 수 있는가(PR 3의 연도 기록은 적용본만 가리켜야 한다 — 이 PR에서는 참조가 없음을 확인).
+- [ ] 반론 리뷰의 발견은 원래 구현자(`resume-api`)가 고치고, 고친 범위만 Claude가 다시 본다. 이중 리뷰를 하지 않는다.
+- [ ] PR 본문 "무엇"에 남길 것: 서비스 관리자 지정은 `docs/deploy.md` 13절의 SQL로만 한다는 점, 권한 검사가 경로 인터셉터 한 곳이라는 점, 번호 카운터·행 잠금 방식, "계획 초안에서 달라진 점" 목록, 이 PR은 화면이 없어 캡처가 없다는 점. `## 소모값`은 `python3 scripts/pr_usage.py` 출력으로 채운다.
+- [ ] 배포 순서(`docs/deploy.md` 12절): 이 PR은 API만 바꾼다. 병합 뒤 Render 배포가 Live가 되면 V8·V9가 실행된다. 운영자는 PR 6 병합 전에 13절 SQL로 서비스 관리자를 지정한다.
 
 ---
 
@@ -1145,6 +3509,38 @@ HTTP 인터페이스: `GET /tax/years/{year}/analysis` (본인 연도 기록만,
 
 ---
 
+# UI 표준 적용 (PR 5~7, 2026-11-14)
+
+[UI 표준](../../ui-standards.md)을 소득공제 화면에 옮긴 기준이다. PR 5~7의 모든 화면 Task와 리뷰는 이 절을 요구사항으로 읽는다.
+
+- 글자: 카드 제목 `--text-xl`(16px, 굵게), 섹션 제목·주요 내용·금액·카드사명 `--text-lg`(15px), 실행 버튼 `--text-card-action`(14px), 보조 설명·기준일·입력 라벨 `--text-md`(13px). 소득공제 화면 CSS Module 안에서만 지정하고 페이지 전체 토큰·행간을 재정의하지 않는다. 요약 4칸의 큰 숫자, 표 숫자는 기존 금액 표기 규칙(`useAmountFormatter`, `tabular-nums`)을 따른다.
+- 창: 소득공제의 입력·확인 창은 공용 `Overlay.module.css`의 `typography`(창 제목 16px, 본문 15px, 버튼 14px, 라벨 13px, 행간 1.5)를 그대로 쓴다. Task 5.1의 `centered`도 이 클래스와 `content` 간격을 유지한다.
+- 배치 — 정보는 왼쪽, 조작은 그 카드·섹션·행의 오른쪽 끝. 공간이 모자라 줄이 바뀌어도 우측 정렬을 유지하고, 긴 이름이 버튼을 밀어내지 않는다.
+
+| 화면 | 왼쪽 | 오른쪽 |
+|---|---|---|
+| 입력자료 · 기본정보 카드 | 제목, 총급여·근로기간·자녀등 수 | [수정] |
+| 입력자료 · 신용·체크 자료 카드 | 제목 (?) | [신용·체크 자료 추가] |
+| 입력자료 · 카드사 행 | 카드사명, 완료/미완료, 기준일·합계·메모 | [편집] [삭제] (미완료면 [빈 칸 0원으로 채우기]도 오른쪽) |
+| 입력자료 · 현금영수증 카드 | 제목, 상태, 기준일·합계 | [편집] / 미입력이면 [입력] [4칸 0원으로 채우기] |
+| 입력자료 · 연도 기록 삭제 | 지워지는 범위 한 문장 | [2026년 기록 삭제] |
+| 세법 관리 · 버전 목록 | 제목 | [새 초안 만들기] |
+| 세법 관리 · 버전 행 | 번호·상태, 작성자·적용자·시각 | 초안만 [삭제] |
+| 세법 관리 · 초안 하단 | — | [초안 저장] [검증] [적용] |
+| 분석 · ② 지출계획 하단 | 저장 안내(미완료면 "저장만 합니다") | [계산하기] |
+| 분석 · 단계 이동 | [이전] | [다음] (단계 탭은 공용 탭 구조를 따름) |
+| 확인 창 | 결과 문장 | [취소] [삭제·적용] (실행이 오른쪽 끝) |
+
+- 도움말 `?`: 보충 규칙은 제목 옆 `?` 팝오버로 옮기고, 상태·실행 불가 이유·오류와 해결 방법·삭제 결과는 화면이나 확인창에 직접 쓴다.
+  - 도움말로: 자녀등 요건 3가지(기본정보 창의 자녀등 수 옆), "일반"이 전통시장·대중교통·문화체육을 뺀 금액이라는 설명의 상세(입력 창에는 한 줄 요약을 남김), 체크카드·현금영수증을 추천에서 한 묶음으로 보는 이유, 세법 관리의 급여구간 경계·추가한도 상한 뜻.
+  - 직접 표시(도움말로 옮기지 않음): 미완료·빈 칸 수, 기준일 불일치 "추정", 근로기간 확인 필요, 세법 준비 중, 새 세법 버전 있음, 비율의 분모 문장(TAX-34), "환급액 아님"(TAX-43), 추천의 이유·가정(TAX-53), 연도 기록 삭제 범위, "다른 초안은 초안으로 남습니다".
+  - "계산 과정 보기"는 펼침 영역(D20)이며 도움말 팝오버가 아니다.
+  - 도움말 부품: 지금 `groups/GroupHelp.tsx`만 있다. 소득공제가 두 번째 사용처이므로 Task 5.1에서 `common/HelpButton.tsx`로 옮겨 공용화하고 그룹 화면은 import만 바꾼다(동작·스타일 불변). 접근성 이름은 `<대상> 도움말`.
+- PWA: 버튼·아이콘 버튼·도움말·탭의 누르는 영역 최소 44×44px, 입력 글자 16px, 안전 영역·하단 탭 여백 유지. 820px 이하가 좁은 화면(`useMediaQuery`).
+- 검증(각 화면 PR 마무리에 추가): 320px·375px·데스크톱에서 겹침·의도하지 않은 가로 스크롤 없음, 긴 카드사명·메모(예: 40자)와 글자 확대에서 줄바꿈, 도움말의 누르기·다시 누르기·바깥 누르기·Esc·포커스 복귀와 값 불변, 빈 상태·로딩·오류·저장 중. 브라우저 확인과 실기기(iOS·Android 설치형 PWA) 확인을 구분해 보고한다.
+
+---
+
 # PR 5 — 소득공제 메뉴와 입력자료 화면
 
 **이 PR에 착수할 때 컨트롤러가 Task 상세를 채운다.** 화면 PR이다(375px 이전·이후 캡처).
@@ -1160,14 +3556,14 @@ HTTP 인터페이스: `GET /tax/years/{year}/analysis` (본인 연도 기록만,
 - 쿼리 키: `['tax', 'year', year]`, `['tax', 'law', 'current', year]`. `GET /tax/years/{year}`의 404는 "연도 기록 없음" 화면 상태다.
 - 화면은 `useGroups()`를 쓰지 않는다. 머리에 "개인 자료 · 그룹과 무관"을 적는다(TAX-13).
 
-### Task 5.1: `Dialog`를 좁은 화면에서도 가운데 창으로 여는 선택지 (TAX-76)
+### Task 5.1: `Dialog` 가운데 창 선택지와 도움말 부품 공용화 (TAX-76, UI 표준)
 
 **담당:** Codex `gpt-6-astra` / `medium` (`write`), 태그 `impl-web-common`. 리뷰: Claude Fable 5.2.
 
 - 배경: 현재 `common/Dialog.tsx`의 `DialogFrame`은 좁은 화면에서 아래에서 올라오는 시트(`styles.modalSheet`)로 그린다. PRD D26·AC-44의 "가운데 창"을 만족하려면 선택지가 필요하다("알려진 제약" 1번, 2026-11-13 확정).
-- Files: Modify `apps/web/src/common/Dialog.tsx`, `Overlay.module.css`, `Dialog.test.tsx`.
-- Interfaces — Produces: `Dialog`와 `DialogFrame`에 `centered?: boolean`(기본 false, 기존 화면 동작 불변). true면 좁은 화면에서도 `styles.backdrop`·`styles.modal`을 쓴다.
-- 테스트 대상(AC-44): 좁은 폭(`mockViewport(true)`)에서 `centered`면 시트 클래스가 아니라 가운데 창 클래스, `centered`가 없으면 기존대로 시트. 긴 내용이 창 안에서 스크롤되는지는 verify에서 본다.
+- Files: Modify `apps/web/src/common/Dialog.tsx`, `Overlay.module.css`, `Dialog.test.tsx`. 도움말: Create `common/HelpButton.tsx`(+ 스타일은 `common/ui.module.css` 또는 새 `HelpButton.module.css`로 `GroupsPage.module.css`의 `helpButton`·`helpPopover`·`helpContent`를 옮김), Delete `groups/GroupHelp.tsx`, Modify 그 import 사용처와 테스트.
+- Interfaces — Produces: `Dialog`와 `DialogFrame`에 `centered?: boolean`(기본 false, 기존 화면 동작 불변). true면 좁은 화면에서도 `styles.backdrop`·`styles.modal`을 쓰고, `AriaDialog`의 `styles.content`·`styles.typography`는 그대로 둔다. `HelpButton({ title, children })` — `GroupHelp`와 같은 props·동작.
+- 테스트 대상(AC-44): 좁은 폭(`mockViewport(true)`)에서 `centered`면 시트 클래스가 아니라 가운데 창 클래스이고 `typography` 클래스가 남음, `centered`가 없으면 기존대로 시트. 그룹 화면의 기존 도움말 테스트가 `HelpButton`으로 바꾼 뒤에도 그대로 통과. 긴 내용이 창 안에서 스크롤되는지는 verify에서 본다.
 
 ### Task 5.2: 메뉴·라우트·선택 연도·API 모듈과 캐시 규칙 (TAX-03, 07, 10, 12, 13, 19, 68 일부)
 
@@ -1182,14 +3578,14 @@ HTTP 인터페이스: `GET /tax/years/{year}/analysis` (본인 연도 기록만,
 **담당:** Codex `gpt-6-sol` / `medium` (`write`), 태그 `impl-web`. 리뷰: Claude Fable 5.2.
 
 - Files: Create `tax/inputs/TaxInputsPage.tsx`, `BasicInfoDialog.tsx`, `DeleteYearDialog.tsx`, CSS, 테스트.
-- 테스트 대상(AC-30, 40, 32 일부): 연도 기록 없음 → 빈 상태와 [기본정보 입력], 총급여·근로기간(시작월 ≤ 종료월)·자녀등 수 저장, 자녀등 입력란은 현재 적용 세법의 `childTiersApply`일 때만 보이고 요건 3가지 안내가 붙음, 근로기간이 전체가 아니면 "근로기간 확인 필요" 표시, 총급여는 "수입" 가림을 따르고 입력 중인 필드는 가리지 않음, 연도 기록 삭제 창의 [삭제]는 귀속연도를 똑같이 입력해야 켜지고 다시 열면 입력이 비어 있음, 세법 준비 중인 연도의 저장 가능 안내, 409면 "다른 곳에서 수정됨, 다시 불러오기", 통신 오류 때 입력값 유지.
+- 테스트 대상(AC-30, 40, 32 일부): 연도 기록 없음 → 빈 상태와 [기본정보 입력], 총급여·근로기간(시작월 ≤ 종료월)·자녀등 수 저장, 자녀등 입력란은 현재 적용 세법의 `childTiersApply`일 때만 보이고 요건 3가지는 라벨 옆 `HelpButton`("자녀등 수 도움말")으로 열림, 근로기간이 전체가 아니면 "근로기간 확인 필요" 표시, 총급여는 "수입" 가림을 따르고 입력 중인 필드는 가리지 않음, 연도 기록 삭제 창의 [삭제]는 귀속연도를 똑같이 입력해야 켜지고 다시 열면 입력이 비어 있음, 세법 준비 중인 연도의 저장 가능 안내, 409면 "다른 곳에서 수정됨, 다시 불러오기", 통신 오류 때 입력값 유지.
 
 ### Task 5.4: 카드 자료·현금영수증 자료 (TAX-21~25, 28, 29, 30)
 
 **담당:** Codex `gpt-6-sol` / `medium` (`write`), 태그 `impl-web`. 리뷰: Claude Fable 5.2.
 
 - Files: Create `tax/inputs/CardStatementList.tsx`, `CardStatementDialog.tsx`, `CashReceiptSection.tsx`, `CashReceiptDialog.tsx`, `AmountGrid.tsx`(8칸·4칸 입력표), 테스트.
-- 테스트 대상(AC-14, 28, 33, 37, 40): 8칸(행 소비구분 4 × 열 신용카드/체크카드)·4칸 입력, 빈 칸과 0 구별·미완료 표시와 빈 칸 수, [빈 칸 0원으로 채우기], 같은 카드사명 두 건 저장되고 경고 없음, 결제수단 명칭이 신용카드·체크카드·현금영수증, "일반" 안내 문구, 음수·연도 밖 기준일은 필드 오류로 저장 안 함, 카드 자료 삭제는 입력 없이 확인 한 번, 현금영수증에는 삭제가 없고 편집만, 저장 409 안내, 모든 창이 `centered`.
+- 테스트 대상(AC-14, 28, 33, 37, 40): 8칸(행 소비구분 4 × 열 신용카드/체크카드)·4칸 입력, 빈 칸과 0 구별·미완료 표시와 빈 칸 수, [빈 칸 0원으로 채우기], 같은 카드사명 두 건 저장되고 경고 없음, 결제수단 명칭이 신용카드·체크카드·현금영수증, "일반" 한 줄 안내와 상세 `HelpButton`, 카드사 행의 [편집]·[삭제]가 행 오른쪽 끝(긴 카드사명에서도), 음수·연도 밖 기준일은 필드 오류로 저장 안 함, 카드 자료 삭제는 입력 없이 확인 한 번, 현금영수증에는 삭제가 없고 편집만, 저장 409 안내, 모든 창이 `centered`.
 
 ### Task 5.5: 연도 합계표·경고·금액 가림 (TAX-26, 27, 30, 31, 37)
 
@@ -1207,7 +3603,7 @@ HTTP 인터페이스: `GET /tax/years/{year}/analysis` (본인 연도 기록만,
 
 ### PR 5 마무리 (컨트롤러)
 
-- 웹 검증 4종, verify 375px·데스크톱, 이전·이후 캡처. 브랜치 최종 리뷰 Claude Fable 5.2 한 번. PR 본문에 "분석·지출계획은 뒤 PR"임을 적는다.
+- 웹 검증 4종, verify 375px·데스크톱, 이전·이후 캡처, "UI 표준 적용" 절의 검증 항목(320px, 긴 카드사명, 도움말 조작). 브랜치 최종 리뷰 Claude Fable 5.2 한 번. PR 본문에 "분석·지출계획은 뒤 PR"임을 적는다.
 
 ---
 
@@ -1240,7 +3636,7 @@ HTTP 인터페이스: `GET /tax/years/{year}/analysis` (본인 연도 기록만,
 
 ### PR 6 마무리 (컨트롤러)
 
-- 웹 검증 4종, verify(관리자 계정과 일반 계정 둘 다), 캡처, 브랜치 최종 리뷰 Claude Fable 5.2 한 번. 병합 뒤 운영자가 관리자 지정 SQL과 2026 귀속 세법 등록을 해야 한다는 점을 PR "참고"에 적는다.
+- 웹 검증 4종, verify(관리자 계정과 일반 계정 둘 다), 캡처, "UI 표준 적용" 절의 검증 항목, 브랜치 최종 리뷰 Claude Fable 5.2 한 번. 병합 뒤 운영자가 관리자 지정 SQL과 2026 귀속 세법 등록을 해야 한다는 점을 PR "참고"에 적는다.
 
 ---
 
@@ -1287,7 +3683,7 @@ HTTP 인터페이스: `GET /tax/years/{year}/analysis` (본인 연도 기록만,
 
 ### PR 7 마무리 (컨트롤러)
 
-- 웹 검증 4종, verify 375px·데스크톱(와이어프레임 합성 숫자: 현황 1,475,000원, 현재 계획 1,997,272원, 추천 2,150,000원, 차이 +152,728원이 화면에 나오는지), 캡처, 브랜치 최종 리뷰 Claude Fable 5.2 한 번.
+- 웹 검증 4종, verify 375px·데스크톱(와이어프레임 합성 숫자: 현황 1,475,000원, 현재 계획 1,997,272원, 추천 2,150,000원, 차이 +152,728원이 화면에 나오는지), 캡처, "UI 표준 적용" 절의 검증 항목, 브랜치 최종 리뷰 Claude Fable 5.2 한 번.
 
 ---
 
@@ -1324,6 +3720,7 @@ HTTP 인터페이스: `GET /tax/years/{year}/analysis` (본인 연도 기록만,
 8. **해석 — 자녀등 입력란.** 세법 버전의 자녀등 단계별 기본한도가 서로 다를 때만 보인다(별도 설정값 없음). 적용 버전이 없는 연도는 입력란이 없고 0으로 저장한다.
 9. **해석 — 선택 연도 기억.** 메모리(React 상태)에만 둔다. 새로 고치면 올해로 돌아간다.
 10. PR 1 뒤 홈의 넓은 화면은 문서 순서(요약 → 등록 현황)와 보이는 순서(등록 현황 왼쪽)가 다르다. 와이어프레임이 정한 배치이고 키보드 순서는 문서 순서를 따른다.
-11. 계획의 PR 1 코드는 임시 복사본에서 테스트·typecheck·lint·build까지 확인했지만 화면은 띄워 보지 않았다. PR 2~7의 설계는 실행해 보지 않았다.
+11. 계획의 PR 1 코드는 임시 복사본에서 테스트·typecheck·lint·build까지 확인했지만 화면은 띄워 보지 않았다. PR 2의 코드는 임시 복사본에서 `./gradlew test`(320건)까지 실행해 확인했다(2.2·2.3의 RED 컴파일 오류 문구는 실행하지 않고 적음). PR 3~7의 설계는 실행해 보지 않았다.
 12. 세법 수치와 7.1절 산식은 독립적인 세무 검증을 거치지 않았다(PRD 14장). D03(합산 기간)·D08(원 단위)·D09(귀속 시점)의 법령 기준은 미확인이고 임시 규칙이다.
 13. 회원 탈퇴 기능이 없어 `ON DELETE CASCADE`에 따른 소득공제 자료 삭제는 검증 대상이 아니다(PRD 2장 비범위).
+14. 후속: 관리자 인가를 인터셉터에서 Spring Security 필터 체인으로 옮긴다. 현재는 지원하지 않는 HTTP 메서드의 405 응답으로 라우트 구조가 드러날 수 있다.
