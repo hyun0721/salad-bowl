@@ -35,25 +35,26 @@ export function transactionColumns(showOwner: boolean, showMajor = true, onTagCl
   ]
 }
 
-/** 좁은 화면 카드 한 장의 내용. 2줄은 `분류 | 메모`와 일시다. */
+/** 좁은 화면은 거래·분류와 일시·메모·태그와 상태를 각각 나눈다. */
 export function TransactionCard({ tx, showOwner, showMajor = true, onTagClick }: { tx: TransactionView; showOwner: boolean; showMajor?: boolean; onTagClick?: (tag: string) => void }) {
-  const info = [category(tx, showMajor), showOwner ? tx.ownerNickname : null].filter(Boolean).join(' · ')
-  const memo = removeTags(tx.memo, extractTags(tx.memo)).trim()
+  const tags = extractTags(tx.memo)
+  const memo = removeTags(tx.memo, tags).trim()
   return (
     <>
       <div className={styles.cardTop}>
-        <span>{tx.description}{hiddenBadge(tx)}</span>
+        <span>{tx.description}</span>
         <span className={styles.amount}><TransactionAmount type={tx.type} amount={tx.amount} /></span>
       </div>
       <div className={styles.cardMeta}>
-        <span className={styles.cardInfo}>
-          {info}
-          {memo && (info ? <>{' '}<span aria-hidden="true">|</span>{' '}{memo}</> : memo)}
-        </span>
-        <TagChips memo={tx.memo} onTagClick={onTagClick} />
-        {editedBadge(tx)}
+        <span className={styles.cardInfo}>{category(tx, showMajor)}</span>
         <span className={styles.when}>{formatDateTime(tx.occurredAt)}</span>
       </div>
+      {memo && <div className={styles.cardMemo}><span className={styles.memoLabel}>메모</span><span>{memo}</span></div>}
+      {(tags.length > 0 || tx.edited || tx.hidden || showOwner) && <div className={styles.cardFooter}>
+        <TagChips memo={tx.memo} onTagClick={onTagClick} />
+        {editedBadge(tx)}{hiddenBadge(tx)}
+        {showOwner && <span className={styles.cardOwner}>{tx.ownerNickname}</span>}
+      </div>}
     </>
   )
 }
