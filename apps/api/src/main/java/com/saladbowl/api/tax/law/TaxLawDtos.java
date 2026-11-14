@@ -4,6 +4,11 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import tools.jackson.core.JsonParser;
+import tools.jackson.core.JsonToken;
+import tools.jackson.databind.DeserializationContext;
+import tools.jackson.databind.ValueDeserializer;
+import tools.jackson.databind.annotation.JsonDeserialize;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -44,6 +49,20 @@ public final class TaxLawDtos {
             @Size(max = 1000) String memo) {
     }
 
+    public record ApplyRequest(@NotNull @JsonDeserialize(using = RowVersionDeserializer.class) Long rowVersion) {
+    }
+
+    // 소수를 long으로 자동 절삭하면 다른 버전을 적용할 수 있으므로 정수 토큰만 받는다.
+    public static class RowVersionDeserializer extends ValueDeserializer<Long> {
+        @Override
+        public Long deserialize(JsonParser parser, DeserializationContext context) {
+            if (!parser.hasToken(JsonToken.VALUE_NUMBER_INT)) {
+                return (Long) context.handleUnexpectedToken(Long.class, parser);
+            }
+            return parser.getLongValue();
+        }
+    }
+
     public record FieldError(String field, String message) {
     }
 
@@ -82,7 +101,7 @@ public final class TaxLawDtos {
             OffsetDateTime appliedAt,
             long rowVersion) {
 
-        public static VersionResponse of(TaxLawVersion v, String createdByNickname, String appliedByNickname) {
+        public static VersionResponse of(TaxLawVersion v, String createdByNickname, String appliedByNickname, String memo) {
             // List.of는 null을 받지 않는다. 초안의 빈 칸을 null로 내려야 한다.
             List<Long> low = Arrays.asList(v.getBasicLimitLow0(), v.getBasicLimitLow1(), v.getBasicLimitLow2());
             List<Long> high = Arrays.asList(v.getBasicLimitHigh0(), v.getBasicLimitHigh1(), v.getBasicLimitHigh2());
@@ -91,7 +110,7 @@ public final class TaxLawDtos {
                     v.getRateDebitCashPct(), v.getRateCulturePct(), v.getRateMarketPct(), v.getRateTransitPct(),
                     low, high, v.getExtraLimitLow(), v.getExtraLimitHigh(), differs(low) || differs(high),
                     v.getBasisLawName(), v.getBasisArticle(), v.getBasisUrl(), v.getPeriodStart(), v.getPeriodEnd(),
-                    v.getMemo(), createdByNickname, appliedByNickname, v.getCreatedAt(), v.getAppliedAt(),
+                    memo, createdByNickname, appliedByNickname, v.getCreatedAt(), v.getAppliedAt(),
                     v.getRowVersion());
         }
 

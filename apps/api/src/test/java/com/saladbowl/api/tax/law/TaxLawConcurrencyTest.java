@@ -51,10 +51,11 @@ class TaxLawConcurrencyTest extends IntegrationTest {
     void concurrentAppliesOfOneDraftSucceedOnce() throws Exception {
         long adminId = users.save(new User("admin@test.com", "hash", "관리자")).getId();
         long id = filledDraft(adminId);
+        long rowVersion = service.get(id).rowVersion();
         List<Callable<String>> calls = new ArrayList<>();
         for (int i = 0; i < THREADS; i++) {
             calls.add(() -> {
-                service.apply(adminId, id);
+                service.apply(adminId, id, rowVersion);
                 return "OK";
             });
         }
@@ -71,14 +72,15 @@ class TaxLawConcurrencyTest extends IntegrationTest {
         long adminId = users.save(new User("admin@test.com", "hash", "관리자")).getId();
         for (int round = 0; round < ROUNDS; round++) {
             long id = filledDraft(adminId);
+            long rowVersion = service.get(id).rowVersion();
 
             List<String> results = runTogether(List.of(
                     () -> {
-                        service.apply(adminId, id);
+                        service.apply(adminId, id, rowVersion);
                         return "APPLIED";
                     },
                     () -> {
-                        service.deleteDraft(id);
+                        service.deleteDraft(id, rowVersion);
                         return "DELETED";
                     }));
 
@@ -98,7 +100,8 @@ class TaxLawConcurrencyTest extends IntegrationTest {
         long adminId = users.save(new User("admin@test.com", "hash", "관리자")).getId();
         for (int round = 0; round < ROUNDS; round++) {
             long id = filledDraft(adminId);
-            UpdateRequest invalid = new UpdateRequest(1L, 101, 70_000_000L, 15, 30, 30, 40, 40,
+            long rowVersion = service.get(id).rowVersion();
+            UpdateRequest invalid = new UpdateRequest(rowVersion, 101, 70_000_000L, 15, 30, 30, 40, 40,
                     List.of(3_000_000L, 3_500_000L, 4_000_000L), List.of(2_500_000L, 2_750_000L, 3_000_000L),
                     3_000_000L, 2_000_000L, "조세특례제한법", "제126조의2",
                     "https://www.law.go.kr/LSW/lsInfoP.do?lsiSeq=284389",
@@ -106,7 +109,7 @@ class TaxLawConcurrencyTest extends IntegrationTest {
 
             List<String> results = runTogether(List.of(
                     () -> {
-                        service.apply(adminId, id);
+                        service.apply(adminId, id, rowVersion);
                         return "APPLIED";
                     },
                     () -> {
@@ -120,7 +123,7 @@ class TaxLawConcurrencyTest extends IntegrationTest {
                 assertThat(version.getStatus()).isEqualTo(TaxLawStatus.APPLIED);
                 assertThat(version.getMinSpendRatePct()).isEqualTo(25);
             } else {
-                assertThat(results).as("round %d", round).containsExactly("VALIDATION_FAILED", "UPDATED");
+                assertThat(results).as("round %d", round).containsExactly("CONFLICT", "UPDATED");
                 assertThat(version.getStatus()).isEqualTo(TaxLawStatus.DRAFT);
                 assertThat(version.getMinSpendRatePct()).isEqualTo(101);
             }

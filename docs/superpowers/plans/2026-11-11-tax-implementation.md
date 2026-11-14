@@ -958,18 +958,20 @@ git commit -m "docs: 검증 지도와 README를 홈 개편에 맞춤" -m "Co-Aut
 | 메서드·경로 | 권한 | 동작 |
 |---|---|---|
 | `GET /me` | 로그인 | 응답에 `serviceAdmin: boolean` 추가 |
-| `GET /tax/law-versions/current?year=YYYY` | 로그인 | 그 연도의 현재 적용 버전(가장 최근 `applied_at`). 없으면 404 `NOT_FOUND`. `createdByNickname`·`appliedByNickname`은 항상 `null` |
+| `GET /tax/law-versions/current?year=YYYY` | 로그인 | 그 연도의 현재 적용 버전(가장 최근 `applied_at`). 없으면 404 `NOT_FOUND`. `createdByNickname`·`appliedByNickname`·`memo`는 항상 `null` |
 | `GET /tax/admin/law-versions?year=YYYY` | 서비스 관리자 | 그 연도의 모든 버전(초안·적용), 번호 내림차순 |
 | `POST /tax/admin/law-versions` `{taxYear}` | 서비스 관리자 | 새 초안 201. 현재 적용 버전의 설정값·근거·기간을 복사(메모 제외), 없으면 빈 값. 번호는 카운터 + 1 |
 | `GET /tax/admin/law-versions/{id}` | 서비스 관리자 | 버전 하나. 없으면 404 |
 | `PUT /tax/admin/law-versions/{id}` | 서비스 관리자 | 초안 전체 교체(본문에 `rowVersion` 필수, 없는 값은 빈 값이 된다). 적용본이면 409 `CONFLICT`, `rowVersion`이 다르면 409, 형태 오류(단계가 3칸이 아님, 길이 초과, 숫자 아님)는 400 `VALIDATION_FAILED`. 범위 검사는 하지 않는다(적용할 때 한다) |
 | `POST /tax/admin/law-versions/{id}/validate` | 서비스 관리자 | `{errors: [{field, message}]}` (빈 배열이면 통과). 상태를 바꾸지 않는다 |
-| `POST /tax/admin/law-versions/{id}/apply` | 서비스 관리자 | 검증 통과 시 적용(상태·`applied_by`·`applied_at`) 200. 검증 실패 400 `VALIDATION_FAILED`(메시지는 첫 오류 `필드: 설명`), 이미 적용본이면 409 `CONFLICT`, 없으면 404 |
-| `DELETE /tax/admin/law-versions/{id}` | 서비스 관리자 | 초안이면 204, 적용본이면 409 `CONFLICT`, 없으면 404 |
+| `POST /tax/admin/law-versions/{id}/apply` 본문 `{ "rowVersion": <long> }` 필수 | 서비스 관리자 | `rowVersion` 누락·형식 오류는 400, 현재 값과 다르면 409 `CONFLICT`. 검증 통과 시 적용(상태·`applied_by`·`applied_at`) 200. 검증 실패 400 `VALIDATION_FAILED`(메시지는 첫 오류 `필드: 설명`), 이미 적용본이면 409 `CONFLICT`, 없으면 404 |
+| `DELETE /tax/admin/law-versions/{id}?rowVersion=<long>` (쿼리 필수) | 서비스 관리자 | `rowVersion` 누락·형식 오류는 400, 현재 값과 다르면 409 `CONFLICT`. 초안이면 204, 적용본이면 409 `CONFLICT`, 없으면 404 |
 
 `/tax/admin/**`은 비로그인 401 `UNAUTHORIZED`, 서비스 관리자가 아니면(일반 회원·그룹 ADMIN) 403 `FORBIDDEN`이다. `year`·`taxYear`는 1000~9999 정수이고 아니면 400 `VALIDATION_FAILED`다.
 
 버전 응답(`VersionResponse`) 필드: `id, taxYear, versionNo, status, algorithmVersion, minSpendRatePct, bracketBoundary, rateCreditPct, rateDebitCashPct, rateCulturePct, rateMarketPct, rateTransitPct, basicLimitLow[3], basicLimitHigh[3], extraLimitLow, extraLimitHigh, childTiersApply, basisLawName, basisArticle, basisUrl, periodStart, periodEnd, memo, createdByNickname, appliedByNickname, createdAt, appliedAt, rowVersion`. `childTiersApply`는 자녀등 단계 값이 서로 다른지이고 웹이 자녀등 입력란을 보일지 판단한다(알려진 제약 8번).
+
+회원용 current는 작성자·적용자 닉네임과 memo를 내리지 않는다.
 
 ## 권한과 동시성 설계
 
@@ -2589,6 +2591,7 @@ git commit -m "feat(api): 세법 버전 초안 만들기·조회·수정·삭제
 | | 0~100(정수 열이라 정수다) | `0~100 사이여야 합니다` |
 | 금액 9개 `bracketBoundary`, `basicLimitLow[0..2]`, `basicLimitHigh[0..2]`, `extraLimitLow`, `extraLimitHigh` | 빈 값 없음(급여구간 경계·자녀등 단계 포함) | `값을 입력해야 합니다` |
 | | 0 이상 | `0 이상이어야 합니다` |
+| | 9,999,999,999,999 이하 | `9,999,999,999,999원 이하로 입력하세요` |
 | `basisLawName`, `basisArticle`, `basisUrl` | 빈 값·공백만 있는 값 없음 | `값을 입력해야 합니다` |
 | `basisUrl` | `http://` 또는 `https://`로 시작 | `http:// 또는 https://로 시작해야 합니다` |
 | `periodStart`, `periodEnd` | 빈 값 없음 | `값을 입력해야 합니다` |
@@ -3720,3 +3723,4 @@ HTTP 인터페이스: `GET /tax/years/{year}/analysis` (본인 연도 기록만,
 11. 계획의 PR 1 코드는 임시 복사본에서 테스트·typecheck·lint·build까지 확인했지만 화면은 띄워 보지 않았다. PR 2의 코드는 임시 복사본에서 `./gradlew test`(320건)까지 실행해 확인했다(2.2·2.3의 RED 컴파일 오류 문구는 실행하지 않고 적음). PR 3~7의 설계는 실행해 보지 않았다.
 12. 세법 수치와 7.1절 산식은 독립적인 세무 검증을 거치지 않았다(PRD 14장). D03(합산 기간)·D08(원 단위)·D09(귀속 시점)의 법령 기준은 미확인이고 임시 규칙이다.
 13. 회원 탈퇴 기능이 없어 `ON DELETE CASCADE`에 따른 소득공제 자료 삭제는 검증 대상이 아니다(PRD 2장 비범위).
+14. 후속: 관리자 인가를 인터셉터에서 Spring Security 필터 체인으로 옮긴다. 현재는 지원하지 않는 HTTP 메서드의 405 응답으로 라우트 구조가 드러날 수 있다.

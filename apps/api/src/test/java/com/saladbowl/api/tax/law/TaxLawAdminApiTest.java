@@ -71,7 +71,7 @@ class TaxLawAdminApiTest extends IntegrationTest {
         long third = TestTaxLaws.createDraft(mvc, admin, 2026);
 
         // 가장 큰 번호(3)를 지워도 다음 초안은 4번이다.
-        mvc.perform(delete(URL + "/" + third).header("Authorization", admin.bearer()))
+        mvc.perform(delete(URL + "/" + third).param("rowVersion", "0").header("Authorization", admin.bearer()))
                 .andExpect(status().isNoContent());
         mvc.perform(post(URL).header("Authorization", admin.bearer())
                         .contentType(MediaType.APPLICATION_JSON).content("{\"taxYear\":2026}"))
@@ -79,7 +79,7 @@ class TaxLawAdminApiTest extends IntegrationTest {
                 .andExpect(jsonPath("$.versionNo").value(4));
 
         // 중간 번호(1)를 지워도 빈 번호를 채우지 않는다.
-        mvc.perform(delete(URL + "/" + first).header("Authorization", admin.bearer()))
+        mvc.perform(delete(URL + "/" + first).param("rowVersion", "0").header("Authorization", admin.bearer()))
                 .andExpect(status().isNoContent());
         mvc.perform(post(URL).header("Authorization", admin.bearer())
                         .contentType(MediaType.APPLICATION_JSON).content("{\"taxYear\":2026}"))
@@ -203,7 +203,7 @@ class TaxLawAdminApiTest extends IntegrationTest {
                         .content("{\"rowVersion\":1,\"minSpendRatePct\":99}"))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("CONFLICT"));
-        mvc.perform(delete(URL + "/" + id).header("Authorization", admin.bearer()))
+        mvc.perform(delete(URL + "/" + id).param("rowVersion", "0").header("Authorization", admin.bearer()))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("CONFLICT"));
 
@@ -218,13 +218,13 @@ class TaxLawAdminApiTest extends IntegrationTest {
     void deletedDraftIsGone() throws Exception {
         long id = TestTaxLaws.createDraft(mvc, admin, 2026);
 
-        mvc.perform(delete(URL + "/" + id).header("Authorization", admin.bearer()))
+        mvc.perform(delete(URL + "/" + id).param("rowVersion", "0").header("Authorization", admin.bearer()))
                 .andExpect(status().isNoContent());
 
         mvc.perform(get(URL + "/" + id).header("Authorization", admin.bearer()))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("NOT_FOUND"));
-        mvc.perform(delete(URL + "/" + id).header("Authorization", admin.bearer()))
+        mvc.perform(delete(URL + "/" + id).param("rowVersion", "0").header("Authorization", admin.bearer()))
                 .andExpect(status().isNotFound());
         mvc.perform(put(URL + "/" + id).header("Authorization", admin.bearer())
                         .contentType(MediaType.APPLICATION_JSON).content("{\"rowVersion\":0}"))
@@ -298,9 +298,9 @@ class TaxLawAdminApiTest extends IntegrationTest {
         mvc.perform(put(URL + "/" + id).header("Authorization", member.bearer())
                         .contentType(MediaType.APPLICATION_JSON).content("{\"rowVersion\":1,\"minSpendRatePct\":99}"))
                 .andExpect(status().isForbidden());
-        mvc.perform(delete(URL + "/" + id).header("Authorization", member.bearer()))
+        mvc.perform(delete(URL + "/" + id).param("rowVersion", "0").header("Authorization", member.bearer()))
                 .andExpect(status().isForbidden());
-        mvc.perform(delete(URL + "/" + id))
+        mvc.perform(delete(URL + "/" + id).param("rowVersion", "0"))
                 .andExpect(status().isUnauthorized());
 
         // 거부된 요청은 아무것도 바꾸지 않았다.
@@ -316,7 +316,7 @@ class TaxLawAdminApiTest extends IntegrationTest {
 
         TestAdmins.revoke(jdbc, admin.id());
 
-        mvc.perform(delete(URL + "/" + id).header("Authorization", admin.bearer()))
+        mvc.perform(delete(URL + "/" + id).param("rowVersion", "0").header("Authorization", admin.bearer()))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("FORBIDDEN"));
         assertThat(jdbc.queryForObject("SELECT count(*) FROM tax_law_versions", Long.class)).isEqualTo(1);

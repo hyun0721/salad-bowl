@@ -51,8 +51,12 @@ final class TaxLawValidator {
     }
 
     private static void amount(List<FieldError> errors, String field, Long value) {
-        if (required(errors, field, value) && value < 0) {
-            errors.add(new FieldError(field, "0 이상이어야 합니다"));
+        if (required(errors, field, value)) {
+            if (value < 0) {
+                errors.add(new FieldError(field, "0 이상이어야 합니다"));
+            } else if (value > 9_999_999_999_999L) {
+                errors.add(new FieldError(field, "9,999,999,999,999원 이하로 입력하세요"));
+            }
         }
     }
 

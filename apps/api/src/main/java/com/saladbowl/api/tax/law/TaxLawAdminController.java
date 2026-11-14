@@ -1,6 +1,7 @@
 package com.saladbowl.api.tax.law;
 
 import com.saladbowl.api.auth.CurrentUser;
+import com.saladbowl.api.tax.law.TaxLawDtos.ApplyRequest;
 import com.saladbowl.api.tax.law.TaxLawDtos.CreateRequest;
 import com.saladbowl.api.tax.law.TaxLawDtos.UpdateRequest;
 import com.saladbowl.api.tax.law.TaxLawDtos.ValidationResponse;
@@ -60,13 +61,14 @@ public class TaxLawAdminController {
     }
 
     @PostMapping("/{id}/apply")
-    public VersionResponse apply(@CurrentUser Long userId, @PathVariable long id) {
-        return service.apply(userId, id);
+    public VersionResponse apply(@CurrentUser Long userId, @PathVariable long id,
+                                 @Valid @RequestBody ApplyRequest request) {
+        return service.apply(userId, id, request.rowVersion());
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable long id) {
-        service.deleteDraft(id);
+    public ResponseEntity<Void> delete(@PathVariable long id, @RequestParam long rowVersion) {
+        service.deleteDraft(id, rowVersion);
         return ResponseEntity.noContent().build();
     }
 }

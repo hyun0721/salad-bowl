@@ -59,17 +59,17 @@ public class TaxLawService {
     @Transactional
     public VersionResponse updateDraft(long id, UpdateRequest request) {
         TaxLawVersion draft = lockDraft(id);
-        if (draft.getRowVersion() != request.rowVersion()) {
-            throw new ApiException(ErrorCode.CONFLICT, "tax law version was modified elsewhere");
-        }
+        requireRowVersion(draft, request.rowVersion());
         draft.edit(request);
         // 응답에 올라간 rowVersion을 싣기 위해 여기서 반영한다.
         return toAdminResponse(versions.saveAndFlush(draft));
     }
 
     @Transactional
-    public void deleteDraft(long id) {
-        versions.delete(lockDraft(id));
+    public void deleteDraft(long id, long rowVersion) {
+        TaxLawVersion draft = lockDraft(id);
+        requireRowVersion(draft, rowVersion);
+        versions.delete(draft);
     }
 
     @Transactional(readOnly = true)
@@ -80,8 +80,9 @@ public class TaxLawService {
 
     /** 같은 초안의 수정·삭제·적용은 행 잠금 안에서 상태 확인과 검증을 마친다. */
     @Transactional
-    public VersionResponse apply(long adminId, long id) {
+    public VersionResponse apply(long adminId, long id, long rowVersion) {
         TaxLawVersion draft = lockDraft(id);
+        requireRowVersion(draft, rowVersion);
         List<FieldError> errors = TaxLawValidator.validate(draft);
         if (!errors.isEmpty()) {
             FieldError first = errors.get(0);
@@ -91,10 +92,10 @@ public class TaxLawService {
         return toAdminResponse(versions.saveAndFlush(draft));
     }
 
-    /** 회원용: 그 귀속연도의 현재 적용 버전. 작성자·적용자 닉네임은 내리지 않는다. */
+    /** 회원용: 그 귀속연도의 현재 적용 버전. 작성자·적용자 닉네임과 메모는 내리지 않는다. */
     @Transactional(readOnly = true)
     public VersionResponse current(int taxYear) {
-        return currentApplied(taxYear).map(v -> VersionResponse.of(v, null, null))
+        return currentApplied(taxYear).map(v -> VersionResponse.of(v, null, null, null))
                 .orElseThrow(TaxLawService::notFound);
     }
 
@@ -112,12 +113,19 @@ public class TaxLawService {
     }
 
     private VersionResponse toAdminResponse(TaxLawVersion version) {
-        return VersionResponse.of(version, nickname(version.getCreatedBy()), nickname(version.getAppliedBy()));
+        return VersionResponse.of(version, nickname(version.getCreatedBy()), nickname(version.getAppliedBy()),
+                version.getMemo());
     }
 
     // shortcut: 버전마다 회원을 따로 읽는다(연도당 버전이 몇 개뿐이다). 목록이 느려지면 한 번에 읽도록 바꾼다.
     private String nickname(Long userId) {
         return userId == null ? null : users.findById(userId).map(User::getNickname).orElse(null);
+    }
+
+    private static void requireRowVersion(TaxLawVersion draft, long rowVersion) {
+        if (draft.getRowVersion() != rowVersion) {
+            throw new ApiException(ErrorCode.CONFLICT, "tax law version was modified elsewhere");
+        }
     }
 
     private static ApiException notFound() {

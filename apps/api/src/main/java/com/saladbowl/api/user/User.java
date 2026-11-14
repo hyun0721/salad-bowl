@@ -37,7 +37,7 @@ public class User {
     private int tokenVersion;
 
     // 세법 관리 권한. 그룹 ADMIN과 별개다. 화면 없이 운영자가 DB에서만 바꾼다.
-    @Column(name = "service_admin", nullable = false)
+    @Column(name = "service_admin", insertable = false, updatable = false)
     private boolean serviceAdmin;
 
     @Column(name = "created_at", nullable = false)

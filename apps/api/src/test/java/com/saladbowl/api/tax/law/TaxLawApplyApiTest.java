@@ -57,11 +57,78 @@ class TaxLawApplyApiTest extends IntegrationTest {
     }
 
     @Test
+    void staleApplyKeepsTheOtherAdminsEdit() throws Exception {
+        long id = TestTaxLaws.createDraft(mvc, admin, 2026);
+        mvc.perform(get(URL + "/" + id).header("Authorization", admin.bearer()))
+                .andExpect(jsonPath("$.rowVersion").value(0));
+        AuthedUser other = TestAuth.signupAndLogin(mvc, "other@example.test", "다른 관리자");
+        TestAdmins.grant(jdbc, other.id());
+        mvc.perform(put(URL + "/" + id).header("Authorization", other.bearer())
+                        .contentType(MediaType.APPLICATION_JSON).content(TestTaxLaws.values2026(0)))
+                .andExpect(status().isOk());
+        mvc.perform(post(URL + "/" + id + "/apply").header("Authorization", admin.bearer())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"rowVersion\":0}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("CONFLICT"));
+        mvc.perform(get(URL + "/" + id).header("Authorization", admin.bearer()))
+                .andExpect(jsonPath("$.status").value("DRAFT"))
+                .andExpect(jsonPath("$.minSpendRatePct").value(25))
+                .andExpect(jsonPath("$.rowVersion").value(1));
+    }
+
+    @Test
+    void staleDeleteKeepsTheOtherAdminsEdit() throws Exception {
+        long id = TestTaxLaws.createDraft(mvc, admin, 2026);
+        mvc.perform(get(URL + "/" + id).header("Authorization", admin.bearer()))
+                .andExpect(jsonPath("$.rowVersion").value(0));
+        AuthedUser other = TestAuth.signupAndLogin(mvc, "other@example.test", "다른 관리자");
+        TestAdmins.grant(jdbc, other.id());
+        mvc.perform(put(URL + "/" + id).header("Authorization", other.bearer())
+                        .contentType(MediaType.APPLICATION_JSON).content(TestTaxLaws.values2026(0)))
+                .andExpect(status().isOk());
+        mvc.perform(delete(URL + "/" + id).param("rowVersion", "0")
+                        .header("Authorization", admin.bearer()))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("CONFLICT"));
+        mvc.perform(get(URL + "/" + id).header("Authorization", admin.bearer()))
+                .andExpect(jsonPath("$.status").value("DRAFT"))
+                .andExpect(jsonPath("$.minSpendRatePct").value(25))
+                .andExpect(jsonPath("$.rowVersion").value(1));
+    }
+
+    @Test
+    void applyRequiresAValidRowVersion() throws Exception {
+        long id = TestTaxLaws.createFilledDraft(mvc, admin, 2026);
+        for (String body : new String[]{"", "{}", "{\"rowVersion\":null}",
+                "{\"rowVersion\":\"wrong\"}", "{\"rowVersion\":1.5}",
+                "{\"rowVersion\":9223372036854775808}"}) {
+            mvc.perform(post(URL + "/" + id + "/apply").header("Authorization", admin.bearer())
+                            .contentType(MediaType.APPLICATION_JSON).content(body))
+                    .andExpect(status().isBadRequest());
+        }
+        assertThat(statusOf(id)).isEqualTo("DRAFT");
+    }
+
+    @Test
+    void deleteRequiresAValidRowVersion() throws Exception {
+        long id = TestTaxLaws.createFilledDraft(mvc, admin, 2026);
+        mvc.perform(delete(URL + "/" + id).header("Authorization", admin.bearer()))
+                .andExpect(status().isBadRequest());
+        for (String value : new String[]{"", "wrong", "1.5", "9223372036854775808"}) {
+            mvc.perform(delete(URL + "/" + id).param("rowVersion", value)
+                            .header("Authorization", admin.bearer()))
+                    .andExpect(status().isBadRequest());
+        }
+        assertThat(statusOf(id)).isEqualTo("DRAFT");
+    }
+
+    @Test
     void applyRecordsWhoAndWhenAndMakesTheVersionCurrent() throws Exception {
         AuthedUser member = TestAuth.signupAndLogin(mvc, "member@test.com", "회원");
         long id = TestTaxLaws.createFilledDraft(mvc, admin, 2026);
 
-        mvc.perform(post(URL + "/" + id + "/apply").header("Authorization", admin.bearer()))
+        mvc.perform(post(URL + "/" + id + "/apply").header("Authorization", admin.bearer())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"rowVersion\":1}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("APPLIED"))
                 .andExpect(jsonPath("$.createdByNickname").value("관리자"))
@@ -79,14 +146,31 @@ class TaxLawApplyApiTest extends IntegrationTest {
     }
 
     @Test
+    void currentHidesMemoButAdminGetKeepsIt() throws Exception {
+        AuthedUser member = TestAuth.signupAndLogin(mvc, "member@example.test", "회원");
+        long id = TestTaxLaws.createFilledDraft(mvc, admin, 2026);
+        mvc.perform(post(URL + "/" + id + "/apply").header("Authorization", admin.bearer())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"rowVersion\":1}"))
+                .andExpect(status().isOk());
+        mvc.perform(get(CURRENT).param("year", "2026").header("Authorization", member.bearer()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.memo").value(nullValue()));
+        mvc.perform(get(URL + "/" + id).header("Authorization", admin.bearer()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.memo").value("2026 귀속 최초 등록"));
+    }
+
+    @Test
     void appliedVersionRejectsUpdateDeleteAndSecondApply() throws Exception {
         long id = TestTaxLaws.createFilledDraft(mvc, admin, 2026);
-        mvc.perform(post(URL + "/" + id + "/apply").header("Authorization", admin.bearer()))
+        mvc.perform(post(URL + "/" + id + "/apply").header("Authorization", admin.bearer())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"rowVersion\":1}"))
                 .andExpect(status().isOk());
         String appliedAt = jdbc.queryForObject(
                 "SELECT applied_at::text FROM tax_law_versions WHERE id = ?", String.class, id);
 
-        mvc.perform(post(URL + "/" + id + "/apply").header("Authorization", admin.bearer()))
+        mvc.perform(post(URL + "/" + id + "/apply").header("Authorization", admin.bearer())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"rowVersion\":1}"))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("CONFLICT"));
         mvc.perform(put(URL + "/" + id).header("Authorization", admin.bearer())
@@ -94,7 +178,7 @@ class TaxLawApplyApiTest extends IntegrationTest {
                         .content(TestTaxLaws.values2026(2).replace("\"minSpendRatePct\": 25", "\"minSpendRatePct\": 20")))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("CONFLICT"));
-        mvc.perform(delete(URL + "/" + id).header("Authorization", admin.bearer()))
+        mvc.perform(delete(URL + "/" + id).param("rowVersion", "1").header("Authorization", admin.bearer()))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("CONFLICT"));
 
@@ -115,7 +199,8 @@ class TaxLawApplyApiTest extends IntegrationTest {
                 .andExpect(jsonPath("$.errors", hasSize(20)))
                 .andExpect(jsonPath("$.errors[0].field").value("minSpendRatePct"))
                 .andExpect(jsonPath("$.errors[0].message").value("값을 입력해야 합니다"));
-        mvc.perform(post(URL + "/" + id + "/apply").header("Authorization", admin.bearer()))
+        mvc.perform(post(URL + "/" + id + "/apply").header("Authorization", admin.bearer())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"rowVersion\":0}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
                 .andExpect(jsonPath("$.message").value("minSpendRatePct: 값을 입력해야 합니다"));
@@ -158,7 +243,8 @@ class TaxLawApplyApiTest extends IntegrationTest {
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.errors", hasSize(1)))
                     .andExpect(jsonPath("$.errors[0].field").value(c[2]));
-            mvc.perform(post(URL + "/" + id + "/apply").header("Authorization", admin.bearer()))
+            mvc.perform(post(URL + "/" + id + "/apply").header("Authorization", admin.bearer())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"rowVersion\":1}"))
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
             assertThat(statusOf(id)).as("%s = %s", c[0], c[1]).isEqualTo("DRAFT");
@@ -180,7 +266,8 @@ class TaxLawApplyApiTest extends IntegrationTest {
         // 검증만으로는 상태가 바뀌지 않는다.
         assertThat(statusOf(id)).isEqualTo("DRAFT");
 
-        mvc.perform(post(URL + "/" + id + "/apply").header("Authorization", admin.bearer()))
+        mvc.perform(post(URL + "/" + id + "/apply").header("Authorization", admin.bearer())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"rowVersion\":1}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("APPLIED"))
                 .andExpect(jsonPath("$.memo").value(nullValue()));
@@ -191,14 +278,15 @@ class TaxLawApplyApiTest extends IntegrationTest {
         long first = TestTaxLaws.createFilledDraft(mvc, admin, 2026);
         long second = TestTaxLaws.createFilledDraft(mvc, admin, 2026);
 
-        mvc.perform(post(URL + "/" + second + "/apply").header("Authorization", admin.bearer()))
+        mvc.perform(post(URL + "/" + second + "/apply").header("Authorization", admin.bearer())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"rowVersion\":1}"))
                 .andExpect(status().isOk());
 
         mvc.perform(get(URL).param("year", "2026").header("Authorization", admin.bearer()))
                 .andExpect(jsonPath("$[*].versionNo", contains(2, 1)))
                 .andExpect(jsonPath("$[*].status", contains("APPLIED", "DRAFT")));
         // 남은 초안은 계속 고치고 지울 수 있다.
-        mvc.perform(delete(URL + "/" + first).header("Authorization", admin.bearer()))
+        mvc.perform(delete(URL + "/" + first).param("rowVersion", "1").header("Authorization", admin.bearer()))
                 .andExpect(status().isNoContent());
     }
 
@@ -214,11 +302,13 @@ class TaxLawApplyApiTest extends IntegrationTest {
                 .andExpect(status().isOk());
 
         // 2번을 먼저, 1번을 나중에 적용한다.
-        mvc.perform(post(URL + "/" + second + "/apply").header("Authorization", admin.bearer()))
+        mvc.perform(post(URL + "/" + second + "/apply").header("Authorization", admin.bearer())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"rowVersion\":1}"))
                 .andExpect(status().isOk());
         mvc.perform(get(CURRENT).param("year", "2026").header("Authorization", admin.bearer()))
                 .andExpect(jsonPath("$.versionNo").value(2));
-        mvc.perform(post(URL + "/" + first + "/apply").header("Authorization", admin.bearer()))
+        mvc.perform(post(URL + "/" + first + "/apply").header("Authorization", admin.bearer())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"rowVersion\":1}"))
                 .andExpect(status().isOk());
 
         mvc.perform(get(CURRENT).param("year", "2026").header("Authorization", admin.bearer()))
@@ -248,11 +338,12 @@ class TaxLawApplyApiTest extends IntegrationTest {
             mvc.perform(post(URL + "/" + id + "/validate").header("Authorization", user.bearer()))
                     .andExpect(status().isForbidden())
                     .andExpect(jsonPath("$.code").value("FORBIDDEN"));
-            mvc.perform(post(URL + "/" + id + "/apply").header("Authorization", user.bearer()))
+            mvc.perform(post(URL + "/" + id + "/apply").header("Authorization", user.bearer())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"rowVersion\":1}"))
                     .andExpect(status().isForbidden())
                     .andExpect(jsonPath("$.code").value("FORBIDDEN"));
         }
-        mvc.perform(post(URL + "/" + id + "/apply"))
+        mvc.perform(post(URL + "/" + id + "/apply").contentType(MediaType.APPLICATION_JSON).content("{\"rowVersion\":1}"))
                 .andExpect(status().isUnauthorized());
 
         assertThat(statusOf(id)).isEqualTo("DRAFT");
@@ -264,7 +355,8 @@ class TaxLawApplyApiTest extends IntegrationTest {
 
         TestAdmins.revoke(jdbc, admin.id());
 
-        mvc.perform(post(URL + "/" + id + "/apply").header("Authorization", admin.bearer()))
+        mvc.perform(post(URL + "/" + id + "/apply").header("Authorization", admin.bearer())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"rowVersion\":1}"))
                 .andExpect(status().isForbidden());
         assertThat(statusOf(id)).isEqualTo("DRAFT");
     }
@@ -272,15 +364,17 @@ class TaxLawApplyApiTest extends IntegrationTest {
     @Test
     void missingOrDeletedVersionReturns404() throws Exception {
         long id = TestTaxLaws.createFilledDraft(mvc, admin, 2026);
-        mvc.perform(delete(URL + "/" + id).header("Authorization", admin.bearer()))
+        mvc.perform(delete(URL + "/" + id).param("rowVersion", "1").header("Authorization", admin.bearer()))
                 .andExpect(status().isNoContent());
 
-        mvc.perform(post(URL + "/" + id + "/apply").header("Authorization", admin.bearer()))
+        mvc.perform(post(URL + "/" + id + "/apply").header("Authorization", admin.bearer())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"rowVersion\":1}"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("NOT_FOUND"));
         mvc.perform(post(URL + "/" + id + "/validate").header("Authorization", admin.bearer()))
                 .andExpect(status().isNotFound());
-        mvc.perform(post(URL + "/999999/apply").header("Authorization", admin.bearer()))
+        mvc.perform(post(URL + "/999999/apply").header("Authorization", admin.bearer())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"rowVersion\":1}"))
                 .andExpect(status().isNotFound());
     }
 }

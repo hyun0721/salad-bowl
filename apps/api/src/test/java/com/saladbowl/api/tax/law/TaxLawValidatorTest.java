@@ -88,6 +88,24 @@ class TaxLawValidatorTest {
     }
 
     @Test
+    void amountsMustNotExceedMaximum() {
+        for (long amount : List.of(9_999_999_999_999L, 10_000_000_000_000L)) {
+            TaxLawVersion version = draft(request(25, 15, 30, 30, 40, 40, amount,
+                    List.of(amount, amount, amount), List.of(amount, amount, amount), amount, amount,
+                    "조세특례제한법", "제126조의2", "https://www.law.go.kr/", START, END, null));
+            if (amount == 9_999_999_999_999L) {
+                assertThat(TaxLawValidator.validate(version)).isEmpty();
+            } else {
+                assertThat(fields(version)).containsExactly("bracketBoundary", "basicLimitLow[0]",
+                        "basicLimitLow[1]", "basicLimitLow[2]", "basicLimitHigh[0]", "basicLimitHigh[1]",
+                        "basicLimitHigh[2]", "extraLimitLow", "extraLimitHigh");
+                assertThat(TaxLawValidator.validate(version)).allMatch(error ->
+                        error.message().equals("9,999,999,999,999원 이하로 입력하세요"));
+            }
+        }
+    }
+
+    @Test
     void childTiersMustAllBeFilled() {
         TaxLawVersion missingTier = draft(request(25, 15, 30, 30, 40, 40, 70_000_000L,
                 Arrays.asList(3_000_000L, null, 4_000_000L), Arrays.asList(2_500_000L, 2_750_000L, null),

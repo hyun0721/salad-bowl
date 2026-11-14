@@ -53,9 +53,10 @@ class TaxAdminAccessTest extends IntegrationTest {
                 .andExpect(status().isForbidden());
         mvc.perform(post(ADMIN_URL + "/1/validate").header("Authorization", member.bearer()))
                 .andExpect(status().isForbidden());
-        mvc.perform(post(ADMIN_URL + "/1/apply").header("Authorization", member.bearer()))
+        mvc.perform(post(ADMIN_URL + "/1/apply").header("Authorization", member.bearer())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"rowVersion\":0}"))
                 .andExpect(status().isForbidden());
-        mvc.perform(delete(ADMIN_URL + "/1").header("Authorization", member.bearer()))
+        mvc.perform(delete(ADMIN_URL + "/1").param("rowVersion", "0").header("Authorization", member.bearer()))
                 .andExpect(status().isForbidden());
         mvc.perform(get("/tax/admin/anything/else").header("Authorization", member.bearer()))
                 .andExpect(status().isForbidden());
