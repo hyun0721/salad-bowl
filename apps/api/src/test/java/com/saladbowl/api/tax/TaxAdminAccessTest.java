@@ -76,9 +76,9 @@ class TaxAdminAccessTest extends IntegrationTest {
         AuthedUser admin = TestAuth.signupAndLogin(mvc, "admin@test.com", "관리자");
         TestAdmins.grant(jdbc, admin.id());
 
-        // Task 2.1 시점에는 컨트롤러가 없으므로 문을 통과한 요청은 404다. Task 2.2에서 200으로 바꾼다.
         mvc.perform(get(ADMIN_URL).param("year", "2026").header("Authorization", admin.bearer()))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isEmpty());
     }
 
     @Test
@@ -86,7 +86,7 @@ class TaxAdminAccessTest extends IntegrationTest {
         AuthedUser admin = TestAuth.signupAndLogin(mvc, "admin@test.com", "관리자");
         TestAdmins.grant(jdbc, admin.id());
         mvc.perform(get(ADMIN_URL).param("year", "2026").header("Authorization", admin.bearer()))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isOk());
 
         TestAdmins.revoke(jdbc, admin.id());
 
