@@ -3,6 +3,7 @@ package com.saladbowl.api.tax.law;
 import com.saladbowl.api.auth.CurrentUser;
 import com.saladbowl.api.tax.law.TaxLawDtos.CreateRequest;
 import com.saladbowl.api.tax.law.TaxLawDtos.UpdateRequest;
+import com.saladbowl.api.tax.law.TaxLawDtos.ValidationResponse;
 import com.saladbowl.api.tax.law.TaxLawDtos.VersionResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
@@ -51,6 +52,16 @@ public class TaxLawAdminController {
     @PutMapping("/{id}")
     public VersionResponse update(@PathVariable long id, @Valid @RequestBody UpdateRequest request) {
         return service.updateDraft(id, request);
+    }
+
+    @PostMapping("/{id}/validate")
+    public ValidationResponse validate(@PathVariable long id) {
+        return service.validate(id);
+    }
+
+    @PostMapping("/{id}/apply")
+    public VersionResponse apply(@CurrentUser Long userId, @PathVariable long id) {
+        return service.apply(userId, id);
     }
 
     @DeleteMapping("/{id}")

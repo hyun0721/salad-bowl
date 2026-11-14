@@ -44,6 +44,13 @@ public final class TaxLawDtos {
             @Size(max = 1000) String memo) {
     }
 
+    public record FieldError(String field, String message) {
+    }
+
+    /** errors가 비어 있으면 적용할 수 있다. */
+    public record ValidationResponse(List<FieldError> errors) {
+    }
+
     /** basicLimitLow·basicLimitHigh는 자녀등 0명 / 1명 / 2명 이상 순서의 3칸이다. */
     public record VersionResponse(
             long id,

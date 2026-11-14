@@ -2,7 +2,9 @@ package com.saladbowl.api.tax.law;
 
 import com.saladbowl.api.common.ApiException;
 import com.saladbowl.api.common.ErrorCode;
+import com.saladbowl.api.tax.law.TaxLawDtos.FieldError;
 import com.saladbowl.api.tax.law.TaxLawDtos.UpdateRequest;
+import com.saladbowl.api.tax.law.TaxLawDtos.ValidationResponse;
 import com.saladbowl.api.tax.law.TaxLawDtos.VersionResponse;
 import com.saladbowl.api.user.User;
 import com.saladbowl.api.user.UserRepository;
@@ -10,6 +12,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -67,6 +70,25 @@ public class TaxLawService {
     @Transactional
     public void deleteDraft(long id) {
         versions.delete(lockDraft(id));
+    }
+
+    @Transactional(readOnly = true)
+    public ValidationResponse validate(long id) {
+        return new ValidationResponse(
+                TaxLawValidator.validate(versions.findById(id).orElseThrow(TaxLawService::notFound)));
+    }
+
+    /** 같은 초안의 수정·삭제·적용은 행 잠금 안에서 상태 확인과 검증을 마친다. */
+    @Transactional
+    public VersionResponse apply(long adminId, long id) {
+        TaxLawVersion draft = lockDraft(id);
+        List<FieldError> errors = TaxLawValidator.validate(draft);
+        if (!errors.isEmpty()) {
+            FieldError first = errors.get(0);
+            throw new ApiException(ErrorCode.VALIDATION_FAILED, first.field() + ": " + first.message());
+        }
+        draft.apply(adminId, OffsetDateTime.now());
+        return toAdminResponse(versions.saveAndFlush(draft));
     }
 
     /** 회원용: 그 귀속연도의 현재 적용 버전. 작성자·적용자 닉네임은 내리지 않는다. */

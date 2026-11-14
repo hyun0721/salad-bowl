@@ -183,6 +183,13 @@ public class TaxLawVersion {
         memo = blankToNull(request.memo());
     }
 
+    /** 초안 → 적용. 호출 전에 행 잠금과 검증을 끝낸다(TaxLawService.apply). */
+    public void apply(long adminId, OffsetDateTime now) {
+        status = TaxLawStatus.APPLIED;
+        appliedBy = adminId;
+        appliedAt = now;
+    }
+
     private static Long tier(List<Long> tiers, int index) {
         return tiers == null ? null : tiers.get(index);
     }
