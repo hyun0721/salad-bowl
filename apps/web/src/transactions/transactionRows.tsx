@@ -31,29 +31,32 @@ export function transactionColumns(showOwner: boolean, showMajor = true, onTagCl
     { id: 'description', label: '내용', isRowHeader: true, render: (tx) => <>{tx.description}{hiddenBadge(tx)}<TagChips memo={tx.memo} onTagClick={onTagClick} /></> },
     { id: 'paymentMethod', label: '결제수단', width: '110px', render: (tx) => tx.paymentMethod },
     { id: 'amount', label: '금액', width: '120px', align: 'end', sortValue: (tx) => tx.amount,
-      render: (tx) => <span className={styles.amount}><TransactionAmount type={tx.type} amount={tx.amount} /></span> },
+      render: (tx) => <span className={styles.amount} data-type={tx.type}><TransactionAmount type={tx.type} amount={tx.amount} /></span> },
   ]
 }
 
-/** 좁은 화면 카드 한 장의 내용. 2줄은 `분류 | 메모`와 일시다. */
+/** 좁은 화면은 거래·분류와 일시·태그와 메모·상태를 각각 나눈다. */
 export function TransactionCard({ tx, showOwner, showMajor = true, onTagClick }: { tx: TransactionView; showOwner: boolean; showMajor?: boolean; onTagClick?: (tag: string) => void }) {
-  const info = [category(tx, showMajor), showOwner ? tx.ownerNickname : null].filter(Boolean).join(' · ')
-  const memo = removeTags(tx.memo, extractTags(tx.memo)).trim()
+  const tags = extractTags(tx.memo)
+  const memo = removeTags(tx.memo, tags).trim()
   return (
     <>
       <div className={styles.cardTop}>
-        <span>{tx.description}{hiddenBadge(tx)}</span>
-        <span className={styles.amount}><TransactionAmount type={tx.type} amount={tx.amount} /></span>
+        <span>{tx.description}</span>
+        <span className={styles.amount} data-type={tx.type}><TransactionAmount type={tx.type} amount={tx.amount} /></span>
       </div>
       <div className={styles.cardMeta}>
-        <span className={styles.cardInfo}>
-          {info}
-          {memo && (info ? <>{' '}<span aria-hidden="true">|</span>{' '}{memo}</> : memo)}
-        </span>
-        <TagChips memo={tx.memo} onTagClick={onTagClick} />
-        {editedBadge(tx)}
+        <span className={styles.cardInfo}>{category(tx, showMajor)}</span>
         <span className={styles.when}>{formatDateTime(tx.occurredAt)}</span>
       </div>
+      {(tags.length > 0 || memo) && <div className={styles.cardAnnotations}>
+        <TagChips memo={tx.memo} onTagClick={onTagClick} />
+        {memo && <span className={styles.cardMemo}><span className={styles.memoLabel}>메모</span>{memo}</span>}
+      </div>}
+      {(tx.edited || tx.hidden || showOwner) && <div className={styles.cardFooter}>
+        {editedBadge(tx)}{hiddenBadge(tx)}
+        {showOwner && <span className={styles.cardOwner}>{tx.ownerNickname}</span>}
+      </div>}
     </>
   )
 }

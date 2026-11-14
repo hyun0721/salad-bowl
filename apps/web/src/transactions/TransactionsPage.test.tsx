@@ -350,25 +350,37 @@ describe('TransactionsPage', () => {
     expect(within(detail).getByRole('heading', { name: '김밥' })).toBeInTheDocument()
   })
 
-  it('shows cards with category | memo and the time under the amount on a narrow screen', async () => {
+  it('puts tags before memo in one annotation row, separate from category and status', async () => {
     mockViewport(true)
     mineHandler([
-      { ...base, edited: true, memo: '회사 앞 김밥' },
+      { ...base, edited: true, hidden: true, memo: '회사 앞 김밥 #점심' },
       { ...base, id: 2, description: '커피', categoryMinor: '', memo: '   ' },
       { ...base, id: 3, description: '간식', categoryMajor: '', categoryMinor: '', memo: '메모만' },
+      { ...base, id: 4, description: '장보기', memo: '#생활비' },
     ])
     renderPage(<TransactionsPage today={today} />, { groups })
 
     const list = await screen.findByRole('grid', { name: '거래 목록' })
     const card = within(list).getByRole('row', { name: /김밥/ })
-    expect(card).toHaveTextContent(/김밥.*-₩ 4,000.*식비 · 점심 \| 회사 앞 김밥.*수정됨.*10-05 12:30/)
-    expect(within(card).getByText('|')).toHaveAttribute('aria-hidden', 'true')
+    expect(card).toHaveTextContent(/김밥.*-₩ 4,000.*식비 · 점심.*10-05 12:30.*#점심.*메모.*회사 앞 김밥.*수정됨.*숨김/)
+    const memoRow = within(card).getByText('메모').parentElement!
+    expect(memoRow).toHaveTextContent('회사 앞 김밥')
+    expect(memoRow).not.toHaveTextContent(/식비|#점심|10-05/)
+    expect(within(card).getByText('식비 · 점심').parentElement).toContainElement(within(card).getByText('10-05 12:30'))
+    const tag = within(card).getByRole('button', { name: '#점심' })
+    expect(tag.parentElement).toContainElement(memoRow)
+    expect(tag.compareDocumentPosition(memoRow) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(within(card).getByText('숨김').parentElement).toContainElement(within(card).getByText('수정됨'))
+    expect(tag.parentElement).not.toContainElement(within(card).getByText('숨김'))
     const plain = within(list).getByRole('row', { name: /커피/ })
     expect(plain).toHaveTextContent(/식비10-05 12:30$/)
-    expect(plain).not.toHaveTextContent('|')
+    expect(within(plain).queryByText('메모')).not.toBeInTheDocument()
     const memoOnly = within(list).getByRole('row', { name: /간식/ })
     expect(memoOnly).toHaveTextContent('메모만')
     expect(memoOnly).not.toHaveTextContent('|')
+    const tagOnly = within(list).getByRole('row', { name: /장보기/ })
+    expect(within(tagOnly).getByRole('button', { name: '#생활비' })).toBeInTheDocument()
+    expect(within(tagOnly).queryByText('메모')).not.toBeInTheDocument()
     expect(within(list).queryByRole('columnheader')).not.toBeInTheDocument()
   })
 
