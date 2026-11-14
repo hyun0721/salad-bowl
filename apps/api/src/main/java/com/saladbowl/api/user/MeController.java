@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 public class MeController {
 
-    public record MeResponse(long userId, String email, String nickname) {
+    public record MeResponse(long userId, String email, String nickname, boolean serviceAdmin) {
     }
 
     private final UserRepository users;
@@ -22,6 +22,6 @@ public class MeController {
     public MeResponse me(@CurrentUser Long userId) {
         User user = users.findById(userId)
                 .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND, "user not found"));
-        return new MeResponse(user.getId(), user.getEmail(), user.getNickname());
+        return new MeResponse(user.getId(), user.getEmail(), user.getNickname(), user.isServiceAdmin());
     }
 }

@@ -5,6 +5,7 @@ import com.saladbowl.api.support.IntegrationTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -18,6 +19,9 @@ class MeApiTest extends IntegrationTest {
 
     @Autowired
     MockMvc mvc;
+
+    @Autowired
+    JdbcTemplate jdbc;
 
     private String accessTokenFor(String email) throws Exception {
         mvc.perform(post("/auth/signup").contentType(MediaType.APPLICATION_JSON)
@@ -39,7 +43,18 @@ class MeApiTest extends IntegrationTest {
         mvc.perform(get("/me").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.email").value("me@test.com"))
-                .andExpect(jsonPath("$.nickname").value("me"));
+                .andExpect(jsonPath("$.nickname").value("me"))
+                .andExpect(jsonPath("$.serviceAdmin").value(false));
+    }
+
+    @Test
+    void meReportsServiceAdminFromTheDatabase() throws Exception {
+        String token = accessTokenFor("admin@test.com");
+        jdbc.update("UPDATE users SET service_admin = TRUE WHERE email = ?", "admin@test.com");
+
+        mvc.perform(get("/me").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.serviceAdmin").value(true));
     }
 
     @Test

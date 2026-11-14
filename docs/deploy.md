@@ -256,3 +256,20 @@ Render·Pages 대시보드에 값을 직접 넣었다면 3~4단계 대신 Render
 Pages와 Render의 자동 배포는 동시에 완료되지 않는다. 새 엔드포인트를 사용하는 기능은 서버를 먼저 배포하는 두 단계 변경으로 진행한다. Render에서 해당 커밋의 배포가 Live인지 확인하고, 테스트 계정으로 실제 엔드포인트가 정상 응답하는지 확인한 뒤 웹 변경을 공개한다. `/actuator/health`의 UP만으로 새 엔드포인트 반영을 판단하지 않는다.
 
 서버·웹 변경을 함께 배포했다면 양쪽 완료 후 첫 조회와 오류 화면의 재시도 복구를 확인한다. 2026-10-28 소분류 기능에서는 웹과 API 반영에 약 4분 차이가 있었다. 분석과 UI 조치는 [소분류 초기 조회 분석](superpowers/plans/2026-10-28-subcategory-loading-review.md)에 기록했다.
+
+## 13. 서비스 관리자 지정·해제
+
+"연도별 세법 관리"는 서비스 관리자만 쓴다. 그룹 ADMIN과 별개의 권한이고 지정·해제 화면이 없다. 운영자가 Supabase SQL Editor에서 직접 바꾼다.
+
+```sql
+-- 지정
+UPDATE users SET service_admin = TRUE WHERE email = '<관리자 이메일>';
+-- 해제
+UPDATE users SET service_admin = FALSE WHERE email = '<관리자 이메일>';
+-- 확인
+SELECT id, email, service_admin FROM users WHERE service_admin;
+```
+
+- `UPDATE` 결과가 1행인지 확인한다. 0행이면 이메일이 틀렸거나 아직 가입하지 않은 계정이다.
+- API는 세법 관리 요청마다 DB의 이 값을 읽는다. 다시 로그인하지 않아도 다음 요청부터 반영된다.
+- 웹은 `/me`의 `serviceAdmin`으로 메뉴를 보인다. 화면의 메뉴는 새로 고친 뒤에 바뀐다.
