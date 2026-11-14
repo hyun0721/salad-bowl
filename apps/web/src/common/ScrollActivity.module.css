@@ -1,0 +1,10 @@
+.scroll {
+  scrollbar-width: thin;
+  scrollbar-gutter: stable;
+  scrollbar-color: transparent transparent;
+}
+.scroll[data-scrolling] { scrollbar-color: var(--ink-muted) transparent; }
+.scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+.scroll::-webkit-scrollbar-thumb { background: transparent; border-radius: var(--radius-sm); }
+.scroll[data-scrolling]::-webkit-scrollbar-thumb { background: var(--ink-muted); }
+.scroll::-webkit-scrollbar-track { background: transparent; }

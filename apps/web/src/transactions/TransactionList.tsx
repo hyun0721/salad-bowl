@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Selection } from 'react-aria-components'
 import Checkbox from '../common/Checkbox'
+import { useScrollActivity } from '../common/useScrollActivity'
+import scrollStyles from '../common/ScrollActivity.module.css'
 import CardList from '../common/CardList'
 import cardStyles from '../common/CardList.module.css'
 import DataTable from '../common/DataTable'
@@ -28,6 +30,7 @@ const selectionCheckbox = () => <Checkbox slot="selection" />
 
 export default function TransactionList({ items, showOwner, selectedId, onSelect, selectedIds, onSelectionChange, saving = false, onTagClick }: Props) {
   const narrow = useMediaQuery(NARROW)
+  const onScroll = useScrollActivity()
   const [visibleCount, setVisibleCount] = useState(RENDER_BATCH)
   const scrollRef = useRef<HTMLDivElement>(null)
   const sentinelRef = useRef<HTMLDivElement>(null)
@@ -64,7 +67,7 @@ export default function TransactionList({ items, showOwner, selectedId, onSelect
   )
   return (
     <>
-      <div ref={scrollRef} className={styles.listScroll}>
+      <div ref={scrollRef} className={`${styles.listScroll} ${scrollStyles.scroll}`} onScroll={onScroll}>
         {narrow ? cards : <DataTable label="거래 목록" columns={columns} selection={selection} items={items} rowText={(tx) => tx.description}
           visibleRows={{ count: visibleCount, onSort: () => { setVisibleCount(RENDER_BATCH); scrollRef.current?.scrollTo?.({ top: 0 }) } }}
           currentId={selectedId} onRowAction={selecting ? undefined : (id) => onSelect(Number(id))} />}
