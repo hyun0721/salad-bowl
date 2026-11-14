@@ -17,7 +17,7 @@ function TagChips({ memo, onTagClick }: { memo: string | null; onTagClick?: (tag
         onPointerDown={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}
         onKeyUp={(event) => event.stopPropagation()}
         onClick={(event) => { event.stopPropagation(); onTagClick(tag) }}>#{tag}</button>
-    : <span key={tag} className={ui.badge}>#{tag}</span>)
+    : <span key={tag} className={styles.tagChip}>#{tag}</span>)
 }
 
 /** 거래 목록과 대시보드 거래 창이 같이 쓰는 표 열. */
@@ -45,17 +45,19 @@ export function TransactionCard({ tx, showOwner, showMajor = true, onTagClick }:
         <span>{tx.description}</span>
         <span className={styles.amount} data-type={tx.type}><TransactionAmount type={tx.type} amount={tx.amount} /></span>
       </div>
-      <div className={styles.cardMeta}>
+      <div className={styles.cardBody} data-owner={showOwner || undefined}>
         <span className={styles.cardInfo}>{category(tx, showMajor)}</span>
-        <span className={styles.when}>{formatDateTime(tx.occurredAt)}</span>
+        <div className={styles.cardIdentity}>
+          <span className={styles.when}>{formatDateTime(tx.occurredAt)}</span>
+          {showOwner && <span className={styles.cardOwner}>{tx.ownerNickname}</span>}
+        </div>
+        {(tags.length > 0 || memo) && <div className={styles.cardAnnotations}>
+          <TagChips memo={tx.memo} onTagClick={onTagClick} />
+          {memo && <span className={styles.cardMemo}><span className={styles.memoLabel}>메모</span>{memo}</span>}
+        </div>}
       </div>
-      {(tags.length > 0 || memo) && <div className={styles.cardAnnotations}>
-        <TagChips memo={tx.memo} onTagClick={onTagClick} />
-        {memo && <span className={styles.cardMemo}><span className={styles.memoLabel}>메모</span>{memo}</span>}
-      </div>}
-      {(tx.edited || tx.hidden || showOwner) && <div className={styles.cardFooter}>
+      {(tx.edited || tx.hidden) && <div className={styles.cardFooter}>
         {editedBadge(tx)}{hiddenBadge(tx)}
-        {showOwner && <span className={styles.cardOwner}>{tx.ownerNickname}</span>}
       </div>}
     </>
   )

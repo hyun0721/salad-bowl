@@ -2,6 +2,8 @@ import { useQuery } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
 import CardList from '../common/CardList'
+import { useScrollActivity } from '../common/useScrollActivity'
+import scrollStyles from '../common/ScrollActivity.module.css'
 import DataTable from '../common/DataTable'
 import { DialogFrame } from '../common/Dialog'
 import { useAmountFormatter } from '../common/AmountMask'
@@ -19,6 +21,7 @@ import styles from './CategoryBreakdown.module.css'
 type Props = { groupId: number; month: string; category: string | null; minor?: string | null; onClose: () => void }
 
 export default function CategoryTransactionsDialog({ groupId, month, category, minor, onClose }: Props) {
+  const onScroll = useScrollActivity()
   const formatWon = useAmountFormatter('EXPENSE')
   const navigate = useNavigate()
   const narrow = useMediaQuery(NARROW)
@@ -104,7 +107,7 @@ export default function CategoryTransactionsDialog({ groupId, month, category, m
           {transactions.isSuccess && <>
             <p ref={summaryRef} tabIndex={-1} className={styles.summary}>{items.length}건 · 합계 {formatWon(total)}</p>
             {items.length === 0 ? <p className={ui.status}>거래가 없습니다.</p> : (
-              <div ref={listRef} className={styles.dialogList} data-dialog-list="">
+              <div ref={listRef} className={`${styles.dialogList} ${scrollStyles.scroll}`} onScroll={onScroll} data-dialog-list="">
                 {narrow ? (
                   <CardList label="거래 목록" items={items} textValue={(tx) => tx.description} onAction={(id) => showTransaction(Number(id))}>
                     {(tx) => <TransactionCard tx={tx} showOwner showMajor={false} />}
