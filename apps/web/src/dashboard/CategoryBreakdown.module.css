@@ -18,6 +18,8 @@
 .dialogBody { flex: 1 1 auto; min-height: 0; height: min(70vh, 680px); display: flex; flex-direction: column; gap: var(--space-4); }
 .summary { flex: none; margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
 .dialogList { min-height: 0; overflow: auto; }
+/* 창의 공통 규격은 유지하고 거래 목록만 일반 목록의 글자 체계를 쓴다. */
+.transactionList { --text-base: var(--text-transaction); --text-sm: var(--text-transaction-meta); font-size: var(--text-base); line-height: var(--line-height-base); }
 .dialogList thead th { position: sticky; top: 0; z-index: 1; background: var(--surface-000); box-shadow: inset 0 -1px var(--line); }
 
 .legend > button { display: flex; margin-left: auto; }

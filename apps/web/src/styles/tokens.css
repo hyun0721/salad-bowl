@@ -48,6 +48,8 @@
   --text-input: 16px;
   --text-card-action: 14px;
   --text-tag: 12px;
+  --text-transaction: var(--text-base);
+  --text-transaction-meta: var(--text-sm);
   --control-height: 32px;
 
   --radius-sm: 8px;

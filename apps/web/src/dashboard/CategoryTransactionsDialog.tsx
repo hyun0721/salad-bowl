@@ -97,7 +97,7 @@ export default function CategoryTransactionsDialog({ groupId, month, category, m
           {selected ? <div className={styles.dialogList}>
             <TransactionPanel key={selected.id} tx={selected} onSaved={backToList} onDeleted={backToList} />
           </div> : <>
-          {transactions.isPending && <div className={styles.dialogList}>
+          {transactions.isPending && <div className={`${styles.dialogList} ${styles.transactionList}`}>
             <TransactionListSkeleton showOwner />
           </div>}
           {transactions.isError && <div className={ui.row}>
@@ -107,7 +107,7 @@ export default function CategoryTransactionsDialog({ groupId, month, category, m
           {transactions.isSuccess && <>
             <p ref={summaryRef} tabIndex={-1} className={styles.summary}>{items.length}건 · 합계 {formatWon(total)}</p>
             {items.length === 0 ? <p className={ui.status}>거래가 없습니다.</p> : (
-              <div ref={listRef} className={`${styles.dialogList} ${scrollStyles.scroll}`} onScroll={onScroll} data-dialog-list="">
+              <div ref={listRef} className={`${styles.dialogList} ${styles.transactionList} ${scrollStyles.scroll}`} onScroll={onScroll} data-dialog-list="">
                 {narrow ? (
                   <CardList label="거래 목록" items={items} textValue={(tx) => tx.description} onAction={(id) => showTransaction(Number(id))}>
                     {(tx) => <TransactionCard tx={tx} showOwner showMajor={false} />}
