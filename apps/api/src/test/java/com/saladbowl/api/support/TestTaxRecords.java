@@ -5,6 +5,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -30,9 +31,19 @@ public final class TestTaxRecords {
                 .contentType(MediaType.APPLICATION_JSON).content(body));
     }
 
-    /** 총급여 40,000,000원, 1~12월, 자녀등 0명인 연도 기록을 만든다. 만든 뒤의 rowVersion은 0이다. */
-    public static void createYear(MockMvc mvc, TestAuth.AuthedUser user, int year) throws Exception {
-        putYear(mvc, user, year, yearBody(40_000_000L, 1, 12, 0, null)).andExpect(status().isCreated());
+    /** 총급여 40,000,000원, 1~12월, 자녀등 0명인 연도 기록을 만든다. 응답의 rowVersion을 돌려준다. */
+    public static long createYear(MockMvc mvc, TestAuth.AuthedUser user, int year) throws Exception {
+        return version(putYear(mvc, user, year, yearBody(40_000_000L, 1, 12, 0, null))
+                .andExpect(status().isCreated()), "$.rowVersion");
+    }
+
+    public static long version(ResultActions response, String path) throws Exception {
+        return ((Number) JsonPath.read(response.andReturn().getResponse().getContentAsString(), path)).longValue();
+    }
+
+    public static long readVersion(MockMvc mvc, TestAuth.AuthedUser user, int year, String path) throws Exception {
+        return version(mvc.perform(get(URL + "/" + year)
+                .header("Authorization", user.bearer())).andExpect(status().isOk()), path);
     }
 
     /** amounts는 신용카드 4칸, 체크카드 4칸 순서이고 null은 미입력이다. */

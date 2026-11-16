@@ -77,20 +77,23 @@ public class TaxRecordService {
             requireCreatableYear(year);
             Long lawVersionId = laws.currentAppliedForNewRecord(year).map(TaxLawVersion::getId).orElse(null);
             // 같은 회원이 동시에 두 번 만들면 UNIQUE (owner_id, tax_year)가 한쪽을 409로 만든다.
-            TaxYearRecord created = records.saveAndFlush(TaxYearRecord.create(userId, year, request, lawVersionId));
+            TaxYearRecord created = records.saveAndFlush(TaxYearRecord.create(userId, year, request,
+                    lawVersionId, records.nextRowVersion()));
             return new SavedYear(true, view(created));
         }
         TaxYearRecord record = existing.get();
         requireRowVersion(record.getRowVersion(), request.rowVersion());
-        record.edit(request);
+        record.edit(request, records.nextRowVersion());
         // 응답에 올라간 rowVersion을 싣기 위해 여기서 반영한다.
         return new SavedYear(false, view(records.saveAndFlush(record)));
     }
 
     /** 연도 기록과 딸린 카드 자료·현금영수증 자료·지출계획을 지운다(딸린 행은 DB의 ON DELETE CASCADE). */
     @Transactional
-    public void deleteYear(long userId, int year) {
-        records.delete(lockOwned(userId, year));
+    public void deleteYear(long userId, int year, long rowVersion) {
+        TaxYearRecord record = lockOwned(userId, year);
+        requireRowVersion(record.getRowVersion(), rowVersion);
+        records.delete(record);
     }
 
     @Transactional
@@ -132,11 +135,12 @@ public class TaxRecordService {
                 throw conflict();
             }
             cashReceipts.saveAndFlush(TaxCashReceipt.create(record.getId(), asOfDate(request.asOfDate(), year),
-                    blankToNull(request.memo()), request.amounts()));
+                    blankToNull(request.memo()), request.amounts(), records.nextRowVersion()));
         } else {
             TaxCashReceipt cash = existing.get();
             requireRowVersion(cash.getRowVersion(), request.rowVersion());
-            cash.edit(asOfDate(request.asOfDate(), year), blankToNull(request.memo()), request.amounts());
+            cash.edit(asOfDate(request.asOfDate(), year), blankToNull(request.memo()),
+                    request.amounts(), records.nextRowVersion());
             cashReceipts.saveAndFlush(cash);
         }
         return viewWithinTotalLimit(record);
@@ -151,11 +155,11 @@ public class TaxRecordService {
             if (request.rowVersion() != null) {
                 throw conflict();
             }
-            plans.saveAndFlush(TaxSpendingPlan.create(record.getId(), request));
+            plans.saveAndFlush(TaxSpendingPlan.create(record.getId(), request, records.nextRowVersion()));
         } else {
             TaxSpendingPlan plan = existing.get();
             requireRowVersion(plan.getRowVersion(), request.rowVersion());
-            plan.edit(request);
+            plan.edit(request, records.nextRowVersion());
             plans.saveAndFlush(plan);
         }
         return view(record);
@@ -164,7 +168,8 @@ public class TaxRecordService {
     @Transactional
     public TaxYearView refreshLawVersion(long userId, int year) {
         TaxYearRecord record = lockOwned(userId, year);
-        laws.currentApplied(year).ifPresent(current -> record.useLawVersion(current.getId()));
+        Long lawVersionId = laws.currentApplied(year).map(TaxLawVersion::getId).orElse(record.getLawVersionId());
+        record.useLawVersion(lawVersionId, records.nextRowVersion());
         return view(records.saveAndFlush(record));
     }
 
@@ -183,6 +188,7 @@ public class TaxRecordService {
     }
 
     private static String issuerName(String raw) {
+        rejectNul(raw);
         String name = raw.strip();
         if (name.isEmpty() || name.length() > 50) {
             throw invalid("issuerName: 1~50자로 입력하세요");
@@ -198,7 +204,14 @@ public class TaxRecordService {
     }
 
     private static String blankToNull(String value) {
+        rejectNul(value);
         return value == null || value.isBlank() ? null : value.trim();
+    }
+
+    private static void rejectNul(String value) {
+        if (value != null && value.indexOf('\0') >= 0) {
+            throw invalid("issuerName/memo: NUL 문자는 사용할 수 없습니다");
+        }
     }
 
     private TaxYearView viewWithinTotalLimit(TaxYearRecord record) {

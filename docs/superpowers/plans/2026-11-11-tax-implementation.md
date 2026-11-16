@@ -3389,17 +3389,17 @@ git commit -m "feat(api): 세법 초안 검증과 적용" -m "Co-Authored-By: Co
 |---|---|
 | `GET /tax/years/{year}` | 연도 기록 묶음(`TaxYearView`) 200. 요청자의 그 연도 기록이 없으면 404 |
 | `PUT /tax/years/{year}` `{totalSalary, workStartMonth, workEndMonth, childCount, rowVersion?}` | `rowVersion` 없음 = 만들기 201. 연도가 한국 시각 기준 올해·전년도·다음 해가 아니면 400, 이미 있으면 409. `rowVersion` 있음 = 기본정보 수정 200. 저장된 값과 다르면 409, 기록이 없으면(다른 곳에서 삭제됨) 404이고 다시 만들지 않는다 |
-| `DELETE /tax/years/{year}` | 연도 기록과 딸린 카드 자료·현금영수증 자료·지출계획 삭제 204. 없으면 404. `rowVersion`을 받지 않는다(아래 "결정이 필요한 점" 1번) |
+| `DELETE /tax/years/{year}?rowVersion=<long>` (쿼리 필수) | 연도 기록과 딸린 카드 자료·현금영수증 자료·지출계획 삭제 204. 버전 누락·형식 오류 400, 연도 기록 없음 404, 저장된 버전과 불일치 409 순서로 판정 |
 | `POST /tax/years/{year}/cards` `{issuerName, asOfDate, memo?, amounts: {8칸}}` | 카드 자료 추가 201(`TaxYearView`). 연도 기록당 50건을 넘으면 400 |
 | `PUT /tax/years/{year}/cards/{cardId}` 같은 본문 + `rowVersion` | 카드 자료 수정 200. `rowVersion`이 없거나 다르면 409 |
 | `DELETE /tax/years/{year}/cards/{cardId}?rowVersion=<long>` (쿼리 필수) | 카드 자료 삭제 204. `rowVersion` 누락·형식 오류는 400, 저장된 값과 다르면 409 |
 | `PUT /tax/years/{year}/cash-receipt` `{asOfDate, memo?, amounts: {4칸}, rowVersion?}` | 현금영수증 자료 저장 200. 없으면 만들고(`rowVersion` 없이), 있으면 고친다(`rowVersion` 필수). 어긋나면 409. 삭제 경로는 없다(D19) — `DELETE`는 405 |
 | `PUT /tax/years/{year}/plan` `{general, market, transit, culture: {creditFixed, debitFixed, flexible}, rowVersion?}` | 지출계획 저장 200. `rowVersion` 규칙은 현금영수증 자료와 같다. 자료가 미완료이거나 세법이 없어도 저장된다(TAX-75) |
-| `POST /tax/years/{year}/law-version/refresh` (본문 없음) | 연도 기록의 세법 버전을 그 연도의 현재 적용 버전으로 바꿈 200. 적용 버전이 없으면 그대로 둔다 |
+| `POST /tax/years/{year}/law-version/refresh` (본문 없음) | 연도 기록의 세법 버전을 그 연도의 현재 적용 버전으로 바꿈 200. 적용 버전이 없으면 세법 참조를 유지한다. 매 저장마다 새 `rowVersion`을 받는다 |
 
 - 공통: 비로그인 401 `UNAUTHORIZED`. `year`는 1000~9999 정수이고 아니면 400 `VALIDATION_FAILED`. 요청자에게 그 연도 기록이 없으면 딸린 경로도 모두 404 `NOT_FOUND`다. 남의 `cardId`와 없는 `cardId`는 같은 404다(403·409를 쓰지 않는다).
 - 판정 순서: 본문 형식(400) → 요청자의 연도 기록(404) → 카드 자료(404) → `rowVersion`(409) → 기준일·카드사명·합계 상한(400). 400은 요청 본문만 보고 정해지므로 남의 자료가 있는지에 따라 달라지는 응답이 없다.
-- 입력 규칙: 금액은 정수 토큰만 받는다(소수 `1000.5`는 400). 카드·현금영수증 금액 칸은 `null`(미입력) 또는 0~9,999,999,999,999, 지출계획 12칸은 필수이고 같은 범위다. `issuerName`은 앞뒤 공백을 뺀 뒤 1~50자, `memo`는 200자 이하(공백만 있으면 `null`), `asOfDate`는 귀속연도 안의 날짜, `childCount`는 0~99.
+- 입력 규칙: 금액은 정수 토큰만 받는다(소수 `1000.5`는 400). 카드·현금영수증 금액 칸은 `null`(미입력) 또는 0~9,999,999,999,999, 지출계획 12칸은 필수이고 같은 범위다. `issuerName`은 앞뒤 공백을 뺀 뒤 1~50자, `memo`는 200자 이하(공백만 있으면 `null`), 카드사명·메모의 NUL은 저장 전 400 `VALIDATION_FAILED`, `asOfDate`는 귀속연도 안의 날짜, `childCount`는 0~99.
 - 연도를 지우는 것 말고는 모든 쓰기가 `TaxYearView` 전체를 돌려준다. 웹은 응답으로 캐시를 바꾸면 되고 합계를 다시 더하지 않는다. 카드 자료 삭제는 204이므로 웹이 연도를 다시 읽는다.
 
 `TaxYearView`: `taxYear, rowVersion, totalSalary, workStartMonth, workEndMonth, childCount, lawVersion: {id, versionNo, appliedAt, childTiersApply} | null, newerLawVersion, cards: [{id, rowVersion, issuerName, asOfDate, memo, amounts: {creditGeneral, creditMarket, creditTransit, creditCulture, debitGeneral, debitMarket, debitTransit, debitCulture}(null 가능), blankCount}](id 오름차순), cashReceipt: {rowVersion, asOfDate, memo, amounts: {general, market, transit, culture}, blankCount} | null, plan: {rowVersion, general, market, transit, culture: {creditFixed, debitFixed, flexible}} | null, totals: {creditGeneral … debitCulture, cashGeneral, cashMarket, cashTransit, cashCulture}(12칸, 미입력은 0으로 더함), blankCount(현금영수증 미입력이면 4 포함), hasInputs, asOfDateMismatch`. Task 3.1은 `lawVersion`까지, 3.2가 `cards`·`cashReceipt`·`totals`·`blankCount`·`hasInputs`·`asOfDateMismatch`를, 3.3이 `newerLawVersion`·`plan`을 더한다.
@@ -3408,10 +3408,10 @@ git commit -m "feat(api): 세법 초안 검증과 적용" -m "Co-Authored-By: Co
 
 - **소유권은 조회 조건이다.** 모든 접근은 `(owner_id = 요청자, tax_year)`로 연도 기록을 찾는 데서 시작한다(`requireOwned`·`lockOwned`). 카드 자료는 `(id, record_id = 소유한 연도 기록)`로, 현금영수증 자료·지출계획은 소유한 연도 기록의 id(기본 키)로 읽는다. 연도 기록·카드 자료를 id만으로 읽는 호출(`records.findById`, `cards.findById`)을 쓰지 않는다. 남의 자료는 "없는 것"과 같은 쿼리 결과이므로 응답도 같다. `GroupAccess`와 `ServiceAdminGuard`를 쓰지 않는다 — 그룹 ADMIN·공개 중인 같은 그룹 회원·서비스 관리자 모두 남의 자료에 닿는 길이 없다.
 - **동시 수정(TAX-29)은 PR 2와 같은 방식이다: 행 잠금 + 요청의 `rowVersion` 비교.** 기존 코드에 낙관적 잠금 예외를 처리하는 선례가 없고 PR 2(`TaxLawService.lockDraft`·`requireRowVersion`)가 이 방식으로 병합됐으므로 통일한다. 쓰기는 모두 연도 기록 행을 `SELECT … FOR UPDATE`로 잠근 뒤(`TaxYearRecordRepository.findOwnedForUpdate`) 시작하므로 한 연도 기록과 딸린 자료의 쓰기는 차례로 실행된다. 잠금 안에서 고치려는 행의 `row_version`을 요청 값과 비교해 다르면 409 `CONFLICT`다. 비교 단위는 행 하나다(기본정보 / 카드 자료 한 건 / 현금영수증 자료 / 지출계획). 카드 자료를 고쳐도 기본정보의 `rowVersion`은 그대로다.
-- `rowVersion`은 서버가 그 행을 고칠 때마다 1씩 올린다. PR 2의 `TaxLawVersion`과 같이 엔티티의 `@Version`이 값을 올린다. 모든 쓰기가 연도 기록 잠금 뒤에서 일어나므로 `ObjectOptimisticLockingFailureException`은 생기지 않고, **`GlobalExceptionHandler`는 고치지 않는다.** 같은 회원이 같은 연도를 동시에 두 번 만드는 경우만 잠글 행이 없는데, `UNIQUE (owner_id, tax_year)` 위반(`DataIntegrityViolationException`)을 기존 핸들러가 409 `CONFLICT`로 바꾼다.
-- `tax_cash_receipts`·`tax_spending_plans`는 기본 키(`record_id`)를 직접 넣는다. Spring Data는 이런 엔티티가 새 행인지를 `@Version` 값이 `null`인지로 판단하므로 두 엔티티의 `rowVersion`은 `long`이 아니라 `Long`이다.
-- **삭제.** 카드 자료 삭제는 `?rowVersion=`이 필수다(PR 2의 초안 삭제와 같은 모양). 다른 곳에서 새 누계로 고친 자료를 옛 화면에서 지우면 TAX-29가 막으려는 "말없이 덮어쓰기"와 같은 손실이기 때문이다. 연도 기록 삭제는 `rowVersion`을 받지 않는다. 연도 기록의 `rowVersion`은 기본정보만 덮고 딸린 자료의 변경을 알지 못하므로 받아도 보호가 반쪽이고, 이 삭제는 "그 연도 전부"를 지우려는 의도를 귀속연도 직접 입력으로 확인한다(D22, 화면 몫). 딸린 행은 DB의 `ON DELETE CASCADE`로 지워지고 다른 귀속연도·다른 회원의 행에는 닿지 않는다.
-- **세법 버전 기억(TAX-66).** 연도 기록을 만들 때 그 연도의 현재 적용 버전을 `law_version_id`에 넣는다. 없으면 NULL이고, 관리자가 그 연도의 버전을 적용하는 트랜잭션(`TaxLawService.apply`)이 같은 행 잠금 안에서 `tax_year = ? AND law_version_id IS NULL`인 연도 기록에 그 버전을 넣는다. 이미 버전이 있는 연도 기록은 회원이 `refresh`를 부를 때만 바뀐다. 자동으로 채울 때는 기본정보의 `row_version`을 올리지 않는다(회원이 열어 둔 기본정보 화면의 저장이 409가 되지 않게). `refresh`는 엔티티를 고치므로 올린다.
+- `rowVersion`은 클라이언트가 다음 요청에 그대로 돌려보내는 불투명한 값이다. 연도 기록·현금영수증·지출계획은 생성 및 매 저장(`edit`·`refresh`, 같은 값 저장 포함)마다 공용 BIGINT 시퀀스 `tax_row_version_seq`의 `nextval`을 `row_version BIGINT`에 넣는다. V10에서 `MAXVALUE 9007199254740991 NO CYCLE`로 만들어 JS 안전 정수를 넘거나 삭제·재생성 후 값을 재사용하지 않는다. 세 엔티티의 `@Version`을 제거하고 서비스가 시퀀스를 조회해 값을 전달한다. 카드는 매번 새 id를 사용하므로 기존 `@Version` +1을 유지하며 PR 2 `TaxLawVersion`은 바꾸지 않는다. 쓰기는 부모 행 잠금 안에서 비교·저장한다. 동시 연도 생성의 UNIQUE 위반은 기존 핸들러가 409로 변환한다.
+- `tax_cash_receipts`·`tax_spending_plans`는 기본 키(`record_id`)를 직접 넣으므로 `Persistable<Long>`의 새 행 플래그로 INSERT 여부를 판정한다. `@PostPersist`·`@PostLoad`에서 플래그를 끈다. `rowVersion`은 새 행 판정에 쓰지 않는다.
+- **삭제.** 연도 기록과 카드 자료 모두 `?rowVersion=<long>` 쿼리가 필수이며 같은 파서를 사용한다. 누락·형식 오류는 400, 소유한 연도 기록이 없으면 404, 카드 삭제는 이어서 소유 카드가 없으면 404, 저장된 행 버전과 다르면 409다. 연도 삭제는 부모 행 잠금 안에서 연도 기록의 버전을 비교하므로 기본정보 수정·삭제 후 재생성된 기록의 오래된 삭제를 거부한다. 이 버전은 딸린 자료의 변경을 감지하지 않는 한계가 있다. 귀속연도 직접 입력 확인(D22)은 유지하며 딸린 행은 DB `ON DELETE CASCADE`로 삭제한다. 다른 귀속연도·다른 회원 자료에는 닿지 않는다.
+- **세법 버전 기억(TAX-66).** 연도 기록을 만들 때 그 연도의 현재 적용 버전을 `law_version_id`에 넣는다. 없으면 NULL이고, 관리자가 그 연도의 버전을 적용하는 트랜잭션(`TaxLawService.apply`)이 같은 행 잠금 안에서 `tax_year = ? AND law_version_id IS NULL`인 연도 기록에 그 버전을 넣는다. 이미 버전이 있는 연도 기록은 회원이 `refresh`를 부를 때만 바뀐다. 자동으로 채울 때는 기본정보의 `row_version`을 올리지 않는다(회원이 열어 둔 기본정보 화면의 저장이 409가 되지 않게). `refresh`는 적용본이 없거나 같은 적용본이어도 저장할 때 새 시퀀스 값을 받는다. `TaxLawService.apply`의 NULL 채우기 UPDATE SQL은 그대로 유지한다.
 - **적용과 연도 기록 만들기의 경합.** 만드는 중(커밋 전)인 연도 기록은 `apply`의 UPDATE에 보이지 않고, 그 트랜잭션은 아직 커밋되지 않은 적용 버전을 보지 못한다. 그대로 두면 적용 버전이 있는데도 `law_version_id`가 NULL로 남는다(임시 복사본에서 advisory lock을 빼고 돌려 재현했다). 그래서 귀속연도별 Postgres advisory lock(`pg_advisory_xact_lock`, 키 `'TAXL'` + 연도. 기존 `transaction/LedgerLock`과 같은 방식)을 쓴다: 연도 기록 만들기는 공유 잠금(`TaxLawService.currentAppliedForNewRecord`), `apply`는 배타 잠금을 잡는다. 만들기끼리는 서로 기다리지 않는다.
 - `newerLawVersion`은 "연도 기록의 버전 ≠ 그 연도의 현재 적용 버전"이다. 둘 다 없으면 false다.
 - **"올해"는 한국 시각 기준이다.** `Clock` 빈(`auth/SecurityConfig`, UTC)을 주입받아 `Asia/Seoul`로 연도를 읽는다. UTC 그대로면 1월 1일 0~9시에 전년도가 올해가 된다. 연도 범위는 만들 때만 검사한다. 범위를 벗어난 뒤에도 이미 있는 기록은 조회·수정·삭제된다. 테스트는 `TestClock`으로 올해를 2026으로 고정한다.
@@ -3428,14 +3428,14 @@ git commit -m "feat(api): 세법 초안 검증과 적용" -m "Co-Authored-By: Co
 
 ## 결정이 필요한 점 (기본값으로 썼다)
 
-1. **연도 기록 삭제에 `rowVersion`을 받지 않는다.** 이유는 위 "삭제". 다른 선택: `?rowVersion=` 필수(기본정보가 바뀐 경우만 409. 딸린 자료가 바뀐 것은 여전히 모른다).
+1. **확정: 연도 기록 삭제는 `?rowVersion=<long>` 필수.** 누락·형식 오류 400 → 기록 없음 404 → 버전 불일치 409 → 일치 204. 비교 값은 연도 기록 행의 버전이며 딸린 자료의 변경은 감지하지 않는다.
 2. **카드 자료 삭제는 `?rowVersion=` 필수.** 다른 선택: 확인 한 번(D05)만 믿고 받지 않는다.
 3. **이미 있는 연도에 `rowVersion` 없는 `PUT`은 409**(두 탭에서 동시에 만들기). 다른 선택: 수정으로 처리(나중 요청이 먼저 만든 값을 말없이 덮는다).
 4. **`rowVersion`을 보냈는데 연도 기록이 없으면 404**이고 다시 만들지 않는다. 현금영수증 자료·지출계획은 따로 지워지지 않으므로 같은 경우 409다.
 5. **연도 합계표의 한 칸이 9,999,999,999,999원을 넘는 저장은 400이고, 카드 자료는 연도 기록당 50건까지(2026-11-16 확정).** 51번째 `POST`는 400 `VALIDATION_FAILED`(판정 순서에서 합계 상한과 같은 단계). 수정·삭제는 건수와 무관하다.
 6. **"올해"는 한국 시각(`Asia/Seoul`) 기준.**
 7. **`childCount` 상한 99, `issuerName` 50자, `memo` 200자**(PRD는 "개발 설계에서 결정").
-8. **적용 버전이 없는 상태에서 `refresh`는 200으로 그대로 돌려준다**(오류가 아니다).
+8. **적용 버전이 없는 상태에서 `refresh`는 세법 참조를 유지하고 200을 돌려준다**(오류가 아니다). 저장의 `rowVersion`은 새 시퀀스 값이다.
 
 ---
 ### Task 3.1: 연도 기록 만들기·조회·수정·삭제와 소유권 (TAX-01, 02, 03, 20, 28, 29, 65)
@@ -6488,7 +6488,7 @@ git commit -m "feat(api): 소득공제 지출계획 저장과 세법 버전 기�
   - 삭제 연쇄
     - 연도 기록 삭제가 그 회원·그 귀속연도의 카드 자료·현금영수증 자료·지출계획만 지우는가. 다른 귀속연도·다른 회원의 행, `tax_law_versions`에 닿는가.
     - 연도 기록 삭제와 그 연도의 카드 추가·지출계획 저장이 겹치면 부모 없는 행이나 500이 나오는가(둘 다 연도 기록 행 잠금을 거치는지). 삭제 뒤 같은 연도를 다시 만들었을 때 옛 `cardId`·옛 `rowVersion`으로 새 기록을 고칠 수 있는가.
-    - 연도 기록 삭제에 `rowVersion`을 받지 않는 결정("결정이 필요한 점" 1번)이 만드는 손실 시나리오. 현금영수증 자료를 지우는 길(`DELETE`, 본문 `amounts: null`)이 있는가.
+    - 연도 기록 삭제가 부모 `rowVersion`만 비교하여 딸린 자료 변경은 감지하지 못하는 한계("결정이 필요한 점" 1번). 현금영수증 자료를 지우는 길(`DELETE`, 본문 `amounts: null`)이 있는가.
     - 연도 기록이 가리키는 세법 버전을 지울 수 있는가(초안은 참조되지 않아야 한다. 복합 FK가 초안·다른 연도 버전 참조를 막는지).
   - `apply`의 NULL 채우기 경합
     - 적용과 연도 기록 만들기가 겹쳐 적용 버전이 있는데 `law_version_id`가 NULL로 남는 순서가 있는가. advisory lock을 잡는 시점(만들기: 현재 적용 버전을 읽기 전, 적용: 상태 변경 전)과 푸는 시점(커밋)이 맞는지, `currentAppliedForNewRecord`를 트랜잭션 밖에서 부르는 곳이 있는지.

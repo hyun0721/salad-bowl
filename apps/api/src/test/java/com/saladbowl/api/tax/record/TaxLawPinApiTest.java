@@ -24,6 +24,8 @@ import static com.saladbowl.api.support.TestTaxRecords.URL;
 import static com.saladbowl.api.support.TestTaxRecords.createYear;
 import static com.saladbowl.api.support.TestTaxRecords.putYear;
 import static com.saladbowl.api.support.TestTaxRecords.yearBody;
+import static com.saladbowl.api.support.TestTaxRecords.version;
+import static org.hamcrest.Matchers.not;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -67,7 +69,7 @@ class TaxLawPinApiTest extends IntegrationTest {
     @Test
     void newerVersionIsOnlyAnnouncedUntilTheMemberRefreshes() throws Exception {
         long first = TestTaxLaws.createApplied(mvc, admin, 2026);
-        createYear(mvc, owner, 2026);
+        long initial = createYear(mvc, owner, 2026);
         mvc.perform(get(URL + "/2026").header("Authorization", owner.bearer()))
                 .andExpect(jsonPath("$.lawVersion.id").value(first))
                 .andExpect(jsonPath("$.newerLawVersion").value(false));
@@ -85,27 +87,27 @@ class TaxLawPinApiTest extends IntegrationTest {
                 .andExpect(jsonPath("$.lawVersion.id").value(first))
                 .andExpect(jsonPath("$.lawVersion.versionNo").value(1))
                 .andExpect(jsonPath("$.newerLawVersion").value(true))
-                .andExpect(jsonPath("$.rowVersion").value(0));
+                .andExpect(jsonPath("$.rowVersion").value(initial));
         assertThat(pinnedLawId(owner.id(), 2026)).isEqualTo(first);
 
-        mvc.perform(post(URL + "/2026" + REFRESH).header("Authorization", owner.bearer()))
+        var refreshed = mvc.perform(post(URL + "/2026" + REFRESH).header("Authorization", owner.bearer()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.lawVersion.id").value(second))
                 .andExpect(jsonPath("$.lawVersion.versionNo").value(2))
                 .andExpect(jsonPath("$.newerLawVersion").value(false))
-                .andExpect(jsonPath("$.rowVersion").value(1));
-        // 이미 현재 버전이면 아무것도 바뀌지 않는다.
+                .andExpect(jsonPath("$.rowVersion").value(not(initial), Long.class));
+        // 같은 세법을 다시 저장해도 새 rowVersion을 받는다.
         mvc.perform(post(URL + "/2026" + REFRESH).header("Authorization", owner.bearer()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.lawVersion.id").value(second))
-                .andExpect(jsonPath("$.rowVersion").value(1));
+                .andExpect(jsonPath("$.rowVersion").value(not(version(refreshed, "$.rowVersion")), Long.class));
     }
 
     @Test
     void firstAppliedVersionReachesWaitingRecordsOfThatYearOnly() throws Exception {
         AuthedUser other = TestAuth.signupAndLogin(mvc, "other@example.test", "다른 회원");
         createYear(mvc, owner, 2025);
-        createYear(mvc, owner, 2026);
+        long initial = createYear(mvc, owner, 2026);
         createYear(mvc, other, 2026);
         mvc.perform(get(URL + "/2026").header("Authorization", owner.bearer()))
                 .andExpect(jsonPath("$.lawVersion").value(nullValue()))
@@ -120,22 +122,24 @@ class TaxLawPinApiTest extends IntegrationTest {
                     .andExpect(jsonPath("$.newerLawVersion").value(false));
         }
         assertThat(pinnedLawId(owner.id(), 2025)).isNull();
+        mvc.perform(get(URL + "/2026").header("Authorization", owner.bearer()))
+                .andExpect(jsonPath("$.rowVersion").value(initial));
         // 세법 버전을 채워도 기본정보의 rowVersion은 오르지 않는다. 열어 둔 화면의 저장이 409가 되지 않는다.
-        putYear(mvc, owner, 2026, yearBody(52_000_000L, 1, 12, 0, 0L))
+        putYear(mvc, owner, 2026, yearBody(52_000_000L, 1, 12, 0, initial))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.lawVersion.id").value(lawId));
     }
 
     @Test
     void refreshWithoutAnAppliedVersionKeepsTheRecordWaiting() throws Exception {
-        createYear(mvc, owner, 2026);
+        long initial = createYear(mvc, owner, 2026);
         TestTaxLaws.createFilledDraft(mvc, admin, 2026);
 
         mvc.perform(post(URL + "/2026" + REFRESH).header("Authorization", owner.bearer()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.lawVersion").value(nullValue()))
                 .andExpect(jsonPath("$.newerLawVersion").value(false))
-                .andExpect(jsonPath("$.rowVersion").value(0));
+                .andExpect(jsonPath("$.rowVersion").value(not(initial), Long.class));
     }
 
     @Test

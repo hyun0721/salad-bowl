@@ -26,6 +26,8 @@ import static com.saladbowl.api.support.TestTaxRecords.URL;
 import static com.saladbowl.api.support.TestTaxRecords.createYear;
 import static com.saladbowl.api.support.TestTaxRecords.putYear;
 import static com.saladbowl.api.support.TestTaxRecords.yearBody;
+import static com.saladbowl.api.support.TestTaxRecords.readVersion;
+import static org.hamcrest.Matchers.not;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -77,7 +79,7 @@ class TaxYearApiTest extends IntegrationTest {
         putYear(mvc, owner, 2026, yearBody(40_000_000L, 3, 12, 1, null))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.taxYear").value(2026))
-                .andExpect(jsonPath("$.rowVersion").value(0))
+                .andExpect(jsonPath("$.rowVersion").isNumber())
                 .andExpect(jsonPath("$.totalSalary").value(40_000_000))
                 .andExpect(jsonPath("$.workStartMonth").value(3))
                 .andExpect(jsonPath("$.workEndMonth").value(12))
@@ -96,7 +98,7 @@ class TaxYearApiTest extends IntegrationTest {
         mvc.perform(get(URL + "/2026").header("Authorization", owner.bearer()))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("NOT_FOUND"));
-        mvc.perform(delete(URL + "/2026").header("Authorization", owner.bearer()))
+        mvc.perform(delete(URL + "/2026").param("rowVersion", "0").header("Authorization", owner.bearer()))
                 .andExpect(status().isNotFound());
     }
 
@@ -143,7 +145,7 @@ class TaxYearApiTest extends IntegrationTest {
                     .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.code").value("NOT_FOUND"));
             putYear(mvc, other, 2026, yearBody(1L, 1, 1, 0, 0L)).andExpect(status().isNotFound());
-            mvc.perform(delete(URL + "/2026").header("Authorization", other.bearer()))
+            mvc.perform(delete(URL + "/2026").param("rowVersion", "0").header("Authorization", other.bearer()))
                     .andExpect(status().isNotFound());
         }
         assertThat(salaryOf(owner.id(), 2026)).isEqualTo(40_000_000L);
@@ -152,7 +154,7 @@ class TaxYearApiTest extends IntegrationTest {
         putYear(mvc, serviceAdmin, 2026, yearBody(90_000_000L, 1, 12, 0, null)).andExpect(status().isCreated());
         mvc.perform(get(URL + "/2026").header("Authorization", serviceAdmin.bearer()))
                 .andExpect(jsonPath("$.totalSalary").value(90_000_000));
-        mvc.perform(delete(URL + "/2026").header("Authorization", serviceAdmin.bearer()))
+        mvc.perform(delete(URL + "/2026").param("rowVersion", Long.toString(readVersion(mvc, serviceAdmin, 2026, "$.rowVersion"))).header("Authorization", serviceAdmin.bearer()))
                 .andExpect(status().isNoContent());
         mvc.perform(get(URL + "/2026").header("Authorization", owner.bearer()))
                 .andExpect(status().isOk())
@@ -162,13 +164,13 @@ class TaxYearApiTest extends IntegrationTest {
 
     @Test
     void savingAgainWithRowVersionUpdatesTheOneRecord() throws Exception {
-        createYear(mvc, owner, 2026);
+        long initial = createYear(mvc, owner, 2026);
 
-        putYear(mvc, owner, 2026, yearBody(52_000_000L, 1, 12, 2, 0L))
+        putYear(mvc, owner, 2026, yearBody(52_000_000L, 1, 12, 2, initial))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalSalary").value(52_000_000))
                 .andExpect(jsonPath("$.childCount").value(2))
-                .andExpect(jsonPath("$.rowVersion").value(1));
+                .andExpect(jsonPath("$.rowVersion").value(not(initial), Long.class));
 
         assertThat(rowCount(owner.id())).isEqualTo(1);
     }
@@ -203,10 +205,10 @@ class TaxYearApiTest extends IntegrationTest {
 
     @Test
     void staleRowVersionIsConflictAndKeepsTheFirstSave() throws Exception {
-        createYear(mvc, owner, 2026);
-        putYear(mvc, owner, 2026, yearBody(52_000_000L, 1, 12, 0, 0L)).andExpect(status().isOk());
+        long initial = createYear(mvc, owner, 2026);
+        putYear(mvc, owner, 2026, yearBody(52_000_000L, 1, 12, 0, initial)).andExpect(status().isOk());
 
-        putYear(mvc, owner, 2026, yearBody(61_000_000L, 1, 12, 0, 0L))
+        putYear(mvc, owner, 2026, yearBody(61_000_000L, 1, 12, 0, initial))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("CONFLICT"));
 
@@ -259,7 +261,8 @@ class TaxYearApiTest extends IntegrationTest {
             mvc.perform(put(URL + "/" + year).header("Authorization", owner.bearer())
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(yearBody(40_000_000L, 1, 12, 0, null)))
-                    .andExpect(status().isBadRequest());
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
         }
         for (int year : new int[]{2025, 2026, 2027}) {
             createYear(mvc, owner, year);
@@ -269,7 +272,7 @@ class TaxYearApiTest extends IntegrationTest {
 
     @Test
     void thisYearFollowsKoreanTimeAndOlderRecordsStayEditable() throws Exception {
-        createYear(mvc, owner, 2025);
+        long initial2025 = createYear(mvc, owner, 2025);
         // UTC로는 2026-12-31 15:30, 한국 시각으로는 2027-01-01 00:30이다.
         clock.set(Instant.parse("2026-12-31T15:30:00Z"));
 
@@ -278,17 +281,17 @@ class TaxYearApiTest extends IntegrationTest {
 
         // 연도 범위는 만들 때만 본다. 범위를 벗어난 뒤에도 이미 있는 기록은 고치고 지울 수 있다.
         clock.set(Instant.parse("2028-06-15T03:00:00Z"));
-        putYear(mvc, owner, 2025, yearBody(45_000_000L, 1, 12, 0, 0L)).andExpect(status().isOk());
-        mvc.perform(delete(URL + "/2025").header("Authorization", owner.bearer()))
+        putYear(mvc, owner, 2025, yearBody(45_000_000L, 1, 12, 0, initial2025)).andExpect(status().isOk());
+        mvc.perform(delete(URL + "/2025").param("rowVersion", Long.toString(readVersion(mvc, owner, 2025, "$.rowVersion"))).header("Authorization", owner.bearer()))
                 .andExpect(status().isNoContent());
     }
 
     @Test
     void deleteRemovesOnlyThatYear() throws Exception {
         createYear(mvc, owner, 2025);
-        createYear(mvc, owner, 2026);
+        long initial = createYear(mvc, owner, 2026);
 
-        mvc.perform(delete(URL + "/2026").header("Authorization", owner.bearer()))
+        mvc.perform(delete(URL + "/2026").param("rowVersion", Long.toString(initial)).header("Authorization", owner.bearer()))
                 .andExpect(status().isNoContent());
 
         mvc.perform(get(URL + "/2026").header("Authorization", owner.bearer()))
@@ -296,7 +299,7 @@ class TaxYearApiTest extends IntegrationTest {
         mvc.perform(get(URL + "/2025").header("Authorization", owner.bearer()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.taxYear").value(2025));
-        mvc.perform(delete(URL + "/2026").header("Authorization", owner.bearer()))
+        mvc.perform(delete(URL + "/2026").param("rowVersion", Long.toString(initial)).header("Authorization", owner.bearer()))
                 .andExpect(status().isNotFound());
     }
 

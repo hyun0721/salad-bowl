@@ -9,7 +9,6 @@ import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
-import jakarta.persistence.Version;
 
 import java.time.OffsetDateTime;
 
@@ -45,7 +44,6 @@ public class TaxYearRecord {
     private Long lawVersionId;
 
     // 수정 요청의 rowVersion과 비교해 다른 곳에서 먼저 고친 기본정보를 덮어쓰지 않게 한다.
-    @Version
     @Column(name = "row_version", nullable = false)
     private long rowVersion;
 
@@ -58,17 +56,18 @@ public class TaxYearRecord {
     protected TaxYearRecord() {
     }
 
-    public static TaxYearRecord create(long ownerId, int taxYear, YearRequest request, Long lawVersionId) {
+    public static TaxYearRecord create(long ownerId, int taxYear, YearRequest request, Long lawVersionId, long rowVersion) {
         TaxYearRecord record = new TaxYearRecord();
         record.ownerId = ownerId;
         record.taxYear = taxYear;
         record.lawVersionId = lawVersionId;
-        record.edit(request);
+        record.edit(request, rowVersion);
         return record;
     }
 
     /** 기본정보를 덮어쓴다. 이전 값은 남지 않는다. */
-    public void edit(YearRequest request) {
+    public void edit(YearRequest request, long rowVersion) {
+        this.rowVersion = rowVersion;
         totalSalary = request.totalSalary();
         workStartMonth = request.workStartMonth();
         workEndMonth = request.workEndMonth();
@@ -76,7 +75,8 @@ public class TaxYearRecord {
     }
 
     /** 회원이 다시 계산을 눌렀을 때만 기억하는 세법 버전을 바꾼다. */
-    public void useLawVersion(long lawVersionId) {
+    public void useLawVersion(Long lawVersionId, long rowVersion) {
+        this.rowVersion = rowVersion;
         this.lawVersionId = lawVersionId;
     }
 

@@ -46,8 +46,9 @@ public class TaxRecordController {
     }
 
     @DeleteMapping
-    public ResponseEntity<Void> delete(@CurrentUser Long userId, @PathVariable @Min(1000) @Max(9999) int year) {
-        service.deleteYear(userId, year);
+    public ResponseEntity<Void> delete(@CurrentUser Long userId, @PathVariable @Min(1000) @Max(9999) int year,
+                                        @RequestParam long rowVersion) {
+        service.deleteYear(userId, year, rowVersion);
         return ResponseEntity.noContent().build();
     }
 

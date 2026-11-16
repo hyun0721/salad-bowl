@@ -6,7 +6,10 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import jakarta.persistence.Version;
+import jakarta.persistence.Transient;
+import jakarta.persistence.PostLoad;
+import jakarta.persistence.PostPersist;
+import org.springframework.data.domain.Persistable;
 
 /**
  * 지출계획. 연도 기록당 하나다. 남은 기간의 예상 공제대상액을 소비구분 4 x
@@ -14,7 +17,20 @@ import jakarta.persistence.Version;
  */
 @Entity
 @Table(name = "tax_spending_plans")
-public class TaxSpendingPlan {
+public class TaxSpendingPlan implements Persistable<Long> {
+
+    @Transient
+    private boolean newRecord = true;
+
+    @Override
+    public Long getId() { return recordId; }
+
+    @Override
+    public boolean isNew() { return newRecord; }
+
+    @PostLoad
+    @PostPersist
+    void markPersisted() { newRecord = false; }
 
     @Id
     @Column(name = "record_id")
@@ -56,23 +72,22 @@ public class TaxSpendingPlan {
     @Column(name = "culture_flexible", nullable = false)
     private long cultureFlexible;
 
-    // id를 직접 넣는 엔티티라 저장소가 새 행인지를 이 값이 null인지로 판단한다. 그래서 long이 아니라 Long이다.
-    @Version
     @Column(name = "row_version", nullable = false)
-    private Long rowVersion;
+    private long rowVersion;
 
     protected TaxSpendingPlan() {
     }
 
-    public static TaxSpendingPlan create(long recordId, PlanRequest request) {
+    public static TaxSpendingPlan create(long recordId, PlanRequest request, long rowVersion) {
         TaxSpendingPlan plan = new TaxSpendingPlan();
         plan.recordId = recordId;
-        plan.edit(request);
+        plan.edit(request, rowVersion);
         return plan;
     }
 
     /** 12칸을 덮어쓴다. 이전 값은 남지 않는다. */
-    public void edit(PlanRequest request) {
+    public void edit(PlanRequest request, long rowVersion) {
+        this.rowVersion = rowVersion;
         generalCreditFixed = request.general().creditFixed();
         generalDebitFixed = request.general().debitFixed();
         generalFlexible = request.general().flexible();
@@ -91,5 +106,5 @@ public class TaxSpendingPlan {
     public PlanRow market() { return new PlanRow(marketCreditFixed, marketDebitFixed, marketFlexible); }
     public PlanRow transit() { return new PlanRow(transitCreditFixed, transitDebitFixed, transitFlexible); }
     public PlanRow culture() { return new PlanRow(cultureCreditFixed, cultureDebitFixed, cultureFlexible); }
-    public Long getRowVersion() { return rowVersion; }
+    public long getRowVersion() { return rowVersion; }
 }

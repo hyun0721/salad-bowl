@@ -1,6 +1,8 @@
 -- 소득공제 자료. 회원 소유이며 연도 기록 아래에 카드 자료·현금영수증 자료·지출계획이 딸린다.
 -- 금액은 원 단위 정수이고 상한은 화면의 금액 입력과 같은 9,999,999,999,999원이다.
 
+CREATE SEQUENCE tax_row_version_seq AS BIGINT MAXVALUE 9007199254740991 NO CYCLE;
+
 -- 연도 기록의 세법 버전은 같은 귀속연도의 버전만 가리킨다(아래 복합 FK가 쓴다).
 ALTER TABLE tax_law_versions ADD CONSTRAINT uq_tax_law_versions_id_year UNIQUE (id, tax_year);
 
@@ -14,7 +16,7 @@ CREATE TABLE tax_year_records (
     child_count      INTEGER     NOT NULL DEFAULT 0 CHECK (child_count >= 0),
     -- NULL이면 그 귀속연도에 적용된 세법 버전이 아직 없다. 첫 버전이 적용될 때 채운다.
     law_version_id   BIGINT,
-    row_version      BIGINT      NOT NULL DEFAULT 0,
+    row_version      BIGINT      NOT NULL DEFAULT nextval('tax_row_version_seq'),
     created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
     CONSTRAINT uq_tax_year_records_owner_year UNIQUE (owner_id, tax_year),
@@ -51,7 +53,7 @@ CREATE TABLE tax_cash_receipts (
     market      BIGINT CHECK (market BETWEEN 0 AND 9999999999999),
     transit     BIGINT CHECK (transit BETWEEN 0 AND 9999999999999),
     culture     BIGINT CHECK (culture BETWEEN 0 AND 9999999999999),
-    row_version BIGINT NOT NULL DEFAULT 0
+    row_version BIGINT NOT NULL DEFAULT nextval('tax_row_version_seq')
 );
 
 -- 지출계획. 연도 기록당 하나다. 소비구분 4 x (신용카드 고정 / 체크카드·현금영수증 고정 / 변경 가능).
@@ -69,5 +71,5 @@ CREATE TABLE tax_spending_plans (
     culture_credit_fixed BIGINT NOT NULL DEFAULT 0 CHECK (culture_credit_fixed BETWEEN 0 AND 9999999999999),
     culture_debit_fixed  BIGINT NOT NULL DEFAULT 0 CHECK (culture_debit_fixed BETWEEN 0 AND 9999999999999),
     culture_flexible     BIGINT NOT NULL DEFAULT 0 CHECK (culture_flexible BETWEEN 0 AND 9999999999999),
-    row_version          BIGINT NOT NULL DEFAULT 0
+    row_version          BIGINT NOT NULL DEFAULT nextval('tax_row_version_seq')
 );

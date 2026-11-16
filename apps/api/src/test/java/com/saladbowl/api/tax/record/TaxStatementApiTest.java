@@ -22,6 +22,8 @@ import static com.saladbowl.api.support.TestTaxRecords.createYear;
 import static com.saladbowl.api.support.TestTaxRecords.postCard;
 import static com.saladbowl.api.support.TestTaxRecords.putCard;
 import static com.saladbowl.api.support.TestTaxRecords.putCash;
+import static com.saladbowl.api.support.TestTaxRecords.version;
+import static org.hamcrest.Matchers.not;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.nullValue;
@@ -48,11 +50,12 @@ class TaxStatementApiTest extends IntegrationTest {
     JdbcTemplate jdbc;
 
     AuthedUser owner;
+    long yearVersion;
 
     @BeforeEach
     void createOwnerYear() throws Exception {
         owner = TestAuth.signupAndLogin(mvc, "owner@example.test", "소유자");
-        createYear(mvc, owner, 2026);
+        yearVersion = createYear(mvc, owner, 2026);
     }
 
     /** 신용카드 1,000,000 / 200,000 / 50,000 / 30,000, 체크카드 400,000 / 100,000 / 20,000 / 10,000. */
@@ -103,7 +106,7 @@ class TaxStatementApiTest extends IntegrationTest {
                 .andExpect(jsonPath("$.hasInputs").value(true))
                 .andExpect(jsonPath("$.blankCount").value(4))
                 // 카드 자료를 더해도 연도 기록(기본정보)의 rowVersion은 그대로다. 비교 단위는 행 하나다.
-                .andExpect(jsonPath("$.rowVersion").value(0));
+                .andExpect(jsonPath("$.rowVersion").value(yearVersion));
     }
 
     @Test
@@ -138,11 +141,11 @@ class TaxStatementApiTest extends IntegrationTest {
                 .andExpect(jsonPath("$.cards[0].blankCount").value(0))
                 .andExpect(jsonPath("$.blankCount").value(4));
 
-        putCash(mvc, owner, 2026, cashBody("2026-10-31", null, 0L, null, 0L, 0L))
+        var savedCash = putCash(mvc, owner, 2026, cashBody("2026-10-31", null, 0L, null, 0L, 0L))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.cashReceipt.blankCount").value(1))
                 .andExpect(jsonPath("$.blankCount").value(1));
-        putCash(mvc, owner, 2026, cashBody("2026-10-31", 0L, 0L, 0L, 0L, 0L))
+        putCash(mvc, owner, 2026, cashBody("2026-10-31", version(savedCash, "$.cashReceipt.rowVersion"), 0L, 0L, 0L, 0L))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.cashReceipt.blankCount").value(0))
                 .andExpect(jsonPath("$.blankCount").value(0));
@@ -197,15 +200,15 @@ class TaxStatementApiTest extends IntegrationTest {
 
     @Test
     void cashReceiptIsOnePerYearAndCannotBeDeleted() throws Exception {
-        putCash(mvc, owner, 2026, cashBody("2026-10-31", null, 120_000L, 40_000L, 0L, 8_000L))
+        var savedCash = putCash(mvc, owner, 2026, cashBody("2026-10-31", null, 120_000L, 40_000L, 0L, 8_000L))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.cashReceipt.rowVersion").value(0))
+                .andExpect(jsonPath("$.cashReceipt.rowVersion").isNumber())
                 .andExpect(jsonPath("$.cashReceipt.asOfDate").value("2026-10-31"))
                 .andExpect(jsonPath("$.cashReceipt.amounts.general").value(120_000))
                 .andExpect(jsonPath("$.hasInputs").value(true));
-        putCash(mvc, owner, 2026, cashBody("2026-11-30", 0L, 150_000L, 40_000L, 0L, 8_000L))
+        putCash(mvc, owner, 2026, cashBody("2026-11-30", version(savedCash, "$.cashReceipt.rowVersion"), 150_000L, 40_000L, 0L, 8_000L))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.cashReceipt.rowVersion").value(1))
+                .andExpect(jsonPath("$.cashReceipt.rowVersion").value(not(version(savedCash, "$.cashReceipt.rowVersion")), Long.class))
                 .andExpect(jsonPath("$.cashReceipt.amounts.general").value(150_000));
         assertThat(count("tax_cash_receipts")).isEqualTo(1);
 
@@ -225,18 +228,18 @@ class TaxStatementApiTest extends IntegrationTest {
         putCash(mvc, owner, 2026, cashBody("2026-10-31", 0L, 1L, 1L, 1L, 1L)).andExpect(status().isConflict());
         assertThat(count("tax_cash_receipts")).isZero();
 
-        putCash(mvc, owner, 2026, cashBody("2026-10-31", null, 120_000L, 0L, 0L, 0L)).andExpect(status().isOk());
-        putCash(mvc, owner, 2026, cashBody("2026-10-31", 0L, 150_000L, 0L, 0L, 0L)).andExpect(status().isOk());
+        var savedCash = putCash(mvc, owner, 2026, cashBody("2026-10-31", null, 120_000L, 0L, 0L, 0L)).andExpect(status().isOk());
+        putCash(mvc, owner, 2026, cashBody("2026-10-31", version(savedCash, "$.cashReceipt.rowVersion"), 150_000L, 0L, 0L, 0L)).andExpect(status().isOk());
 
         // 옛 rowVersion, 그리고 이미 있는데 새로 만들려는 요청(rowVersion 없음) 모두 409다.
-        for (Long stale : new Long[]{0L, null}) {
+        for (Long stale : new Long[]{version(savedCash, "$.cashReceipt.rowVersion"), null}) {
             putCash(mvc, owner, 2026, cashBody("2026-10-31", stale, 999_000L, 0L, 0L, 0L))
                     .andExpect(status().isConflict())
                     .andExpect(jsonPath("$.code").value("CONFLICT"));
         }
         mvc.perform(get(URL + "/2026").header("Authorization", owner.bearer()))
                 .andExpect(jsonPath("$.cashReceipt.amounts.general").value(150_000))
-                .andExpect(jsonPath("$.cashReceipt.rowVersion").value(1));
+                .andExpect(jsonPath("$.cashReceipt.rowVersion").value(not(version(savedCash, "$.cashReceipt.rowVersion")), Long.class));
     }
 
     @Test
@@ -275,7 +278,7 @@ class TaxStatementApiTest extends IntegrationTest {
     void asOfDateMismatchIsReportedOnlyWhenDatesDiffer() throws Exception {
         addCard(mvc, owner, 2026, fullCard("합성카드", "2026-10-31", null));
         long second = addCard(mvc, owner, 2026, fullCard("가상카드", "2026-10-31", null));
-        putCash(mvc, owner, 2026, cashBody("2026-10-31", null, 0L, 0L, 0L, 0L))
+        var savedCash = putCash(mvc, owner, 2026, cashBody("2026-10-31", null, 0L, 0L, 0L, 0L))
                 .andExpect(jsonPath("$.asOfDateMismatch").value(false));
 
         putCard(mvc, owner, 2026, second, fullCard("가상카드", "2026-11-30", 0L))
@@ -283,7 +286,7 @@ class TaxStatementApiTest extends IntegrationTest {
         putCard(mvc, owner, 2026, second, fullCard("가상카드", "2026-10-31", 1L))
                 .andExpect(jsonPath("$.asOfDateMismatch").value(false));
         // 현금영수증 자료의 기준일만 달라도 불일치다.
-        putCash(mvc, owner, 2026, cashBody("2026-09-30", 0L, 0L, 0L, 0L, 0L))
+        putCash(mvc, owner, 2026, cashBody("2026-09-30", version(savedCash, "$.cashReceipt.rowVersion"), 0L, 0L, 0L, 0L))
                 .andExpect(jsonPath("$.asOfDateMismatch").value(true));
     }
 
@@ -368,7 +371,7 @@ class TaxStatementApiTest extends IntegrationTest {
         long deletedCard2 = addCard(mvc, owner, 2026, fullCard("가상카드", "2026-10-31", null));
         putCash(mvc, owner, 2026, cashBody("2026-10-31", null, 0L, 0L, 0L, 0L)).andExpect(status().isOk());
 
-        mvc.perform(delete(URL + "/2026").header("Authorization", owner.bearer()))
+        mvc.perform(delete(URL + "/2026").param("rowVersion", Long.toString(yearVersion)).header("Authorization", owner.bearer()))
                 .andExpect(status().isNoContent());
 
         assertThat(count("tax_card_statements")).isEqualTo(2);

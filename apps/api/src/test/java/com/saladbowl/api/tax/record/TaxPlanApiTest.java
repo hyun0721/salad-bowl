@@ -16,6 +16,8 @@ import static com.saladbowl.api.support.TestTaxRecords.URL;
 import static com.saladbowl.api.support.TestTaxRecords.createYear;
 import static com.saladbowl.api.support.TestTaxRecords.planBody;
 import static com.saladbowl.api.support.TestTaxRecords.putPlan;
+import static com.saladbowl.api.support.TestTaxRecords.version;
+import static org.hamcrest.Matchers.not;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -37,11 +39,12 @@ class TaxPlanApiTest extends IntegrationTest {
     JdbcTemplate jdbc;
 
     AuthedUser owner;
+    long yearVersion;
 
     @BeforeEach
     void createOwnerYear() throws Exception {
         owner = TestAuth.signupAndLogin(mvc, "owner@example.test", "소유자");
-        createYear(mvc, owner, 2026);
+        yearVersion = createYear(mvc, owner, 2026);
     }
 
     /** 일반 300,000 / 200,000 / 900,000, 전통시장 0 / 50,000 / 100,000, 대중교통 0 / 0 / 120,000, 문화체육 40,000 / 0 / 60,000. */
@@ -64,9 +67,9 @@ class TaxPlanApiTest extends IntegrationTest {
                 .andExpect(jsonPath("$.plan").value(nullValue()));
 
         // 자료가 미완료이고 세법이 없어도 저장된다(TAX-75).
-        putPlan(mvc, owner, 2026, plan(null))
+        var saved = putPlan(mvc, owner, 2026, plan(null))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.plan.rowVersion").value(0))
+                .andExpect(jsonPath("$.plan.rowVersion").isNumber())
                 .andExpect(jsonPath("$.plan.general.creditFixed").value(300_000))
                 .andExpect(jsonPath("$.plan.general.debitFixed").value(200_000))
                 .andExpect(jsonPath("$.plan.general.flexible").value(900_000))
@@ -81,15 +84,15 @@ class TaxPlanApiTest extends IntegrationTest {
                 .andExpect(jsonPath("$.plan.culture.flexible").value(60_000))
                 // 지출계획은 연도 합계표(입력자료의 합)에 들어가지 않는다.
                 .andExpect(jsonPath("$.totals.creditGeneral").value(0))
-                .andExpect(jsonPath("$.rowVersion").value(0));
+                .andExpect(jsonPath("$.rowVersion").value(yearVersion));
 
         mvc.perform(get(URL + "/2026").header("Authorization", owner.bearer()))
                 .andExpect(jsonPath("$.plan.general.flexible").value(900_000))
                 .andExpect(jsonPath("$.plan.culture.flexible").value(60_000));
 
-        putPlan(mvc, owner, 2026, zeroPlanWith(0L, 500_000L))
+        putPlan(mvc, owner, 2026, zeroPlanWith(version(saved, "$.plan.rowVersion"), 500_000L))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.plan.rowVersion").value(1))
+                .andExpect(jsonPath("$.plan.rowVersion").value(not(version(saved, "$.plan.rowVersion")), Long.class))
                 .andExpect(jsonPath("$.plan.general.flexible").value(500_000))
                 .andExpect(jsonPath("$.plan.general.creditFixed").value(0));
         assertThat(planCount()).isEqualTo(1);
@@ -101,17 +104,17 @@ class TaxPlanApiTest extends IntegrationTest {
         putPlan(mvc, owner, 2026, plan(0L)).andExpect(status().isConflict());
         assertThat(planCount()).isZero();
 
-        putPlan(mvc, owner, 2026, plan(null)).andExpect(status().isOk());
-        putPlan(mvc, owner, 2026, zeroPlanWith(0L, 500_000L)).andExpect(status().isOk());
+        var saved = putPlan(mvc, owner, 2026, plan(null)).andExpect(status().isOk());
+        putPlan(mvc, owner, 2026, zeroPlanWith(version(saved, "$.plan.rowVersion"), 500_000L)).andExpect(status().isOk());
 
-        for (Long stale : new Long[]{0L, null}) {
+        for (Long stale : new Long[]{version(saved, "$.plan.rowVersion"), null}) {
             putPlan(mvc, owner, 2026, zeroPlanWith(stale, 777_000L))
                     .andExpect(status().isConflict())
                     .andExpect(jsonPath("$.code").value("CONFLICT"));
         }
         mvc.perform(get(URL + "/2026").header("Authorization", owner.bearer()))
                 .andExpect(jsonPath("$.plan.general.flexible").value(500_000))
-                .andExpect(jsonPath("$.plan.rowVersion").value(1));
+                .andExpect(jsonPath("$.plan.rowVersion").value(not(version(saved, "$.plan.rowVersion")), Long.class));
     }
 
     @Test
@@ -136,7 +139,7 @@ class TaxPlanApiTest extends IntegrationTest {
 
     @Test
     void anotherMemberCannotReachMyPlan() throws Exception {
-        putPlan(mvc, owner, 2026, plan(null)).andExpect(status().isOk());
+        var saved = putPlan(mvc, owner, 2026, plan(null)).andExpect(status().isOk());
         AuthedUser stranger = TestAuth.signupAndLogin(mvc, "stranger@example.test", "남");
 
         // 연도 기록이 없는 회원은 404다.
@@ -152,7 +155,7 @@ class TaxPlanApiTest extends IntegrationTest {
 
         mvc.perform(get(URL + "/2026").header("Authorization", owner.bearer()))
                 .andExpect(jsonPath("$.plan.general.flexible").value(900_000))
-                .andExpect(jsonPath("$.plan.rowVersion").value(0));
+                .andExpect(jsonPath("$.plan.rowVersion").value(version(saved, "$.plan.rowVersion")));
         assertThat(planCount()).isEqualTo(2);
     }
 
@@ -162,14 +165,14 @@ class TaxPlanApiTest extends IntegrationTest {
         putPlan(mvc, owner, 2025, zeroPlanWith(null, 25_000L)).andExpect(status().isOk());
         putPlan(mvc, owner, 2026, plan(null)).andExpect(status().isOk());
 
-        mvc.perform(delete(URL + "/2026").header("Authorization", owner.bearer()))
+        mvc.perform(delete(URL + "/2026").param("rowVersion", Long.toString(yearVersion)).header("Authorization", owner.bearer()))
                 .andExpect(status().isNoContent());
 
         assertThat(planCount()).isEqualTo(1);
         mvc.perform(get(URL + "/2025").header("Authorization", owner.bearer()))
                 .andExpect(jsonPath("$.plan.general.flexible").value(25_000));
         // 같은 연도를 다시 만들면 계획 없이 시작한다.
-        createYear(mvc, owner, 2026);
+        yearVersion = createYear(mvc, owner, 2026);
         mvc.perform(get(URL + "/2026").header("Authorization", owner.bearer()))
                 .andExpect(jsonPath("$.plan").value(nullValue()));
     }
