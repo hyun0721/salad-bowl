@@ -3,6 +3,7 @@ package com.saladbowl.api.tax.record;
 import com.saladbowl.api.auth.CurrentUser;
 import com.saladbowl.api.tax.record.TaxRecordDtos.CardRequest;
 import com.saladbowl.api.tax.record.TaxRecordDtos.CashRequest;
+import com.saladbowl.api.tax.record.TaxRecordDtos.PlanRequest;
 import com.saladbowl.api.tax.record.TaxRecordDtos.SavedYear;
 import com.saladbowl.api.tax.record.TaxRecordDtos.TaxYearView;
 import com.saladbowl.api.tax.record.TaxRecordDtos.YearRequest;
@@ -74,5 +75,16 @@ public class TaxRecordController {
     public TaxYearView saveCashReceipt(@CurrentUser Long userId, @PathVariable @Min(1000) @Max(9999) int year,
                                        @Valid @RequestBody CashRequest request) {
         return service.saveCashReceipt(userId, year, request);
+    }
+
+    @PutMapping("/plan")
+    public TaxYearView savePlan(@CurrentUser Long userId, @PathVariable @Min(1000) @Max(9999) int year,
+                                @Valid @RequestBody PlanRequest request) {
+        return service.savePlan(userId, year, request);
+    }
+
+    @PostMapping("/law-version/refresh")
+    public TaxYearView refreshLawVersion(@CurrentUser Long userId, @PathVariable @Min(1000) @Max(9999) int year) {
+        return service.refreshLawVersion(userId, year);
     }
 }

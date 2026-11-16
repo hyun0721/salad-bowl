@@ -77,6 +77,23 @@ public final class TaxRecordDtos {
     public record CashView(long rowVersion, LocalDate asOfDate, String memo, CashAmounts amounts, int blankCount) {
     }
 
+    public record PlanRow(
+            @NotNull @Min(0) @Max(MAX_AMOUNT) @WholeNumber Long creditFixed,
+            @NotNull @Min(0) @Max(MAX_AMOUNT) @WholeNumber Long debitFixed,
+            @NotNull @Min(0) @Max(MAX_AMOUNT) @WholeNumber Long flexible) {
+    }
+
+    public record PlanRequest(
+            @NotNull @Valid PlanRow general,
+            @NotNull @Valid PlanRow market,
+            @NotNull @Valid PlanRow transit,
+            @NotNull @Valid PlanRow culture,
+            @WholeNumber Long rowVersion) {
+    }
+
+    public record PlanView(long rowVersion, PlanRow general, PlanRow market, PlanRow transit, PlanRow culture) {
+    }
+
     /** 연도 기록이 기억하는 세법 버전. childTiersApply는 웹이 자녀등 입력란을 보일지 판단하는 값이다. */
     public record LawVersionRef(long id, int versionNo, OffsetDateTime appliedAt, boolean childTiersApply) {
     }
@@ -90,8 +107,10 @@ public final class TaxRecordDtos {
             int workEndMonth,
             int childCount,
             LawVersionRef lawVersion,
+            boolean newerLawVersion,
             List<CardView> cards,
             CashView cashReceipt,
+            PlanView plan,
             SpendingTotals totals,
             int blankCount,
             boolean hasInputs,

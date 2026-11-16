@@ -61,6 +61,15 @@ public final class TestTaxLaws {
         return id;
     }
 
+    /** 새 초안을 2026 값으로 채워 적용하고 그 id를 돌려준다. */
+    public static long createApplied(MockMvc mvc, TestAuth.AuthedUser admin, int taxYear) throws Exception {
+        long id = createFilledDraft(mvc, admin, taxYear);
+        mvc.perform(post(URL + "/" + id + "/apply").header("Authorization", admin.bearer())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"rowVersion\":1}"))
+                .andExpect(status().isOk());
+        return id;
+    }
+
     /** 적용 API(Task 2.3) 없이 적용본을 만든다. 적용본의 수정·삭제 거부와 current 조회 테스트에 쓴다. */
     public static void markApplied(JdbcTemplate jdbc, long id, long adminId) {
         jdbc.update("UPDATE tax_law_versions SET status = 'APPLIED', applied_by = ?, applied_at = now() WHERE id = ?",

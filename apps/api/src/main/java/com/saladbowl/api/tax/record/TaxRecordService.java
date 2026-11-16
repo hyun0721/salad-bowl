@@ -11,6 +11,8 @@ import com.saladbowl.api.tax.record.TaxRecordDtos.CardView;
 import com.saladbowl.api.tax.record.TaxRecordDtos.CashRequest;
 import com.saladbowl.api.tax.record.TaxRecordDtos.CashView;
 import com.saladbowl.api.tax.record.TaxRecordDtos.LawVersionRef;
+import com.saladbowl.api.tax.record.TaxRecordDtos.PlanRequest;
+import com.saladbowl.api.tax.record.TaxRecordDtos.PlanView;
 import com.saladbowl.api.tax.record.TaxRecordDtos.SavedYear;
 import com.saladbowl.api.tax.record.TaxRecordDtos.TaxYearView;
 import com.saladbowl.api.tax.record.TaxRecordDtos.YearRequest;
@@ -21,6 +23,7 @@ import java.time.Clock;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Stream;
 
@@ -37,16 +40,18 @@ public class TaxRecordService {
     private final TaxYearRecordRepository records;
     private final TaxCardStatementRepository cards;
     private final TaxCashReceiptRepository cashReceipts;
+    private final TaxSpendingPlanRepository plans;
     private final TaxLawService laws;
     private final TaxLawVersionRepository lawVersions;
     private final Clock clock;
 
     public TaxRecordService(TaxYearRecordRepository records, TaxCardStatementRepository cards,
-                            TaxCashReceiptRepository cashReceipts, TaxLawService laws,
-                            TaxLawVersionRepository lawVersions, Clock clock) {
+                            TaxCashReceiptRepository cashReceipts, TaxSpendingPlanRepository plans,
+                            TaxLawService laws, TaxLawVersionRepository lawVersions, Clock clock) {
         this.records = records;
         this.cards = cards;
         this.cashReceipts = cashReceipts;
+        this.plans = plans;
         this.laws = laws;
         this.lawVersions = lawVersions;
         this.clock = clock;
@@ -70,7 +75,7 @@ public class TaxRecordService {
                 throw notFound();
             }
             requireCreatableYear(year);
-            Long lawVersionId = laws.currentApplied(year).map(TaxLawVersion::getId).orElse(null);
+            Long lawVersionId = laws.currentAppliedForNewRecord(year).map(TaxLawVersion::getId).orElse(null);
             // 같은 회원이 동시에 두 번 만들면 UNIQUE (owner_id, tax_year)가 한쪽을 409로 만든다.
             TaxYearRecord created = records.saveAndFlush(TaxYearRecord.create(userId, year, request, lawVersionId));
             return new SavedYear(true, view(created));
@@ -137,6 +142,32 @@ public class TaxRecordService {
         return viewWithinTotalLimit(record);
     }
 
+    /** 계획은 연도당 하나이며 입력자료나 세법이 없어도 저장한다. */
+    @Transactional
+    public TaxYearView savePlan(long userId, int year, PlanRequest request) {
+        TaxYearRecord record = lockOwned(userId, year);
+        Optional<TaxSpendingPlan> existing = plans.findById(record.getId());
+        if (existing.isEmpty()) {
+            if (request.rowVersion() != null) {
+                throw conflict();
+            }
+            plans.saveAndFlush(TaxSpendingPlan.create(record.getId(), request));
+        } else {
+            TaxSpendingPlan plan = existing.get();
+            requireRowVersion(plan.getRowVersion(), request.rowVersion());
+            plan.edit(request);
+            plans.saveAndFlush(plan);
+        }
+        return view(record);
+    }
+
+    @Transactional
+    public TaxYearView refreshLawVersion(long userId, int year) {
+        TaxYearRecord record = lockOwned(userId, year);
+        laws.currentApplied(year).ifPresent(current -> record.useLawVersion(current.getId()));
+        return view(records.saveAndFlush(record));
+    }
+
     /** 읽기용. 요청자의 그 귀속연도 기록이 없으면 404다. 조회(이 클래스와 PR 4의 분석)가 쓴다. */
     public TaxYearRecord requireOwned(long userId, int year) {
         return records.findByOwnerIdAndTaxYear(userId, year).orElseThrow(TaxRecordService::notFound);
@@ -188,6 +219,9 @@ public class TaxRecordService {
     private TaxYearView view(TaxYearRecord record) {
         LawVersionRef lawVersion = record.getLawVersionId() == null ? null
                 : lawVersions.findById(record.getLawVersionId()).map(TaxRecordService::toRef).orElse(null);
+        Long currentLawVersionId = laws.currentApplied(record.getTaxYear()).map(TaxLawVersion::getId).orElse(null);
+        PlanView plan = plans.findById(record.getId()).map(p -> new PlanView(p.getRowVersion(), p.general(),
+                p.market(), p.transit(), p.culture())).orElse(null);
         List<TaxCardStatement> cardRows = cards.findByRecordIdOrderByIdAsc(record.getId());
         TaxCashReceipt cash = cashReceipts.findById(record.getId()).orElse(null);
         List<CardView> cardViews = cardRows.stream().map(c -> new CardView(c.getId(), c.getRowVersion(),
@@ -200,7 +234,8 @@ public class TaxRecordService {
                 Stream.ofNullable(cash).map(TaxCashReceipt::getAsOfDate)).distinct().count();
         return new TaxYearView(record.getTaxYear(), record.getRowVersion(), record.getTotalSalary(),
                 record.getWorkStartMonth(), record.getWorkEndMonth(), record.getChildCount(), lawVersion,
-                cardViews, cashView, SpendingTotals.of(cardRows, cash), blankCount,
+                !Objects.equals(record.getLawVersionId(), currentLawVersionId),
+                cardViews, cashView, plan, SpendingTotals.of(cardRows, cash), blankCount,
                 !cardRows.isEmpty() || cash != null, asOfDates > 1);
     }
 

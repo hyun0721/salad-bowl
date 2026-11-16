@@ -76,4 +76,22 @@ public final class TestTaxRecords {
         return mvc.perform(put(URL + "/" + year + "/cash-receipt").header("Authorization", user.bearer())
                 .contentType(MediaType.APPLICATION_JSON).content(body));
     }
+
+    /** amounts는 일반·전통시장·대중교통·문화체육 순서로 각 행의 고정 신용/직불/변경 가능 12칸이다. */
+    public static String planBody(Long rowVersion, Long... amounts) {
+        return """
+                {"rowVersion": %s,
+                  "general": {"creditFixed": %s, "debitFixed": %s, "flexible": %s},
+                  "market": {"creditFixed": %s, "debitFixed": %s, "flexible": %s},
+                  "transit": {"creditFixed": %s, "debitFixed": %s, "flexible": %s},
+                  "culture": {"creditFixed": %s, "debitFixed": %s, "flexible": %s}}
+                """.formatted(rowVersion, amounts[0], amounts[1], amounts[2], amounts[3], amounts[4], amounts[5],
+                amounts[6], amounts[7], amounts[8], amounts[9], amounts[10], amounts[11]);
+    }
+
+    public static ResultActions putPlan(MockMvc mvc, TestAuth.AuthedUser user, int year, String body)
+            throws Exception {
+        return mvc.perform(put(URL + "/" + year + "/plan").header("Authorization", user.bearer())
+                .contentType(MediaType.APPLICATION_JSON).content(body));
+    }
 }

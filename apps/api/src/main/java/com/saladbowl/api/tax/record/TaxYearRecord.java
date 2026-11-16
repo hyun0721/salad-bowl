@@ -75,6 +75,11 @@ public class TaxYearRecord {
         childCount = request.childCount();
     }
 
+    /** 회원이 다시 계산을 눌렀을 때만 기억하는 세법 버전을 바꾼다. */
+    public void useLawVersion(long lawVersionId) {
+        this.lawVersionId = lawVersionId;
+    }
+
     @PrePersist
     void onCreate() {
         createdAt = updatedAt = OffsetDateTime.now();
