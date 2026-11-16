@@ -41,7 +41,7 @@
 | 1 `feat(web)` | 업로드 메뉴·화면 제거, 월별 등록 현황·업로드 이력을 홈으로 이동, 옛 `/upload` 주소 처리 | TAX-14, 15, 16, 17, 18, 74 (TAX-12 중 "업로드 없음") | 없음 | 아니오. 월 데이터 삭제 창은 위치만 옮기고 코드는 그대로다 | 예 (홈, 하단 탭) |
 | 2 `feat(api)` | 서비스 관리자 권한, 세법 버전 저장·관리 API | TAX-04, 05, 06(서버), 60, 61, 62, 63, 64, 67, 72 | 없음 | **예 — 권한(서비스 관리자), 삭제(초안)** | 아니오 |
 | 3 `feat(api)` | 연도 기록·입력자료·지출계획 저장 API, 소유권, 동시 수정 409, 세법 버전 기억 | TAX-01, 02, 03, 20~24, 26~29(서버), 51, 65, 66, 70(저장) | 2 | **예 — 소유권(404 숨김), 삭제(연도 기록·카드 자료)** | 아니오 |
-| 4 `feat(api)` | 계산기(7.1)·현재 계획 배분·추천(7.2) 순수 로직과 분석 조회 API | TAX-35(값), 38(상태), 40~46, 50, 52~54, 69, 71(단계 값), 75(상태) | 3 | 아니오 (조회만. 소유권 검사는 PR 3의 것을 쓴다) | 아니오 |
+| 4 `feat(api)` | 계산기(7.1)·현재 계획 배분·추천(7.2) 순수 로직과 분석 조회 API | TAX-24(빈 칸 수), 35(값), 36(값), 38(상태), 40~46, 50, 52~54, 65(상태), 69, 71(단계 값), 75(상태) | 3 | 아니오 (읽기 전용 조회 하나. 회원 자료는 PR 3의 `TaxRecordService.get`으로만 읽고 새 테이블이 없다) | 아니오 |
 | 5 `feat(web)` | 소득공제 메뉴·라우트, 선택 연도, 입력자료 화면 | TAX-07, 10, 12, 13, 19, 20~31, 37, 68(일부), 76 | 3 (자녀등 입력란 판단에 2) | 아니오 (서버 권한·삭제는 PR 2·3에서 검토. 로그아웃 캐시 테스트 포함) | 예 |
 | 6 `feat(web)` | 연도별 세법 관리 화면(관리자), 권한 없음 화면 | TAX-04, 06(화면), 10, 11, 19(세 번째 탭), 60~64, 67, 72 | 2, 5 | 아니오 (화면 숨김은 편의이고 권한은 서버가 판단) | 예 |
 | 7 `feat(web)` | 분석·지출계획 화면(① 현황 ② 지출계획 ③ 추천), 메뉴 진입 규칙 | TAX-10, 13, 27(추정), 32~38, 43, 50~55, 65, 66, 68, 69, 70, 71, 73, 75 | 4, 5 | 아니오 | 예 |
@@ -54,7 +54,7 @@
 - 웹은 입력자료(PR 5) → 세법 관리(PR 6) → 분석(PR 7) 순이다. 분석 화면이 나가기 전에 운영자가 화면으로 2026 귀속 세법을 등록할 수 있어야 "세법 준비 중"만 보이는 기간이 없다.
 - PR 5~7은 병합할 때마다 운영에 보인다. PR 5 병합 뒤 PR 7 병합 전까지 회원은 입력자료 화면만 본다(중간 노출을 받아들이는 것이 이 계획의 기본값이다. "알려진 제약" 참고).
 
-**PR 4~7의 Task 상세는 그 PR에 착수할 때 컨트롤러가 채운다(PR 2는 2026-11-14에, PR 3은 2026-11-16에 채웠다).** 뒤 PR의 코드는 앞 PR 결과(실제 엔티티·응답 필드 이름)에 의존하기 때문이다. 이 문서에는 PR 4~7의 Task 목록·파일·인터페이스·테스트 대상·검증 명령까지 적었다. PR 1~3은 실행 가능한 상세까지 적었다.
+**PR 5~7의 Task 상세는 그 PR에 착수할 때 컨트롤러가 채운다(PR 2는 2026-11-14에, PR 3은 2026-11-16에, PR 4는 2026-11-17에 채웠다).** 뒤 PR의 코드는 앞 PR 결과(실제 엔티티·응답 필드 이름)에 의존하기 때문이다. 이 문서에는 PR 5~7의 Task 목록·파일·인터페이스·테스트 대상·검증 명령까지 적었다. PR 1~4는 실행 가능한 상세까지 적었다.
 
 ## 요구사항 추적표
 
@@ -6513,84 +6513,1846 @@ git commit -m "feat(api): 소득공제 지출계획 저장과 세법 버전 기�
 
 # PR 4 — 계산기·추천·분석 조회 API
 
-**이 PR에 착수할 때 컨트롤러가 Task 상세를 채운다.** 착수 전에 PRD 7.1절 산식을 8.1절 출처의 조문과 한 번 더 대조한다(PRD 14장).
+반론 리뷰 대상이 아니다(이유는 "PR 4 마무리"). 브랜치: `feat/tax-calc-api`(최신 `origin/main` `f908524`에서 만든 worktree). PR 제목 예: `feat(api): 소득공제 계산기·추천·분석 조회 API`.
 
-브랜치 예: `feat/tax-analysis-api`. 검증: `cd apps/api && ./gradlew test`.
+검증: `cd apps/api && ./gradlew test`. 업로드·파서를 건드리지 않으므로 `memoryTest`는 생략하고 PR 본문에 이유를 적는다(API CI는 둘 다 돌린다). JDK 21과 Docker(Testcontainers)가 필요하다. 계산기·배분·추천 테스트는 Spring 없이 도는 단위 테스트다.
 
-계산 규칙 (알고리즘 버전 1)
+이 PR의 코드와 테스트는 계획을 쓸 때 저장소 밖 임시 복사본에서 Task 순서대로 실행해 확인했다(2026-11-17, `f908524` 기준, 시작 시점 전체 375건). Task마다 테스트를 먼저 넣어 실패를 보고(4.1: 10건 중 10건, 4.2: 16건 중 16건, 4.3: 7건 중 7건 실패) 구현을 넣은 뒤 `./gradlew cleanTest test` 전체를 돌렸다(4.1 뒤 385건, 4.2 뒤 401건, 4.3 뒤 408건 통과). 아래 코드 블록은 그 임시 복사본의 파일을 그대로 옮긴 것이다. 저장소의 앱 코드는 아직 바꾸지 않았다.
+
+경로 줄임: `main/` = `apps/api/src/main/java/com/saladbowl/api/`, `test/` = `apps/api/src/test/java/com/saladbowl/api/`. 이 PR은 새 파일만 만든다(`main/tax/calc/` 11개, `test/tax/calc/` 4개). 기존 파일·migration·테스트 헬퍼는 고치지 않는다. 그래서 `diff` 블록이 없고 모든 블록이 파일 전체다.
+
+## 조문 대조 (PRD 14장, 2026-11-17)
+
+PRD 7.1절 산식과 8.1절 값을 착수 전에 공개 자료와 다시 대조했다. **PRD와 다른 값은 없었다.** 값을 바꾸지 않았다.
+
+| 항목 | PRD 값 | 확인한 자료 | 결과 |
+|---|---|---|---|
+| 최저사용금액 | 총급여의 25% 초과분부터 | 국세청 안내, 조문 열람 사이트(법 ①) | 일치 |
+| 공제율 | 신용 15 / 직불·현금영수증 30 / 문화체육 30(7천만원 이하만) / 전통시장 40 / 대중교통 40 | 국세청 안내, 조문 열람 사이트(법 ② 1~5호) | 일치 |
+| 최저사용금액 차감액 3경우 | 7.1절 3번 식 | 국세청 안내의 계산식 ⑥ | 일치(세 경우의 조건과 식이 같다) |
+| 7천만원 초과의 문화체육 | 원래 결제수단의 일반 사용분 | 국세청 안내의 계산식 ①~③("총급여 7천만원 이하자의 문화체육 사용분"만 따로 뺀다) | 일치 |
+| 기본한도 | 7천만원 이하 300만 / 초과 250만 | 국세청 안내, 조문 열람 사이트(법 ⑩) | 일치 |
+| 자녀등 한도(2026 귀속) | 7천만원 이하 350만·400만 / 초과 275만·300만 | 조문 열람 사이트(법 ⑩), 2차 자료 1건 | 일치. 국세청 안내에는 이 내용이 없다(PRD 8.1절에 이미 적힌 차이) |
+| 추가한도 | 7천만원 이하: 전통+대중+문화체육 공제액 합계, 300만 / 초과: 전통+대중, 200만 | 국세청 안내 ⑦, 조문 열람 사이트(법 ⑪ 1호) | 일치 |
+| 일몰 | 2028.12.31. 사용분까지 | 조문 열람 사이트(법 ①) | 일치 |
+
+- 근거 URL: 국세청 안내 https://www.nts.go.kr/nts/cm/cntnts/cntntsView.do?mi=2469&cntntsId=7794 , 조문 열람 https://casenote.kr/법령/조세특례제한법/제126조의2 (2025.12.23. 법률 제21223호 개정 이력 표시), 2차 자료 https://asiatop.co.kr/tax/yearend-income-deduction-items-2026/ .
+- **불확실한 점.** 국가법령정보센터(PRD 8.1절의 `law.go.kr` 주소)는 본문을 스크립트로 불러와 이번 도구로는 조문 원문을 읽지 못했다. 조문은 열람 사이트의 요지와 국세청 안내로 확인했고, 두 자료 모두 요약 도구를 거쳐 읽었다. 법 ⑪ 2호(전년 대비 증가분, 2024년 한정)는 PRD대로 계산에 넣지 않는다. 원 단위 처리·중도 입퇴사 합산 기간·취소분 귀속은 여전히 미확인이다(PRD 8.1절 "미확인").
+- **2027 귀속에 영향을 줄 수 있는 것.** 2026.8.3. 발표된 2026년 세제개편안은 2027년 사용분부터 대중교통 우대 폐지, 추가한도 축소(200만·100만), 문화체육 30%의 7천만원 요건 폐지를 담고 있다(기사 https://news.mtn.co.kr/news-detail/2026080315521251297 , 확인 시점에 국회 미확정). 2026 귀속 계산에는 영향이 없다. 확정되면 대중교통 공제율·추가한도는 세법 버전 값으로 바꿀 수 있지만 "문화체육 우대는 낮은 급여구간만"은 계산기에 고정돼 있어 알고리즘 버전 2가 필요하다(PRD 8.2절).
+
+## 계산 규칙 (알고리즘 버전 1)
 
 - 입력: 총급여 S, 자녀등 수, `SpendingTotals` 12칸, `TaxLawValues`. 체크카드와 현금영수증은 "직불등"으로 묶는다.
-- S ≤ `bracketBoundary`면 낮은 구간(문화체육 우대 적용), 초과면 높은 구간(문화체육을 원래 결제수단의 일반으로 보고 M = 0).
-- 최저사용금액 L = S × `minSpendRatePct` ÷ 100. 전체가 L 이하면 0원.
-- 공제 가능 금액 = Σ(구분 금액 × 그 공제율) − 차감액. 차감액은 L을 A(신용) → B(직불등) → M(문화체육) → T(전통시장) → P(대중교통) 순으로 채우며 각 구간에 그 공제율을 곱한 합이다. 2025·2026 값(B와 M 30%, T와 P 40%)에서는 PRD 7.1절 3번 식과 같다.
-- 기본한도 H = 구간 × 자녀등 단계(0 / 1 / 2명 이상). 추가 인정액 = min(공제 가능 금액 − H, T·P·M의 공제율 곱 합계, 구간별 추가한도 상한), 공제 가능 금액 ≤ H면 0. 소득공제액 = min(공제 가능 금액, H) + 추가 인정액.
-- 정수 연산: 중간값은 원×10,000 `long`(금액 상한 약 10^13 × 100 × 100 = 10^17 < 2^63). 최종 소득공제액에서 10,000으로 나눠 한 번 내린다. 현재 계획 배분의 `V × 입력액 ÷ 합`만 `BigInteger`로 계산한다(곱이 `long`을 넘을 수 있다).
-- 현재 계획 배분: PRD 7.2절 규칙 1~5.
-- 추천: 현재 계획에서 시작해 소비구분을 일반 → 문화체육 → 전통시장 → 대중교통 순으로 보며, 그 소비구분의 "바꿀 수 있는 금액"을 전부 신용카드 / 전부 체크카드·현금영수증에 둔 두 후보를 같은 계산기로 계산해 지금까지의 최댓값보다 엄격히 클 때만 바꾼다. 같으면 현재 계획의 배분을 유지한다. 근사식을 쓰지 않는다.
-- 이유는 문장이 아니라 코드와 숫자로 내려 준다(문장은 웹이 만든다): `CREDIT_OVER_THRESHOLD`, `BELOW_THRESHOLD`, `LIMIT_REACHED`, `METHOD_NEUTRAL`, `NO_FLEXIBLE_AMOUNT`.
+- S ≤ `bracketBoundary`면 낮은 구간(문화체육 우대 적용), 초과면 높은 구간(문화체육을 원래 결제수단의 일반으로 보고 문화체육 = 0).
+- 최저사용금액 L = S × `minSpendRatePct` ÷ 100. 전체가 L 이하면 0원이다("달성"은 초과다. 같으면 미달이다).
+- 공제 가능 금액 = Σ(구분 금액 × 그 공제율) − 차감액. 차감액은 L을 신용 → 직불등 → 문화체육 → 전통시장 → 대중교통 순으로 채우며 채운 부분에 그 공제율을 곱한 합이다. 2025·2026 값(직불등과 문화체육 30%, 전통시장과 대중교통 40%)에서는 PRD 7.1절 3번 식과 같다. 전체가 L 이하면 모든 구분이 다 채워져 차감액 = Σ(구분 금액 × 공제율)이 되므로 따로 분기하지 않아도 0원이다.
+- 기본한도 H = 구간 × 자녀등 단계(0 / 1 / 2명 이상). **자녀등 단계가 없는 세법(세 칸이 같은 값, `childTiersApply == false`)에서는 저장된 `childCount`를 쓰지 않고 0명 칸을 읽는다.** 서버는 `childCount`를 항상 저장하기 때문이다(PR 3). 추가 인정액 = min(공제 가능 금액 − H, 전통시장·대중교통·문화체육의 금액 × 공제율 합계, 구간별 추가한도 상한), 공제 가능 금액 ≤ H면 0. 소득공제액 = min(공제 가능 금액, H) + 추가 인정액.
+- 정수 연산: 중간값은 원 × 10,000 `long`이다(금액 × 100 × 퍼센트). 최종 소득공제액에서 10,000으로 나눠 한 번 내린다(TAX-45). 부동소수점을 쓰지 않는다.
+- 오버플로: 연도 합계표 한 칸과 지출계획 한 칸의 상한이 9,999,999,999,999원이므로 계산기에 들어가는 12칸의 합은 누계 12칸 + 지출계획 12칸 = 24 × 상한 < 240조 원이다. 공제율이 모두 100%여도 중간값은 240조 × 100 × 100 = 2.4 × 10^18로 `long` 최댓값(약 9.22 × 10^18) 안이다. 최저사용금액은 상한 × 100 = 10^15, 한도는 상한 × 10,000 = 10^17 이하다. 이 최악 입력을 계산기·추천 테스트에 넣었다. 현재 계획 배분의 `V × 입력액`(약 10^26)만 `BigInteger`로 곱한다.
+- 과정 값(`threshold`, `beforeThresholdCut`, `thresholdCut`, `deductible`, `basicUsed`, `extraEligible`, `extraUsed`, `remainingToThreshold`)은 화면 표시용으로 각각 원 미만을 버린 값이다. 계산 결과는 `amount` 하나이고, 과정 값을 다시 더해 `amount`를 만들지 않는다("결정이 필요한 점" 1번).
+- 현재 계획 배분: PRD 7.2절 규칙 1~5. 신용카드 몫은 "바꿀 수 있는 금액 − 체크카드 몫 − 현금영수증 몫"으로 구한다(신용카드 몫도 원 미만을 버린 뒤 남는 원을 더한 값과 같다).
+- 추천: 현재 계획에서 시작해 소비구분을 일반 → 문화체육 → 전통시장 → 대중교통 순으로 보며, 그 소비구분의 "바꿀 수 있는 금액"을 전부 체크카드·현금영수증 / 전부 신용카드에 둔 두 후보를 같은 계산기로 계산해 지금까지의 최댓값보다 엄격히 클 때만 바꾼다. 같으면 현재 계획의 배분을 유지한다. 근사식을 쓰지 않는다. 비교하는 값은 원 미만을 버린 소득공제액이다.
+- 이유는 문장이 아니라 코드와 숫자로 내려 준다(문장은 웹이 만든다). 공제액이 커진 소비구분마다 `CREDIT_OVER_THRESHOLD`(체크카드·현금영수증으로 옮김, `category`, `amount` = 현재 계획에서 신용카드에 있던 금액) 또는 `CREDIT_RATE_HIGHER`(신용카드로 옮김. 신용카드 공제율을 더 높게 설정한 세법에서만 나온다). 차이가 없으면 아래 순서로 먼저 맞는 것 하나: `NO_FLEXIBLE_AMOUNT`(바꿀 수 있는 금액이 모두 0) → `BELOW_THRESHOLD`(현재 계획의 연말 예상이 최저사용금액 이하, `amount` = 남은 금액) → `LIMIT_REACHED`(소득공제액 = 기본한도 + min(추가한도 대상 공제액, 추가한도 상한)) → `METHOD_NEUTRAL`(바꿀 수 있는 금액이 일반에 없고, 문화체육에도 없거나 낮은 급여구간) → `ALREADY_BEST`(그 밖. 예: 지금까지 체크카드만 써서 현재 계획이 이미 전부 체크카드, 신용카드가 최저사용금액 아래).
 
-HTTP 인터페이스: `GET /tax/years/{year}/analysis` (본인 연도 기록만, 없으면 404)
+## HTTP 인터페이스 (웹 PR 7이 쓴다)
 
-`status`: `NO_INPUT`(입력자료 없음) → `INCOMPLETE`(빈 칸 있음, `blankCount`) → `LAW_PENDING`(자료 완료, 연도 기록에 세법 버전 없음) → `READY` 순으로 판정한다. 공통 필드: `taxYear, status, blankCount, totals, totalSalary, estimated(=asOfDateMismatch), asOfDateMin, asOfDateMax, partialYear(근로기간이 1~12월 전체가 아님), law: {id, taxYear, versionNo, appliedAt} | null, newerLawVersion, planSaved`. `READY`일 때만 `deduction: {highBracket, A, B, M, T, P, total, threshold, thresholdReached, remainingToThreshold, beforeThresholdCut, thresholdCut, deductible, basicLimit, basicUsed, extraCap, extraEligible, extraUsed, amount}`와, 지출계획이 저장돼 있으면 `recommendation: {methodShare: {creditPct, debitPct, cashPct}(연도 전체, 소수 첫째 자리), current: {allocation(소비구분 4 × 신용/체크/현금), yearEndDeduction}, recommended: {allocation(소비구분 4 × 신용/체크·현금), yearEndDeduction}, difference, reasons: [{code, category?, amount?}]}`.
+`GET /tax/years/{year}/analysis` — 로그인 회원 본인의 연도 기록만 계산한다. 본문·쿼리가 없다.
+
+- 비로그인 401 `UNAUTHORIZED`. `year`가 1000~9999 정수가 아니면 400 `VALIDATION_FAILED`. 요청자에게 그 연도 기록이 없으면 404 `NOT_FOUND`(`tax record not found`)이고, 남의 연도와 없는 연도의 응답이 같다. 서비스 관리자도 남의 연도는 404다. `/tax/admin/**`이 아니므로 `TaxAdminInterceptor`가 걸리지 않는다.
+- 읽기 전용이다. 행 잠금을 잡지 않고 아무 행도 쓰지 않으며 `rowVersion`이 바뀌지 않는다. 결과를 저장하지 않으므로 새 테이블·migration이 없다(TAX-44).
+
+`status`는 위에서부터 먼저 맞는 것이다: `NO_INPUT`(입력자료 없음. `hasInputs == false`) → `INCOMPLETE`(빈 칸 있음) → `LAW_PENDING`(자료 완료, 연도 기록에 세법 버전 없음) → `READY`.
+
+응답 `TaxAnalysisView`
+
+- 공통: `taxYear, status, blankCount, totals`(12칸. `TaxYearView.totals`와 같은 값)`, totalSalary, estimated`(= `asOfDateMismatch`)`, asOfDateMin, asOfDateMax`(자료가 없으면 `null`)`, partialYear`(근로기간이 1~12월 전체가 아님)`, law: {id, versionNo, appliedAt, childTiersApply} | null`(연도 기록이 기억한 버전. `TaxYearView.lawVersion`과 같은 모양)`, newerLawVersion, planSaved`.
+- `deduction`(`READY`일 때만, 아니면 `null`): `{highBracket, credit, debitCash, culture, market, transit, total, threshold, thresholdReached, remainingToThreshold, beforeThresholdCut, thresholdCut, deductible, basicLimit, basicUsed, extraCap, extraEligible, extraUsed, amount}`. `credit`~`transit`은 계산에 쓴 구분 합계(PRD 7.1절의 A, B, M, T, P)다.
+- `recommendation`(`READY`이고 지출계획이 저장돼 있을 때만, 아니면 `null`): `{methodShare: {creditPct, debitPct, cashPct} | null, current: {allocation, yearEndDeduction}, recommended: {allocation, yearEndDeduction}, difference, reasons: [{code, category, amount}]}`.
+  - `methodShare`는 연도 합계표 전체의 결제수단 비율이다(퍼센트, 소수 첫째 자리 반올림, 예 `82.0`). 연도 합계가 0원이면 `null`이다. 반올림 때문에 세 값의 합이 100.0이 아닐 수 있다.
+  - `allocation`은 소비구분 4개(`general, market, transit, culture`)마다 지출계획의 "바꿀 수 있는 금액"을 결제수단에 둔 금액이다. 고정액은 들어 있지 않다. `current`는 `{credit, debit, cash}`, `recommended`는 `{credit, debitCash}`다. 추천이 바꾸지 않은 소비구분은 `recommended.credit == current.credit`이다.
+  - `yearEndDeduction`은 (누계 + 지출계획 전체)로 계산한 연말 예상 소득공제액, `difference = recommended − current`(0 이상)다.
+  - `reasons[].category`는 `GENERAL | MARKET | TRANSIT | CULTURE` 또는 `null`, `amount`는 수 또는 `null`이다.
+- 미완료·세법 준비 중이어도 `totals`·`blankCount`·`planSaved`는 내려간다. 웹은 `status`를 보고 현황 숫자와 추천을 그리지 않는다(TAX-38, TAX-75).
+
+성능과 응답 크기: 요청마다 계산기를 10번(현황 1 + 현재 계획 1 + 후보 4 × 2) 부른다. 한 번이 12칸에 대한 고정 횟수의 정수 연산이고 `BigInteger` 나눗셈은 8번이라 입력 크기와 무관하게 일정하다. DB 읽기는 `GET /tax/years/{year}`와 같은 쿼리(카드 자료는 연도 기록당 50건 이하)다. 응답은 추천을 포함해 약 1.6KB(임시 복사본에서 1,627바이트)이고 카드 자료 건수와 무관하다.
+
+## 계획 초안에서 달라진 점
+
+- 현재 코드와 대조한 결과(`f908524`): 지출계획은 `TaxSpendingPlan`의 12칸 접근자가 아니라 `TaxYearView.plan`(`PlanView` → `PlanRow(Long creditFixed, Long debitFixed, Long flexible)` 4개)로 읽힌다. 그래서 초안의 `PlanAmounts`·`PlanAmounts.from(TaxSpendingPlan)`을 만들지 않고 `PlanView`를 그대로 받는다.
+- 초안의 `record Allocation`(소비구분 4 × 3)은 `ByCategory<Split>`(현재 계획)과 `ByCategory<Pair>`(추천)로 나눴다. 추천은 체크카드와 현금영수증을 나누지 않기 때문이다. 소비구분 이름은 `enum SpendingCategory`다.
+- 초안의 `TaxAnalysisDtos`는 `TaxAnalysisView`(+ `Status`) 하나다. `DeductionResult`·`Recommendation`은 변환 없이 그대로 응답에 싣는다.
+- `TaxAnalysisService`는 `requireOwned`를 직접 부르지 않고 `TaxRecordService.get(userId, year)`(안에서 `requireOwned`를 부른다)의 `TaxYearView`를 쓴다. 합계·빈 칸 수·기준일 불일치·세법 버전·지출계획을 다시 조립하지 않기 위해서다. 회원 자료의 저장소를 `tax/calc`에서 직접 읽지 않는다. 세법 버전(전역 자료)만 `TaxLawVersionRepository.findById`로 읽는다.
+- 응답 이름: `deduction`의 `A, B, M, T, P`는 `credit, debitCash, culture, market, transit`, `law`는 `{id, taxYear, versionNo, appliedAt}` 대신 PR 3의 `LawVersionRef`(`{id, versionNo, appliedAt, childTiersApply}`)를 다시 쓴다. 귀속연도는 응답 최상위 `taxYear`와 같다(복합 FK가 보장).
+- 이유 코드에 `ALREADY_BEST`와 `CREDIT_RATE_HIGHER`를 더했다(초안의 5개로는 "현재 계획이 이미 전부 체크카드"인 경우와 신용카드 쪽으로 옮기는 경우의 문장이 틀린다).
+- 테스트 표의 사례는 그대로이고 "최저사용금액 1원 미만", "최악 입력(오버플로)", "높은 급여구간의 문화체육 추천", `ALREADY_BEST`를 더했다. 표의 기대값은 모두 다시 계산해 맞는 것을 확인했다(틀린 값 없음).
+- 실패 확인 방식: 4.1·4.2는 순수 새 클래스라 테스트만 넣으면 컴파일 오류다. 실패 건수를 보기 위해 Step 1에서 타입과 빈 메서드(틀)를 함께 넣는다.
+- 브랜치 이름은 예시(`feat/tax-analysis-api`)가 아니라 실제 브랜치 `feat/tax-calc-api`다.
+
+## 결정이 필요한 점 (기본값으로 썼다)
+
+1. **과정 값은 원 미만을 버려 내려 준다.** `amount`만 계산 결과이고, 과정 값은 각각 따로 버리므로 `beforeThresholdCut − thresholdCut`이 `deductible`과 1원 다를 수 있다(예: 와이어프레임의 현재 계획 연말 1,997,272.55원). 다른 선택: 원 × 10,000 정수를 내려 웹이 소수까지 보인다(와이어프레임 설명서의 식은 소수를 적었다).
+2. **이유 코드 7개와 판정 순서**(위 "계산 규칙"). 다른 선택: 초안의 5개만 쓰고 나머지는 `METHOD_NEUTRAL`로 묶는다(문장이 사실과 다를 수 있다).
+3. **추천 탐색은 소비구분을 하나씩 보는 방식이다(계산기 9번).** 2025·2026 값처럼 신용카드 공제율이 직불등보다 높지 않으면 "소비구분 4개를 전부 신용 / 전부 직불등으로 둔 16개 조합과 현재 계획"의 최댓값과 같고, 이를 테스트로 고정했다. 관리자가 신용카드 공제율을 더 높게 설정하면 최댓값을 놓칠 수 있다. 다른 선택: 소비구분마다 (현재 계획 / 전부 신용 / 전부 직불등) 81개 조합을 모두 계산한다.
+4. **`methodShare`는 소수 첫째 자리 반올림이고 합이 100.0이 아닐 수 있다. 연도 합계가 0원이면 `null`이다.** 다른 선택: 가장 큰 값에서 차이를 빼 합을 100.0으로 맞춘다.
+5. **`allocation`에는 "바꿀 수 있는 금액"만 싣는다**(와이어프레임 ③의 표와 같다). 고정액을 더한 결제수단별 합계가 필요하면 웹이 `TaxYearView.plan`과 더한다(표시용 합산이고 공제액 계산이 아니다).
+6. **`BELOW_THRESHOLD`와 `LIMIT_REACHED`는 현재 계획의 연말 예상으로 판정한다.** 지금 누계 기준의 달성 여부는 `deduction.thresholdReached`다.
+7. **`NO_INPUT`일 때 `blankCount`는 4다**(현금영수증 자료가 없어서. PR 3의 `TaxYearView.blankCount`와 같은 값).
+8. **"기본한도까지 남은 공제 여유"(TAX-55)와 사용액 비율(TAX-32~34)은 응답에 따로 없다.** 웹(PR 7)이 `basicLimit − basicUsed`와 `totals`의 비율로 그린다(표시용 산술이고 공제액 계산이 아니다). 다른 선택: 서버가 `basicRemaining`과 비율 필드를 더 내려 준다.
+
+---
 
 ### Task 4.1: `DeductionCalculator` (TAX-35, 40, 41, 42, 45, 46, 71)
 
-**담당:** Codex `gpt-6-astra` / `medium` (`api`), 태그 `impl-api`. 리뷰: Claude Fable 5.2.
+**담당:** Codex `gpt-6-astra` / `medium` (`api`, 계산 정확성), 태그 `impl-api`. 리뷰: Claude Fable 5.2 (`review-task`).
 
-- Files: Create `tax/calc/TaxLawValues.java`, `DeductionCalculator.java`, `DeductionResult.java`, `tax/calc/DeductionCalculatorTest.java`(순수 단위 테스트, Spring 없음).
-- Interfaces — Consumes: `SpendingTotals`(PR 3). Produces: `static DeductionResult DeductionCalculator.calculate(long totalSalary, int childCount, SpendingTotals totals, TaxLawValues law)`, `TaxLawValues.from(TaxLawVersion)`.
-- 테스트 기대값(손계산, 2026 값: 25% / 경계 70,000,000 / 15·30·30·40·40 / 기본한도 낮은 구간 300·350·400만, 높은 구간 250·275·300만 / 추가한도 300만·200만. 2025 값은 기본한도가 자녀등과 무관하게 300만·250만). 테스트 코드는 이 표의 숫자를 직접 적고, 계산기를 불러 기대값을 만들지 않는다.
+**Files:**
+- Create: `main/tax/calc/TaxLawValues.java`, `DeductionResult.java`, `DeductionCalculator.java`
+- Test: `test/tax/calc/DeductionCalculatorTest.java`(생성. Spring 없는 단위 테스트)
+
+**Interfaces:**
+- Consumes: PR 3의 `record SpendingTotals(long creditGeneral, long creditMarket, long creditTransit, long creditCulture, long debitGeneral, long debitMarket, long debitTransit, long debitCulture, long cashGeneral, long cashMarket, long cashTransit, long cashCulture)`, PR 2의 `TaxLawVersion` getter(`getMinSpendRatePct(): Integer`, `getBracketBoundary(): Long`, `getRateCreditPct()`·`getRateDebitCashPct()`·`getRateCulturePct()`·`getRateMarketPct()`·`getRateTransitPct(): Integer`, `getBasicLimitLow0()`~`getBasicLimitLow2()`·`getBasicLimitHigh0()`~`getBasicLimitHigh2(): Long`, `getExtraLimitLow()`·`getExtraLimitHigh(): Long`).
+- Produces:
+  - `record TaxLawValues(int minSpendRatePct, long bracketBoundary, int rateCreditPct, int rateDebitCashPct, int rateCulturePct, int rateMarketPct, int rateTransitPct, List<Long> basicLimitLow, List<Long> basicLimitHigh, long extraLimitLow, long extraLimitHigh)`, `static TaxLawValues from(TaxLawVersion)`, `boolean childTiersApply()`.
+  - `record DeductionResult(boolean highBracket, long credit, long debitCash, long culture, long market, long transit, long total, long threshold, boolean thresholdReached, long remainingToThreshold, long beforeThresholdCut, long thresholdCut, long deductible, long basicLimit, long basicUsed, long extraCap, long extraEligible, long extraUsed, long amount)`.
+  - `static DeductionResult DeductionCalculator.calculate(long totalSalary, int childCount, SpendingTotals totals, TaxLawValues law)`.
+  - 테스트 공용: `DeductionCalculatorTest.LAW_2026`, `LAW_2025`, `static SpendingTotals totals(long... 12칸)`(Task 4.2의 테스트가 쓴다).
+
+기대값 표(손계산. 2026 값: 25% / 경계 70,000,000 / 15·30·30·40·40 / 기본한도 낮은 구간 300·350·400만, 높은 구간 250·275·300만 / 추가한도 300만·200만. 2025 값은 기본한도가 자녀등과 무관하게 300만·250만). 테스트 코드는 이 표의 숫자를 직접 적는다. 계산기를 불러 기대값을 만들지 않는다(AC-24).
 
 | 사례 | 입력 | 기대 소득공제액 | 대응 |
 |---|---|---|---|
-| PRD 합성 예시 1 | S 4,000만, 신용 일반 1,200만, 직불등 일반 300만, 문화체육 50만, 전통시장 100만, 대중교통 50만 | 1,950,000 | AC-13, AC-08(L ≤ A) |
-| PRD 합성 예시 2 | S 8,000만, 신용 일반 3,000만, 체크 일반 1,000만, 체크 문화체육 100만, 전통시장 200만, 대중교통 100만 | 3,700,000 | AC-13, AC-10, AC-12(추가한도가 공제액 합계로 제한) |
+| PRD 합성 예시 1 | S 4,000만, 신용 일반 1,200만, 체크 일반 200만 + 현금 일반 100만, 문화체육 50만, 전통시장 100만, 대중교통 50만 | 1,950,000 | AC-13, AC-08(L ≤ 신용), AC-12(기본한도 미달) |
+| PRD 합성 예시 2 | S 8,000만, 신용 일반 3,000만, 체크 일반 1,000만, 체크 문화체육 100만, 전통시장 200만, 대중교통 100만 | 3,700,000 | AC-13, AC-10, AC-12(추가한도가 공제액 합계 1,200,000으로 제한) |
 | 와이어프레임 현황 | S 5,000만, 일반 1,400만/200만/50만, 전통시장 30만/20만/10만, 대중교통 20만/30만/0, 문화체육 10만/10만/0 | 1,475,000 | 화면 숫자 |
-| 최저사용금액과 같음 | S 4,000만, 신용 일반 10,000,000 | 0 | AC-07 |
-| 1원 초과 | S 4,000만, 신용 일반 10,000,001 | 0 (0.15원 → 원 미만 버림) | AC-07, TAX-45 ("알려진 제약" 참고) |
+| 최저사용금액 1원 미만 | S 4,000만, 신용 일반 9,999,999 | 0 | AC-07 |
+| 최저사용금액과 같음 | S 4,000만, 신용 일반 10,000,000 | 0 (`thresholdReached` false) | AC-07 |
+| 1원 초과 | S 4,000만, 신용 일반 10,000,001 | 0 (0.15원 → 원 미만 버림) | AC-07, TAX-45 |
 | 7원 초과 | S 4,000만, 신용 일반 10,000,007 | 1 (1.05원) | AC-07 |
-| A < L ≤ A+B+M | S 4,000만, 신용 일반 600만, 체크 일반 500만, 체크 문화체육 100만, 전통시장 100만 | 1,000,000 (차감 2,100,000) | AC-08 |
-| L > A+B+M | S 4,000만, 신용 일반 400만, 체크 일반 300만, 체크 문화체육 100만, 전통시장 300만, 대중교통 100만 | 800,000 (차감 2,600,000) | AC-08 |
+| 미달의 남은 금액 | S 4,000만, 신용 일반 4,000,000 | 0, 남은 금액 6,000,000 | TAX-35 |
+| 신용 < L ≤ 신용+직불등+문화체육 | S 4,000만, 신용 일반 600만, 체크 일반 500만, 체크 문화체육 100만, 전통시장 100만 | 1,000,000 (공제율 곱 합 3,100,000, 차감 2,100,000) | AC-08 |
+| L이 그보다 큼 | S 4,000만, 신용 일반 400만, 체크 일반 300만, 체크 문화체육 100만, 전통시장 300만, 대중교통 100만 | 800,000 (3,400,000 − 2,600,000) | AC-08 |
 | 경계 정확히 | S 70,000,000, 신용 일반 2,000만, 신용 문화체육 100만 | 675,000 | AC-09 |
 | 경계 + 1원 | S 70,000,001, 같은 입력 | 524,999 (524,999.9625) | AC-09, AC-10 |
 | 기본한도 낮은 구간 | S 5,000만, 신용 일반 1억, 자녀등 0 / 1 / 2 / 3 | 3,000,000 / 3,500,000 / 4,000,000 / 4,000,000 | AC-11 |
 | 기본한도 높은 구간 | S 8,000만, 신용 일반 1억, 자녀등 0 / 1 / 2 | 2,500,000 / 2,750,000 / 3,000,000 | AC-11 |
-| 2025 값 | 위 두 줄을 2025 값으로, 자녀등 0 / 2 | 3,000,000 / 3,000,000, 2,500,000 / 2,500,000 | AC-11 |
+| 2025 값(자녀등 무시) | 위 두 줄을 2025 값으로, 자녀등 0 / 2 | 3,000,000 / 3,000,000, 2,500,000 / 2,500,000 | AC-11 |
 | 기본한도 정확히 | S 4,000만, 신용 일반 3,000만 | 3,000,000 (추가 0) | AC-12 |
 | 추가가 초과분으로 제한 | S 4,000만, 신용 일반 2,000만, 전통시장 500만 | 3,500,000 (추가 500,000) | AC-12 |
 | 추가가 상한으로 제한 | S 4,000만, 신용 일반 3,000만, 전통시장 1,000만 | 6,000,000 (추가 3,000,000) | AC-12 |
+| 최악 입력 | S 9,999,999,999,999, 12칸 각 20조, 비율 모두 100%, 경계·한도 모두 9,999,999,999,999 | 19,999,999,999,998 (공제 가능 230,000,000,000,001) | 오버플로 |
 
-- 단계 값(TAX-71)도 예시 1에서 확인한다: 차감액 1,500,000, 공제 가능 금액 1,950,000, 기본한도 3,000,000, 추가 0, 마지막 금액 = 소득공제액.
+기대값의 독립성: 표의 숫자는 PRD 7.1절 3번 식(세 경우)으로 계산했고, 계산기는 같은 결과를 내는 다른 방법(채움 순서 루프)으로 구현한다. 계획을 쓸 때 표 전체를 PRD 식을 그대로 옮긴 별도 스크립트(Python `fractions`, 계산기 코드와 무관)로 다시 계산해 일치를 확인했다.
+
+- [ ] **Step 1: 틀과 실패하는 테스트 작성**
+
+값 타입 두 개는 최종 모양이고 계산기는 0만 돌려주는 틀이다.
+
+`main/tax/calc/TaxLawValues.java`
+
+```java
+package com.saladbowl.api.tax.calc;
+
+import com.saladbowl.api.tax.law.TaxLawVersion;
+
+import java.util.List;
+
+/**
+ * 계산에 쓰는 세법 수치. 금액은 원, 비율은 정수 퍼센트다.
+ * basicLimitLow·basicLimitHigh는 자녀등 0명 / 1명 / 2명 이상 순서의 3칸이다.
+ */
+public record TaxLawValues(
+        int minSpendRatePct,
+        long bracketBoundary,
+        int rateCreditPct,
+        int rateDebitCashPct,
+        int rateCulturePct,
+        int rateMarketPct,
+        int rateTransitPct,
+        List<Long> basicLimitLow,
+        List<Long> basicLimitHigh,
+        long extraLimitLow,
+        long extraLimitHigh) {
+
+    /** 적용된 세법 버전만 넘긴다. 적용본은 검증(TaxLawValidator)을 거쳐 빈 값이 없다. */
+    public static TaxLawValues from(TaxLawVersion v) {
+        return new TaxLawValues(v.getMinSpendRatePct(), v.getBracketBoundary(), v.getRateCreditPct(),
+                v.getRateDebitCashPct(), v.getRateCulturePct(), v.getRateMarketPct(), v.getRateTransitPct(),
+                List.of(v.getBasicLimitLow0(), v.getBasicLimitLow1(), v.getBasicLimitLow2()),
+                List.of(v.getBasicLimitHigh0(), v.getBasicLimitHigh1(), v.getBasicLimitHigh2()),
+                v.getExtraLimitLow(), v.getExtraLimitHigh());
+    }
+
+    /** 자녀등 단계별 기본한도가 서로 다른가. 같으면(2025 값) 자녀등 수는 계산에 쓰지 않는다. */
+    public boolean childTiersApply() {
+        return basicLimitLow.stream().distinct().count() > 1 || basicLimitHigh.stream().distinct().count() > 1;
+    }
+}
+```
+
+`main/tax/calc/DeductionResult.java`
+
+```java
+package com.saladbowl.api.tax.calc;
+
+/**
+ * 소득공제액과 그 계산 과정(TAX-35, TAX-71). 금액은 모두 원이다.
+ * 과정 값(threshold ~ extraUsed)은 화면 표시용으로 원 미만을 버린 값이고, amount만 계산 결과다.
+ *
+ * @param highBracket          총급여가 급여구간 경계를 넘는가(문화체육 우대 없음)
+ * @param credit               신용카드 일반(높은 구간은 신용카드 문화체육 포함)
+ * @param debitCash            체크카드·현금영수증 일반(높은 구간은 문화체육 포함)
+ * @param culture              문화체육(높은 구간은 0)
+ * @param market               전통시장
+ * @param transit              대중교통
+ * @param total                위 다섯 구분의 합 = 연도 합계표 12칸의 합
+ * @param threshold            최저사용금액
+ * @param thresholdReached     total이 최저사용금액을 넘었는가
+ * @param remainingToThreshold 최저사용금액까지 남은 금액(넘었으면 0)
+ * @param beforeThresholdCut   구분 금액 × 공제율의 합
+ * @param thresholdCut         최저사용금액 차감액
+ * @param deductible           공제 가능 금액 = beforeThresholdCut − thresholdCut
+ * @param basicLimit           기본한도
+ * @param basicUsed            기본한도 안에서 인정된 금액
+ * @param extraCap             추가한도 상한
+ * @param extraEligible        추가한도 대상 공제액(전통시장·대중교통·문화체육의 금액 × 공제율 합)
+ * @param extraUsed            추가 인정액
+ * @param amount               소득공제액
+ */
+public record DeductionResult(
+        boolean highBracket,
+        long credit,
+        long debitCash,
+        long culture,
+        long market,
+        long transit,
+        long total,
+        long threshold,
+        boolean thresholdReached,
+        long remainingToThreshold,
+        long beforeThresholdCut,
+        long thresholdCut,
+        long deductible,
+        long basicLimit,
+        long basicUsed,
+        long extraCap,
+        long extraEligible,
+        long extraUsed,
+        long amount) {
+}
+```
+
+`main/tax/calc/DeductionCalculator.java` (틀. Step 3에서 구현으로 바꾼다)
+
+```java
+package com.saladbowl.api.tax.calc;
+
+import com.saladbowl.api.tax.record.SpendingTotals;
+
+/** 신용카드 등 사용금액 소득공제액 계산(PRD 7.1절, 알고리즘 버전 1). 계산은 이 클래스 한 곳에서만 한다. */
+public final class DeductionCalculator {
+
+    private DeductionCalculator() {
+    }
+
+    public static DeductionResult calculate(long totalSalary, int childCount, SpendingTotals totals,
+                                            TaxLawValues law) {
+        return new DeductionResult(false, 0, 0, 0, 0, 0, 0, 0, false, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+    }
+}
+```
+
+`test/tax/calc/DeductionCalculatorTest.java`
+
+```java
+package com.saladbowl.api.tax.calc;
+
+import com.saladbowl.api.tax.record.SpendingTotals;
+import org.junit.jupiter.api.Test;
+
+import java.util.List;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+/**
+ * 소득공제액 산식(PRD 7.1절, TAX-40~42·45·71, AC-07~13). DB 없이 계산만 본다.
+ * 기대값은 PRD 7.1절 식을 손으로 계산한 숫자다(AC-24). 계산기를 불러 기대값을 만들지 않는다.
+ */
+class DeductionCalculatorTest {
+
+    /** 2026 귀속 값(조세특례제한법 제126조의2, PRD 8.1절). */
+    static final TaxLawValues LAW_2026 = new TaxLawValues(25, 70_000_000L, 15, 30, 30, 40, 40,
+            List.of(3_000_000L, 3_500_000L, 4_000_000L), List.of(2_500_000L, 2_750_000L, 3_000_000L),
+            3_000_000L, 2_000_000L);
+
+    /** 2025 귀속 값. 자녀등 단계가 없어 세 칸이 같다. */
+    static final TaxLawValues LAW_2025 = new TaxLawValues(25, 70_000_000L, 15, 30, 30, 40, 40,
+            List.of(3_000_000L, 3_000_000L, 3_000_000L), List.of(2_500_000L, 2_500_000L, 2_500_000L),
+            3_000_000L, 2_000_000L);
+
+    /** 12칸 순서: 신용카드(일반·전통시장·대중교통·문화체육), 체크카드 4칸, 현금영수증 4칸. */
+    static SpendingTotals totals(long... c) {
+        return new SpendingTotals(c[0], c[1], c[2], c[3], c[4], c[5], c[6], c[7], c[8], c[9], c[10], c[11]);
+    }
+
+    private static long amount(long salary, int childCount, TaxLawValues law, long... cells) {
+        return DeductionCalculator.calculate(salary, childCount, totals(cells), law).amount();
+    }
+
+    @Test
+    void prdExample1ShowsEveryStep() {
+        // 신용 일반 1,200만 / 체크 일반 200만 + 현금 일반 100만 / 전통시장 100만 / 대중교통 50만 / 문화체육 50만
+        DeductionResult r = DeductionCalculator.calculate(40_000_000L, 0, totals(
+                12_000_000, 1_000_000, 500_000, 500_000, 2_000_000, 0, 0, 0, 1_000_000, 0, 0, 0), LAW_2026);
+
+        assertThat(r.highBracket()).isFalse();
+        assertThat(List.of(r.credit(), r.debitCash(), r.culture(), r.market(), r.transit()))
+                .containsExactly(12_000_000L, 3_000_000L, 500_000L, 1_000_000L, 500_000L);
+        assertThat(r.total()).isEqualTo(17_000_000L);
+        assertThat(r.threshold()).isEqualTo(10_000_000L);
+        assertThat(r.thresholdReached()).isTrue();
+        assertThat(r.remainingToThreshold()).isZero();
+        // 1,800,000 + 900,000 + 150,000 + 400,000 + 200,000
+        assertThat(r.beforeThresholdCut()).isEqualTo(3_450_000L);
+        assertThat(r.thresholdCut()).isEqualTo(1_500_000L);
+        assertThat(r.deductible()).isEqualTo(1_950_000L);
+        assertThat(r.basicLimit()).isEqualTo(3_000_000L);
+        assertThat(r.basicUsed()).isEqualTo(1_950_000L);
+        assertThat(r.extraCap()).isEqualTo(3_000_000L);
+        // 전통시장 400,000 + 대중교통 200,000 + 문화체육 150,000
+        assertThat(r.extraEligible()).isEqualTo(750_000L);
+        assertThat(r.extraUsed()).isZero();
+        assertThat(r.amount()).isEqualTo(1_950_000L);
+    }
+
+    @Test
+    void prdExample2MovesCultureToItsPaymentMethodAboveTheBoundary() {
+        // 총급여 8,000만: 체크 문화체육 100만은 체크 일반으로 보고 추가한도 대상에서 빠진다(AC-10).
+        DeductionResult r = DeductionCalculator.calculate(80_000_000L, 0, totals(
+                30_000_000, 2_000_000, 1_000_000, 0, 10_000_000, 0, 0, 1_000_000, 0, 0, 0, 0), LAW_2026);
+
+        assertThat(r.highBracket()).isTrue();
+        assertThat(r.credit()).isEqualTo(30_000_000L);
+        assertThat(r.debitCash()).isEqualTo(11_000_000L);
+        assertThat(r.culture()).isZero();
+        assertThat(r.thresholdCut()).isEqualTo(3_000_000L);
+        assertThat(r.deductible()).isEqualTo(6_000_000L);
+        assertThat(r.basicLimit()).isEqualTo(2_500_000L);
+        assertThat(r.basicUsed()).isEqualTo(2_500_000L);
+        assertThat(r.extraCap()).isEqualTo(2_000_000L);
+        // 전통시장 800,000 + 대중교통 400,000. 초과분 3,500,000과 상한 2,000,000보다 작다(AC-12).
+        assertThat(r.extraEligible()).isEqualTo(1_200_000L);
+        assertThat(r.extraUsed()).isEqualTo(1_200_000L);
+        assertThat(r.amount()).isEqualTo(3_700_000L);
+    }
+
+    @Test
+    void wireframeStatusExample() {
+        // 일반 1,400만/200만/50만, 전통시장 30만/20만/10만, 대중교통 20만/30만/0, 문화체육 10만/10만/0
+        assertThat(amount(50_000_000L, 0, LAW_2026,
+                14_000_000, 300_000, 200_000, 100_000, 2_000_000, 200_000, 300_000, 100_000, 500_000, 100_000, 0, 0))
+                .isEqualTo(1_475_000L);
+    }
+
+    @Test
+    void nothingIsDeductedUpToTheThresholdAndFractionsOfAWonAreDropped() {
+        // 최저사용금액 1,000만. 1원 미만 → 0원, 1원 초과 → 0.15원 → 0원, 7원 초과 → 1.05원 → 1원(AC-07, TAX-45)
+        assertThat(amount(40_000_000L, 0, LAW_2026, 9_999_999, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)).isZero();
+        assertThat(amount(40_000_000L, 0, LAW_2026, 10_000_001, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)).isZero();
+        assertThat(amount(40_000_000L, 0, LAW_2026, 10_000_007, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)).isEqualTo(1L);
+
+        DeductionResult equal = DeductionCalculator.calculate(40_000_000L, 0,
+                totals(10_000_000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0), LAW_2026);
+        assertThat(equal.thresholdReached()).isFalse();
+        assertThat(equal.amount()).isZero();
+
+        DeductionResult below = DeductionCalculator.calculate(40_000_000L, 0,
+                totals(4_000_000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0), LAW_2026);
+        assertThat(below.thresholdReached()).isFalse();
+        assertThat(below.remainingToThreshold()).isEqualTo(6_000_000L);
+        assertThat(below.deductible()).isZero();
+    }
+
+    @Test
+    void thresholdIsFilledByCreditThenDebitCashAndCultureThenMarketAndTransit() {
+        // 신용 < 최저 ≤ 신용+직불등+문화체육: 차감 = 600만×15% + 400만×30% = 2,100,000(AC-08)
+        DeductionResult second = DeductionCalculator.calculate(40_000_000L, 0, totals(
+                6_000_000, 1_000_000, 0, 0, 5_000_000, 0, 0, 1_000_000, 0, 0, 0, 0), LAW_2026);
+        assertThat(second.beforeThresholdCut()).isEqualTo(3_100_000L);
+        assertThat(second.thresholdCut()).isEqualTo(2_100_000L);
+        assertThat(second.amount()).isEqualTo(1_000_000L);
+
+        // 그보다 큼: 차감 = 400만×15% + 400만×30% + 200만×40% = 2,600,000
+        DeductionResult third = DeductionCalculator.calculate(40_000_000L, 0, totals(
+                4_000_000, 3_000_000, 1_000_000, 0, 3_000_000, 0, 0, 1_000_000, 0, 0, 0, 0), LAW_2026);
+        assertThat(third.beforeThresholdCut()).isEqualTo(3_400_000L);
+        assertThat(third.thresholdCut()).isEqualTo(2_600_000L);
+        assertThat(third.amount()).isEqualTo(800_000L);
+    }
+
+    @Test
+    void salaryExactlyAtTheBoundaryIsTheLowBracket() {
+        // 신용 일반 2,000만 + 신용 문화체육 100만(AC-09)
+        long[] cells = {20_000_000, 0, 0, 1_000_000, 0, 0, 0, 0, 0, 0, 0, 0};
+        // 7,000만: 3,000,000 + 300,000 − 1,750만×15% = 675,000
+        assertThat(amount(70_000_000L, 0, LAW_2026, cells)).isEqualTo(675_000L);
+        // 7,000만 1원: 2,100만×15% − 17,500,000.25×15% = 524,999.9625 → 524,999
+        DeductionResult above = DeductionCalculator.calculate(70_000_001L, 0, totals(cells), LAW_2026);
+        assertThat(above.highBracket()).isTrue();
+        assertThat(above.culture()).isZero();
+        assertThat(above.threshold()).isEqualTo(17_500_000L);
+        assertThat(above.amount()).isEqualTo(524_999L);
+    }
+
+    @Test
+    void basicLimitDependsOnBracketAndChildTier() {
+        long[] cells = {100_000_000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+        assertThat(amount(50_000_000L, 0, LAW_2026, cells)).isEqualTo(3_000_000L);
+        assertThat(amount(50_000_000L, 1, LAW_2026, cells)).isEqualTo(3_500_000L);
+        assertThat(amount(50_000_000L, 2, LAW_2026, cells)).isEqualTo(4_000_000L);
+        assertThat(amount(50_000_000L, 3, LAW_2026, cells)).isEqualTo(4_000_000L);
+        assertThat(amount(80_000_000L, 0, LAW_2026, cells)).isEqualTo(2_500_000L);
+        assertThat(amount(80_000_000L, 1, LAW_2026, cells)).isEqualTo(2_750_000L);
+        assertThat(amount(80_000_000L, 2, LAW_2026, cells)).isEqualTo(3_000_000L);
+    }
+
+    @Test
+    void childCountIsIgnoredWhenTheLawHasNoChildTiers() {
+        // 서버는 childCount를 항상 저장한다. 자녀등 단계가 없는 세법(2025 값)에서는 무시한다(AC-11).
+        long[] cells = {100_000_000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+        assertThat(LAW_2025.childTiersApply()).isFalse();
+        assertThat(LAW_2026.childTiersApply()).isTrue();
+        assertThat(amount(50_000_000L, 0, LAW_2025, cells)).isEqualTo(3_000_000L);
+        assertThat(amount(50_000_000L, 2, LAW_2025, cells)).isEqualTo(3_000_000L);
+        assertThat(amount(80_000_000L, 0, LAW_2025, cells)).isEqualTo(2_500_000L);
+        assertThat(amount(80_000_000L, 2, LAW_2025, cells)).isEqualTo(2_500_000L);
+    }
+
+    @Test
+    void extraLimitIsBoundedByTheExcessAndByTheCap() {
+        // 기본한도 정확히: 3,000만×15% − 150만 = 3,000,000, 추가 0(AC-12)
+        DeductionResult exact = DeductionCalculator.calculate(40_000_000L, 0,
+                totals(30_000_000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0), LAW_2026);
+        assertThat(exact.deductible()).isEqualTo(3_000_000L);
+        assertThat(exact.extraUsed()).isZero();
+        assertThat(exact.amount()).isEqualTo(3_000_000L);
+
+        // 초과분으로 제한: 공제 가능 3,500,000, 전통시장 공제액 2,000,000 → 추가 500,000
+        DeductionResult excess = DeductionCalculator.calculate(40_000_000L, 0,
+                totals(20_000_000, 5_000_000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0), LAW_2026);
+        assertThat(excess.extraUsed()).isEqualTo(500_000L);
+        assertThat(excess.amount()).isEqualTo(3_500_000L);
+
+        // 상한으로 제한: 공제 가능 7,000,000, 전통시장 공제액 4,000,000, 상한 3,000,000 → 추가 3,000,000
+        DeductionResult capped = DeductionCalculator.calculate(40_000_000L, 0,
+                totals(30_000_000, 10_000_000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0), LAW_2026);
+        assertThat(capped.extraEligible()).isEqualTo(4_000_000L);
+        assertThat(capped.extraUsed()).isEqualTo(3_000_000L);
+        assertThat(capped.amount()).isEqualTo(6_000_000L);
+    }
+
+    @Test
+    void largestInputsDoNotOverflow() {
+        // 연말 예상 합계의 최악: 12칸 합 240조(누계 상한 + 지출계획 상한보다 크다). 비율은 모두 100%.
+        long max = 9_999_999_999_999L;
+        TaxLawValues everything = new TaxLawValues(100, max, 100, 100, 100, 100, 100,
+                List.of(max, max, max), List.of(max, max, max), max, max);
+        long cell = 20_000_000_000_000L;
+        DeductionResult r = DeductionCalculator.calculate(max, 0,
+                totals(cell, cell, cell, cell, cell, cell, cell, cell, cell, cell, cell, cell), everything);
+
+        assertThat(r.total()).isEqualTo(240_000_000_000_000L);
+        assertThat(r.beforeThresholdCut()).isEqualTo(240_000_000_000_000L);
+        assertThat(r.thresholdCut()).isEqualTo(max);
+        assertThat(r.deductible()).isEqualTo(230_000_000_000_001L);
+        assertThat(r.extraEligible()).isEqualTo(180_000_000_000_000L);
+        // 기본한도 9,999,999,999,999 + 추가한도 상한 9,999,999,999,999
+        assertThat(r.amount()).isEqualTo(19_999_999_999_998L);
+    }
+}
+```
+
+- [ ] **Step 2: 실패 확인**
+
+Run: `cd apps/api && ./gradlew test --tests '*DeductionCalculatorTest'`
+Expected: `10 tests completed, 10 failed`, `BUILD FAILED`(틀이 0만 돌려주므로 모든 테스트가 기대값에서 실패한다).
+
+- [ ] **Step 3: 계산기 구현**
+
+`main/tax/calc/DeductionCalculator.java`
+
+```java
+package com.saladbowl.api.tax.calc;
+
+import com.saladbowl.api.tax.record.SpendingTotals;
+
+/**
+ * 신용카드 등 사용금액 소득공제액 계산(PRD 7.1절, 알고리즘 버전 1). 계산은 이 클래스 한 곳에서만 한다.
+ * 부동소수점을 쓰지 않는다. 중간값은 원 × 10,000 정수(금액 × 100 × 퍼센트)이고 소득공제액에서 한 번 버린다(TAX-45).
+ * 12칸의 합이 240조 원(누계 상한 + 지출계획 상한) 이하이면 중간값은 2.4 × 10^18로 long 안에 있다.
+ */
+public final class DeductionCalculator {
+
+    /** 중간값 단위(원 × 10,000)를 원으로 되돌리는 값. */
+    private static final long SCALE = 10_000;
+
+    private DeductionCalculator() {
+    }
+
+    public static DeductionResult calculate(long totalSalary, int childCount, SpendingTotals totals,
+                                            TaxLawValues law) {
+        // 경계와 같으면 낮은 구간이다. 높은 구간은 문화체육을 원래 결제수단의 일반 사용분으로 본다(TAX-41).
+        boolean high = totalSalary > law.bracketBoundary();
+        long credit = totals.creditGeneral() + (high ? totals.creditCulture() : 0);
+        long debitCash = totals.debitGeneral() + totals.cashGeneral()
+                + (high ? totals.debitCulture() + totals.cashCulture() : 0);
+        long culture = high ? 0 : totals.creditCulture() + totals.debitCulture() + totals.cashCulture();
+        long market = totals.creditMarket() + totals.debitMarket() + totals.cashMarket();
+        long transit = totals.creditTransit() + totals.debitTransit() + totals.cashTransit();
+        long total = credit + debitCash + culture + market + transit;
+
+        // 최저사용금액(원 × 100)을 신용 → 직불등 → 문화체육 → 전통시장 → 대중교통 순으로 채운다.
+        // 채운 부분에 그 구분의 공제율을 곱한 합이 차감액이다. 전체가 최저사용금액 이하면 전부 차감돼 0원이 된다.
+        long[] amounts = {credit, debitCash, culture, market, transit};
+        int[] rates = {law.rateCreditPct(), law.rateDebitCashPct(), law.rateCulturePct(),
+                law.rateMarketPct(), law.rateTransitPct()};
+        long threshold = totalSalary * law.minSpendRatePct();
+        long unfilled = threshold;
+        long before = 0;
+        long cut = 0;
+        for (int i = 0; i < amounts.length; i++) {
+            long amount = amounts[i] * 100;
+            long filled = Math.min(unfilled, amount);
+            before += amount * rates[i];
+            cut += filled * rates[i];
+            unfilled -= filled;
+        }
+        long deductible = before - cut;
+
+        // 자녀등 단계가 없는 세법(세 칸이 같은 값)에서는 저장된 자녀등 수를 쓰지 않는다.
+        int tier = law.childTiersApply() ? Math.min(childCount, 2) : 0;
+        long basicLimit = (high ? law.basicLimitHigh() : law.basicLimitLow()).get(tier);
+        long extraCap = high ? law.extraLimitHigh() : law.extraLimitLow();
+        long extraEligible = (culture * law.rateCulturePct() + market * law.rateMarketPct()
+                + transit * law.rateTransitPct()) * 100;
+        long basicUsed = Math.min(deductible, basicLimit * SCALE);
+        long extraUsed = Math.min(deductible - basicUsed, Math.min(extraEligible, extraCap * SCALE));
+
+        return new DeductionResult(high, credit, debitCash, culture, market, transit, total,
+                threshold / 100, total * 100 > threshold, unfilled / 100,
+                before / SCALE, cut / SCALE, deductible / SCALE,
+                basicLimit, basicUsed / SCALE, extraCap, extraEligible / SCALE, extraUsed / SCALE,
+                (basicUsed + extraUsed) / SCALE);
+    }
+}
+```
+
+- [ ] **Step 4: 통과 확인**
+
+Run: `cd apps/api && ./gradlew test --tests '*DeductionCalculatorTest'`
+Expected: `BUILD SUCCESSFUL`. `DeductionCalculatorTest` 10건 통과.
+
+- [ ] **Step 5: 전체 테스트**
+
+Run: `cd apps/api && ./gradlew test`
+Expected: `BUILD SUCCESSFUL`(임시 복사본에서는 전체 385건 통과).
+
+- [ ] **Step 6: 커밋(컨트롤러)**
+
+```bash
+git add apps/api/src/main/java/com/saladbowl/api/tax/calc apps/api/src/test/java/com/saladbowl/api/tax/calc
+git commit -m "feat(api): 소득공제액 계산기" -m "Co-Authored-By: Codex (gpt-6-astra) <noreply@openai.com>"
+```
+
+---
 
 ### Task 4.2: 현재 계획 배분과 추천 (TAX-46, 50, 52, 53, 54, 69)
 
-**담당:** Codex `gpt-6-astra` / `medium` (`api`), 태그 `impl-api`. 리뷰: Claude Fable 5.2.
+**담당:** Codex `gpt-6-astra` / `medium` (`api`, 계산 정확성), 태그 `impl-api`. 리뷰: Claude Fable 5.2 (`review-task`).
 
-- Files: Create `tax/calc/PlanAllocator.java`, `Recommender.java`, `Recommendation.java`, `tax/calc/PlanAllocatorTest.java`, `RecommenderTest.java`.
-- Interfaces — Consumes: `DeductionCalculator.calculate`, `TaxSpendingPlan`의 12칸. Produces: `record PlanAmounts`(소비구분 4 × `creditFixed`, `debitFixed`, `flexible`)와 `PlanAmounts.from(TaxSpendingPlan)`, `record Allocation`(소비구분 4 × `credit`, `debit`, `cash`), `PlanAllocator.currentPlan(SpendingTotals totals, PlanAmounts plan): Allocation`, `Recommender.recommend(long totalSalary, int childCount, SpendingTotals totals, PlanAmounts plan, TaxLawValues law): Recommendation`.
-- 테스트 기대값(손계산)
+**Files:**
+- Create: `main/tax/calc/SpendingCategory.java`, `ByCategory.java`, `PlanAllocator.java`, `Recommendation.java`, `Recommender.java`
+- Test: `test/tax/calc/PlanAllocatorTest.java`, `RecommenderTest.java`(생성. Spring 없는 단위 테스트)
+
+**Interfaces:**
+- Consumes: Task 4.1의 `DeductionCalculator.calculate(long totalSalary, int childCount, SpendingTotals totals, TaxLawValues law): DeductionResult`, `DeductionResult.amount()`·`thresholdReached()`·`remainingToThreshold()`·`basicLimit()`·`extraEligible()`·`extraCap()`·`highBracket()`, `DeductionCalculatorTest.LAW_2026`·`totals(long...)`. PR 3의 `SpendingTotals`, `TaxRecordDtos.PlanView(long rowVersion, PlanRow general, PlanRow market, PlanRow transit, PlanRow culture)`, `TaxRecordDtos.PlanRow(Long creditFixed, Long debitFixed, Long flexible)`.
+- Produces:
+  - `enum SpendingCategory { GENERAL, MARKET, TRANSIT, CULTURE }`, `record ByCategory<T>(T general, T market, T transit, T culture)`와 `T get(SpendingCategory)`.
+  - `record PlanAllocator.Split(long credit, long debit, long cash)`, `static ByCategory<Split> PlanAllocator.currentPlan(SpendingTotals totals, PlanView plan)`.
+  - `record Recommendation(MethodShare methodShare, Scenario<Split> current, Scenario<Pair> recommended, long difference, List<Reason> reasons)`와 그 안의 `record MethodShare(BigDecimal creditPct, BigDecimal debitPct, BigDecimal cashPct)`, `record Scenario<T>(ByCategory<T> allocation, long yearEndDeduction)`, `record Pair(long credit, long debitCash)`, `record Reason(ReasonCode code, SpendingCategory category, Long amount)`, `enum ReasonCode { CREDIT_OVER_THRESHOLD, CREDIT_RATE_HIGHER, NO_FLEXIBLE_AMOUNT, BELOW_THRESHOLD, LIMIT_REACHED, METHOD_NEUTRAL, ALREADY_BEST }`.
+  - `static Recommendation Recommender.recommend(long totalSalary, int childCount, SpendingTotals totals, PlanView plan, TaxLawValues law)`.
+  - 테스트 공용: `PlanAllocatorTest.plan(long... 12칸): PlanView`.
+
+연말 예상 합계표: 누계 칸에 지출계획을 더한다. 신용카드 칸 += 신용카드 고정 + 배분의 신용카드 몫, 체크카드 칸 += 체크카드·현금영수증 고정 + 배분의 체크카드·현금영수증 몫, 현금영수증 칸은 그대로다(체크카드와 현금영수증은 공제율이 같고 계산기가 둘을 더해 쓴다).
+
+기대값 표(손계산)
 
 | 사례 | 기대 | 대응 |
 |---|---|---|
 | PRD 합성 예시 3: 일반 입력액 3,000,000 / 1,000,000 / 0, V 1,000,001 | 750,001 / 250,000 / 0 | AC-35 |
 | PRD 합성 예시 4: 그 소비구분 입력액 0, 연도 전체 6,000,000 / 3,000,000 / 1,000,000, V 333,333 | 200,001 / 99,999 / 33,333 | AC-35 |
-| PRD 합성 예시 5: 연도 전체 0, V 500,000 | 500,000 / 0 / 0 | AC-35 |
-| 와이어프레임: 위 현황 입력 + 계획(일반 50만/30만/120만, 전통시장 0/10만/10만, 대중교통 10만/0/0, 문화체육 0/0/10만) | 현재 계획 배분 일반 1,018,183 / 145,454 / 36,363, 전통시장 50,001 / 33,333 / 16,666, 문화체육 50,000 / 50,000 / 0. 현재 계획 연말 1,997,272, 추천 연말 2,150,000, 차이 152,728. 추천은 일반 1,200,000만 체크·현금으로 옮기고 다른 소비구분은 현재 계획 그대로 | AC-17, AC-18, AC-35 |
-| 모든 사례 | 현재 계획과 추천의 총액·소비구분별 합이 같다. 세 배분의 합 = V | AC-17, AC-35 |
-| 차이 없음: 최저사용금액 미달 / 한도 도달 / 바꿀 수 있는 금액이 전통시장·대중교통뿐 / 바꿀 수 있는 금액 0 | `difference = 0`, 추천 배분 = 현재 계획, 이유 코드가 각각 `BELOW_THRESHOLD` / `LIMIT_REACHED` / `METHOD_NEUTRAL` / `NO_FLEXIBLE_AMOUNT` | AC-17 |
-| 탐색 검증 | 소비구분 4개를 전부 신용/전부 직불등으로 둔 16개 조합과 현재 계획을 테스트 안에서 계산기로 돌린 최댓값이 추천의 연말 공제액과 같다(여러 합성 입력) | TAX-52 |
+| PRD 합성 예시 5: 연도 전체 0, V 500,000 | 500,000 / 0 / 0, `methodShare` 없음 | AC-35 |
+| 배분 최악 입력: 12칸과 V 모두 9,999,999,999,999 | 3,333,333,333,333씩 | 오버플로(`BigInteger`) |
+| 와이어프레임: S 5,000만, 현황 입력 + 계획(일반 50만/30만/120만, 전통시장 0/10만/10만, 대중교통 10만/0/0, 문화체육 0/0/10만) | 현재 계획 일반 1,018,183 / 145,454 / 36,363, 전통시장 50,001 / 33,333 / 16,666, 문화체육 50,000 / 50,000 / 0. 비율 82.0 / 14.6 / 3.4. 현재 계획 연말 1,997,272, 추천 연말 2,150,000, 차이 152,728(옮긴 1,018,183원의 15% = 152,727.45). 추천은 일반 1,200,000만 체크·현금으로 옮기고 다른 소비구분은 현재 계획 그대로. 이유 `CREDIT_OVER_THRESHOLD`, `GENERAL`, 1,018,183 | AC-17, AC-18, AC-35 |
+| 모든 소비구분 | 현재 계획과 추천의 소비구분별 합 = 그 소비구분의 V | AC-17, AC-35 |
+| 높은 급여구간의 문화체육: S 8,000만, 신용 일반 3,000만, 문화체육 V 100만 | 현재 1,650,000 → 추천 1,800,000, 차이 150,000, 이유 `CREDIT_OVER_THRESHOLD`, `CULTURE`, 1,000,000 | TAX-41, TAX-52 |
+| 차이 없음: 바꿀 수 있는 금액 0 (S 4,000만, 신용 일반 1,200만, 일반 고정 100만/50만) | 600,000, `NO_FLEXIBLE_AMOUNT` | AC-17 |
+| 차이 없음: 최저사용금액 미달 (S 4,000만, 신용 일반 300만, 일반 V 100만) | 0, `BELOW_THRESHOLD`, 남은 금액 6,000,000 | AC-17 |
+| 차이 없음: 한도 도달 (S 5,000만, 신용 일반 1억, 일반 V 100만) | 3,000,000, `LIMIT_REACHED` | AC-17 |
+| 차이 없음: 전통시장 V 50만·대중교통 V 30만뿐 (S 4,000만, 신용 일반 1,200만) | 620,000, `METHOD_NEUTRAL` | AC-17 |
+| 차이 없음: 낮은 급여구간의 문화체육 V 100만뿐 (S 5,000만, 신용 일반 3,000만) | 2,925,000, `METHOD_NEUTRAL` | AC-17 |
+| 차이 없음: 이미 전부 체크카드 (S 4,000만, 체크 일반 1,200만, 일반 V 100만) | 900,000(전부 신용카드여도 900,000), `ALREADY_BEST` | AC-17 |
+| 추천 최악 입력: S·누계 12칸·계획 12칸 모두 9,999,999,999,999 | 4,500,000(높은 구간 기본한도 250만 + 추가한도 상한 200만), `LIMIT_REACHED` | 오버플로 |
+| 탐색 검증: 와이어프레임 / 신용 950만 + 일반 V 200만(S 4,000만) / 여러 구분이 섞인 입력(S 6,000만 자녀등 1, S 9,000만 자녀등 2) | 소비구분 4개를 전부 신용 / 전부 직불등으로 둔 16개 조합과 현재 계획의 최댓값 = 추천 연말 공제액 = 손계산 2,150,000 / 450,000 / 4,050,000 / 3,630,000 | TAX-52 |
+
+탐색 검증만 테스트 안에서 계산기를 부른다. 이 테스트가 보는 것은 "탐색이 16개 조합의 최댓값을 놓치지 않는가"이고, 최댓값 자체는 손계산 숫자와도 비교한다. 표의 숫자는 Task 4.1과 같은 별도 스크립트로 다시 계산해 일치를 확인했다.
+
+- [ ] **Step 1: 틀과 실패하는 테스트 작성**
+
+타입은 최종 모양이고 `PlanAllocator.currentPlan`은 0만, `Recommender.recommend`는 `null`을 돌려주는 틀이다.
+
+`main/tax/calc/SpendingCategory.java`
+
+```java
+package com.saladbowl.api.tax.calc;
+
+/** 소비구분. 가계부의 생활 카테고리와 다른 축이다. */
+public enum SpendingCategory {
+    GENERAL, MARKET, TRANSIT, CULTURE
+}
+```
+
+`main/tax/calc/ByCategory.java`
+
+```java
+package com.saladbowl.api.tax.calc;
+
+/** 소비구분 4개마다 하나씩 있는 값. */
+public record ByCategory<T>(T general, T market, T transit, T culture) {
+
+    public T get(SpendingCategory category) {
+        return switch (category) {
+            case GENERAL -> general;
+            case MARKET -> market;
+            case TRANSIT -> transit;
+            case CULTURE -> culture;
+        };
+    }
+}
+```
+
+`main/tax/calc/Recommendation.java`
+
+```java
+package com.saladbowl.api.tax.calc;
+
+import com.saladbowl.api.tax.calc.PlanAllocator.Split;
+
+import java.math.BigDecimal;
+import java.util.List;
+
+/**
+ * 추천 결과(TAX-50, 53, 54). 저장하지 않고 조회할 때마다 만든다.
+ * allocation은 지출계획의 "바꿀 수 있는 금액"을 결제수단에 둔 금액이고 고정액은 들어 있지 않다.
+ *
+ * @param methodShare 연도 합계표 전체의 결제수단 비율. 합계가 0원이면 null
+ * @param current     현재 계획(지금까지의 결제수단 비율대로 나눈 배분)과 그 연말 예상 소득공제액
+ * @param recommended 공제액이 가장 큰 배분과 그 연말 예상 소득공제액. 공제액이 같은 소비구분은 현재 계획 그대로다
+ * @param difference  recommended − current 연말 예상 소득공제액. 0이면 "차이 없음"
+ * @param reasons     difference > 0이면 바뀐 소비구분마다 하나, 0이면 차이가 없는 이유 하나
+ */
+public record Recommendation(
+        MethodShare methodShare,
+        Scenario<Split> current,
+        Scenario<Pair> recommended,
+        long difference,
+        List<Reason> reasons) {
+
+    /** 퍼센트, 소수 첫째 자리(반올림). 예: 82.0 */
+    public record MethodShare(BigDecimal creditPct, BigDecimal debitPct, BigDecimal cashPct) {
+    }
+
+    public record Scenario<T>(ByCategory<T> allocation, long yearEndDeduction) {
+    }
+
+    /** 추천 배분의 한 소비구분. 체크카드와 현금영수증은 공제율이 같아 한 묶음이다. */
+    public record Pair(long credit, long debitCash) {
+    }
+
+    /** 문장은 웹이 만든다. category·amount는 코드에 따라 null이다. */
+    public record Reason(ReasonCode code, SpendingCategory category, Long amount) {
+    }
+
+    public enum ReasonCode {
+        /** 그 소비구분의 바꿀 수 있는 금액을 체크카드·현금영수증으로 옮겼다. amount = 현재 계획에서 신용카드에 있던 금액 */
+        CREDIT_OVER_THRESHOLD,
+        /** 신용카드로 옮겼다(신용카드 공제율이 더 높게 설정된 세법에서만). amount = 현재 계획에서 체크카드·현금영수증에 있던 금액 */
+        CREDIT_RATE_HIGHER,
+        /** 바꿀 수 있는 금액이 모두 0원이다. */
+        NO_FLEXIBLE_AMOUNT,
+        /** 연말 예상 사용액이 최저사용금액 이하다. amount = 최저사용금액까지 남은 금액 */
+        BELOW_THRESHOLD,
+        /** 현재 계획으로 이미 한도(기본한도 + 추가한도)까지 공제된다. */
+        LIMIT_REACHED,
+        /** 바꿀 수 있는 금액이 결제수단과 무관한 소비구분에만 있다. */
+        METHOD_NEUTRAL,
+        /** 현재 계획보다 공제액이 큰 배분이 없다. */
+        ALREADY_BEST
+    }
+}
+```
+
+`main/tax/calc/PlanAllocator.java` (틀. Step 3에서 구현으로 바꾼다)
+
+```java
+package com.saladbowl.api.tax.calc;
+
+import com.saladbowl.api.tax.record.SpendingTotals;
+import com.saladbowl.api.tax.record.TaxRecordDtos.PlanView;
+
+/** 현재 계획: 지출계획의 "바꿀 수 있는 금액"을 지금까지의 결제수단 비율대로 나눈 배분(PRD 7.2절, TAX-69). */
+public final class PlanAllocator {
+
+    /** 한 소비구분의 "바꿀 수 있는 금액"을 결제수단에 나눈 금액. 세 값의 합은 그 금액과 같다. */
+    public record Split(long credit, long debit, long cash) {
+    }
+
+    private PlanAllocator() {
+    }
+
+    public static ByCategory<Split> currentPlan(SpendingTotals totals, PlanView plan) {
+        Split none = new Split(0, 0, 0);
+        return new ByCategory<>(none, none, none, none);
+    }
+}
+```
+
+`main/tax/calc/Recommender.java` (틀. Step 3에서 구현으로 바꾼다)
+
+```java
+package com.saladbowl.api.tax.calc;
+
+import com.saladbowl.api.tax.record.SpendingTotals;
+import com.saladbowl.api.tax.record.TaxRecordDtos.PlanView;
+
+/** 남은 기간의 결제수단 추천(PRD 7.2절, TAX-52). */
+public final class Recommender {
+
+    private Recommender() {
+    }
+
+    public static Recommendation recommend(long totalSalary, int childCount, SpendingTotals totals, PlanView plan,
+                                           TaxLawValues law) {
+        return null;
+    }
+}
+```
+
+`test/tax/calc/PlanAllocatorTest.java`
+
+```java
+package com.saladbowl.api.tax.calc;
+
+import com.saladbowl.api.tax.calc.PlanAllocator.Split;
+import com.saladbowl.api.tax.record.SpendingTotals;
+import com.saladbowl.api.tax.record.TaxRecordDtos.PlanRow;
+import com.saladbowl.api.tax.record.TaxRecordDtos.PlanView;
+import org.junit.jupiter.api.Test;
+
+import static com.saladbowl.api.tax.calc.DeductionCalculatorTest.totals;
+import static org.assertj.core.api.Assertions.assertThat;
+
+/** 현재 계획의 배분 규칙(PRD 7.2절 규칙 1~4, TAX-69, AC-35). 기대값은 PRD 합성 예시 3~5와 와이어프레임의 숫자다. */
+class PlanAllocatorTest {
+
+    /** 12칸 순서: 일반·전통시장·대중교통·문화체육 각각 신용카드 고정 / 체크카드·현금영수증 고정 / 바꿀 수 있음. */
+    static PlanView plan(long... c) {
+        return new PlanView(0L, new PlanRow(c[0], c[1], c[2]), new PlanRow(c[3], c[4], c[5]),
+                new PlanRow(c[6], c[7], c[8]), new PlanRow(c[9], c[10], c[11]));
+    }
+
+    private static void assertSumsToFlexible(ByCategory<Split> current, PlanView plan) {
+        assertThat(sum(current.general())).isEqualTo(plan.general().flexible());
+        assertThat(sum(current.market())).isEqualTo(plan.market().flexible());
+        assertThat(sum(current.transit())).isEqualTo(plan.transit().flexible());
+        assertThat(sum(current.culture())).isEqualTo(plan.culture().flexible());
+    }
+
+    private static long sum(Split split) {
+        return split.credit() + split.debit() + split.cash();
+    }
+
+    @Test
+    void splitsByTheCategoryRatioAndGivesLeftoverWonToCredit() {
+        // 합성 예시 3: 일반 3,000,000 / 1,000,000 / 0, V = 1,000,001 → 750,000.75 / 250,000.25 / 0, 남는 1원은 신용카드
+        SpendingTotals totals = totals(3_000_000, 0, 0, 0, 1_000_000, 0, 0, 0, 0, 0, 0, 0);
+        PlanView plan = plan(0, 0, 1_000_001, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+
+        ByCategory<Split> current = PlanAllocator.currentPlan(totals, plan);
+
+        assertThat(current.general()).isEqualTo(new Split(750_001, 250_000, 0));
+        assertSumsToFlexible(current, plan);
+    }
+
+    @Test
+    void fallsBackToTheYearRatioWhenTheCategoryHasNoSpending() {
+        // 합성 예시 4: 문화체육 입력액 0, 연도 전체 6,000,000 / 3,000,000 / 1,000,000, V = 333,333
+        // → 199,999.8 / 99,999.9 / 33,333.3, 남는 2원은 신용카드
+        SpendingTotals totals = totals(6_000_000, 0, 0, 0, 3_000_000, 0, 0, 0, 1_000_000, 0, 0, 0);
+        PlanView plan = plan(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 333_333);
+
+        ByCategory<Split> current = PlanAllocator.currentPlan(totals, plan);
+
+        assertThat(current.culture()).isEqualTo(new Split(200_001, 99_999, 33_333));
+        assertSumsToFlexible(current, plan);
+    }
+
+    @Test
+    void putsEverythingOnCreditWhenTheYearHasNoSpending() {
+        // 합성 예시 5
+        PlanView plan = plan(0, 0, 500_000, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+
+        ByCategory<Split> current = PlanAllocator.currentPlan(totals(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0), plan);
+
+        assertThat(current.general()).isEqualTo(new Split(500_000, 0, 0));
+        assertSumsToFlexible(current, plan);
+    }
+
+    @Test
+    void wireframeExample() {
+        // 일반 1,200,000 × (14,000,000 : 2,000,000 : 500,000) → 1,018,181 / 145,454 / 36,363, 남는 2원
+        // 전통시장 100,000 × (300,000 : 200,000 : 100,000) → 50,000 / 33,333 / 16,666, 남는 1원
+        // 문화체육 100,000 × (100,000 : 100,000 : 0) → 50,000 / 50,000 / 0
+        SpendingTotals totals = totals(14_000_000, 300_000, 200_000, 100_000,
+                2_000_000, 200_000, 300_000, 100_000, 500_000, 100_000, 0, 0);
+        PlanView plan = plan(500_000, 300_000, 1_200_000, 0, 100_000, 100_000, 100_000, 0, 0, 0, 0, 100_000);
+
+        ByCategory<Split> current = PlanAllocator.currentPlan(totals, plan);
+
+        assertThat(current.general()).isEqualTo(new Split(1_018_183, 145_454, 36_363));
+        assertThat(current.market()).isEqualTo(new Split(50_001, 33_333, 16_666));
+        assertThat(current.transit()).isEqualTo(new Split(0, 0, 0));
+        assertThat(current.culture()).isEqualTo(new Split(50_000, 50_000, 0));
+        assertSumsToFlexible(current, plan);
+    }
+
+    @Test
+    void largestAmountsDoNotOverflow() {
+        // V × 입력액 = 약 10^26으로 long을 넘는다. 9,999,999,999,999 ÷ 3 = 3,333,333,333,333(나머지 없음)
+        long max = 9_999_999_999_999L;
+        SpendingTotals totals = totals(max, max, max, max, max, max, max, max, max, max, max, max);
+        PlanView plan = plan(max, max, max, max, max, max, max, max, max, max, max, max);
+
+        ByCategory<Split> current = PlanAllocator.currentPlan(totals, plan);
+
+        assertThat(current.general())
+                .isEqualTo(new Split(3_333_333_333_333L, 3_333_333_333_333L, 3_333_333_333_333L));
+        assertSumsToFlexible(current, plan);
+    }
+}
+```
+
+`test/tax/calc/RecommenderTest.java`
+
+```java
+package com.saladbowl.api.tax.calc;
+
+import com.saladbowl.api.tax.calc.PlanAllocator.Split;
+import com.saladbowl.api.tax.calc.Recommendation.MethodShare;
+import com.saladbowl.api.tax.calc.Recommendation.Pair;
+import com.saladbowl.api.tax.calc.Recommendation.Reason;
+import com.saladbowl.api.tax.calc.Recommendation.ReasonCode;
+import com.saladbowl.api.tax.record.SpendingTotals;
+import com.saladbowl.api.tax.record.TaxRecordDtos.PlanRow;
+import com.saladbowl.api.tax.record.TaxRecordDtos.PlanView;
+import org.junit.jupiter.api.Test;
+
+import java.math.BigDecimal;
+import java.util.List;
+
+import static com.saladbowl.api.tax.calc.DeductionCalculatorTest.LAW_2026;
+import static com.saladbowl.api.tax.calc.DeductionCalculatorTest.totals;
+import static com.saladbowl.api.tax.calc.PlanAllocatorTest.plan;
+import static org.assertj.core.api.Assertions.assertThat;
+
+/**
+ * 추천(PRD 7.2절, TAX-50·52~54, AC-17·18). 기대 공제액은 PRD 7.1절 식을 손으로 계산한 숫자다(AC-24).
+ * 탐색 검증 한 건만 계산기를 불러 후보의 최댓값과 비교한다(탐색이 빠뜨린 배분이 없는지 본다).
+ */
+class RecommenderTest {
+
+    private static final SpendingTotals WIREFRAME_TOTALS = totals(14_000_000, 300_000, 200_000, 100_000,
+            2_000_000, 200_000, 300_000, 100_000, 500_000, 100_000, 0, 0);
+    private static final PlanView WIREFRAME_PLAN =
+            plan(500_000, 300_000, 1_200_000, 0, 100_000, 100_000, 100_000, 0, 0, 0, 0, 100_000);
+
+    private static Recommendation noDifference(long salary, SpendingTotals totals, PlanView plan) {
+        Recommendation r = Recommender.recommend(salary, 0, totals, plan, LAW_2026);
+        assertThat(r.difference()).isZero();
+        assertThat(r.recommended().yearEndDeduction()).isEqualTo(r.current().yearEndDeduction());
+        for (SpendingCategory category : SpendingCategory.values()) {
+            Split current = r.current().allocation().get(category);
+            assertThat(r.recommended().allocation().get(category))
+                    .isEqualTo(new Pair(current.credit(), current.debit() + current.cash()));
+        }
+        return r;
+    }
+
+    @Test
+    void wireframeExampleMovesGeneralSpendingOffCredit() {
+        Recommendation r = Recommender.recommend(50_000_000L, 0, WIREFRAME_TOTALS, WIREFRAME_PLAN, LAW_2026);
+
+        // 연도 전체: 14,600,000 / 2,600,000 / 600,000 ÷ 17,800,000 = 82.02% / 14.61% / 3.37%
+        assertThat(r.methodShare()).isEqualTo(
+                new MethodShare(new BigDecimal("82.0"), new BigDecimal("14.6"), new BigDecimal("3.4")));
+        assertThat(r.current().allocation().general()).isEqualTo(new Split(1_018_183, 145_454, 36_363));
+        // 현재 계획 연말: A 15,518,183 / B 2,981,817 / M 300,000 / T 800,000 / P 600,000
+        // 2,327,727.45 + 894,545.10 + 90,000 + 320,000 + 240,000 − 1,875,000 = 1,997,272.55
+        assertThat(r.current().yearEndDeduction()).isEqualTo(1_997_272L);
+        // 일반 1,200,000을 모두 체크카드·현금영수증으로: A 14,500,000 / B 4,000,000 → 2,150,000
+        assertThat(r.recommended().allocation().general()).isEqualTo(new Pair(0, 1_200_000));
+        assertThat(r.recommended().allocation().market()).isEqualTo(new Pair(50_001, 49_999));
+        assertThat(r.recommended().allocation().transit()).isEqualTo(new Pair(0, 0));
+        assertThat(r.recommended().allocation().culture()).isEqualTo(new Pair(50_000, 50_000));
+        assertThat(r.recommended().yearEndDeduction()).isEqualTo(2_150_000L);
+        assertThat(r.difference()).isEqualTo(152_728L);
+        // AC-18: 옮긴 1,018,183원의 15% = 152,727.45원. 원 미만 처리 차이는 1원 안이다.
+        assertThat(r.difference()).isBetween(152_727L, 152_728L);
+        assertThat(r.reasons()).containsExactly(
+                new Reason(ReasonCode.CREDIT_OVER_THRESHOLD, SpendingCategory.GENERAL, 1_018_183L));
+    }
+
+    @Test
+    void totalsPerCategoryAreTheSameBeforeAndAfter() {
+        Recommendation r = Recommender.recommend(50_000_000L, 0, WIREFRAME_TOTALS, WIREFRAME_PLAN, LAW_2026);
+
+        for (SpendingCategory category : SpendingCategory.values()) {
+            PlanRow row = new ByCategory<>(WIREFRAME_PLAN.general(), WIREFRAME_PLAN.market(),
+                    WIREFRAME_PLAN.transit(), WIREFRAME_PLAN.culture()).get(category);
+            Split current = r.current().allocation().get(category);
+            Pair recommended = r.recommended().allocation().get(category);
+            assertThat(current.credit() + current.debit() + current.cash()).isEqualTo(row.flexible());
+            assertThat(recommended.credit() + recommended.debitCash()).isEqualTo(row.flexible());
+        }
+    }
+
+    @Test
+    void cultureFollowsItsPaymentMethodAboveTheBoundary() {
+        // 총급여 8,000만, 신용 일반 3,000만, 문화체육 바꿀 수 있음 100만(입력액이 신용뿐이라 현재 계획은 전부 신용카드)
+        // 현재: 3,100만×15% − 2,000만×15% = 1,650,000. 추천: 3,000만×15% + 100만×30% − 300만 = 1,800,000
+        Recommendation r = Recommender.recommend(80_000_000L, 0,
+                totals(30_000_000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+                plan(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1_000_000), LAW_2026);
+
+        assertThat(r.methodShare()).isEqualTo(
+                new MethodShare(new BigDecimal("100.0"), new BigDecimal("0.0"), new BigDecimal("0.0")));
+        assertThat(r.current().yearEndDeduction()).isEqualTo(1_650_000L);
+        assertThat(r.recommended().yearEndDeduction()).isEqualTo(1_800_000L);
+        assertThat(r.recommended().allocation().culture()).isEqualTo(new Pair(0, 1_000_000));
+        assertThat(r.difference()).isEqualTo(150_000L);
+        assertThat(r.reasons()).containsExactly(
+                new Reason(ReasonCode.CREDIT_OVER_THRESHOLD, SpendingCategory.CULTURE, 1_000_000L));
+    }
+
+    @Test
+    void noDifferenceWhenNothingIsFlexible() {
+        // 신용 일반 1,200만 + 고정 100만/50만: 1,300만×15% + 50만×30% − 150만 = 600,000
+        Recommendation r = noDifference(40_000_000L, totals(12_000_000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+                plan(1_000_000, 500_000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0));
+
+        assertThat(r.current().yearEndDeduction()).isEqualTo(600_000L);
+        assertThat(r.reasons()).containsExactly(new Reason(ReasonCode.NO_FLEXIBLE_AMOUNT, null, null));
+    }
+
+    @Test
+    void noDifferenceBelowTheThreshold() {
+        // 연말 예상 400만 ≤ 최저사용금액 1,000만. 남은 금액 600만
+        Recommendation r = noDifference(40_000_000L, totals(3_000_000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+                plan(0, 0, 1_000_000, 0, 0, 0, 0, 0, 0, 0, 0, 0));
+
+        assertThat(r.current().yearEndDeduction()).isZero();
+        assertThat(r.reasons()).containsExactly(new Reason(ReasonCode.BELOW_THRESHOLD, null, 6_000_000L));
+    }
+
+    @Test
+    void noDifferenceAtTheLimit() {
+        // 신용 일반 1억 100만: 1,515만 − 187.5만 = 13,275,000 > 기본한도 300만, 추가한도 대상 0
+        Recommendation r = noDifference(50_000_000L, totals(100_000_000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+                plan(0, 0, 1_000_000, 0, 0, 0, 0, 0, 0, 0, 0, 0));
+
+        assertThat(r.current().yearEndDeduction()).isEqualTo(3_000_000L);
+        assertThat(r.reasons()).containsExactly(new Reason(ReasonCode.LIMIT_REACHED, null, null));
+    }
+
+    @Test
+    void noDifferenceWhenOnlyMethodNeutralCategoriesAreFlexible() {
+        // 전통시장 50만·대중교통 30만만 바꿀 수 있다: 180만 + 32만 − 150만 = 620,000
+        Recommendation r = noDifference(40_000_000L, totals(12_000_000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+                plan(0, 0, 0, 0, 0, 500_000, 0, 0, 300_000, 0, 0, 0));
+
+        assertThat(r.current().yearEndDeduction()).isEqualTo(620_000L);
+        assertThat(r.reasons()).containsExactly(new Reason(ReasonCode.METHOD_NEUTRAL, null, null));
+
+        // 총급여 7천만원 이하의 문화체육도 결제수단과 무관하다: 450만 + 30만 − 187.5만 = 2,925,000
+        Recommendation culture = noDifference(50_000_000L, totals(30_000_000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+                plan(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1_000_000));
+
+        assertThat(culture.current().yearEndDeduction()).isEqualTo(2_925_000L);
+        assertThat(culture.reasons()).containsExactly(new Reason(ReasonCode.METHOD_NEUTRAL, null, null));
+    }
+
+    @Test
+    void noDifferenceWhenTheCurrentPlanIsAlreadyBest() {
+        // 지금까지 체크카드만 썼다 → 현재 계획이 전부 체크카드. 1,300만×30% − 1,000만×30% = 900,000
+        // 전부 신용카드여도 15만 + 360만 − (15만 + 900만×30%) = 900,000으로 같다(신용카드가 최저사용금액 아래).
+        Recommendation r = noDifference(40_000_000L, totals(0, 0, 0, 0, 12_000_000, 0, 0, 0, 0, 0, 0, 0),
+                plan(0, 0, 1_000_000, 0, 0, 0, 0, 0, 0, 0, 0, 0));
+
+        assertThat(r.current().allocation().general()).isEqualTo(new Split(0, 1_000_000, 0));
+        assertThat(r.current().yearEndDeduction()).isEqualTo(900_000L);
+        assertThat(r.reasons()).containsExactly(new Reason(ReasonCode.ALREADY_BEST, null, null));
+    }
+
+    @Test
+    void methodShareIsMissingWhenTheYearHasNoSpending() {
+        Recommendation r = Recommender.recommend(40_000_000L, 0, totals(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+                plan(0, 0, 500_000, 0, 0, 0, 0, 0, 0, 0, 0, 0), LAW_2026);
+
+        assertThat(r.methodShare()).isNull();
+        assertThat(r.current().allocation().general()).isEqualTo(new Split(500_000, 0, 0));
+    }
+
+    @Test
+    void largestInputsDoNotOverflow() {
+        // 누계 12칸과 지출계획 12칸이 모두 상한. 연말 12칸 합은 약 240조이고 공제액은 한도로 묶인다.
+        // 총급여가 경계를 넘으므로 기본한도 2,500,000 + 추가한도 상한 2,000,000
+        long max = 9_999_999_999_999L;
+        Recommendation r = noDifference(max, totals(max, max, max, max, max, max, max, max, max, max, max, max),
+                plan(max, max, max, max, max, max, max, max, max, max, max, max));
+
+        assertThat(r.current().yearEndDeduction()).isEqualTo(4_500_000L);
+        assertThat(r.reasons()).containsExactly(new Reason(ReasonCode.LIMIT_REACHED, null, null));
+    }
+
+    @Test
+    void recommendationIsTheBestOfAllCreditOrAllDebitCashCombinations() {
+        // 손계산한 최댓값: 2,150,000 / 450,000 / 4,050,000 / 3,630,000
+        assertBestOfSixteen(50_000_000L, 0, WIREFRAME_TOTALS, WIREFRAME_PLAN, 2_150_000L);
+        // 신용 950만 + 바꿀 수 있음 200만: 전부 체크카드면 950만×15% + 200만×30% − (950만×15% + 50만×30%) = 450,000
+        assertBestOfSixteen(40_000_000L, 0, totals(9_500_000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+                plan(0, 0, 2_000_000, 0, 0, 0, 0, 0, 0, 0, 0, 0), 450_000L);
+        SpendingTotals mixed = totals(20_000_000, 500_000, 0, 300_000, 3_000_000, 0, 700_000, 0,
+                1_000_000, 0, 0, 200_000);
+        PlanView mixedPlan = plan(1_000_000, 0, 3_000_000, 0, 0, 400_000, 0, 200_000, 0, 0, 0, 600_000);
+        assertBestOfSixteen(60_000_000L, 1, mixed, mixedPlan, 4_050_000L);
+        SpendingTotals high = totals(25_000_000, 500_000, 0, 300_000, 3_000_000, 0, 700_000, 0,
+                1_000_000, 0, 0, 200_000);
+        assertBestOfSixteen(90_000_000L, 2, high, mixedPlan, 3_630_000L);
+    }
+
+    private static void assertBestOfSixteen(long salary, int childCount, SpendingTotals t, PlanView plan,
+                                            long expected) {
+        Recommendation r = Recommender.recommend(salary, childCount, t, plan, LAW_2026);
+        List<PlanRow> rows = List.of(plan.general(), plan.market(), plan.transit(), plan.culture());
+        long best = r.current().yearEndDeduction();
+        for (int mask = 0; mask < 16; mask++) {
+            long[] credit = new long[4];
+            long[] debit = new long[4];
+            for (int i = 0; i < 4; i++) {
+                boolean allCredit = (mask & (1 << i)) != 0;
+                credit[i] = rows.get(i).creditFixed() + (allCredit ? rows.get(i).flexible() : 0);
+                debit[i] = rows.get(i).debitFixed() + (allCredit ? 0 : rows.get(i).flexible());
+            }
+            SpendingTotals yearEnd = new SpendingTotals(
+                    t.creditGeneral() + credit[0], t.creditMarket() + credit[1],
+                    t.creditTransit() + credit[2], t.creditCulture() + credit[3],
+                    t.debitGeneral() + debit[0], t.debitMarket() + debit[1],
+                    t.debitTransit() + debit[2], t.debitCulture() + debit[3],
+                    t.cashGeneral(), t.cashMarket(), t.cashTransit(), t.cashCulture());
+            best = Math.max(best, DeductionCalculator.calculate(salary, childCount, yearEnd, LAW_2026).amount());
+        }
+        assertThat(r.recommended().yearEndDeduction()).isEqualTo(best).isEqualTo(expected);
+        assertThat(r.difference()).isEqualTo(best - r.current().yearEndDeduction());
+    }
+}
+```
+
+- [ ] **Step 2: 실패 확인**
+
+Run: `cd apps/api && ./gradlew test --tests '*PlanAllocatorTest' --tests '*RecommenderTest'`
+Expected: `16 tests completed, 16 failed`, `BUILD FAILED`(`PlanAllocatorTest` 5건은 기대 배분에서, `RecommenderTest` 11건은 `NullPointerException`으로 실패한다).
+
+- [ ] **Step 3: 현재 계획 배분 구현**
+
+`main/tax/calc/PlanAllocator.java`
+
+```java
+package com.saladbowl.api.tax.calc;
+
+import com.saladbowl.api.tax.record.SpendingTotals;
+import com.saladbowl.api.tax.record.TaxRecordDtos.PlanView;
+
+import java.math.BigInteger;
+
+/** 현재 계획: 지출계획의 "바꿀 수 있는 금액"을 지금까지의 결제수단 비율대로 나눈 배분(PRD 7.2절, TAX-69). */
+public final class PlanAllocator {
+
+    /** 한 소비구분의 "바꿀 수 있는 금액"을 결제수단에 나눈 금액. 세 값의 합은 그 금액과 같다. */
+    public record Split(long credit, long debit, long cash) {
+    }
+
+    private PlanAllocator() {
+    }
+
+    public static ByCategory<Split> currentPlan(SpendingTotals t, PlanView plan) {
+        long[] year = {
+                t.creditGeneral() + t.creditMarket() + t.creditTransit() + t.creditCulture(),
+                t.debitGeneral() + t.debitMarket() + t.debitTransit() + t.debitCulture(),
+                t.cashGeneral() + t.cashMarket() + t.cashTransit() + t.cashCulture()};
+        return new ByCategory<>(
+                split(plan.general().flexible(), year, t.creditGeneral(), t.debitGeneral(), t.cashGeneral()),
+                split(plan.market().flexible(), year, t.creditMarket(), t.debitMarket(), t.cashMarket()),
+                split(plan.transit().flexible(), year, t.creditTransit(), t.debitTransit(), t.cashTransit()),
+                split(plan.culture().flexible(), year, t.creditCulture(), t.debitCulture(), t.cashCulture()));
+    }
+
+    /** 비율의 기준: 그 소비구분의 입력액 → 0원이면 연도 전체 → 그것도 0원이면 전부 신용카드. */
+    private static Split split(long flexible, long[] year, long... category) {
+        long[] basis = category[0] + category[1] + category[2] > 0 ? category : year;
+        long sum = basis[0] + basis[1] + basis[2];
+        if (sum == 0) {
+            return new Split(flexible, 0, 0);
+        }
+        long debit = share(flexible, basis[1], sum);
+        long cash = share(flexible, basis[2], sum);
+        // 신용카드 몫의 원 미만도 버린 뒤 남는 원을 모두 신용카드에 더한 값과 같다.
+        return new Split(flexible - debit - cash, debit, cash);
+    }
+
+    /** flexible × part ÷ sum, 원 미만 버림. 곱이 long을 넘을 수 있다(약 10^26). */
+    private static long share(long flexible, long part, long sum) {
+        return BigInteger.valueOf(flexible).multiply(BigInteger.valueOf(part))
+                .divide(BigInteger.valueOf(sum)).longValueExact();
+    }
+}
+```
+
+- [ ] **Step 4: 추천 구현**
+
+`main/tax/calc/Recommender.java`
+
+```java
+package com.saladbowl.api.tax.calc;
+
+import com.saladbowl.api.tax.calc.PlanAllocator.Split;
+import com.saladbowl.api.tax.calc.Recommendation.MethodShare;
+import com.saladbowl.api.tax.calc.Recommendation.Pair;
+import com.saladbowl.api.tax.calc.Recommendation.Reason;
+import com.saladbowl.api.tax.calc.Recommendation.ReasonCode;
+import com.saladbowl.api.tax.calc.Recommendation.Scenario;
+import com.saladbowl.api.tax.record.SpendingTotals;
+import com.saladbowl.api.tax.record.TaxRecordDtos.PlanRow;
+import com.saladbowl.api.tax.record.TaxRecordDtos.PlanView;
+
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.ArrayList;
+import java.util.EnumMap;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * 남은 기간의 결제수단 추천(PRD 7.2절, TAX-52). 근사식 없이 (누계 + 계획)을 DeductionCalculator에 넣어 비교한다.
+ * 현재 계획에서 시작해 소비구분을 하나씩 보며 "바꿀 수 있는 금액"을 전부 체크카드·현금영수증 / 전부 신용카드에 둔
+ * 후보가 지금까지의 최댓값보다 클 때만 바꾼다. 같으면 현재 계획을 유지한다. 계산기 호출은 요청마다 9번이다.
+ */
+public final class Recommender {
+
+    private static final List<SpendingCategory> SEARCH_ORDER = List.of(SpendingCategory.GENERAL,
+            SpendingCategory.CULTURE, SpendingCategory.MARKET, SpendingCategory.TRANSIT);
+
+    private Recommender() {
+    }
+
+    public static Recommendation recommend(long totalSalary, int childCount, SpendingTotals totals, PlanView plan,
+                                           TaxLawValues law) {
+        ByCategory<PlanRow> rows = new ByCategory<>(plan.general(), plan.market(), plan.transit(), plan.culture());
+        ByCategory<Split> current = PlanAllocator.currentPlan(totals, plan);
+        Map<SpendingCategory, Pair> best = new EnumMap<>(SpendingCategory.class);
+        for (SpendingCategory category : SpendingCategory.values()) {
+            Split split = current.get(category);
+            best.put(category, new Pair(split.credit(), split.debit() + split.cash()));
+        }
+        DeductionResult currentResult = DeductionCalculator.calculate(totalSalary, childCount,
+                yearEnd(totals, rows, best), law);
+        long bestAmount = currentResult.amount();
+
+        List<Reason> reasons = new ArrayList<>();
+        for (SpendingCategory category : SEARCH_ORDER) {
+            long flexible = rows.get(category).flexible();
+            Pair kept = best.get(category);
+            for (Pair candidate : List.of(new Pair(0, flexible), new Pair(flexible, 0))) {
+                best.put(category, candidate);
+                long amount = DeductionCalculator.calculate(totalSalary, childCount,
+                        yearEnd(totals, rows, best), law).amount();
+                if (amount > bestAmount) {
+                    bestAmount = amount;
+                    kept = candidate;
+                }
+            }
+            best.put(category, kept);
+            Split before = current.get(category);
+            if (kept.credit() < before.credit()) {
+                reasons.add(new Reason(ReasonCode.CREDIT_OVER_THRESHOLD, category, before.credit()));
+            } else if (kept.credit() > before.credit()) {
+                reasons.add(new Reason(ReasonCode.CREDIT_RATE_HIGHER, category, before.debit() + before.cash()));
+            }
+        }
+        if (reasons.isEmpty()) {
+            reasons.add(noDifference(rows, currentResult));
+        }
+        return new Recommendation(methodShare(totals),
+                new Scenario<>(current, currentResult.amount()),
+                new Scenario<>(new ByCategory<>(best.get(SpendingCategory.GENERAL), best.get(SpendingCategory.MARKET),
+                        best.get(SpendingCategory.TRANSIT), best.get(SpendingCategory.CULTURE)), bestAmount),
+                bestAmount - currentResult.amount(), List.copyOf(reasons));
+    }
+
+    /** 누계에 지출계획을 더한 연말 예상 합계표. 체크카드·현금영수증 몫은 공제율이 같아 체크카드 칸에 더한다. */
+    private static SpendingTotals yearEnd(SpendingTotals t, ByCategory<PlanRow> rows,
+                                          Map<SpendingCategory, Pair> allocation) {
+        long[] credit = new long[4];
+        long[] debit = new long[4];
+        for (SpendingCategory category : SpendingCategory.values()) {
+            PlanRow row = rows.get(category);
+            Pair pair = allocation.get(category);
+            credit[category.ordinal()] = row.creditFixed() + pair.credit();
+            debit[category.ordinal()] = row.debitFixed() + pair.debitCash();
+        }
+        return new SpendingTotals(
+                t.creditGeneral() + credit[0], t.creditMarket() + credit[1],
+                t.creditTransit() + credit[2], t.creditCulture() + credit[3],
+                t.debitGeneral() + debit[0], t.debitMarket() + debit[1],
+                t.debitTransit() + debit[2], t.debitCulture() + debit[3],
+                t.cashGeneral(), t.cashMarket(), t.cashTransit(), t.cashCulture());
+    }
+
+    /** 어떤 후보도 현재 계획보다 크지 않을 때의 이유. 위에서부터 먼저 맞는 것 하나다. */
+    private static Reason noDifference(ByCategory<PlanRow> rows, DeductionResult current) {
+        long general = rows.general().flexible();
+        long culture = rows.culture().flexible();
+        if (general + culture + rows.market().flexible() + rows.transit().flexible() == 0) {
+            return new Reason(ReasonCode.NO_FLEXIBLE_AMOUNT, null, null);
+        }
+        if (!current.thresholdReached()) {
+            return new Reason(ReasonCode.BELOW_THRESHOLD, null, current.remainingToThreshold());
+        }
+        if (current.amount() == current.basicLimit() + Math.min(current.extraEligible(), current.extraCap())) {
+            return new Reason(ReasonCode.LIMIT_REACHED, null, null);
+        }
+        // 일반은 언제나, 문화체육은 높은 급여구간에서만 결제수단에 따라 공제율이 달라진다.
+        if (general == 0 && (culture == 0 || !current.highBracket())) {
+            return new Reason(ReasonCode.METHOD_NEUTRAL, null, null);
+        }
+        return new Reason(ReasonCode.ALREADY_BEST, null, null);
+    }
+
+    private static MethodShare methodShare(SpendingTotals t) {
+        long credit = t.creditGeneral() + t.creditMarket() + t.creditTransit() + t.creditCulture();
+        long debit = t.debitGeneral() + t.debitMarket() + t.debitTransit() + t.debitCulture();
+        long cash = t.cashGeneral() + t.cashMarket() + t.cashTransit() + t.cashCulture();
+        long total = credit + debit + cash;
+        return total == 0 ? null : new MethodShare(percent(credit, total), percent(debit, total), percent(cash, total));
+    }
+
+    private static BigDecimal percent(long part, long total) {
+        return BigDecimal.valueOf(part).multiply(BigDecimal.valueOf(100))
+                .divide(BigDecimal.valueOf(total), 1, RoundingMode.HALF_UP);
+    }
+}
+```
+
+- [ ] **Step 5: 통과 확인**
+
+Run: `cd apps/api && ./gradlew test --tests '*tax.calc*'`
+Expected: `BUILD SUCCESSFUL`. `PlanAllocatorTest` 5건, `RecommenderTest` 11건, `DeductionCalculatorTest` 10건 통과.
+
+- [ ] **Step 6: 전체 테스트**
+
+Run: `cd apps/api && ./gradlew test`
+Expected: `BUILD SUCCESSFUL`(임시 복사본에서는 전체 401건 통과).
+
+- [ ] **Step 7: 커밋(컨트롤러)**
+
+```bash
+git add apps/api/src/main/java/com/saladbowl/api/tax/calc apps/api/src/test/java/com/saladbowl/api/tax/calc
+git commit -m "feat(api): 소득공제 현재 계획 배분과 결제수단 추천" -m "Co-Authored-By: Codex (gpt-6-astra) <noreply@openai.com>"
+```
+
+---
 
 ### Task 4.3: 분석 조회 API (TAX-24, 35, 36, 38, 44, 50, 65, 75)
 
-**담당:** Codex `gpt-6-sol` / `medium` (`api`), 태그 `impl-api`. 리뷰: Claude Fable 5.2.
+**담당:** Codex `gpt-6-sol` / `medium` (`api`. 계산은 4.1·4.2에서 끝났고 이 Task는 조립이다), 태그 `impl-api`. 리뷰: Claude Fable 5.2 (`review-task`).
 
-- Files: Create `tax/calc/TaxAnalysisService.java`, `TaxAnalysisController.java`, `TaxAnalysisDtos.java`, `tax/calc/TaxAnalysisApiTest.java`.
-- Interfaces — Consumes: `TaxRecordService.requireOwned`, `SpendingTotals.of`, 계산기·추천. Produces: `GET /tax/years/{year}/analysis`(위 필드).
-- 테스트 대상(AC-01, 20, 30, 43, 13): 남의 연도·없는 연도 404, 상태 판정 순서(자료 없음 / 미완료와 빈 칸 수 / 세법 준비 중 / READY), 미완료·세법 준비 중이면 `deduction`·`recommendation`이 없음, 빈 칸을 채우면 저장해 둔 계획으로 추천이 나옴, 지출계획이 없으면 `recommendation` 없음·`planSaved=false`, 예시 1 입력의 응답 `deduction.amount = 1950000`, 근로기간이 전체가 아니면 `partialYear=true`이고 금액은 그대로, 기준일 불일치면 `estimated=true`이고 금액은 그대로, 연도 기록이 기억한 버전으로 계산(새 버전 적용 뒤에도 결과 불변, `refresh` 뒤 바뀜 — AC-19), 응답을 만드는 동안 DB에 쓰지 않음.
+**Files:**
+- Create: `main/tax/calc/TaxAnalysisView.java`, `TaxAnalysisService.java`, `TaxAnalysisController.java`
+- Test: `test/tax/calc/TaxAnalysisApiTest.java`(생성. Testcontainers 통합 테스트)
+
+**Interfaces:**
+- Consumes:
+  - PR 3의 `TaxRecordService.get(long userId, int year): TaxYearView`(안에서 `requireOwned`를 부르고 없으면 404 `tax record not found`), `TaxYearView`의 `taxYear()`, `totalSalary()`, `workStartMonth()`, `workEndMonth()`, `childCount()`, `lawVersion(): LawVersionRef`(없으면 `null`), `newerLawVersion()`, `cards(): List<CardView>`, `cashReceipt(): CashView`(없으면 `null`), `plan(): PlanView`(없으면 `null`), `totals(): SpendingTotals`, `blankCount()`, `hasInputs()`, `asOfDateMismatch()`. `CardView.asOfDate()`, `CashView.asOfDate()`, `LawVersionRef(long id, int versionNo, OffsetDateTime appliedAt, boolean childTiersApply)`.
+  - PR 2의 `TaxLawVersionRepository.findById(Long)`, `auth/CurrentUser`.
+  - Task 4.1의 `TaxLawValues.from(TaxLawVersion)`, `DeductionCalculator.calculate(...)`, Task 4.2의 `Recommender.recommend(long totalSalary, int childCount, SpendingTotals totals, PlanView plan, TaxLawValues law)`.
+  - 테스트 헬퍼(모두 기존): `TestTaxRecords.URL`·`createYear`·`putYear`·`yearBody`·`cardBody`·`cashBody`·`addCard`·`putCard`·`putCash`·`planBody`·`putPlan`·`readVersion`, `TestTaxLaws.URL`·`createApplied`·`createDraft`·`values2026`, `TestAdmins.grant`, `TestAuth.signupAndLogin`, `TestClock.Config`.
+- Produces:
+  - `record TaxAnalysisView(int taxYear, Status status, int blankCount, SpendingTotals totals, long totalSalary, boolean estimated, LocalDate asOfDateMin, LocalDate asOfDateMax, boolean partialYear, LawVersionRef law, boolean newerLawVersion, boolean planSaved, DeductionResult deduction, Recommendation recommendation)`, `enum TaxAnalysisView.Status { NO_INPUT, INCOMPLETE, LAW_PENDING, READY }`.
+  - `TaxAnalysisService.get(long userId, int year): TaxAnalysisView`(`@Transactional(readOnly = true)`).
+  - HTTP: `GET /tax/years/{year}/analysis`(위 "HTTP 인터페이스"). 웹 PR 7이 쓴다.
+
+지킬 것: `tax/calc`에서 `TaxYearRecordRepository`·`TaxCardStatementRepository`·`TaxCashReceiptRepository`·`TaxSpendingPlanRepository`를 주입하지 않는다(회원 자료는 `TaxRecordService.get`으로만 읽는다). `lockOwned`·`save`·`refreshLawVersion`을 부르지 않는다. 세법은 `laws.currentApplied`가 아니라 `view.lawVersion().id()`로 읽는다.
+
+테스트 대상
+
+| 테스트 | 확인하는 것 | 대응 |
+|---|---|---|
+| `onlyTheOwnerReadsTheAnalysis` | 본인 200, 다른 회원·서비스 관리자·없는 연도는 같은 404(`code`·`message` 동일), 비로그인 401, `year` 999는 400 | AC-01, TAX-02 |
+| `statusGoesFromNoInputToIncompleteToLawPendingToReady` | 자료 없음(빈 칸 4) → 빈 칸 5 → 자료 완료·세법 없음 → 첫 버전 적용 뒤 `READY`. `READY` 전에는 `deduction`·`recommendation`이 없고 지출계획은 저장돼 `planSaved`가 true | TAX-38, 65, 75, AC-20, 43 |
+| `readyAnalysisShowsPrdExample1StepByStep` | 합성 예시 1의 응답 전체(과정 값 포함, `amount` 1,950,000), 세법 버전·기준일 표시, 지출계획이 없으면 `recommendation` 없음 | TAX-35, 36, 71, AC-13 |
+| `savedPlanIsRecommendedOnceTheStatementsAreComplete` | 미완료 때 저장한 계획으로, 빈 칸을 채운 뒤 추천이 나온다(와이어프레임 숫자: 1,997,272 → 2,150,000, 차이 152,728) | TAX-50, 75, AC-17, 43 |
+| `partialYearAndMismatchedDatesAreFlaggedWithoutChangingTheAmount` | 근로기간 3~12월이면 `partialYear`, 기준일이 다르면 `estimated`와 최소·최대 기준일. 금액은 1,950,000 그대로 | AC-30, AC-31 |
+| `calculationUsesTheLawVersionTheRecordRemembers` | 신용카드 공제율 20%인 새 버전을 적용해도 1,950,000 그대로이고 `newerLawVersion`이 true. `refresh` 뒤 2,050,000 | TAX-66, AC-19 |
+| `readingTheAnalysisWritesNothing` | 두 번 읽은 응답이 같고, 네 테이블 모든 행의 `xmin`과 `GET /tax/years/2026` 응답(모든 `rowVersion` 포함)이 그대로다 | TAX-44 |
+
+`calculationUsesTheLawVersionTheRecordRemembers`의 기대값: 신용카드 공제율이 20%면 12,000,000 × 20% + 3,000,000 × 30% + 500,000 × 30% + 1,000,000 × 40% + 500,000 × 40% − 10,000,000 × 20% = 2,400,000 + 900,000 + 150,000 + 400,000 + 200,000 − 2,000,000 = 2,050,000.
+
+- [ ] **Step 1: 실패하는 테스트 작성**
+
+새 타입을 참조하지 않는 HTTP 테스트라 테스트만 넣어도 컴파일된다.
+
+`test/tax/calc/TaxAnalysisApiTest.java`
+
+```java
+package com.saladbowl.api.tax.calc;
+
+import com.saladbowl.api.support.IntegrationTest;
+import com.saladbowl.api.support.TestAdmins;
+import com.saladbowl.api.support.TestAuth;
+import com.saladbowl.api.support.TestAuth.AuthedUser;
+import com.saladbowl.api.support.TestClock;
+import com.saladbowl.api.support.TestTaxLaws;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Import;
+import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
+
+import java.util.List;
+
+import static com.saladbowl.api.support.TestTaxRecords.URL;
+import static com.saladbowl.api.support.TestTaxRecords.addCard;
+import static com.saladbowl.api.support.TestTaxRecords.cardBody;
+import static com.saladbowl.api.support.TestTaxRecords.cashBody;
+import static com.saladbowl.api.support.TestTaxRecords.createYear;
+import static com.saladbowl.api.support.TestTaxRecords.planBody;
+import static com.saladbowl.api.support.TestTaxRecords.putCard;
+import static com.saladbowl.api.support.TestTaxRecords.putCash;
+import static com.saladbowl.api.support.TestTaxRecords.putPlan;
+import static com.saladbowl.api.support.TestTaxRecords.putYear;
+import static com.saladbowl.api.support.TestTaxRecords.readVersion;
+import static com.saladbowl.api.support.TestTaxRecords.yearBody;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.nullValue;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+/**
+ * 분석 조회(TAX-24, 35, 36, 38, 44, 50, 65, 75, AC-01, 13, 19, 20, 30, 31, 43).
+ * 금액은 모두 합성값이고 기대 공제액은 PRD 7.1절 식의 손계산이다. 테스트의 올해는 2026이다.
+ */
+@Import(TestClock.Config.class)
+class TaxAnalysisApiTest extends IntegrationTest {
+
+    @Autowired
+    MockMvc mvc;
+
+    @Autowired
+    JdbcTemplate jdbc;
+
+    AuthedUser admin;
+    AuthedUser owner;
+
+    @BeforeEach
+    void signUp() throws Exception {
+        admin = TestAuth.signupAndLogin(mvc, "admin@example.test", "관리자");
+        TestAdmins.grant(jdbc, admin.id());
+        owner = TestAuth.signupAndLogin(mvc, "owner@example.test", "소유자");
+    }
+
+    private ResultActions analysis(AuthedUser user, int year) throws Exception {
+        return mvc.perform(get(URL + "/" + year + "/analysis").header("Authorization", user.bearer()));
+    }
+
+    /** PRD 합성 예시 1의 입력자료: 신용 일반 1,200만, 체크 일반 200만 + 현금 일반 100만, 전통시장 100만, 대중교통 50만, 문화체육 50만. */
+    private void addExample1Statements(AuthedUser user, String cardDate, String cashDate) throws Exception {
+        addCard(mvc, user, 2026, cardBody("가나카드", cardDate, null,
+                12_000_000L, 1_000_000L, 500_000L, 500_000L, 2_000_000L, 0L, 0L, 0L));
+        putCash(mvc, user, 2026, cashBody(cashDate, null, 1_000_000L, 0L, 0L, 0L)).andExpect(status().isOk());
+    }
+
+    /** 와이어프레임의 입력자료(총급여 5,000만 기준 소득공제액 1,475,000원). */
+    private void addWireframeStatements(AuthedUser user) throws Exception {
+        addCard(mvc, user, 2026, cardBody("가나카드", "2026-06-30", null,
+                14_000_000L, 300_000L, 200_000L, 100_000L, 2_000_000L, 200_000L, 300_000L, 100_000L));
+        putCash(mvc, user, 2026, cashBody("2026-06-30", null, 500_000L, 100_000L, 0L, 0L))
+                .andExpect(status().isOk());
+    }
+
+    private static String wireframePlan() {
+        return planBody(null, 500_000L, 300_000L, 1_200_000L, 0L, 100_000L, 100_000L,
+                100_000L, 0L, 0L, 0L, 0L, 100_000L);
+    }
+
+    /** 네 테이블 모든 행의 xmin(마지막으로 쓴 트랜잭션). 읽기만 했다면 그대로다. */
+    private List<String> rowStamps() {
+        return jdbc.queryForList("""
+                SELECT 'year' || id || ':' || xmin FROM tax_year_records
+                UNION ALL SELECT 'card' || id || ':' || xmin FROM tax_card_statements
+                UNION ALL SELECT 'cash' || record_id || ':' || xmin FROM tax_cash_receipts
+                UNION ALL SELECT 'plan' || record_id || ':' || xmin FROM tax_spending_plans
+                ORDER BY 1""", String.class);
+    }
+
+    @Test
+    void onlyTheOwnerReadsTheAnalysis() throws Exception {
+        TestTaxLaws.createApplied(mvc, admin, 2026);
+        createYear(mvc, owner, 2026);
+        addExample1Statements(owner, "2026-06-30", "2026-06-30");
+        AuthedUser other = TestAuth.signupAndLogin(mvc, "other@example.test", "다른회원");
+
+        analysis(owner, 2026).andExpect(status().isOk());
+        // 남의 연도와 없는 연도는 같은 404다. 서비스 관리자도 남의 자료는 읽지 못한다.
+        for (AuthedUser stranger : List.of(other, admin)) {
+            analysis(stranger, 2026).andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.code").value("NOT_FOUND"))
+                    .andExpect(jsonPath("$.message").value("tax record not found"));
+        }
+        analysis(owner, 2025).andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("NOT_FOUND"))
+                .andExpect(jsonPath("$.message").value("tax record not found"));
+        mvc.perform(get(URL + "/2026/analysis")).andExpect(status().isUnauthorized());
+        analysis(owner, 999).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+    }
+
+    @Test
+    void statusGoesFromNoInputToIncompleteToLawPendingToReady() throws Exception {
+        // 적용 버전이 없는 연도의 기록(AC-20)
+        createYear(mvc, owner, 2026);
+        analysis(owner, 2026).andExpect(status().isOk())
+                .andExpect(jsonPath("$.taxYear").value(2026))
+                .andExpect(jsonPath("$.status").value("NO_INPUT"))
+                .andExpect(jsonPath("$.blankCount").value(4))
+                .andExpect(jsonPath("$.totalSalary").value(40_000_000))
+                .andExpect(jsonPath("$.totals.creditGeneral").value(0))
+                .andExpect(jsonPath("$.asOfDateMin").value(nullValue()))
+                .andExpect(jsonPath("$.asOfDateMax").value(nullValue()))
+                .andExpect(jsonPath("$.law").value(nullValue()))
+                .andExpect(jsonPath("$.planSaved").value(false))
+                .andExpect(jsonPath("$.deduction").value(nullValue()))
+                .andExpect(jsonPath("$.recommendation").value(nullValue()));
+
+        // 카드 자료의 한 칸이 비었고 현금영수증 자료가 없다: 빈 칸 1 + 4
+        long cardId = addCard(mvc, owner, 2026, cardBody("가나카드", "2026-06-30", null,
+                12_000_000L, 1_000_000L, 500_000L, 500_000L, 2_000_000L, 0L, 0L, null));
+        putPlan(mvc, owner, 2026, wireframePlan()).andExpect(status().isOk());
+        analysis(owner, 2026).andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("INCOMPLETE"))
+                .andExpect(jsonPath("$.blankCount").value(5))
+                .andExpect(jsonPath("$.totals.creditGeneral").value(12_000_000))
+                .andExpect(jsonPath("$.planSaved").value(true))
+                .andExpect(jsonPath("$.deduction").value(nullValue()))
+                .andExpect(jsonPath("$.recommendation").value(nullValue()));
+
+        // 빈 칸을 모두 채웠지만 세법이 없다(TAX-65, TAX-75)
+        putCard(mvc, owner, 2026, cardId, cardBody("가나카드", "2026-06-30",
+                readVersion(mvc, owner, 2026, "$.cards[0].rowVersion"),
+                12_000_000L, 1_000_000L, 500_000L, 500_000L, 2_000_000L, 0L, 0L, 0L)).andExpect(status().isOk());
+        putCash(mvc, owner, 2026, cashBody("2026-06-30", null, 1_000_000L, 0L, 0L, 0L)).andExpect(status().isOk());
+        analysis(owner, 2026).andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("LAW_PENDING"))
+                .andExpect(jsonPath("$.blankCount").value(0))
+                .andExpect(jsonPath("$.law").value(nullValue()))
+                .andExpect(jsonPath("$.planSaved").value(true))
+                .andExpect(jsonPath("$.deduction").value(nullValue()))
+                .andExpect(jsonPath("$.recommendation").value(nullValue()));
+
+        // 첫 버전이 적용되면 기다리던 연도 기록이 그 버전을 기억하고 계산된다.
+        long lawId = TestTaxLaws.createApplied(mvc, admin, 2026);
+        analysis(owner, 2026).andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("READY"))
+                .andExpect(jsonPath("$.law.id").value(lawId))
+                .andExpect(jsonPath("$.deduction.amount").value(1_950_000))
+                .andExpect(jsonPath("$.recommendation.difference").isNumber());
+    }
+
+    @Test
+    void readyAnalysisShowsPrdExample1StepByStep() throws Exception {
+        long lawId = TestTaxLaws.createApplied(mvc, admin, 2026);
+        createYear(mvc, owner, 2026);
+        addExample1Statements(owner, "2026-06-30", "2026-06-30");
+
+        analysis(owner, 2026).andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("READY"))
+                .andExpect(jsonPath("$.blankCount").value(0))
+                .andExpect(jsonPath("$.totals.creditGeneral").value(12_000_000))
+                .andExpect(jsonPath("$.totals.cashGeneral").value(1_000_000))
+                .andExpect(jsonPath("$.estimated").value(false))
+                .andExpect(jsonPath("$.asOfDateMin").value("2026-06-30"))
+                .andExpect(jsonPath("$.asOfDateMax").value("2026-06-30"))
+                .andExpect(jsonPath("$.partialYear").value(false))
+                .andExpect(jsonPath("$.law.id").value(lawId))
+                .andExpect(jsonPath("$.law.versionNo").value(1))
+                .andExpect(jsonPath("$.law.appliedAt").isString())
+                .andExpect(jsonPath("$.newerLawVersion").value(false))
+                .andExpect(jsonPath("$.planSaved").value(false))
+                .andExpect(jsonPath("$.recommendation").value(nullValue()))
+                .andExpect(jsonPath("$.deduction.highBracket").value(false))
+                .andExpect(jsonPath("$.deduction.credit").value(12_000_000))
+                .andExpect(jsonPath("$.deduction.debitCash").value(3_000_000))
+                .andExpect(jsonPath("$.deduction.culture").value(500_000))
+                .andExpect(jsonPath("$.deduction.market").value(1_000_000))
+                .andExpect(jsonPath("$.deduction.transit").value(500_000))
+                .andExpect(jsonPath("$.deduction.total").value(17_000_000))
+                .andExpect(jsonPath("$.deduction.threshold").value(10_000_000))
+                .andExpect(jsonPath("$.deduction.thresholdReached").value(true))
+                .andExpect(jsonPath("$.deduction.remainingToThreshold").value(0))
+                .andExpect(jsonPath("$.deduction.beforeThresholdCut").value(3_450_000))
+                .andExpect(jsonPath("$.deduction.thresholdCut").value(1_500_000))
+                .andExpect(jsonPath("$.deduction.deductible").value(1_950_000))
+                .andExpect(jsonPath("$.deduction.basicLimit").value(3_000_000))
+                .andExpect(jsonPath("$.deduction.basicUsed").value(1_950_000))
+                .andExpect(jsonPath("$.deduction.extraCap").value(3_000_000))
+                .andExpect(jsonPath("$.deduction.extraEligible").value(750_000))
+                .andExpect(jsonPath("$.deduction.extraUsed").value(0))
+                .andExpect(jsonPath("$.deduction.amount").value(1_950_000));
+    }
+
+    @Test
+    void savedPlanIsRecommendedOnceTheStatementsAreComplete() throws Exception {
+        TestTaxLaws.createApplied(mvc, admin, 2026);
+        putYear(mvc, owner, 2026, yearBody(50_000_000L, 1, 12, 0, null)).andExpect(status().isCreated());
+        // 현금영수증 자료가 없어 미완료다. 계획은 저장되지만 추천은 나오지 않는다(AC-43).
+        addCard(mvc, owner, 2026, cardBody("가나카드", "2026-06-30", null,
+                14_000_000L, 300_000L, 200_000L, 100_000L, 2_000_000L, 200_000L, 300_000L, 100_000L));
+        putPlan(mvc, owner, 2026, wireframePlan()).andExpect(status().isOk());
+        analysis(owner, 2026).andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("INCOMPLETE"))
+                .andExpect(jsonPath("$.blankCount").value(4))
+                .andExpect(jsonPath("$.planSaved").value(true))
+                .andExpect(jsonPath("$.recommendation").value(nullValue()));
+
+        putCash(mvc, owner, 2026, cashBody("2026-06-30", null, 500_000L, 100_000L, 0L, 0L))
+                .andExpect(status().isOk());
+        analysis(owner, 2026).andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("READY"))
+                .andExpect(jsonPath("$.deduction.amount").value(1_475_000))
+                .andExpect(jsonPath("$.recommendation.methodShare.creditPct").value(82.0))
+                .andExpect(jsonPath("$.recommendation.methodShare.debitPct").value(14.6))
+                .andExpect(jsonPath("$.recommendation.methodShare.cashPct").value(3.4))
+                .andExpect(jsonPath("$.recommendation.current.allocation.general.credit").value(1_018_183))
+                .andExpect(jsonPath("$.recommendation.current.allocation.general.debit").value(145_454))
+                .andExpect(jsonPath("$.recommendation.current.allocation.general.cash").value(36_363))
+                .andExpect(jsonPath("$.recommendation.current.allocation.market.credit").value(50_001))
+                .andExpect(jsonPath("$.recommendation.current.allocation.transit.credit").value(0))
+                .andExpect(jsonPath("$.recommendation.current.allocation.culture.debit").value(50_000))
+                .andExpect(jsonPath("$.recommendation.current.yearEndDeduction").value(1_997_272))
+                .andExpect(jsonPath("$.recommendation.recommended.allocation.general.credit").value(0))
+                .andExpect(jsonPath("$.recommendation.recommended.allocation.general.debitCash").value(1_200_000))
+                .andExpect(jsonPath("$.recommendation.recommended.allocation.market.credit").value(50_001))
+                .andExpect(jsonPath("$.recommendation.recommended.allocation.market.debitCash").value(49_999))
+                .andExpect(jsonPath("$.recommendation.recommended.yearEndDeduction").value(2_150_000))
+                .andExpect(jsonPath("$.recommendation.difference").value(152_728))
+                .andExpect(jsonPath("$.recommendation.reasons.length()").value(1))
+                .andExpect(jsonPath("$.recommendation.reasons[0].code").value("CREDIT_OVER_THRESHOLD"))
+                .andExpect(jsonPath("$.recommendation.reasons[0].category").value("GENERAL"))
+                .andExpect(jsonPath("$.recommendation.reasons[0].amount").value(1_018_183));
+    }
+
+    @Test
+    void partialYearAndMismatchedDatesAreFlaggedWithoutChangingTheAmount() throws Exception {
+        TestTaxLaws.createApplied(mvc, admin, 2026);
+        putYear(mvc, owner, 2026, yearBody(40_000_000L, 3, 12, 0, null)).andExpect(status().isCreated());
+        addExample1Statements(owner, "2026-06-30", "2026-05-31");
+
+        // 근로기간이 전체가 아니고 기준일이 서로 달라도 입력한 금액 그대로 계산한다(AC-30, AC-31).
+        analysis(owner, 2026).andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("READY"))
+                .andExpect(jsonPath("$.partialYear").value(true))
+                .andExpect(jsonPath("$.estimated").value(true))
+                .andExpect(jsonPath("$.asOfDateMin").value("2026-05-31"))
+                .andExpect(jsonPath("$.asOfDateMax").value("2026-06-30"))
+                .andExpect(jsonPath("$.deduction.amount").value(1_950_000));
+    }
+
+    @Test
+    void calculationUsesTheLawVersionTheRecordRemembers() throws Exception {
+        long first = TestTaxLaws.createApplied(mvc, admin, 2026);
+        createYear(mvc, owner, 2026);
+        addExample1Statements(owner, "2026-06-30", "2026-06-30");
+
+        // 신용카드 공제율만 20%로 올린 두 번째 버전을 적용한다.
+        long second = TestTaxLaws.createDraft(mvc, admin, 2026);
+        mvc.perform(put(TestTaxLaws.URL + "/" + second).header("Authorization", admin.bearer())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(TestTaxLaws.values2026(0).replace("\"rateCreditPct\": 15", "\"rateCreditPct\": 20")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.rateCreditPct").value(20));
+        mvc.perform(post(TestTaxLaws.URL + "/" + second + "/apply").header("Authorization", admin.bearer())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"rowVersion\":1}"))
+                .andExpect(status().isOk());
+
+        // 회원이 다시 계산하기 전에는 기억한 버전의 결과 그대로다(AC-19).
+        analysis(owner, 2026).andExpect(status().isOk())
+                .andExpect(jsonPath("$.law.id").value(first))
+                .andExpect(jsonPath("$.newerLawVersion").value(true))
+                .andExpect(jsonPath("$.deduction.amount").value(1_950_000));
+
+        mvc.perform(post(URL + "/2026/law-version/refresh").header("Authorization", owner.bearer()))
+                .andExpect(status().isOk());
+        // 2,400,000 + 900,000 + 150,000 + 400,000 + 200,000 − 1,000만×20% = 2,050,000
+        analysis(owner, 2026).andExpect(status().isOk())
+                .andExpect(jsonPath("$.law.id").value(second))
+                .andExpect(jsonPath("$.law.versionNo").value(2))
+                .andExpect(jsonPath("$.newerLawVersion").value(false))
+                .andExpect(jsonPath("$.deduction.thresholdCut").value(2_000_000))
+                .andExpect(jsonPath("$.deduction.amount").value(2_050_000));
+    }
+
+    @Test
+    void readingTheAnalysisWritesNothing() throws Exception {
+        TestTaxLaws.createApplied(mvc, admin, 2026);
+        putYear(mvc, owner, 2026, yearBody(50_000_000L, 1, 12, 0, null)).andExpect(status().isCreated());
+        addWireframeStatements(owner);
+        putPlan(mvc, owner, 2026, wireframePlan()).andExpect(status().isOk());
+        String yearBefore = mvc.perform(get(URL + "/2026").header("Authorization", owner.bearer()))
+                .andReturn().getResponse().getContentAsString();
+        List<String> stampsBefore = rowStamps();
+        assertThat(stampsBefore).hasSize(4);
+
+        String first = analysis(owner, 2026).andExpect(status().isOk())
+                .andExpect(jsonPath("$.recommendation.difference").value(152_728))
+                .andReturn().getResponse().getContentAsString();
+        String again = analysis(owner, 2026).andReturn().getResponse().getContentAsString();
+
+        // 결과는 저장하지 않고 볼 때마다 같은 값으로 다시 계산한다(TAX-44). rowVersion도 그대로다.
+        assertThat(again).isEqualTo(first);
+        assertThat(rowStamps()).isEqualTo(stampsBefore);
+        assertThat(mvc.perform(get(URL + "/2026").header("Authorization", owner.bearer()))
+                .andReturn().getResponse().getContentAsString()).isEqualTo(yearBefore);
+    }
+}
+```
+
+- [ ] **Step 2: 실패 확인**
+
+Run: `cd apps/api && ./gradlew test --tests '*TaxAnalysisApiTest'`
+Expected: `7 tests completed, 7 failed`, `BUILD FAILED`(경로가 없어 첫 분석 조회가 `Status expected:<200> but was:<404>`로 실패한다).
+
+- [ ] **Step 3: 응답 타입**
+
+`main/tax/calc/TaxAnalysisView.java`
+
+```java
+package com.saladbowl.api.tax.calc;
+
+import com.saladbowl.api.tax.record.SpendingTotals;
+import com.saladbowl.api.tax.record.TaxRecordDtos.LawVersionRef;
+
+import java.time.LocalDate;
+
+/**
+ * 분석 조회 응답. 저장하지 않고 조회할 때마다 입력·세법 버전으로 다시 계산한다(TAX-44).
+ *
+ * @param blankCount      미입력 칸 수(현금영수증 자료가 없으면 4 포함)
+ * @param estimated       자료 기준일이 서로 다르다(TAX-27)
+ * @param asOfDateMin     가장 이른 자료 기준일. 자료가 없으면 null
+ * @param partialYear     근로기간이 1~12월 전체가 아니다(D03)
+ * @param law             연도 기록이 기억하는 세법 버전. 없으면 null(세법 준비 중)
+ * @param newerLawVersion 기억한 버전과 그 연도의 현재 적용 버전이 다르다
+ * @param planSaved       저장된 지출계획이 있다
+ * @param deduction       READY일 때만 있다
+ * @param recommendation  READY이고 저장된 지출계획이 있을 때만 있다
+ */
+public record TaxAnalysisView(
+        int taxYear,
+        Status status,
+        int blankCount,
+        SpendingTotals totals,
+        long totalSalary,
+        boolean estimated,
+        LocalDate asOfDateMin,
+        LocalDate asOfDateMax,
+        boolean partialYear,
+        LawVersionRef law,
+        boolean newerLawVersion,
+        boolean planSaved,
+        DeductionResult deduction,
+        Recommendation recommendation) {
+
+    /** 위에서부터 먼저 맞는 상태다. */
+    public enum Status {
+        /** 입력자료가 없다. */
+        NO_INPUT,
+        /** 미입력 칸이 있다. */
+        INCOMPLETE,
+        /** 자료는 완료됐지만 연도 기록에 세법 버전이 없다. */
+        LAW_PENDING,
+        READY
+    }
+}
+```
+
+- [ ] **Step 4: 서비스**
+
+`main/tax/calc/TaxAnalysisService.java`
+
+```java
+package com.saladbowl.api.tax.calc;
+
+import com.saladbowl.api.tax.calc.TaxAnalysisView.Status;
+import com.saladbowl.api.tax.law.TaxLawVersionRepository;
+import com.saladbowl.api.tax.record.TaxRecordDtos.CardView;
+import com.saladbowl.api.tax.record.TaxRecordDtos.CashView;
+import com.saladbowl.api.tax.record.TaxRecordDtos.TaxYearView;
+import com.saladbowl.api.tax.record.TaxRecordService;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDate;
+import java.util.List;
+import java.util.stream.Stream;
+
+/**
+ * 분석 조회. 회원 자료는 TaxRecordService.get(요청자, 귀속연도)으로만 읽으므로 남의 연도와 없는 연도는 같은 404다.
+ * 아무것도 저장하지 않는다.
+ */
+@Service
+public class TaxAnalysisService {
+
+    private final TaxRecordService records;
+    private final TaxLawVersionRepository lawVersions;
+
+    public TaxAnalysisService(TaxRecordService records, TaxLawVersionRepository lawVersions) {
+        this.records = records;
+        this.lawVersions = lawVersions;
+    }
+
+    @Transactional(readOnly = true)
+    public TaxAnalysisView get(long userId, int year) {
+        TaxYearView view = records.get(userId, year);
+        Status status = !view.hasInputs() ? Status.NO_INPUT
+                : view.blankCount() > 0 ? Status.INCOMPLETE
+                : view.lawVersion() == null ? Status.LAW_PENDING
+                : Status.READY;
+
+        DeductionResult deduction = null;
+        Recommendation recommendation = null;
+        if (status == Status.READY) {
+            // 현재 적용 버전이 아니라 연도 기록이 기억한 버전으로 계산한다(TAX-66).
+            TaxLawValues law = TaxLawValues.from(lawVersions.findById(view.lawVersion().id()).orElseThrow());
+            deduction = DeductionCalculator.calculate(view.totalSalary(), view.childCount(), view.totals(), law);
+            if (view.plan() != null) {
+                recommendation = Recommender.recommend(view.totalSalary(), view.childCount(), view.totals(),
+                        view.plan(), law);
+            }
+        }
+        List<LocalDate> asOfDates = Stream.concat(view.cards().stream().map(CardView::asOfDate),
+                Stream.ofNullable(view.cashReceipt()).map(CashView::asOfDate)).sorted().toList();
+        return new TaxAnalysisView(view.taxYear(), status, view.blankCount(), view.totals(), view.totalSalary(),
+                view.asOfDateMismatch(),
+                asOfDates.isEmpty() ? null : asOfDates.getFirst(),
+                asOfDates.isEmpty() ? null : asOfDates.getLast(),
+                view.workStartMonth() != 1 || view.workEndMonth() != 12,
+                view.lawVersion(), view.newerLawVersion(), view.plan() != null, deduction, recommendation);
+    }
+}
+```
+
+- [ ] **Step 5: 컨트롤러**
+
+`TaxRecordController`의 `@RequestMapping("/tax/years/{year}")`와 같은 경로 아래이지만 다른 컨트롤러다(계산 패키지가 기록 패키지를 읽기만 하도록).
+
+`main/tax/calc/TaxAnalysisController.java`
+
+```java
+package com.saladbowl.api.tax.calc;
+
+import com.saladbowl.api.auth.CurrentUser;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RestController;
+
+/** 로그인한 회원 본인의 소득공제 분석. 경로에 회원 id가 없고 항상 요청자의 연도 기록만 계산한다. */
+@RestController
+public class TaxAnalysisController {
+
+    private final TaxAnalysisService service;
+
+    public TaxAnalysisController(TaxAnalysisService service) {
+        this.service = service;
+    }
+
+    @GetMapping("/tax/years/{year}/analysis")
+    public TaxAnalysisView get(@CurrentUser Long userId, @PathVariable @Min(1000) @Max(9999) int year) {
+        return service.get(userId, year);
+    }
+}
+```
+
+- [ ] **Step 6: 통과 확인**
+
+Run: `cd apps/api && ./gradlew test --tests '*tax*'`
+Expected: `BUILD SUCCESSFUL`. `TaxAnalysisApiTest` 7건, `RecommenderTest` 11건, `PlanAllocatorTest` 5건, `DeductionCalculatorTest` 10건과 기존 `tax` 테스트 통과.
+
+- [ ] **Step 7: 전체 테스트**
+
+Run: `cd apps/api && ./gradlew test`
+Expected: `BUILD SUCCESSFUL`(임시 복사본에서는 전체 408건 통과).
+
+- [ ] **Step 8: 커밋(컨트롤러)**
+
+```bash
+git add apps/api/src/main/java/com/saladbowl/api/tax/calc apps/api/src/test/java/com/saladbowl/api/tax/calc
+git commit -m "feat(api): 소득공제 분석 조회 API" -m "Co-Authored-By: Codex (gpt-6-sol) <noreply@openai.com>"
+```
+
+---
 
 ### PR 4 마무리 (컨트롤러)
 
-- `cd apps/api && ./gradlew test`. 브랜치 최종 리뷰: Claude Fable 5.2 한 번 — 기대값 표가 구현과 독립인지(AC-24), 조문 대조 결과를 본다. 반론 리뷰 대상이 아니다.
+- [ ] `cd apps/api && ./gradlew test` 결과를 구현 보고와 대조한다(이미 통과한 것은 변경 없이 다시 돌리지 않는다). `memoryTest`는 생략하고 PR 본문 "확인"에 이유(업로드 한도·파서·메모리 변경 없음)를 적는다.
+- [ ] `api` 모드 뒤처리: `git status`에 `apps/api/src/main/java/com/saladbowl/api/tax/calc`·`apps/api/src/test/java/com/saladbowl/api/tax/calc` 밖의 변경이 없는지(`tax/record`·`tax/law`·migration·테스트 헬퍼가 그대로인지), `~/.gradle/init.d`·`~/.gradle/gradle.properties`가 바뀌지 않았는지 확인한다.
+- [ ] 문서(Codex `gpt-6-luna` / `low`, 태그 `docs`, 또는 컨트롤러): `docs/architecture.md`의 `tax` 설명에 "`GET /tax/years/{year}/analysis`는 소득공제액과 추천을 저장하지 않고 조회할 때마다 `tax/calc`의 계산기 한 곳에서 계산한다"를 한 문장으로 더한다. `docs/deploy.md`·`docs/limits.md`는 바뀌는 것이 없다(새 테이블·한도 없음).
+- [ ] 브랜치 최종 리뷰: Claude Fable 5.2 서브에이전트 한 번(`review-final`). 대상은 `origin/main..HEAD`. 볼 것:
+  - **기대값 독립성(AC-24, TAX-46).** `DeductionCalculatorTest`·`PlanAllocatorTest`·`RecommenderTest`·`TaxAnalysisApiTest`의 기대 금액이 숫자 상수인지, 계산기·배분·추천을 불러 만든 기대값이 없는지(예외는 `assertBestOfSixteen`의 탐색 검증 한 곳이고 거기도 손계산 숫자와 함께 비교한다). 위 기대값 표에서 서너 줄을 골라 PRD 7.1절 3번 식으로 직접 계산해 테스트의 숫자와 맞는지 본다. 구현이 테스트를 통과시키려고 기대값을 고치지 않았는지(`git log -p`로 테스트 숫자의 변경 이력) 본다.
+  - **조문 대조.** 위 "조문 대조" 표의 값이 `TestTaxLaws.values2026`·`LAW_2026`·`LAW_2025`와 같은지, 계산기에 세법 숫자(25, 15, 30, 40, 70,000,000, 한도)가 상수로 박혀 있지 않은지(모두 `TaxLawValues`에서 와야 한다).
+  - **오버플로.** `DeductionCalculator`의 곱셈마다 최댓값을 따져 "계산 규칙"의 한계(12칸 합 240조, 비율 100%)와 맞는지, `largestInputsDoNotOverflow` 세 건이 그 한계를 실제로 넣는지, `PlanAllocator.share`가 `long` 곱을 쓰지 않는지, 부동소수점(`double`·`float`)이 `tax/calc`에 없는지.
+  - **소유권.** `tax/calc`가 회원 자료를 `TaxRecordService.get` 말고 다른 길로 읽지 않는지(`tax/record`의 저장소 주입, `findById`, native SQL이 없어야 한다). 응답에 다른 회원의 값이 섞일 길(캐시·정적 필드·싱글턴 상태)이 없는지. 남의 연도·없는 연도·서비스 관리자의 404가 같은 본문인지.
+  - **읽기 전용.** `TaxAnalysisService`가 `@Transactional(readOnly = true)`이고 `lockOwned`·`save*`·`refreshLawVersion`·`nextRowVersion`을 부르지 않는지, `readingTheAnalysisWritesNothing`이 `xmin`과 `rowVersion`을 모두 보는지. 새 migration·엔티티·저장소가 없는지.
+  - **자녀등 무시.** `childTiersApply()`가 false인 세법에서 `childCount`가 결과에 닿는 길이 없는지(`childCountIsIgnoredWhenTheLawHasNoChildTiers`), 2명 초과가 2명 칸을 읽는지, 추천에도 같은 `childCount`·세법이 넘어가는지.
+  - **세법 버전 고정.** 계산이 `view.lawVersion().id()`의 버전을 쓰고 `currentApplied`를 쓰지 않는지, 세법이 없을 때 계산기를 부르지 않고 `LAW_PENDING`인지, `calculationUsesTheLawVersionTheRecordRemembers`가 적용 전·`refresh` 전·후를 모두 보는지.
+  - 그 밖: 요구사항 추적표의 PR 4 항목(TAX-24·35·36·38·40~42·44~46·50·52~54·65·69·71·75, AC-07~13·17·18·19·20·24·30·31·35·43)이 테스트로 덮였는지, "HTTP 인터페이스"의 필드 이름과 실제 응답이 같은지(웹 PR 7이 이 이름으로 타입을 만든다), 상태 판정 순서, 추천 전후 소비구분별 합이 같은지.
+- [ ] **반론 리뷰(Codex 템플릿 F)는 붙이지 않는다.** 템플릿 F의 대상은 인증·쿠키·프록시·삭제·권한 변경인데 이 PR은 그중 어느 것도 바꾸지 않는다. 새 경로 하나는 읽기 전용이고 소유권 검사는 PR 3에서 반론 리뷰를 거친 `TaxRecordService.get`(→ `requireOwned`) 하나만 지난다. 이 PR의 위험은 계산이 틀리는 것이고, 그것은 구현하지 않은 쪽(Claude)의 Task 리뷰·최종 리뷰가 위 항목으로 본다. 같은 범위를 Codex가 한 번 더 보면 이중 리뷰다. **다음 중 하나라도 생기면 붙인다:** `tax/calc`가 `tax/record`의 저장소를 직접 읽게 됨, `tax/record`·`tax/law`·인증 설정을 고치게 됨, 분석 결과를 저장하게 됨. 그때 범위는 소유권 우회와 응답 차이로 좁힌다.
+- [ ] PR 본문 "무엇"에 남길 것: 계산은 `tax/calc` 한 곳이고 결과를 저장하지 않는다는 점, 정수 연산과 원 미만 처리(과정 값은 표시용 버림), 연도 기록이 기억한 세법 버전으로 계산한다는 점, 자녀등 단계가 없는 세법에서 `childCount`를 무시한다는 점, 추천 탐색 방식과 이유 코드 7개, "조문 대조" 결과와 불확실한 점, "계획 초안에서 달라진 점"·"결정이 필요한 점" 목록, 화면이 없어 캡처가 없다는 점. `## 소모값`은 `python3 scripts/pr_usage.py` 출력으로 채운다.
+- [ ] 배포 순서(`docs/deploy.md` 12절): 이 PR은 API만 바꾸고 migration이 없다. 병합 뒤 Render 배포가 Live가 되면 새 경로가 열린다. 웹은 PR 7 전까지 이 경로를 부르지 않는다.
 
 ---
 
@@ -6805,7 +8567,9 @@ HTTP 인터페이스: `GET /tax/years/{year}/analysis` (본인 연도 기록만,
 8. **해석 — 자녀등 입력란.** 세법 버전의 자녀등 단계별 기본한도가 서로 다를 때만 보인다(별도 설정값 없음). 적용 버전이 없는 연도는 입력란이 없고 0으로 저장한다.
 9. **해석 — 선택 연도 기억.** 메모리(React 상태)에만 둔다. 새로 고치면 올해로 돌아간다.
 10. PR 1 뒤 홈의 넓은 화면은 문서 순서(요약 → 등록 현황)와 보이는 순서(등록 현황 왼쪽)가 다르다. 와이어프레임이 정한 배치이고 키보드 순서는 문서 순서를 따른다.
-11. 계획의 PR 1 코드는 임시 복사본에서 테스트·typecheck·lint·build까지 확인했지만 화면은 띄워 보지 않았다. PR 2의 코드는 임시 복사본에서 `./gradlew test`(320건)까지 실행해 확인했다(2.2·2.3의 RED 컴파일 오류 문구는 실행하지 않고 적음). PR 3의 코드는 임시 복사본에서 Task 순서대로 실패 확인(3.1: 15건 중 13건, 3.2: 14건 중 13건, 3.3: 11건 중 9건 실패)과 `./gradlew cleanTest test`(3.3 뒤 369건)까지 실행해 확인했고, 계획에 실은 코드 블록을 차례로 넣으면 그 상태와 같아지는 것도 확인했다(2026-11-16, `2987768` 기준). `memoryTest`와 실제 서버 기동은 하지 않았다. PR 4~7의 설계는 실행해 보지 않았다.
-12. 세법 수치와 7.1절 산식은 독립적인 세무 검증을 거치지 않았다(PRD 14장). D03(합산 기간)·D08(원 단위)·D09(귀속 시점)의 법령 기준은 미확인이고 임시 규칙이다.
+11. 계획의 PR 1 코드는 임시 복사본에서 테스트·typecheck·lint·build까지 확인했지만 화면은 띄워 보지 않았다. PR 2의 코드는 임시 복사본에서 `./gradlew test`(320건)까지 실행해 확인했다(2.2·2.3의 RED 컴파일 오류 문구는 실행하지 않고 적음). PR 3의 코드는 임시 복사본에서 Task 순서대로 실패 확인(3.1: 15건 중 13건, 3.2: 14건 중 13건, 3.3: 11건 중 9건 실패)과 `./gradlew cleanTest test`(3.3 뒤 369건)까지 실행해 확인했고, 계획에 실은 코드 블록을 차례로 넣으면 그 상태와 같아지는 것도 확인했다(2026-11-16, `2987768` 기준). PR 4의 코드는 임시 복사본에서 Task 순서대로 실패 확인(4.1: 10건 중 10건, 4.2: 16건 중 16건, 4.3: 7건 중 7건 실패)과 `./gradlew cleanTest test`(4.1 뒤 385건, 4.2 뒤 401건, 4.3 뒤 408건)까지 실행해 확인했다(2026-11-17, `f908524` 기준). `memoryTest`와 실제 서버 기동은 하지 않았다. PR 5~7의 설계는 실행해 보지 않았다.
+12. 세법 수치와 7.1절 산식은 독립적인 세무 검증을 거치지 않았다(PRD 14장). D03(합산 기간)·D08(원 단위)·D09(귀속 시점)의 법령 기준은 미확인이고 임시 규칙이다. PR 4 착수 전 조문 대조(2026-11-17)에서 PRD와 다른 값은 없었다: 최저사용금액 25%, 공제율 15/30/30/40/40, 7천만원 경계, 차감액 3경우, 기본한도 300만·250만과 2026 귀속 자녀등 350만·400만 / 275만·300만, 추가한도 300만·200만이 국세청 안내(https://www.nts.go.kr/nts/cm/cntnts/cntntsView.do?mi=2469&cntntsId=7794)와 조문 열람 사이트(https://casenote.kr/법령/조세특례제한법/제126조의2)의 내용과 같다. 다만 국가법령정보센터 원문은 이번 도구로 읽지 못했고 두 자료 모두 요약 도구를 거쳐 읽었으며, 자녀등 한도는 국세청 안내에 없어 조문 열람 사이트와 2차 자료로만 확인했다. 상세는 PR 4 "조문 대조".
 13. 회원 탈퇴 기능이 없어 `ON DELETE CASCADE`에 따른 소득공제 자료 삭제는 검증 대상이 아니다(PRD 2장 비범위).
 14. 후속: 관리자 인가를 인터셉터에서 Spring Security 필터 체인으로 옮긴다. 현재는 지원하지 않는 HTTP 메서드의 405 응답으로 라우트 구조가 드러날 수 있다.
+15. **2027 귀속 세법(미확정).** 2026.8.3. 발표된 세제개편안은 2027년 사용분부터 대중교통 우대 폐지, 추가한도 축소, 문화체육 30%의 7천만원 요건 폐지를 담고 있다(https://news.mtn.co.kr/news-detail/2026080315521251297 , 확인 시점에 국회 미확정). 2026 귀속에는 영향이 없다. 확정되면 "문화체육 우대는 낮은 급여구간만"이 계산기(알고리즘 버전 1)에 고정돼 있어 2027 귀속 세법 버전을 값만으로 등록할 수 없고 알고리즘 버전 2가 필요하다(PRD 8.2절).
+16. **해석 — 분석의 과정 값과 추천 탐색(PR 4).** 계산 과정 값은 표시용으로 각각 원 미만을 버리며 소득공제액만 계산 결과다. 추천은 소비구분을 하나씩 보는 탐색이고, 신용카드 공제율이 직불등보다 높게 설정된 세법에서는 최댓값을 놓칠 수 있다(2025·2026 값에서는 16개 조합의 최댓값과 같음을 테스트로 고정). 상세와 다른 선택은 PR 4 "결정이 필요한 점".
