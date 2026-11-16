@@ -3390,7 +3390,7 @@ git commit -m "feat(api): 세법 초안 검증과 적용" -m "Co-Authored-By: Co
 | `GET /tax/years/{year}` | 연도 기록 묶음(`TaxYearView`) 200. 요청자의 그 연도 기록이 없으면 404 |
 | `PUT /tax/years/{year}` `{totalSalary, workStartMonth, workEndMonth, childCount, rowVersion?}` | `rowVersion` 없음 = 만들기 201. 연도가 한국 시각 기준 올해·전년도·다음 해가 아니면 400, 이미 있으면 409. `rowVersion` 있음 = 기본정보 수정 200. 저장된 값과 다르면 409, 기록이 없으면(다른 곳에서 삭제됨) 404이고 다시 만들지 않는다 |
 | `DELETE /tax/years/{year}` | 연도 기록과 딸린 카드 자료·현금영수증 자료·지출계획 삭제 204. 없으면 404. `rowVersion`을 받지 않는다(아래 "결정이 필요한 점" 1번) |
-| `POST /tax/years/{year}/cards` `{issuerName, asOfDate, memo?, amounts: {8칸}}` | 카드 자료 추가 201(`TaxYearView`) |
+| `POST /tax/years/{year}/cards` `{issuerName, asOfDate, memo?, amounts: {8칸}}` | 카드 자료 추가 201(`TaxYearView`). 연도 기록당 50건을 넘으면 400 |
 | `PUT /tax/years/{year}/cards/{cardId}` 같은 본문 + `rowVersion` | 카드 자료 수정 200. `rowVersion`이 없거나 다르면 409 |
 | `DELETE /tax/years/{year}/cards/{cardId}?rowVersion=<long>` (쿼리 필수) | 카드 자료 삭제 204. `rowVersion` 누락·형식 오류는 400, 저장된 값과 다르면 409 |
 | `PUT /tax/years/{year}/cash-receipt` `{asOfDate, memo?, amounts: {4칸}, rowVersion?}` | 현금영수증 자료 저장 200. 없으면 만들고(`rowVersion` 없이), 있으면 고친다(`rowVersion` 필수). 어긋나면 409. 삭제 경로는 없다(D19) — `DELETE`는 405 |
@@ -3432,7 +3432,7 @@ git commit -m "feat(api): 세법 초안 검증과 적용" -m "Co-Authored-By: Co
 2. **카드 자료 삭제는 `?rowVersion=` 필수.** 다른 선택: 확인 한 번(D05)만 믿고 받지 않는다.
 3. **이미 있는 연도에 `rowVersion` 없는 `PUT`은 409**(두 탭에서 동시에 만들기). 다른 선택: 수정으로 처리(나중 요청이 먼저 만든 값을 말없이 덮는다).
 4. **`rowVersion`을 보냈는데 연도 기록이 없으면 404**이고 다시 만들지 않는다. 현금영수증 자료·지출계획은 따로 지워지지 않으므로 같은 경우 409다.
-5. **연도 합계표의 한 칸이 9,999,999,999,999원을 넘는 저장은 400.** 카드 자료 건수 상한은 두지 않았다(다른 선택: 연도당 건수 상한).
+5. **연도 합계표의 한 칸이 9,999,999,999,999원을 넘는 저장은 400이고, 카드 자료는 연도 기록당 50건까지(2026-11-16 확정).** 51번째 `POST`는 400 `VALIDATION_FAILED`(판정 순서에서 합계 상한과 같은 단계). 수정·삭제는 건수와 무관하다.
 6. **"올해"는 한국 시각(`Asia/Seoul`) 기준.**
 7. **`childCount` 상한 99, `issuerName` 50자, `memo` 200자**(PRD는 "개발 설계에서 결정").
 8. **적용 버전이 없는 상태에서 `refresh`는 200으로 그대로 돌려준다**(오류가 아니다).
@@ -4424,6 +4424,8 @@ git commit -m "feat(api): 소득공제 연도 기록 만들기·조회·수정·
   - `TaxRecordService`: `addCard(long userId, int year, CardRequest): TaxYearView`, `updateCard(long userId, int year, long cardId, CardRequest): TaxYearView`, `deleteCard(long userId, int year, long cardId, long rowVersion): void`, `saveCashReceipt(long userId, int year, CashRequest): TaxYearView`, `static conflict()`.
   - HTTP: `POST /tax/years/{year}/cards`, `PUT`·`DELETE /tax/years/{year}/cards/{cardId}`, `PUT /tax/years/{year}/cash-receipt`.
   - 테스트 헬퍼 `TestTaxRecords.cardBody(String issuerName, String asOfDate, Long rowVersion, Long... amounts8)`, `cashBody(String asOfDate, Long rowVersion, Long... amounts4)`, `postCard`, `addCard(mvc, user, year, body): long`(id), `putCard(mvc, user, year, cardId, body)`, `putCash(mvc, user, year, body)`.
+
+건수 상한: `TaxRecordDtos.MAX_CARDS = 50`. `addCard`는 `lockOwned` 안에서 그 연도 기록의 카드 자료 수가 이미 50이면 `invalid`(400)를 던진다(테스트: 50건 추가 후 51번째 400, 한 건 삭제 뒤 다시 추가 201, 다른 연도·다른 회원의 건수와 무관).
 
 합계 규칙: `totals`는 그 연도 기록의 카드 자료 행과 현금영수증 자료 행에서 `SpendingTotals.of`가 더한다. 미입력(`null`)은 0으로 더하고 `blankCount`에 따로 센다. 현금영수증 자료 행이 없으면 4칸이 빈 것으로 센다. `asOfDateMismatch`는 카드 자료와 현금영수증 자료의 기준일이 두 가지 이상인지다. 테스트의 합계 기대값은 합성 금액을 손으로 더한 값이다(예: 신용카드 일반 1,000,000 + 500,000 = 1,500,000).
 
