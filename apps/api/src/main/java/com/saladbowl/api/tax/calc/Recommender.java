@@ -77,6 +77,7 @@ public final class Recommender {
     /** 누계에 지출계획을 더한 연말 예상 합계표. 체크카드·현금영수증 몫은 공제율이 같아 체크카드 칸에 더한다. */
     private static SpendingTotals yearEnd(SpendingTotals t, ByCategory<PlanRow> rows,
                                           Map<SpendingCategory, Pair> allocation) {
+        // SpendingCategory 선언 순서는 SpendingTotals의 각 결제수단별 일반·전통시장·대중교통·문화체육 생성자 순서와 같다.
         long[] credit = new long[4];
         long[] debit = new long[4];
         for (SpendingCategory category : SpendingCategory.values()) {

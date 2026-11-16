@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import java.math.BigDecimal;
 import java.util.List;
 
+import static com.saladbowl.api.tax.calc.DeductionCalculatorTest.LAW_2025;
 import static com.saladbowl.api.tax.calc.DeductionCalculatorTest.LAW_2026;
 import static com.saladbowl.api.tax.calc.DeductionCalculatorTest.totals;
 import static com.saladbowl.api.tax.calc.PlanAllocatorTest.plan;
@@ -59,10 +60,33 @@ class RecommenderTest {
         assertThat(r.recommended().allocation().culture()).isEqualTo(new Pair(50_000, 50_000));
         assertThat(r.recommended().yearEndDeduction()).isEqualTo(2_150_000L);
         assertThat(r.difference()).isEqualTo(152_728L);
-        // AC-18: 옮긴 1,018,183원의 15% = 152,727.45원. 원 미만 처리 차이는 1원 안이다.
-        assertThat(r.difference()).isBetween(152_727L, 152_728L);
         assertThat(r.reasons()).containsExactly(
                 new Reason(ReasonCode.CREDIT_OVER_THRESHOLD, SpendingCategory.GENERAL, 1_018_183L));
+    }
+
+    @Test
+    void higherCreditRateCanMoveGeneralSpendingToCredit() {
+        TaxLawValues law = new TaxLawValues(25, 70_000_000L, 30, 15, 30, 40, 40,
+                List.of(3_000_000L, 3_500_000L, 4_000_000L), List.of(2_500_000L, 2_750_000L, 3_000_000L),
+                3_000_000L, 2_000_000L);
+        // 최저사용금액 1,000만은 신용에서 차감. 현황 250만×30% + 1,250만×15% = 2,625,000원.
+        Recommendation r = Recommender.recommend(40_000_000L, 0,
+                totals(12_000_000, 0, 0, 0, 12_000_000, 0, 0, 0, 0, 0, 0, 0),
+                plan(0, 0, 1_000_000, 0, 0, 0, 0, 0, 0, 0, 0, 0), law);
+
+        assertThat(r.current().allocation().general()).isEqualTo(new Split(500_000, 500_000, 0));
+        assertThat(r.current().yearEndDeduction()).isEqualTo(2_625_000L);
+        assertThat(r.recommended().allocation().general()).isEqualTo(new Pair(1_000_000, 0));
+        assertThat(r.recommended().yearEndDeduction()).isEqualTo(2_700_000L);
+        assertThat(r.difference()).isEqualTo(75_000L);
+        assertThat(r.reasons()).containsExactly(
+                new Reason(ReasonCode.CREDIT_RATE_HIGHER, SpendingCategory.GENERAL, 500_000L));
+    }
+
+    @Test
+    void spendingCategoryOrderMatchesSpendingTotalsConstructor() {
+        assertThat(SpendingCategory.values()).containsExactly(SpendingCategory.GENERAL, SpendingCategory.MARKET,
+                SpendingCategory.TRANSIT, SpendingCategory.CULTURE);
     }
 
     @Test
@@ -180,22 +204,24 @@ class RecommenderTest {
     @Test
     void recommendationIsTheBestOfAllCreditOrAllDebitCashCombinations() {
         // 손계산한 최댓값: 2,150,000 / 450,000 / 4,050,000 / 3,630,000
-        assertBestOfSixteen(50_000_000L, 0, WIREFRAME_TOTALS, WIREFRAME_PLAN, 2_150_000L);
+        assertBestOfSixteen(50_000_000L, 0, WIREFRAME_TOTALS, WIREFRAME_PLAN, LAW_2026, 2_150_000L);
         // 신용 950만 + 바꿀 수 있음 200만: 전부 체크카드면 950만×15% + 200만×30% − (950만×15% + 50만×30%) = 450,000
         assertBestOfSixteen(40_000_000L, 0, totals(9_500_000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
-                plan(0, 0, 2_000_000, 0, 0, 0, 0, 0, 0, 0, 0, 0), 450_000L);
+                plan(0, 0, 2_000_000, 0, 0, 0, 0, 0, 0, 0, 0, 0), LAW_2026, 450_000L);
         SpendingTotals mixed = totals(20_000_000, 500_000, 0, 300_000, 3_000_000, 0, 700_000, 0,
                 1_000_000, 0, 0, 200_000);
         PlanView mixedPlan = plan(1_000_000, 0, 3_000_000, 0, 0, 400_000, 0, 200_000, 0, 0, 0, 600_000);
-        assertBestOfSixteen(60_000_000L, 1, mixed, mixedPlan, 4_050_000L);
+        assertBestOfSixteen(60_000_000L, 1, mixed, mixedPlan, LAW_2026, 4_050_000L);
+        // 2025: 기본한도 300만 + 추가 인정 105만 = 405만(문화 33만 + 시장 44만 + 교통 28만).
+        assertBestOfSixteen(60_000_000L, 1, mixed, mixedPlan, LAW_2025, 4_050_000L);
         SpendingTotals high = totals(25_000_000, 500_000, 0, 300_000, 3_000_000, 0, 700_000, 0,
                 1_000_000, 0, 0, 200_000);
-        assertBestOfSixteen(90_000_000L, 2, high, mixedPlan, 3_630_000L);
+        assertBestOfSixteen(90_000_000L, 2, high, mixedPlan, LAW_2026, 3_630_000L);
     }
 
     private static void assertBestOfSixteen(long salary, int childCount, SpendingTotals t, PlanView plan,
-                                            long expected) {
-        Recommendation r = Recommender.recommend(salary, childCount, t, plan, LAW_2026);
+                                            TaxLawValues law, long expected) {
+        Recommendation r = Recommender.recommend(salary, childCount, t, plan, law);
         List<PlanRow> rows = List.of(plan.general(), plan.market(), plan.transit(), plan.culture());
         long best = r.current().yearEndDeduction();
         for (int mask = 0; mask < 16; mask++) {
@@ -212,7 +238,7 @@ class RecommenderTest {
                     t.debitGeneral() + debit[0], t.debitMarket() + debit[1],
                     t.debitTransit() + debit[2], t.debitCulture() + debit[3],
                     t.cashGeneral(), t.cashMarket(), t.cashTransit(), t.cashCulture());
-            best = Math.max(best, DeductionCalculator.calculate(salary, childCount, yearEnd, LAW_2026).amount());
+            best = Math.max(best, DeductionCalculator.calculate(salary, childCount, yearEnd, law).amount());
         }
         assertThat(r.recommended().yearEndDeduction()).isEqualTo(best).isEqualTo(expected);
         assertThat(r.difference()).isEqualTo(best - r.current().yearEndDeduction());

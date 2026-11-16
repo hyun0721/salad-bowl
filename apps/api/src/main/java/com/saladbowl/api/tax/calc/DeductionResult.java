@@ -2,7 +2,7 @@ package com.saladbowl.api.tax.calc;
 
 /**
  * 소득공제액과 그 계산 과정(TAX-35, TAX-71). 금액은 모두 원이다.
- * 과정 값(threshold ~ extraUsed)은 화면 표시용으로 원 미만을 버린 값이고, amount만 계산 결과다.
+ * 과정 값은 화면 표시용으로 원 미만을 버리되 remainingToThreshold만 올린 값이고, amount만 계산 결과다.
  *
  * @param highBracket          총급여가 급여구간 경계를 넘는가(문화체육 우대 없음)
  * @param credit               신용카드 일반(높은 구간은 신용카드 문화체육 포함)
@@ -13,7 +13,7 @@ package com.saladbowl.api.tax.calc;
  * @param total                위 다섯 구분의 합 = 연도 합계표 12칸의 합
  * @param threshold            최저사용금액
  * @param thresholdReached     total이 최저사용금액을 넘었는가
- * @param remainingToThreshold 최저사용금액까지 남은 금액(넘었으면 0)
+ * @param remainingToThreshold 최저사용금액 초과까지 남은 금액을 원 단위로 올림(같으면 1, 넘었으면 0)
  * @param beforeThresholdCut   구분 금액 × 공제율의 합
  * @param thresholdCut         최저사용금액 차감액
  * @param deductible           공제 가능 금액 = beforeThresholdCut − thresholdCut

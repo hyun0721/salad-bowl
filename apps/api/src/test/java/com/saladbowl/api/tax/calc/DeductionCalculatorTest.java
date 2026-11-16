@@ -97,6 +97,7 @@ class DeductionCalculatorTest {
         DeductionResult equal = DeductionCalculator.calculate(40_000_000L, 0,
                 totals(10_000_000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0), LAW_2026);
         assertThat(equal.thresholdReached()).isFalse();
+        assertThat(equal.remainingToThreshold()).isEqualTo(1L);
         assertThat(equal.amount()).isZero();
 
         DeductionResult below = DeductionCalculator.calculate(40_000_000L, 0,
@@ -104,6 +105,20 @@ class DeductionCalculatorTest {
         assertThat(below.thresholdReached()).isFalse();
         assertThat(below.remainingToThreshold()).isEqualTo(6_000_000L);
         assertThat(below.deductible()).isZero();
+    }
+
+    @Test
+    void remainingThresholdRoundsUpWithoutChangingWhetherItWasReached() {
+        // 70,000,001 × 25% = 17,500,000.25원. 17,500,000원 소비 시 남은 0.25원은 1원으로 표시한다.
+        DeductionResult below = DeductionCalculator.calculate(70_000_001L, 0,
+                totals(17_500_000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0), LAW_2026);
+        assertThat(below.thresholdReached()).isFalse();
+        assertThat(below.remainingToThreshold()).isEqualTo(1L);
+
+        DeductionResult reached = DeductionCalculator.calculate(70_000_001L, 0,
+                totals(17_500_001, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0), LAW_2026);
+        assertThat(reached.thresholdReached()).isTrue();
+        assertThat(reached.remainingToThreshold()).isZero();
     }
 
     @Test

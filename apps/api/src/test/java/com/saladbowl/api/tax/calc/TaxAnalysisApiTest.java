@@ -114,6 +114,11 @@ class TaxAnalysisApiTest extends IntegrationTest {
         mvc.perform(get(URL + "/2026/analysis")).andExpect(status().isUnauthorized());
         analysis(owner, 999).andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+        analysis(owner, 10_000).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+        mvc.perform(get(URL + "/abc/analysis").header("Authorization", owner.bearer()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
     }
 
     @Test
