@@ -6,6 +6,10 @@ import com.saladbowl.api.tax.law.TaxLawDtos.VersionResponse;
 import com.saladbowl.api.tax.law.TaxLawService;
 import com.saladbowl.api.tax.law.TaxLawVersion;
 import com.saladbowl.api.tax.law.TaxLawVersionRepository;
+import com.saladbowl.api.tax.record.TaxRecordDtos.CardRequest;
+import com.saladbowl.api.tax.record.TaxRecordDtos.CardView;
+import com.saladbowl.api.tax.record.TaxRecordDtos.CashRequest;
+import com.saladbowl.api.tax.record.TaxRecordDtos.CashView;
 import com.saladbowl.api.tax.record.TaxRecordDtos.LawVersionRef;
 import com.saladbowl.api.tax.record.TaxRecordDtos.SavedYear;
 import com.saladbowl.api.tax.record.TaxRecordDtos.TaxYearView;
@@ -16,7 +20,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.List;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 /**
  * 회원 본인의 소득공제 자료. 서버 검사는 "요청자 = 소유자" 하나이고 그룹과 무관하다(GroupAccess를 쓰지 않는다).
@@ -29,13 +35,18 @@ public class TaxRecordService {
     private static final ZoneId KST = ZoneId.of("Asia/Seoul");
 
     private final TaxYearRecordRepository records;
+    private final TaxCardStatementRepository cards;
+    private final TaxCashReceiptRepository cashReceipts;
     private final TaxLawService laws;
     private final TaxLawVersionRepository lawVersions;
     private final Clock clock;
 
-    public TaxRecordService(TaxYearRecordRepository records, TaxLawService laws,
+    public TaxRecordService(TaxYearRecordRepository records, TaxCardStatementRepository cards,
+                            TaxCashReceiptRepository cashReceipts, TaxLawService laws,
                             TaxLawVersionRepository lawVersions, Clock clock) {
         this.records = records;
+        this.cards = cards;
+        this.cashReceipts = cashReceipts;
         this.laws = laws;
         this.lawVersions = lawVersions;
         this.clock = clock;
@@ -77,6 +88,55 @@ public class TaxRecordService {
         records.delete(lockOwned(userId, year));
     }
 
+    @Transactional
+    public TaxYearView addCard(long userId, int year, CardRequest request) {
+        TaxYearRecord record = lockOwned(userId, year);
+        if (cards.countByRecordId(record.getId()) >= TaxRecordDtos.MAX_CARDS) {
+            throw invalid("cards: 연도 기록당 50건까지만 저장할 수 있습니다");
+        }
+        cards.saveAndFlush(TaxCardStatement.create(record.getId(), issuerName(request.issuerName()),
+                asOfDate(request.asOfDate(), year), blankToNull(request.memo()), request.amounts()));
+        return viewWithinTotalLimit(record);
+    }
+
+    @Transactional
+    public TaxYearView updateCard(long userId, int year, long cardId, CardRequest request) {
+        TaxYearRecord record = lockOwned(userId, year);
+        TaxCardStatement card = requireCard(record, cardId);
+        requireRowVersion(card.getRowVersion(), request.rowVersion());
+        card.edit(issuerName(request.issuerName()), asOfDate(request.asOfDate(), year),
+                blankToNull(request.memo()), request.amounts());
+        cards.saveAndFlush(card);
+        return viewWithinTotalLimit(record);
+    }
+
+    @Transactional
+    public void deleteCard(long userId, int year, long cardId, long rowVersion) {
+        TaxYearRecord record = lockOwned(userId, year);
+        TaxCardStatement card = requireCard(record, cardId);
+        requireRowVersion(card.getRowVersion(), rowVersion);
+        cards.delete(card);
+    }
+
+    @Transactional
+    public TaxYearView saveCashReceipt(long userId, int year, CashRequest request) {
+        TaxYearRecord record = lockOwned(userId, year);
+        Optional<TaxCashReceipt> existing = cashReceipts.findById(record.getId());
+        if (existing.isEmpty()) {
+            if (request.rowVersion() != null) {
+                throw conflict();
+            }
+            cashReceipts.saveAndFlush(TaxCashReceipt.create(record.getId(), asOfDate(request.asOfDate(), year),
+                    blankToNull(request.memo()), request.amounts()));
+        } else {
+            TaxCashReceipt cash = existing.get();
+            requireRowVersion(cash.getRowVersion(), request.rowVersion());
+            cash.edit(asOfDate(request.asOfDate(), year), blankToNull(request.memo()), request.amounts());
+            cashReceipts.saveAndFlush(cash);
+        }
+        return viewWithinTotalLimit(record);
+    }
+
     /** 읽기용. 요청자의 그 귀속연도 기록이 없으면 404다. 조회(이 클래스와 PR 4의 분석)가 쓴다. */
     public TaxYearRecord requireOwned(long userId, int year) {
         return records.findByOwnerIdAndTaxYear(userId, year).orElseThrow(TaxRecordService::notFound);
@@ -85,6 +145,37 @@ public class TaxRecordService {
     /** 쓰기용. 연도 기록 행을 잠근다. 딸린 자료의 쓰기도 이 잠금 뒤에서 하므로 한 연도의 쓰기는 차례로 실행된다. */
     TaxYearRecord lockOwned(long userId, int year) {
         return records.findOwnedForUpdate(userId, year).orElseThrow(TaxRecordService::notFound);
+    }
+
+    private TaxCardStatement requireCard(TaxYearRecord record, long cardId) {
+        return cards.findByIdAndRecordId(cardId, record.getId()).orElseThrow(TaxRecordService::notFound);
+    }
+
+    private static String issuerName(String raw) {
+        String name = raw.trim();
+        if (name.isEmpty() || name.length() > 50) {
+            throw invalid("issuerName: 1~50자로 입력하세요");
+        }
+        return name;
+    }
+
+    private static LocalDate asOfDate(LocalDate date, int year) {
+        if (date.getYear() != year) {
+            throw invalid("asOfDate: 귀속연도 안의 날짜여야 합니다");
+        }
+        return date;
+    }
+
+    private static String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
+    }
+
+    private TaxYearView viewWithinTotalLimit(TaxYearRecord record) {
+        TaxYearView view = view(record);
+        if (view.totals().max() > TaxRecordDtos.MAX_AMOUNT) {
+            throw invalid("amounts: 연도 합계가 9,999,999,999,999원을 넘습니다");
+        }
+        return view;
     }
 
     private void requireCreatableYear(int year) {
@@ -97,8 +188,20 @@ public class TaxRecordService {
     private TaxYearView view(TaxYearRecord record) {
         LawVersionRef lawVersion = record.getLawVersionId() == null ? null
                 : lawVersions.findById(record.getLawVersionId()).map(TaxRecordService::toRef).orElse(null);
+        List<TaxCardStatement> cardRows = cards.findByRecordIdOrderByIdAsc(record.getId());
+        TaxCashReceipt cash = cashReceipts.findById(record.getId()).orElse(null);
+        List<CardView> cardViews = cardRows.stream().map(c -> new CardView(c.getId(), c.getRowVersion(),
+                c.getIssuerName(), c.getAsOfDate(), c.getMemo(), c.amounts(), c.blankCount())).toList();
+        CashView cashView = cash == null ? null : new CashView(cash.getRowVersion(), cash.getAsOfDate(),
+                cash.getMemo(), cash.amounts(), cash.blankCount());
+        int blankCount = cardRows.stream().mapToInt(TaxCardStatement::blankCount).sum()
+                + (cash == null ? 4 : cash.blankCount());
+        long asOfDates = Stream.concat(cardRows.stream().map(TaxCardStatement::getAsOfDate),
+                Stream.ofNullable(cash).map(TaxCashReceipt::getAsOfDate)).distinct().count();
         return new TaxYearView(record.getTaxYear(), record.getRowVersion(), record.getTotalSalary(),
-                record.getWorkStartMonth(), record.getWorkEndMonth(), record.getChildCount(), lawVersion);
+                record.getWorkStartMonth(), record.getWorkEndMonth(), record.getChildCount(), lawVersion,
+                cardViews, cashView, SpendingTotals.of(cardRows, cash), blankCount,
+                !cardRows.isEmpty() || cash != null, asOfDates > 1);
     }
 
     private static LawVersionRef toRef(TaxLawVersion version) {
@@ -109,8 +212,12 @@ public class TaxRecordService {
     /** 저장된 값과 요청의 rowVersion이 다르면(없는 것 포함) 다른 곳에서 먼저 바뀐 것이다. */
     static void requireRowVersion(long stored, Long requested) {
         if (requested == null || stored != requested) {
-            throw new ApiException(ErrorCode.CONFLICT, "tax record was modified elsewhere");
+            throw conflict();
         }
+    }
+
+    static ApiException conflict() {
+        return new ApiException(ErrorCode.CONFLICT, "tax record was modified elsewhere");
     }
 
     static ApiException invalid(String message) {
