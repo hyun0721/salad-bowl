@@ -233,6 +233,9 @@ class TaxYearApiTest extends IntegrationTest {
                 "{\"workStartMonth\": 1, \"workEndMonth\": 12, \"childCount\": 0}",
                 "{\"totalSalary\": 40000000, \"workStartMonth\": 1, \"workEndMonth\": 12}",
                 "{\"totalSalary\": 40000000.7, \"workStartMonth\": 1, \"workEndMonth\": 12, \"childCount\": 0}",
+                "{\"totalSalary\": 40000000, \"workStartMonth\": 1.9, \"workEndMonth\": 12, \"childCount\": 0}",
+                "{\"totalSalary\": 40000000, \"workStartMonth\": 1, \"workEndMonth\": 12.9, \"childCount\": 0}",
+                "{\"totalSalary\": 40000000, \"workStartMonth\": 1, \"workEndMonth\": 12, \"childCount\": 1.9}",
                 "{\"totalSalary\": 40000000, \"workStartMonth\": 1, \"workEndMonth\": 12, \"childCount\": 0,"
                         + " \"rowVersion\": 0.5}",
                 ""

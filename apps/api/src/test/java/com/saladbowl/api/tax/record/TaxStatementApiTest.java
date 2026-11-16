@@ -295,6 +295,7 @@ class TaxStatementApiTest extends IntegrationTest {
 
         String[] invalidCards = {
                 fullCard("   ", "2026-10-31", null),
+                fullCard("\u3000\u3000", "2026-10-31", null),
                 fullCard(fifty + "가", "2026-10-31", null),
                 fullCard("합성카드", "2025-12-31", null),
                 fullCard("합성카드", "2027-01-01", null),
@@ -376,6 +377,8 @@ class TaxStatementApiTest extends IntegrationTest {
                 Integer.class, deletedCard, deletedCard2)).isZero();
         assertThat(jdbc.queryForObject("SELECT count(*) FROM tax_card_statements WHERE id IN (?, ?)",
                 Integer.class, oldCard, otherCard)).isEqualTo(2);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM tax_card_statements WHERE id = ?",
+                Integer.class, otherCard)).isEqualTo(1);
         assertThat(jdbc.queryForObject("SELECT count(*) FROM tax_cash_receipts WHERE record_id IN "
                 + "(SELECT id FROM tax_year_records WHERE owner_id = ? OR tax_year = 2025)",
                 Integer.class, other.id())).isEqualTo(2);
@@ -463,6 +466,23 @@ class TaxStatementApiTest extends IntegrationTest {
                 .andExpect(jsonPath("$.cards", hasSize(0)))
                 .andExpect(jsonPath("$.cashReceipt").value(nullValue()))
                 .andExpect(jsonPath("$.totals.creditGeneral").value(0));
+    }
+
+    @Test
+    void cardOwnershipAndVersionPrecedeServiceValidation() throws Exception {
+        long ownCard = addCard(mvc, owner, 2026, fullCard("합성카드", "2026-10-31", null));
+        AuthedUser other = TestAuth.signupAndLogin(mvc, "other@example.test", "다른 회원");
+        createYear(mvc, other, 2026);
+        long otherCard = addCard(mvc, other, 2026, fullCard("다른카드", "2026-10-31", null));
+
+        putCard(mvc, owner, 2026, otherCard, fullCard("   ", "2025-12-31", 0L))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("NOT_FOUND"));
+        putCard(mvc, owner, 2026, ownCard, fullCard("합성카드", "2026-11-30", 0L))
+                .andExpect(status().isOk());
+        putCard(mvc, owner, 2026, ownCard, fullCard("합성카드", "2025-12-31", 0L))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("CONFLICT"));
     }
 
     @Test

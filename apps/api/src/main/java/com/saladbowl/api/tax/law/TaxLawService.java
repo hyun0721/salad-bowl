@@ -91,9 +91,11 @@ public class TaxLawService {
             FieldError first = errors.get(0);
             throw new ApiException(ErrorCode.VALIDATION_FAILED, first.field() + ": " + first.message());
         }
+        // 커밋 전 생성 중인 연도 기록은 아래 UPDATE에 보이지 않으므로 생성과 적용을 같은 연도별 잠금으로 맞춘다.
         jdbc.query("SELECT pg_advisory_xact_lock(?, ?)", rs -> { }, APPLY_LOCK, draft.getTaxYear());
         draft.apply(adminId, OffsetDateTime.now());
         VersionResponse response = toAdminResponse(versions.saveAndFlush(draft));
+        // 열어 둔 기본정보 화면의 저장이 409가 되지 않도록 row_version은 올리지 않는다.
         jdbc.update("UPDATE tax_year_records SET law_version_id = ? WHERE tax_year = ? AND law_version_id IS NULL",
                 draft.getId(), draft.getTaxYear());
         return response;

@@ -7,6 +7,10 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import com.fasterxml.jackson.annotation.JacksonAnnotationsInside;
+import tools.jackson.core.JsonParser;
+import tools.jackson.core.JsonToken;
+import tools.jackson.databind.DeserializationContext;
+import tools.jackson.databind.ValueDeserializer;
 import tools.jackson.databind.annotation.JsonDeserialize;
 
 import java.lang.annotation.ElementType;
@@ -34,12 +38,22 @@ public final class TaxRecordDtos {
     public @interface WholeNumber {
     }
 
+    public static class WholeIntegerDeserializer extends ValueDeserializer<Integer> {
+        @Override
+        public Integer deserialize(JsonParser parser, DeserializationContext context) {
+            if (!parser.hasToken(JsonToken.VALUE_NUMBER_INT)) {
+                return (Integer) context.handleUnexpectedToken(Integer.class, parser);
+            }
+            return parser.getIntValue();
+        }
+    }
+
     /** 기본정보. rowVersion이 없으면 새로 만들고, 있으면 그 버전의 기록을 고친다. */
     public record YearRequest(
             @NotNull @Min(1) @Max(MAX_AMOUNT) @WholeNumber Long totalSalary,
-            @NotNull @Min(1) @Max(12) Integer workStartMonth,
-            @NotNull @Min(1) @Max(12) Integer workEndMonth,
-            @NotNull @Min(0) @Max(99) Integer childCount,
+            @NotNull @Min(1) @Max(12) @JsonDeserialize(using = WholeIntegerDeserializer.class) Integer workStartMonth,
+            @NotNull @Min(1) @Max(12) @JsonDeserialize(using = WholeIntegerDeserializer.class) Integer workEndMonth,
+            @NotNull @Min(0) @Max(99) @JsonDeserialize(using = WholeIntegerDeserializer.class) Integer childCount,
             @WholeNumber Long rowVersion) {
     }
 
@@ -98,7 +112,9 @@ public final class TaxRecordDtos {
     public record LawVersionRef(long id, int versionNo, OffsetDateTime appliedAt, boolean childTiersApply) {
     }
 
-    /** 연도 기록 묶음. 모든 조회·저장 응답이 이 모양이다. */
+    /** 연도 기록 묶음. 모든 조회·저장 응답이 이 모양이다.
+     * newerLawVersion은 기록 버전과 현재 적용 버전이 다른지 나타낸다.
+     * plan이 null이면 저장된 지출계획이 없다. */
     public record TaxYearView(
             int taxYear,
             long rowVersion,

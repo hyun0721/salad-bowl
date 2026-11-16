@@ -97,7 +97,7 @@ public class TaxRecordService {
     public TaxYearView addCard(long userId, int year, CardRequest request) {
         TaxYearRecord record = lockOwned(userId, year);
         if (cards.countByRecordId(record.getId()) >= TaxRecordDtos.MAX_CARDS) {
-            throw invalid("cards: 연도 기록당 50건까지만 저장할 수 있습니다");
+            throw invalid("cards: 연도 기록당 " + TaxRecordDtos.MAX_CARDS + "건까지만 저장할 수 있습니다");
         }
         cards.saveAndFlush(TaxCardStatement.create(record.getId(), issuerName(request.issuerName()),
                 asOfDate(request.asOfDate(), year), blankToNull(request.memo()), request.amounts()));
@@ -183,7 +183,7 @@ public class TaxRecordService {
     }
 
     private static String issuerName(String raw) {
-        String name = raw.trim();
+        String name = raw.strip();
         if (name.isEmpty() || name.length() > 50) {
             throw invalid("issuerName: 1~50자로 입력하세요");
         }
