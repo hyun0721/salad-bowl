@@ -36,6 +36,10 @@ public class User {
     @Column(name = "token_version", nullable = false)
     private int tokenVersion;
 
+    // 세법 관리 권한. 그룹 ADMIN과 별개다. 화면 없이 운영자가 DB에서만 바꾼다.
+    @Column(name = "service_admin", insertable = false, updatable = false)
+    private boolean serviceAdmin;
+
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt;
 
@@ -73,6 +77,7 @@ public class User {
     public String getNickname() { return nickname; }
     public int getTokenVersion() { return tokenVersion; }
     public String getGoogleSub() { return googleSub; }
+    public boolean isServiceAdmin() { return serviceAdmin; }
 
     public void linkGoogle(String googleSub) { this.googleSub = googleSub; }
 }
