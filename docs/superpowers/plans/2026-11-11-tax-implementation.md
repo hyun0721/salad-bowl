@@ -3371,6 +3371,8 @@ git commit -m "feat(api): 세법 초안 검증과 적용" -m "Co-Authored-By: Co
 
 경로 줄임: `main/` = `apps/api/src/main/java/com/saladbowl/api/`, `test/` = `apps/api/src/test/java/com/saladbowl/api/`, `migration/` = `apps/api/src/main/resources/db/migration/`. 고치는 파일은 ` ```diff ` 블록으로 적었다. 저장소 루트에서 `git apply`로 넣을 수 있고, 줄 번호가 어긋나면 내용을 보고 손으로 넣는다.
 
+> **구현 뒤 주의(2026-11-17):** 반론 리뷰로 `rowVersion` 설계가 바뀌었다. 연도 기록·현금영수증 자료·지출계획의 `row_version`은 `DEFAULT 0`·`@Version` +1이 아니라 저장할 때마다 시퀀스(`tax_row_version_seq`)에서 받는 값이고, 연도 `DELETE`는 `?rowVersion=`을 받는다. 아래 Task의 코드 블록 중 이와 다른 부분(예: 만든 뒤 `rowVersion` 0, `rowVersion` 없는 연도 `DELETE`, `DEFAULT 0`)은 구현 전 초안이고, 위 설계 문단과 실제 코드가 우선한다.
+
 ## 데이터 설계 (`V10__create_tax_records.sql`)
 
 - `tax_year_records`: `id BIGSERIAL PK`, `owner_id BIGINT NOT NULL REFERENCES users (id) ON DELETE CASCADE`, `tax_year INTEGER NOT NULL`, `total_salary BIGINT NOT NULL`(1~9,999,999,999,999), `work_start_month`·`work_end_month`(`INTEGER NOT NULL`, 1~12, 시작 ≤ 종료), `child_count INTEGER NOT NULL DEFAULT 0`(0 이상), `law_version_id BIGINT`(NULL = 그 연도에 적용 버전이 아직 없음), `row_version BIGINT NOT NULL DEFAULT 0`, `created_at`, `updated_at`, `UNIQUE (owner_id, tax_year)`.
