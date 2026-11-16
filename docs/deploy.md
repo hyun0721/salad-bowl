@@ -140,7 +140,7 @@ cd apps/api && ./gradlew largeWorkbook -Pout=/tmp/salad-large.xlsx
    delete from users where id = <id>;
    ```
 
-그룹 초대·멤버·차단은 그룹에서, 거래·업로드 기록은 회원에서 연쇄 삭제된다. 거래 변경 이력도 연쇄 삭제된다. 스키마상 `group_invites.created_by`와 `group_bans.banned_by`는 회원 삭제에 연쇄 삭제되지 않으므로, 해당 계정이 다른 확인용 계정의 그룹에서 만든 참조도 그룹 삭제로 먼저 정리한다.
+그룹 초대·멤버·차단은 그룹에서, 거래·업로드 기록은 회원에서 연쇄 삭제된다. 거래 변경 이력도 연쇄 삭제된다. 소득공제 연도 기록과 딸린 카드 자료·현금영수증 자료·지출계획도 회원에서 연쇄 삭제된다. 스키마상 `group_invites.created_by`와 `group_bans.banned_by`는 회원 삭제에 연쇄 삭제되지 않으므로, 해당 계정이 다른 확인용 계정의 그룹에서 만든 참조도 그룹 삭제로 먼저 정리한다.
 
 ### 브라우저 확인
 

@@ -21,7 +21,7 @@ import java.util.concurrent.TimeUnit;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /** 동시에 들어온 요청이 번호를 겹쳐 쓰거나 한 버전을 두 번 바꾸지 않는지 실제 트랜잭션으로 확인한다. */
-class TaxLawConcurrencyTest extends IntegrationTest {
+public class TaxLawConcurrencyTest extends IntegrationTest {
 
     private static final int THREADS = 8;
     private static final int ROUNDS = 10;
@@ -141,7 +141,7 @@ class TaxLawConcurrencyTest extends IntegrationTest {
     }
 
     /** 모든 호출을 같은 순간에 시작한다. 결과는 반환값, ApiException이면 오류 코드 이름이다. */
-    static List<String> runTogether(List<Callable<String>> calls) throws Exception {
+    public static List<String> runTogether(List<Callable<String>> calls) throws Exception {
         ExecutorService pool = Executors.newFixedThreadPool(calls.size());
         try {
             CountDownLatch start = new CountDownLatch(1);

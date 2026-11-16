@@ -54,7 +54,7 @@
 - 웹은 입력자료(PR 5) → 세법 관리(PR 6) → 분석(PR 7) 순이다. 분석 화면이 나가기 전에 운영자가 화면으로 2026 귀속 세법을 등록할 수 있어야 "세법 준비 중"만 보이는 기간이 없다.
 - PR 5~7은 병합할 때마다 운영에 보인다. PR 5 병합 뒤 PR 7 병합 전까지 회원은 입력자료 화면만 본다(중간 노출을 받아들이는 것이 이 계획의 기본값이다. "알려진 제약" 참고).
 
-**PR 3~7의 Task 상세는 그 PR에 착수할 때 컨트롤러가 채운다(PR 2는 2026-11-14에 채웠다).** 뒤 PR의 코드는 앞 PR 결과(실제 엔티티·응답 필드 이름)에 의존하기 때문이다. 이 문서에는 PR 2~7의 Task 목록·파일·인터페이스·테스트 대상·검증 명령까지 적었다. PR 1은 실행 가능한 상세까지 적었다.
+**PR 4~7의 Task 상세는 그 PR에 착수할 때 컨트롤러가 채운다(PR 2는 2026-11-14에, PR 3은 2026-11-16에 채웠다).** 뒤 PR의 코드는 앞 PR 결과(실제 엔티티·응답 필드 이름)에 의존하기 때문이다. 이 문서에는 PR 4~7의 Task 목록·파일·인터페이스·테스트 대상·검증 명령까지 적었다. PR 1~3은 실행 가능한 상세까지 적었다.
 
 ## 요구사항 추적표
 
@@ -3363,66 +3363,3151 @@ git commit -m "feat(api): 세법 초안 검증과 적용" -m "Co-Authored-By: Co
 
 # PR 3 — 연도 기록·입력자료·지출계획 API
 
-**이 PR에 착수할 때 컨트롤러가 Task 상세를 채운다.** 반론 리뷰 대상이다(소유권·삭제).
+반론 리뷰 대상이다(소유권·삭제). 브랜치: `feat/tax-year-api`(최신 `origin/main` `2987768`에서 만든 worktree). PR 제목 예: `feat(api): 소득공제 연도 기록·입력자료·지출계획 API`.
 
-브랜치 예: `feat/tax-records-api`. 검증: `cd apps/api && ./gradlew test`.
+검증: `cd apps/api && ./gradlew test`. 업로드·파서를 건드리지 않으므로 `memoryTest`는 생략하고 PR 본문에 이유를 적는다(API CI는 둘 다 돌린다). JDK 21과 Docker(Testcontainers)가 필요하다.
 
-데이터 설계 (`V10__create_tax_records.sql`)
+이 PR의 코드와 테스트는 계획을 쓸 때 저장소 밖 임시 복사본에서 Task 순서대로 실행해 확인했다(2026-11-16, `2987768` 기준). Task마다 테스트만 먼저 넣어 실패를 보고(3.1: 15건 중 13건, 3.2: 14건 중 13건, 3.3: 11건 중 9건 실패) 구현을 넣은 뒤 `./gradlew cleanTest test` 전체를 돌렸다(3.1 뒤 344건, 3.2 뒤 358건, 3.3 뒤 369건 통과). 저장소의 앱 코드는 아직 바꾸지 않았다.
 
-- `tax_year_records`: `id BIGSERIAL PK`, `owner_id BIGINT NOT NULL REFERENCES users (id) ON DELETE CASCADE`, `tax_year INTEGER NOT NULL`, `total_salary BIGINT NOT NULL CHECK (total_salary >= 1)`, `work_start_month`, `work_end_month` (`INTEGER NOT NULL`, 1~12, 시작 ≤ 종료), `child_count INTEGER NOT NULL DEFAULT 0 CHECK (child_count >= 0)`, `law_version_id BIGINT REFERENCES tax_law_versions (id)`(NULL = 그 연도에 적용 버전이 아직 없음), `row_version BIGINT NOT NULL DEFAULT 0`, `created_at`, `updated_at`, `UNIQUE (owner_id, tax_year)`.
-- `tax_card_statements`: `id`, `record_id BIGINT NOT NULL REFERENCES tax_year_records (id) ON DELETE CASCADE`, `issuer_name VARCHAR(50) NOT NULL`, `as_of_date DATE NOT NULL`, `memo VARCHAR(200)`, 금액 8칸 `credit_general`, `credit_market`, `credit_transit`, `credit_culture`, `debit_general`, `debit_market`, `debit_transit`, `debit_culture` (`BIGINT`, NULL = 미입력, `CHECK (… >= 0)`), `row_version`, 인덱스 `(record_id)`.
-- `tax_cash_receipts`: `record_id BIGINT PRIMARY KEY REFERENCES tax_year_records (id) ON DELETE CASCADE`, `as_of_date DATE NOT NULL`, `memo VARCHAR(200)`, 금액 4칸 `general`, `market`, `transit`, `culture` (`BIGINT` NULL 허용, 0 이상), `row_version`. 행이 없으면 "한 번도 입력하지 않음 = 4칸 빈 미완료"다.
-- `tax_spending_plans`: `record_id BIGINT PRIMARY KEY … ON DELETE CASCADE`, 소비구분 4 × (`_credit_fixed`, `_debit_fixed`, `_flexible`) 12칸 (`BIGINT NOT NULL DEFAULT 0`, 0 이상), `row_version`.
+경로 줄임: `main/` = `apps/api/src/main/java/com/saladbowl/api/`, `test/` = `apps/api/src/test/java/com/saladbowl/api/`, `migration/` = `apps/api/src/main/resources/db/migration/`. 고치는 파일은 ` ```diff ` 블록으로 적었다. 저장소 루트에서 `git apply`로 넣을 수 있고, 줄 번호가 어긋나면 내용을 보고 손으로 넣는다.
+
+> **구현 뒤 주의(2026-11-17):** 반론 리뷰로 `rowVersion` 설계가 바뀌었다. 연도 기록·현금영수증 자료·지출계획의 `row_version`은 `DEFAULT 0`·`@Version` +1이 아니라 저장할 때마다 시퀀스(`tax_row_version_seq`)에서 받는 값이고, 연도 `DELETE`는 `?rowVersion=`을 받는다. 아래 Task의 코드 블록 중 이와 다른 부분(예: 만든 뒤 `rowVersion` 0, `rowVersion` 없는 연도 `DELETE`, `DEFAULT 0`)은 구현 전 초안이고, 위 설계 문단과 실제 코드가 우선한다.
+
+## 데이터 설계 (`V10__create_tax_records.sql`)
+
+- `tax_year_records`: `id BIGSERIAL PK`, `owner_id BIGINT NOT NULL REFERENCES users (id) ON DELETE CASCADE`, `tax_year INTEGER NOT NULL`, `total_salary BIGINT NOT NULL`(1~9,999,999,999,999), `work_start_month`·`work_end_month`(`INTEGER NOT NULL`, 1~12, 시작 ≤ 종료), `child_count INTEGER NOT NULL DEFAULT 0`(0 이상), `law_version_id BIGINT`(NULL = 그 연도에 적용 버전이 아직 없음), `row_version BIGINT NOT NULL DEFAULT 0`, `created_at`, `updated_at`, `UNIQUE (owner_id, tax_year)`.
+- 세법 버전 FK는 `(law_version_id, tax_year) → tax_law_versions (id, tax_year)` 복합 FK다. PRD 9장의 "세법 버전의 귀속연도와 일치"를 DB가 지킨다. 이를 위해 V10이 `tax_law_versions`에 `UNIQUE (id, tax_year)`를 더한다(기존 migration 파일은 고치지 않는다). `ON DELETE` 동작은 두지 않는다: 연도 기록이 가리키는 버전은 적용본뿐이고 적용본은 지울 수 없다.
+- `tax_card_statements`: `id`, `record_id BIGINT NOT NULL REFERENCES tax_year_records (id) ON DELETE CASCADE`, `issuer_name VARCHAR(50) NOT NULL`, `as_of_date DATE NOT NULL`, `memo VARCHAR(200)`, 금액 8칸 `credit_general`, `credit_market`, `credit_transit`, `credit_culture`, `debit_general`, `debit_market`, `debit_transit`, `debit_culture`(`BIGINT`, NULL = 미입력, 0~9,999,999,999,999), `row_version`, 인덱스 `(record_id)`.
+- `tax_cash_receipts`: `record_id BIGINT PRIMARY KEY REFERENCES tax_year_records (id) ON DELETE CASCADE`, `as_of_date DATE NOT NULL`, `memo VARCHAR(200)`, 금액 4칸 `general`, `market`, `transit`, `culture`(NULL 허용, 0~상한), `row_version`. 행이 없으면 "한 번도 입력하지 않음 = 4칸 빈 미완료"다.
+- `tax_spending_plans`: `record_id BIGINT PRIMARY KEY … ON DELETE CASCADE`, 소비구분 4 × (`_credit_fixed`, `_debit_fixed`, `_flexible`) 12칸(`BIGINT NOT NULL DEFAULT 0`, 0~상한), `row_version`.
 - PRD 9장의 "소비금액" 개념은 별도 행이 아니라 자료 행의 칸(컬럼)으로 둔다. 결제수단·소비구분 종류가 바뀌면 어차피 코드 변경이기 때문이다(PRD 8.2절).
-- 금액 상한은 `MoneyField`와 같은 9,999,999,999,999원이다.
+- 금액 한 칸의 상한은 `MoneyField`·세법 금액 검증(PR 2)과 같은 9,999,999,999,999원이다. 연도 합계표의 각 칸(자료를 더한 값)도 같은 상한을 넘으면 저장을 400으로 막는다. PR 4의 계산기가 "금액 ≤ 약 10^13"을 전제로 `long` 정수 연산을 하기 때문이다.
 
-동시 수정(TAX-29): 비교 단위는 행 하나다(연도 기록 기본정보 / 카드 자료 한 건 / 현금영수증 자료 / 지출계획). 수정 요청은 읽을 때 받은 `rowVersion`을 보내고, 서버는 현재 값과 다르면 409 `CONFLICT`를 준다. 엔티티에는 JPA `@Version`을 달아 같은 순간의 경합도 막고, `ObjectOptimisticLockingFailureException`을 `GlobalExceptionHandler`에서 409 `CONFLICT`로 바꾼다.
+## HTTP 인터페이스 (웹 PR 5·7, API PR 4가 쓴다)
 
-세법 버전 기억(TAX-66): 연도 기록을 만들 때 그 연도의 현재 적용 버전이 있으면 `law_version_id`에 넣는다. 없으면 NULL이고, 관리자가 그 연도의 버전을 적용하는 트랜잭션에서 NULL인 연도 기록에 그 버전을 넣는다. 이미 버전이 있는 연도 기록은 회원이 `refresh`를 부를 때만 바뀐다.
-
-HTTP 인터페이스 (모두 로그인 회원 본인의 자료. 경로에 회원 id가 없다)
+모두 로그인 회원 본인의 자료다. 경로에 회원 id가 없다. `/tax/admin/**`이 아니므로 `TaxAdminInterceptor`가 걸리지 않고 서비스 관리자 권한과 무관하다.
 
 | 메서드·경로 | 동작 |
 |---|---|
-| `GET /tax/years/{year}` | 연도 기록 묶음(`TaxYearView`). 없으면 404 |
-| `PUT /tax/years/{year}` `{totalSalary, workStartMonth, workEndMonth, childCount, rowVersion?}` | 없으면 생성(201, 연도는 서버 기준 올해·전년도·다음 해만), 있으면 기본정보 수정(200). 범위 밖 연도 생성은 400 |
-| `DELETE /tax/years/{year}` | 연도 기록과 딸린 자료·지출계획 삭제 204. 없으면 404 |
-| `POST /tax/years/{year}/cards` | 카드 자료 추가 201 |
-| `PUT /tax/years/{year}/cards/{cardId}` | 카드 자료 수정(`rowVersion`) |
-| `DELETE /tax/years/{year}/cards/{cardId}` | 카드 자료 삭제 204 |
-| `PUT /tax/years/{year}/cash-receipt` | 현금영수증 자료 생성·수정(`rowVersion?`). 삭제 경로는 없다(D19) |
-| `PUT /tax/years/{year}/plan` | 지출계획 저장(`rowVersion?`) |
-| `POST /tax/years/{year}/law-version/refresh` | 연도 기록의 세법 버전을 현재 적용 버전으로 바꿈 |
+| `GET /tax/years/{year}` | 연도 기록 묶음(`TaxYearView`) 200. 요청자의 그 연도 기록이 없으면 404 |
+| `PUT /tax/years/{year}` `{totalSalary, workStartMonth, workEndMonth, childCount, rowVersion?}` | `rowVersion` 없음 = 만들기 201. 연도가 한국 시각 기준 올해·전년도·다음 해가 아니면 400, 이미 있으면 409. `rowVersion` 있음 = 기본정보 수정 200. 저장된 값과 다르면 409, 기록이 없으면(다른 곳에서 삭제됨) 404이고 다시 만들지 않는다 |
+| `DELETE /tax/years/{year}?rowVersion=<long>` (쿼리 필수) | 연도 기록과 딸린 카드 자료·현금영수증 자료·지출계획 삭제 204. 버전 누락·형식 오류 400, 연도 기록 없음 404, 저장된 버전과 불일치 409 순서로 판정 |
+| `POST /tax/years/{year}/cards` `{issuerName, asOfDate, memo?, amounts: {8칸}}` | 카드 자료 추가 201(`TaxYearView`). 연도 기록당 50건을 넘으면 400 |
+| `PUT /tax/years/{year}/cards/{cardId}` 같은 본문 + `rowVersion` | 카드 자료 수정 200. `rowVersion`이 없거나 다르면 409 |
+| `DELETE /tax/years/{year}/cards/{cardId}?rowVersion=<long>` (쿼리 필수) | 카드 자료 삭제 204. `rowVersion` 누락·형식 오류는 400, 저장된 값과 다르면 409 |
+| `PUT /tax/years/{year}/cash-receipt` `{asOfDate, memo?, amounts: {4칸}, rowVersion?}` | 현금영수증 자료 저장 200. 없으면 만들고(`rowVersion` 없이), 있으면 고친다(`rowVersion` 필수). 어긋나면 409. 삭제 경로는 없다(D19) — `DELETE`는 405 |
+| `PUT /tax/years/{year}/plan` `{general, market, transit, culture: {creditFixed, debitFixed, flexible}, rowVersion?}` | 지출계획 저장 200. `rowVersion` 규칙은 현금영수증 자료와 같다. 자료가 미완료이거나 세법이 없어도 저장된다(TAX-75) |
+| `POST /tax/years/{year}/law-version/refresh` (본문 없음) | 연도 기록의 세법 버전을 그 연도의 현재 적용 버전으로 바꿈 200. 적용 버전이 없으면 세법 참조를 유지한다. 매 저장마다 새 `rowVersion`을 받는다 |
 
-`TaxYearView`: `taxYear, rowVersion, totalSalary, workStartMonth, workEndMonth, childCount, lawVersion: {id, versionNo, appliedAt, childTiersApply} | null, newerLawVersion: boolean, cards: [{id, rowVersion, issuerName, asOfDate, memo, amounts(8칸, null 가능), blankCount}], cashReceipt: {rowVersion, asOfDate, memo, amounts(4칸), blankCount} | null, plan: {rowVersion, 12칸} | null, totals: 12칸(미입력은 0으로 더함), blankCount(현금영수증 미입력이면 4 포함), hasInputs, asOfDateMismatch`.
+- 공통: 비로그인 401 `UNAUTHORIZED`. `year`는 1000~9999 정수이고 아니면 400 `VALIDATION_FAILED`. 요청자에게 그 연도 기록이 없으면 딸린 경로도 모두 404 `NOT_FOUND`다. 남의 `cardId`와 없는 `cardId`는 같은 404다(403·409를 쓰지 않는다).
+- 판정 순서: 본문 형식(400) → 요청자의 연도 기록(404) → 카드 자료(404) → `rowVersion`(409) → 기준일·카드사명·합계 상한(400). 400은 요청 본문만 보고 정해지므로 남의 자료가 있는지에 따라 달라지는 응답이 없다.
+- 입력 규칙: 금액은 정수 토큰만 받는다(소수 `1000.5`는 400). 카드·현금영수증 금액 칸은 `null`(미입력) 또는 0~9,999,999,999,999, 지출계획 12칸은 필수이고 같은 범위다. `issuerName`은 앞뒤 공백을 뺀 뒤 1~50자, `memo`는 200자 이하(공백만 있으면 `null`), 카드사명·메모의 NUL은 저장 전 400 `VALIDATION_FAILED`, `asOfDate`는 귀속연도 안의 날짜, `childCount`는 0~99.
+- 연도를 지우는 것 말고는 모든 쓰기가 `TaxYearView` 전체를 돌려준다. 웹은 응답으로 캐시를 바꾸면 되고 합계를 다시 더하지 않는다. 카드 자료 삭제는 204이므로 웹이 연도를 다시 읽는다.
 
+`TaxYearView`: `taxYear, rowVersion, totalSalary, workStartMonth, workEndMonth, childCount, lawVersion: {id, versionNo, appliedAt, childTiersApply} | null, newerLawVersion, cards: [{id, rowVersion, issuerName, asOfDate, memo, amounts: {creditGeneral, creditMarket, creditTransit, creditCulture, debitGeneral, debitMarket, debitTransit, debitCulture}(null 가능), blankCount}](id 오름차순), cashReceipt: {rowVersion, asOfDate, memo, amounts: {general, market, transit, culture}, blankCount} | null, plan: {rowVersion, general, market, transit, culture: {creditFixed, debitFixed, flexible}} | null, totals: {creditGeneral … debitCulture, cashGeneral, cashMarket, cashTransit, cashCulture}(12칸, 미입력은 0으로 더함), blankCount(현금영수증 미입력이면 4 포함), hasInputs, asOfDateMismatch`. Task 3.1은 `lawVersion`까지, 3.2가 `cards`·`cashReceipt`·`totals`·`blankCount`·`hasInputs`·`asOfDateMismatch`를, 3.3이 `newerLawVersion`·`plan`을 더한다.
+
+## 소유권·동시성 설계
+
+- **소유권은 조회 조건이다.** 모든 접근은 `(owner_id = 요청자, tax_year)`로 연도 기록을 찾는 데서 시작한다(`requireOwned`·`lockOwned`). 카드 자료는 `(id, record_id = 소유한 연도 기록)`로, 현금영수증 자료·지출계획은 소유한 연도 기록의 id(기본 키)로 읽는다. 연도 기록·카드 자료를 id만으로 읽는 호출(`records.findById`, `cards.findById`)을 쓰지 않는다. 남의 자료는 "없는 것"과 같은 쿼리 결과이므로 응답도 같다. `GroupAccess`와 `ServiceAdminGuard`를 쓰지 않는다 — 그룹 ADMIN·공개 중인 같은 그룹 회원·서비스 관리자 모두 남의 자료에 닿는 길이 없다.
+- **동시 수정(TAX-29)은 PR 2와 같은 방식이다: 행 잠금 + 요청의 `rowVersion` 비교.** 기존 코드에 낙관적 잠금 예외를 처리하는 선례가 없고 PR 2(`TaxLawService.lockDraft`·`requireRowVersion`)가 이 방식으로 병합됐으므로 통일한다. 쓰기는 모두 연도 기록 행을 `SELECT … FOR UPDATE`로 잠근 뒤(`TaxYearRecordRepository.findOwnedForUpdate`) 시작하므로 한 연도 기록과 딸린 자료의 쓰기는 차례로 실행된다. 잠금 안에서 고치려는 행의 `row_version`을 요청 값과 비교해 다르면 409 `CONFLICT`다. 비교 단위는 행 하나다(기본정보 / 카드 자료 한 건 / 현금영수증 자료 / 지출계획). 카드 자료를 고쳐도 기본정보의 `rowVersion`은 그대로다.
+- `rowVersion`은 클라이언트가 다음 요청에 그대로 돌려보내는 불투명한 값이다. 연도 기록·현금영수증·지출계획은 생성 및 매 저장(`edit`·`refresh`, 같은 값 저장 포함)마다 공용 BIGINT 시퀀스 `tax_row_version_seq`의 `nextval`을 `row_version BIGINT`에 넣는다. V10에서 `MAXVALUE 9007199254740991 NO CYCLE`로 만들어 JS 안전 정수를 넘거나 삭제·재생성 후 값을 재사용하지 않는다. 세 엔티티의 `@Version`을 제거하고 서비스가 시퀀스를 조회해 값을 전달한다. 카드는 매번 새 id를 사용하므로 기존 `@Version` +1을 유지하며 PR 2 `TaxLawVersion`은 바꾸지 않는다. 쓰기는 부모 행 잠금 안에서 비교·저장한다. 동시 연도 생성의 UNIQUE 위반은 기존 핸들러가 409로 변환한다.
+- `tax_cash_receipts`·`tax_spending_plans`는 기본 키(`record_id`)를 직접 넣으므로 `Persistable<Long>`의 새 행 플래그로 INSERT 여부를 판정한다. `@PostPersist`·`@PostLoad`에서 플래그를 끈다. `rowVersion`은 새 행 판정에 쓰지 않는다.
+- **삭제.** 연도 기록과 카드 자료 모두 `?rowVersion=<long>` 쿼리가 필수이며 같은 파서를 사용한다. 누락·형식 오류는 400, 소유한 연도 기록이 없으면 404, 카드 삭제는 이어서 소유 카드가 없으면 404, 저장된 행 버전과 다르면 409다. 연도 삭제는 부모 행 잠금 안에서 연도 기록의 버전을 비교하므로 기본정보 수정·삭제 후 재생성된 기록의 오래된 삭제를 거부한다. 이 버전은 딸린 자료의 변경을 감지하지 않는 한계가 있다. 귀속연도 직접 입력 확인(D22)은 유지하며 딸린 행은 DB `ON DELETE CASCADE`로 삭제한다. 다른 귀속연도·다른 회원 자료에는 닿지 않는다.
+- **세법 버전 기억(TAX-66).** 연도 기록을 만들 때 그 연도의 현재 적용 버전을 `law_version_id`에 넣는다. 없으면 NULL이고, 관리자가 그 연도의 버전을 적용하는 트랜잭션(`TaxLawService.apply`)이 같은 행 잠금 안에서 `tax_year = ? AND law_version_id IS NULL`인 연도 기록에 그 버전을 넣는다. 이미 버전이 있는 연도 기록은 회원이 `refresh`를 부를 때만 바뀐다. 자동으로 채울 때는 기본정보의 `row_version`을 올리지 않는다(회원이 열어 둔 기본정보 화면의 저장이 409가 되지 않게). `refresh`는 적용본이 없거나 같은 적용본이어도 저장할 때 새 시퀀스 값을 받는다. `TaxLawService.apply`의 NULL 채우기 UPDATE SQL은 그대로 유지한다.
+- **적용과 연도 기록 만들기의 경합.** 만드는 중(커밋 전)인 연도 기록은 `apply`의 UPDATE에 보이지 않고, 그 트랜잭션은 아직 커밋되지 않은 적용 버전을 보지 못한다. 그대로 두면 적용 버전이 있는데도 `law_version_id`가 NULL로 남는다(임시 복사본에서 advisory lock을 빼고 돌려 재현했다). 그래서 귀속연도별 Postgres advisory lock(`pg_advisory_xact_lock`, 키 `'TAXL'` + 연도. 기존 `transaction/LedgerLock`과 같은 방식)을 쓴다: 연도 기록 만들기는 공유 잠금(`TaxLawService.currentAppliedForNewRecord`), `apply`는 배타 잠금을 잡는다. 만들기끼리는 서로 기다리지 않는다.
+- `newerLawVersion`은 "연도 기록의 버전 ≠ 그 연도의 현재 적용 버전"이다. 둘 다 없으면 false다.
+- **"올해"는 한국 시각 기준이다.** `Clock` 빈(`auth/SecurityConfig`, UTC)을 주입받아 `Asia/Seoul`로 연도를 읽는다. UTC 그대로면 1월 1일 0~9시에 전년도가 올해가 된다. 연도 범위는 만들 때만 검사한다. 범위를 벗어난 뒤에도 이미 있는 기록은 조회·수정·삭제된다. 테스트는 `TestClock`으로 올해를 2026으로 고정한다.
+
+## 계획 초안에서 달라진 점
+
+- 동시 수정: "JPA `@Version` + `ObjectOptimisticLockingFailureException`을 `GlobalExceptionHandler`에서 409로"를 "연도 기록 행 잠금 + 요청 `rowVersion` 비교"로 바꿨다. `GlobalExceptionHandler`를 고치지 않는다.
+- 카드 자료 삭제에 `?rowVersion=`(필수)을 더했다. HTTP 표의 `PUT /tax/years/{year}`는 "있으면 수정"에서 "`rowVersion`이 없으면 만들기, 있으면 수정"으로 분명히 했다(이미 있는 연도에 `rowVersion` 없이 보내면 409).
+- `TaxLawService.apply`에 NULL 채우기뿐 아니라 advisory lock을 더했고, `TaxLawService.currentAppliedForNewRecord(int)`를 더했다.
+- 더한 것: 복합 FK `(law_version_id, tax_year)`와 `tax_law_versions`의 `UNIQUE (id, tax_year)`, 금액·`rowVersion`의 정수 토큰 검사(`@WholeNumber` — 기본 설정은 `40000000.7`을 40000000으로 잘라 저장한다. PR 2의 `RowVersionDeserializer`를 다시 쓴다), 연도 합계 상한 검사, 한국 시각 기준 연도, 테스트용 `TestClock`.
+- 지출계획 JSON을 12칸 나열 대신 소비구분 4행 × 3칸(`general.creditFixed` …)으로 했다.
+- `test/tax/law/TaxLawConcurrencyTest`와 그 `runTogether`를 `public`으로 바꿔 `tax/record` 테스트가 쓴다.
+- 브랜치 이름은 예시(`feat/tax-records-api`)가 아니라 실제 브랜치 `feat/tax-year-api`다.
+
+## 결정이 필요한 점 (기본값으로 썼다)
+
+1. **확정: 연도 기록 삭제는 `?rowVersion=<long>` 필수.** 누락·형식 오류 400 → 기록 없음 404 → 버전 불일치 409 → 일치 204. 비교 값은 연도 기록 행의 버전이며 딸린 자료의 변경은 감지하지 않는다.
+2. **카드 자료 삭제는 `?rowVersion=` 필수.** 다른 선택: 확인 한 번(D05)만 믿고 받지 않는다.
+3. **이미 있는 연도에 `rowVersion` 없는 `PUT`은 409**(두 탭에서 동시에 만들기). 다른 선택: 수정으로 처리(나중 요청이 먼저 만든 값을 말없이 덮는다).
+4. **`rowVersion`을 보냈는데 연도 기록이 없으면 404**이고 다시 만들지 않는다. 현금영수증 자료·지출계획은 따로 지워지지 않으므로 같은 경우 409다.
+5. **연도 합계표의 한 칸이 9,999,999,999,999원을 넘는 저장은 400이고, 카드 자료는 연도 기록당 50건까지(2026-11-16 확정).** 51번째 `POST`는 400 `VALIDATION_FAILED`(판정 순서에서 합계 상한과 같은 단계). 수정·삭제는 건수와 무관하다.
+6. **"올해"는 한국 시각(`Asia/Seoul`) 기준.**
+7. **`childCount` 상한 99, `issuerName` 50자, `memo` 200자**(PRD는 "개발 설계에서 결정").
+8. **적용 버전이 없는 상태에서 `refresh`는 세법 참조를 유지하고 200을 돌려준다**(오류가 아니다). 저장의 `rowVersion`은 새 시퀀스 값이다.
+
+---
 ### Task 3.1: 연도 기록 만들기·조회·수정·삭제와 소유권 (TAX-01, 02, 03, 20, 28, 29, 65)
 
-**담당:** Codex `gpt-6-astra` / `medium` (`api`), 태그 `impl-api`. 리뷰: Claude Fable 5.2.
+**담당:** Codex `gpt-6-astra` / `medium` (`api`, 소유권·잠금 설계), 태그 `impl-api`. 리뷰: Claude Fable 5.2 (`review-task`).
 
-- Files: Create `V10__create_tax_records.sql`(네 테이블 모두), `tax/record/TaxYearRecord.java`, `TaxYearRecordRepository.java`, `TaxRecordService.java`, `TaxRecordController.java`, `TaxRecordDtos.java`, `tax/record/TaxYearApiTest.java`. Modify `common/GlobalExceptionHandler.java`(낙관적 잠금 예외 → 409).
-- Interfaces — Consumes: `TaxLawService.currentApplied(int)`. Produces: `TaxRecordService.requireOwned(long userId, int year): TaxYearRecord`(없으면 `NOT_FOUND` — 뒤 Task와 PR 4가 모든 접근에 쓴다), `GET/PUT/DELETE /tax/years/{year}`.
-- 테스트 대상(AC-01, 02, 03, 15, 20, 22, 30, 33): 그룹 미가입 회원이 등록·조회 가능, 그룹에 가입·공개·탈퇴해도 같은 자료, 같은 그룹에서 공개 중인 회원·그룹 ADMIN·서비스 관리자가 남의 연도를 요청하면 자기 것(없으면 404)만 보임, 같은 연도 두 번 만들면 하나만 존재(두 번째는 수정), 근로기간 시작 > 종료 400, 총급여 0 이하 400, 올해±1 밖 연도 생성 400, 적용 버전 없는 연도도 저장됨(`lawVersion=null`), 삭제하면 그 연도만 지워지고 다른 연도는 남음, `rowVersion` 불일치 409이고 먼저 저장한 값 유지, 비로그인 401.
+**Files:**
+- Create: `migration/V10__create_tax_records.sql`(네 테이블 모두)
+- Create: `main/tax/record/TaxYearRecord.java`, `TaxYearRecordRepository.java`, `TaxRecordDtos.java`, `TaxRecordService.java`, `TaxRecordController.java`
+- Create: `test/support/TestClock.java`, `test/support/TestTaxRecords.java`
+- Test: `test/tax/record/TaxYearApiTest.java`(생성), `test/tax/law/TaxLawConcurrencyTest.java`(수정: `public`)
+
+**Interfaces:**
+- Consumes: `TaxLawService.currentApplied(int taxYear): Optional<TaxLawVersion>`, `TaxLawVersionRepository.findById`, `TaxLawVersion.getId()`·`getVersionNo()`·`getAppliedAt()`, `TaxLawDtos.VersionResponse.of(v, null, null, null).childTiersApply()`, `TaxLawDtos.RowVersionDeserializer`, `Clock` 빈(`auth/SecurityConfig`), `@CurrentUser Long userId`, `ApiException`, `ErrorCode.NOT_FOUND`·`CONFLICT`·`VALIDATION_FAILED`, 테스트 헬퍼 `TestAuth.signupAndLogin`, `TestGroups.createGroup`·`join`, `TestAdmins.grant`, `TestTaxLaws.createFilledDraft`·`URL`, `TaxLawConcurrencyTest.runTogether`.
+- Produces:
+  - `TaxYearRecord`(엔티티): `static create(long ownerId, int taxYear, YearRequest, Long lawVersionId)`, `edit(YearRequest)`, `getId(): Long`, `getOwnerId()`, `getTaxYear()`, `getTotalSalary(): long`, `getWorkStartMonth()`, `getWorkEndMonth()`, `getChildCount(): int`, `getLawVersionId(): Long`, `getRowVersion(): long`.
+  - `TaxYearRecordRepository`: `findByOwnerIdAndTaxYear(long ownerId, int taxYear): Optional<TaxYearRecord>`, `findOwnedForUpdate(long ownerId, int taxYear): Optional<TaxYearRecord>`(행 잠금).
+  - `TaxRecordDtos`: `MAX_AMOUNT = 9_999_999_999_999L`, `@WholeNumber`, `YearRequest(Long totalSalary, Integer workStartMonth, Integer workEndMonth, Integer childCount, Long rowVersion)`, `LawVersionRef(long id, int versionNo, OffsetDateTime appliedAt, boolean childTiersApply)`, `TaxYearView(int taxYear, long rowVersion, long totalSalary, int workStartMonth, int workEndMonth, int childCount, LawVersionRef lawVersion)`, `SavedYear(boolean created, TaxYearView view)`.
+  - `TaxRecordService`: `get(long userId, int year): TaxYearView`, `saveYear(long userId, int year, YearRequest): SavedYear`, `deleteYear(long userId, int year): void`, `requireOwned(long userId, int year): TaxYearRecord`(읽기용, 없으면 `NOT_FOUND` — PR 4의 분석이 쓴다), 패키지 전용 `lockOwned(long userId, int year): TaxYearRecord`(쓰기용 행 잠금 — Task 3.2·3.3의 모든 쓰기가 이것으로 시작한다), `static requireRowVersion(long stored, Long requested)`(없거나 다르면 `CONFLICT`), `static invalid(String)`, `static notFound()`, 비공개 `view(TaxYearRecord): TaxYearView`(Task 3.2·3.3이 고친다).
+  - HTTP: `GET`·`PUT`·`DELETE /tax/years/{year}`.
+  - 테스트 헬퍼 `TestClock`(`set(Instant)`, `reset()`, `TestClock.Config` — 올해 2026), `TestTaxRecords.URL`, `yearBody(long totalSalary, int startMonth, int endMonth, int childCount, Long rowVersion): String`, `putYear(mvc, user, year, body): ResultActions`, `createYear(mvc, user, year)`(총급여 40,000,000원·1~12월·자녀등 0명, 끝난 뒤 `rowVersion` 0).
+
+- [ ] **Step 1: 실패하는 테스트 작성**
+
+테스트용 고정 시계와 준비 헬퍼를 만든다. `AuthHardeningTest.ClockConfig`와 같은 방식(`@Primary` `Clock` 빈)이다.
+
+`test/support/TestClock.java`
+
+```java
+package com.saladbowl.api.support;
+
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Primary;
+
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+
+/**
+ * 통합 테스트용 고정 시계. 연도 기록은 "올해·전년도·다음 해"만 만들 수 있으므로 테스트의 올해를 2026으로 고정한다.
+ * 쓰는 테스트 클래스에 {@code @Import(TestClock.Config.class)}를 붙인다.
+ */
+public final class TestClock extends Clock {
+
+    /** 한국 시각 2026-06-15 12:00. */
+    public static final Instant DEFAULT = Instant.parse("2026-06-15T03:00:00Z");
+
+    private volatile Instant now = DEFAULT;
+
+    public void set(Instant instant) {
+        now = instant;
+    }
+
+    public void reset() {
+        now = DEFAULT;
+    }
+
+    @Override public ZoneId getZone() { return ZoneOffset.UTC; }
+    @Override public Clock withZone(ZoneId zone) { return Clock.fixed(now, zone); }
+    @Override public Instant instant() { return now; }
+
+    @TestConfiguration
+    public static class Config {
+        @Bean
+        @Primary
+        TestClock testClock() {
+            return new TestClock();
+        }
+    }
+}
+```
+
+`test/support/TestTaxRecords.java`
+
+```java
+package com.saladbowl.api.support;
+
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+/** 통합 테스트용 소득공제 연도 기록 준비 헬퍼. 금액은 모두 합성값이다. */
+public final class TestTaxRecords {
+
+    public static final String URL = "/tax/years";
+
+    private TestTaxRecords() {
+    }
+
+    /** 기본정보 본문. rowVersion이 null이면 새로 만드는 요청이다. */
+    public static String yearBody(long totalSalary, int startMonth, int endMonth, int childCount, Long rowVersion) {
+        return """
+                {"totalSalary": %d, "workStartMonth": %d, "workEndMonth": %d, "childCount": %d, "rowVersion": %s}
+                """.formatted(totalSalary, startMonth, endMonth, childCount, rowVersion);
+    }
+
+    public static ResultActions putYear(MockMvc mvc, TestAuth.AuthedUser user, int year, String body)
+            throws Exception {
+        return mvc.perform(put(URL + "/" + year).header("Authorization", user.bearer())
+                .contentType(MediaType.APPLICATION_JSON).content(body));
+    }
+
+    /** 총급여 40,000,000원, 1~12월, 자녀등 0명인 연도 기록을 만든다. 만든 뒤의 rowVersion은 0이다. */
+    public static void createYear(MockMvc mvc, TestAuth.AuthedUser user, int year) throws Exception {
+        putYear(mvc, user, year, yearBody(40_000_000L, 1, 12, 0, null)).andExpect(status().isCreated());
+    }
+}
+```
+
+동시 요청 헬퍼를 다른 패키지의 테스트가 쓸 수 있게 연다.
+
+`test/tax/law/TaxLawConcurrencyTest.java`
+
+```diff
+--- a/apps/api/src/test/java/com/saladbowl/api/tax/law/TaxLawConcurrencyTest.java
++++ b/apps/api/src/test/java/com/saladbowl/api/tax/law/TaxLawConcurrencyTest.java
+@@ -21,7 +21,7 @@
+ import static org.assertj.core.api.Assertions.assertThat;
+ 
+ /** 동시에 들어온 요청이 번호를 겹쳐 쓰거나 한 버전을 두 번 바꾸지 않는지 실제 트랜잭션으로 확인한다. */
+-class TaxLawConcurrencyTest extends IntegrationTest {
++public class TaxLawConcurrencyTest extends IntegrationTest {
+ 
+     private static final int THREADS = 8;
+     private static final int ROUNDS = 10;
+@@ -141,7 +141,7 @@
+     }
+ 
+     /** 모든 호출을 같은 순간에 시작한다. 결과는 반환값, ApiException이면 오류 코드 이름이다. */
+-    static List<String> runTogether(List<Callable<String>> calls) throws Exception {
++    public static List<String> runTogether(List<Callable<String>> calls) throws Exception {
+         ExecutorService pool = Executors.newFixedThreadPool(calls.size());
+         try {
+             CountDownLatch start = new CountDownLatch(1);
+```
+
+테스트를 만든다. 경로에 회원 id가 없으므로 "남의 연도를 요청"은 "같은 주소가 요청자 자신의 자료만 준다"로 확인한다(그룹 ADMIN·같은 그룹에서 공개 중인 회원·서비스 관리자 모두).
+
+`test/tax/record/TaxYearApiTest.java`
+
+```java
+package com.saladbowl.api.tax.record;
+
+import com.saladbowl.api.support.IntegrationTest;
+import com.saladbowl.api.support.TestAdmins;
+import com.saladbowl.api.support.TestAuth;
+import com.saladbowl.api.support.TestAuth.AuthedUser;
+import com.saladbowl.api.support.TestClock;
+import com.saladbowl.api.support.TestGroups;
+import com.saladbowl.api.support.TestTaxLaws;
+import com.saladbowl.api.tax.law.TaxLawConcurrencyTest;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Import;
+import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.web.servlet.MockMvc;
+
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.Callable;
+
+import static com.saladbowl.api.support.TestTaxRecords.URL;
+import static com.saladbowl.api.support.TestTaxRecords.createYear;
+import static com.saladbowl.api.support.TestTaxRecords.putYear;
+import static com.saladbowl.api.support.TestTaxRecords.yearBody;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.nullValue;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+/**
+ * 연도 기록 만들기·조회·수정·삭제와 소유권
+ * (TAX-01, 02, 03, 20, 28, 29, 65, AC-01, 02, 03, 15, 20, 22, 30, 33). 테스트의 올해는 2026이다.
+ */
+@Import(TestClock.Config.class)
+class TaxYearApiTest extends IntegrationTest {
+
+    @Autowired
+    MockMvc mvc;
+
+    @Autowired
+    JdbcTemplate jdbc;
+
+    @Autowired
+    TestClock clock;
+
+    AuthedUser owner;
+
+    @BeforeEach
+    void signUp() throws Exception {
+        owner = TestAuth.signupAndLogin(mvc, "owner@example.test", "소유자");
+    }
+
+    @AfterEach
+    void resetClock() {
+        clock.reset();
+    }
+
+    private int rowCount(long ownerId) {
+        return jdbc.queryForObject("SELECT count(*) FROM tax_year_records WHERE owner_id = ?", Integer.class, ownerId);
+    }
+
+    private long salaryOf(long ownerId, int year) {
+        return jdbc.queryForObject("SELECT total_salary FROM tax_year_records WHERE owner_id = ? AND tax_year = ?",
+                Long.class, ownerId, year);
+    }
+
+    @Test
+    void memberWithoutAGroupCreatesAndReadsOwnYear() throws Exception {
+        putYear(mvc, owner, 2026, yearBody(40_000_000L, 3, 12, 1, null))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.taxYear").value(2026))
+                .andExpect(jsonPath("$.rowVersion").value(0))
+                .andExpect(jsonPath("$.totalSalary").value(40_000_000))
+                .andExpect(jsonPath("$.workStartMonth").value(3))
+                .andExpect(jsonPath("$.workEndMonth").value(12))
+                .andExpect(jsonPath("$.childCount").value(1))
+                // 적용된 세법 버전이 없는 연도도 저장된다(TAX-65, AC-20).
+                .andExpect(jsonPath("$.lawVersion").value(nullValue()));
+
+        mvc.perform(get(URL + "/2026").header("Authorization", owner.bearer()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalSalary").value(40_000_000))
+                .andExpect(jsonPath("$.workStartMonth").value(3));
+    }
+
+    @Test
+    void missingYearIsNotFound() throws Exception {
+        mvc.perform(get(URL + "/2026").header("Authorization", owner.bearer()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("NOT_FOUND"));
+        mvc.perform(delete(URL + "/2026").header("Authorization", owner.bearer()))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void groupMembershipDoesNotChangeAccess() throws Exception {
+        createYear(mvc, owner, 2026);
+        AuthedUser groupAdmin = TestAuth.signupAndLogin(mvc, "group-admin@example.test", "그룹장");
+        long groupId = TestGroups.createGroup(mvc, groupAdmin, "합성 그룹");
+
+        TestGroups.join(mvc, groupAdmin, owner, groupId);
+        mvc.perform(put("/groups/" + groupId + "/share").header("Authorization", owner.bearer())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"enabled\":true}"))
+                .andExpect(status().is2xxSuccessful());
+        mvc.perform(get(URL + "/2026").header("Authorization", owner.bearer()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalSalary").value(40_000_000));
+
+        mvc.perform(delete("/groups/" + groupId + "/members/me").header("Authorization", owner.bearer()))
+                .andExpect(status().is2xxSuccessful());
+        mvc.perform(get(URL + "/2026").header("Authorization", owner.bearer()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalSalary").value(40_000_000));
+    }
+
+    @Test
+    void sharingMemberGroupAdminAndServiceAdminCannotReachAnotherMembersYear() throws Exception {
+        createYear(mvc, owner, 2026);
+        AuthedUser groupAdmin = TestAuth.signupAndLogin(mvc, "group-admin@example.test", "그룹장");
+        AuthedUser member = TestAuth.signupAndLogin(mvc, "member@example.test", "멤버");
+        AuthedUser serviceAdmin = TestAuth.signupAndLogin(mvc, "service-admin@example.test", "관리자");
+        TestAdmins.grant(jdbc, serviceAdmin.id());
+        long groupId = TestGroups.createGroup(mvc, groupAdmin, "합성 그룹");
+        TestGroups.join(mvc, groupAdmin, owner, groupId);
+        TestGroups.join(mvc, groupAdmin, member, groupId);
+        for (AuthedUser sharing : new AuthedUser[]{owner, member}) {
+            mvc.perform(put("/groups/" + groupId + "/share").header("Authorization", sharing.bearer())
+                            .contentType(MediaType.APPLICATION_JSON).content("{\"enabled\":true}"))
+                    .andExpect(status().is2xxSuccessful());
+        }
+
+        // 경로에 회원 id가 없다. 같은 주소는 항상 요청자의 자료이고, 요청자에게 그 연도 기록이 없으면 404다.
+        for (AuthedUser other : new AuthedUser[]{groupAdmin, member, serviceAdmin}) {
+            mvc.perform(get(URL + "/2026").header("Authorization", other.bearer()))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.code").value("NOT_FOUND"));
+            putYear(mvc, other, 2026, yearBody(1L, 1, 1, 0, 0L)).andExpect(status().isNotFound());
+            mvc.perform(delete(URL + "/2026").header("Authorization", other.bearer()))
+                    .andExpect(status().isNotFound());
+        }
+        assertThat(salaryOf(owner.id(), 2026)).isEqualTo(40_000_000L);
+
+        // 다른 회원이 같은 연도를 만들면 자기 기록이 따로 생기고 서로의 값이 섞이지 않는다.
+        putYear(mvc, serviceAdmin, 2026, yearBody(90_000_000L, 1, 12, 0, null)).andExpect(status().isCreated());
+        mvc.perform(get(URL + "/2026").header("Authorization", serviceAdmin.bearer()))
+                .andExpect(jsonPath("$.totalSalary").value(90_000_000));
+        mvc.perform(delete(URL + "/2026").header("Authorization", serviceAdmin.bearer()))
+                .andExpect(status().isNoContent());
+        mvc.perform(get(URL + "/2026").header("Authorization", owner.bearer()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalSalary").value(40_000_000));
+        assertThat(rowCount(owner.id())).isEqualTo(1);
+    }
+
+    @Test
+    void savingAgainWithRowVersionUpdatesTheOneRecord() throws Exception {
+        createYear(mvc, owner, 2026);
+
+        putYear(mvc, owner, 2026, yearBody(52_000_000L, 1, 12, 2, 0L))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalSalary").value(52_000_000))
+                .andExpect(jsonPath("$.childCount").value(2))
+                .andExpect(jsonPath("$.rowVersion").value(1));
+
+        assertThat(rowCount(owner.id())).isEqualTo(1);
+    }
+
+    @Test
+    void creatingAnExistingYearIsConflictAndKeepsTheFirstValues() throws Exception {
+        createYear(mvc, owner, 2026);
+
+        putYear(mvc, owner, 2026, yearBody(52_000_000L, 1, 12, 0, null))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("CONFLICT"));
+
+        assertThat(rowCount(owner.id())).isEqualTo(1);
+        assertThat(salaryOf(owner.id(), 2026)).isEqualTo(40_000_000L);
+    }
+
+    @Test
+    void creatingTheSameYearTwiceAtOnceKeepsOneRecord() throws Exception {
+        List<Callable<String>> calls = new ArrayList<>();
+        for (int i = 0; i < 4; i++) {
+            long salary = 40_000_000L + i;
+            calls.add(() -> Integer.toString(putYear(mvc, owner, 2026, yearBody(salary, 1, 12, 0, null))
+                    .andReturn().getResponse().getStatus()));
+        }
+
+        List<String> results = TaxLawConcurrencyTest.runTogether(calls);
+
+        // 먼저 만든 요청만 201이고 나머지는 UNIQUE (owner_id, tax_year) 위반 또는 rowVersion 없음으로 409다.
+        assertThat(results).containsExactlyInAnyOrder("201", "409", "409", "409");
+        assertThat(rowCount(owner.id())).isEqualTo(1);
+    }
+
+    @Test
+    void staleRowVersionIsConflictAndKeepsTheFirstSave() throws Exception {
+        createYear(mvc, owner, 2026);
+        putYear(mvc, owner, 2026, yearBody(52_000_000L, 1, 12, 0, 0L)).andExpect(status().isOk());
+
+        putYear(mvc, owner, 2026, yearBody(61_000_000L, 1, 12, 0, 0L))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("CONFLICT"));
+
+        assertThat(salaryOf(owner.id(), 2026)).isEqualTo(52_000_000L);
+    }
+
+    @Test
+    void updatingAYearDeletedElsewhereIsNotFoundAndDoesNotRecreateIt() throws Exception {
+        putYear(mvc, owner, 2026, yearBody(52_000_000L, 1, 12, 0, 0L)).andExpect(status().isNotFound());
+
+        assertThat(rowCount(owner.id())).isZero();
+    }
+
+    @Test
+    void rejectsInvalidBasicInfo() throws Exception {
+        String[] invalid = {
+                yearBody(40_000_000L, 7, 6, 0, null),              // 시작월 > 종료월
+                yearBody(0L, 1, 12, 0, null),                      // 총급여 0
+                yearBody(-1L, 1, 12, 0, null),
+                yearBody(10_000_000_000_000L, 1, 12, 0, null),     // 상한 초과
+                yearBody(40_000_000L, 0, 12, 0, null),
+                yearBody(40_000_000L, 1, 13, 0, null),
+                yearBody(40_000_000L, 1, 12, -1, null),
+                "{\"workStartMonth\": 1, \"workEndMonth\": 12, \"childCount\": 0}",
+                "{\"totalSalary\": 40000000, \"workStartMonth\": 1, \"workEndMonth\": 12}",
+                "{\"totalSalary\": 40000000.7, \"workStartMonth\": 1, \"workEndMonth\": 12, \"childCount\": 0}",
+                "{\"totalSalary\": 40000000, \"workStartMonth\": 1, \"workEndMonth\": 12, \"childCount\": 0,"
+                        + " \"rowVersion\": 0.5}",
+                ""
+        };
+        for (String body : invalid) {
+            putYear(mvc, owner, 2026, body)
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+        }
+        assertThat(rowCount(owner.id())).isZero();
+    }
+
+    @Test
+    void onlyThisYearAndItsNeighborsCanBeCreated() throws Exception {
+        for (int year : new int[]{2024, 2028, 1000, 9999}) {
+            putYear(mvc, owner, year, yearBody(40_000_000L, 1, 12, 0, null))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+        }
+        for (String year : new String[]{"999", "10000", "abc", "2026.5"}) {
+            mvc.perform(put(URL + "/" + year).header("Authorization", owner.bearer())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(yearBody(40_000_000L, 1, 12, 0, null)))
+                    .andExpect(status().isBadRequest());
+        }
+        for (int year : new int[]{2025, 2026, 2027}) {
+            createYear(mvc, owner, year);
+        }
+        assertThat(rowCount(owner.id())).isEqualTo(3);
+    }
+
+    @Test
+    void thisYearFollowsKoreanTimeAndOlderRecordsStayEditable() throws Exception {
+        createYear(mvc, owner, 2025);
+        // UTC로는 2026-12-31 15:30, 한국 시각으로는 2027-01-01 00:30이다.
+        clock.set(Instant.parse("2026-12-31T15:30:00Z"));
+
+        createYear(mvc, owner, 2028);
+        putYear(mvc, owner, 2024, yearBody(40_000_000L, 1, 12, 0, null)).andExpect(status().isBadRequest());
+
+        // 연도 범위는 만들 때만 본다. 범위를 벗어난 뒤에도 이미 있는 기록은 고치고 지울 수 있다.
+        clock.set(Instant.parse("2028-06-15T03:00:00Z"));
+        putYear(mvc, owner, 2025, yearBody(45_000_000L, 1, 12, 0, 0L)).andExpect(status().isOk());
+        mvc.perform(delete(URL + "/2025").header("Authorization", owner.bearer()))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    void deleteRemovesOnlyThatYear() throws Exception {
+        createYear(mvc, owner, 2025);
+        createYear(mvc, owner, 2026);
+
+        mvc.perform(delete(URL + "/2026").header("Authorization", owner.bearer()))
+                .andExpect(status().isNoContent());
+
+        mvc.perform(get(URL + "/2026").header("Authorization", owner.bearer()))
+                .andExpect(status().isNotFound());
+        mvc.perform(get(URL + "/2025").header("Authorization", owner.bearer()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.taxYear").value(2025));
+        mvc.perform(delete(URL + "/2026").header("Authorization", owner.bearer()))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void newYearRemembersTheCurrentLawVersion() throws Exception {
+        AuthedUser admin = TestAuth.signupAndLogin(mvc, "admin@example.test", "관리자");
+        TestAdmins.grant(jdbc, admin.id());
+        long lawId = TestTaxLaws.createFilledDraft(mvc, admin, 2026);
+        mvc.perform(post(TestTaxLaws.URL + "/" + lawId + "/apply").header("Authorization", admin.bearer())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"rowVersion\":1}"))
+                .andExpect(status().isOk());
+
+        putYear(mvc, owner, 2026, yearBody(40_000_000L, 1, 12, 0, null))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.lawVersion.id").value(lawId))
+                .andExpect(jsonPath("$.lawVersion.versionNo").value(1))
+                .andExpect(jsonPath("$.lawVersion.appliedAt").isNotEmpty())
+                // 2026 값은 자녀등 단계별 기본한도가 서로 다르다.
+                .andExpect(jsonPath("$.lawVersion.childTiersApply").value(true));
+
+        // 세법이 없는 다른 연도는 그대로 비어 있다.
+        putYear(mvc, owner, 2025, yearBody(40_000_000L, 1, 12, 0, null))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.lawVersion").value(nullValue()));
+    }
+
+    @Test
+    void requiresLogin() throws Exception {
+        mvc.perform(get(URL + "/2026")).andExpect(status().isUnauthorized());
+        mvc.perform(put(URL + "/2026").contentType(MediaType.APPLICATION_JSON)
+                        .content(yearBody(40_000_000L, 1, 12, 0, null)))
+                .andExpect(status().isUnauthorized());
+        mvc.perform(delete(URL + "/2026")).andExpect(status().isUnauthorized());
+    }
+}
+```
+
+- [ ] **Step 2: 실패 확인**
+
+Run: `cd apps/api && ./gradlew test --tests '*TaxYearApiTest'`
+Expected: `15 tests completed, 13 failed`. 경로가 아직 없어 모든 요청이 404(비로그인은 401)다. `missingYearIsNotFound`와 `requiresLogin`만 그 응답이 기대와 같아 통과한다.
+
+- [ ] **Step 3: migration**
+
+`migration/V10__create_tax_records.sql`
+
+```sql
+-- 소득공제 자료. 회원 소유이며 연도 기록 아래에 카드 자료·현금영수증 자료·지출계획이 딸린다.
+-- 금액은 원 단위 정수이고 상한은 화면의 금액 입력과 같은 9,999,999,999,999원이다.
+
+-- 연도 기록의 세법 버전은 같은 귀속연도의 버전만 가리킨다(아래 복합 FK가 쓴다).
+ALTER TABLE tax_law_versions ADD CONSTRAINT uq_tax_law_versions_id_year UNIQUE (id, tax_year);
+
+CREATE TABLE tax_year_records (
+    id               BIGSERIAL PRIMARY KEY,
+    owner_id         BIGINT      NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    tax_year         INTEGER     NOT NULL,
+    total_salary     BIGINT      NOT NULL CHECK (total_salary BETWEEN 1 AND 9999999999999),
+    work_start_month INTEGER     NOT NULL CHECK (work_start_month BETWEEN 1 AND 12),
+    work_end_month   INTEGER     NOT NULL CHECK (work_end_month BETWEEN work_start_month AND 12),
+    child_count      INTEGER     NOT NULL DEFAULT 0 CHECK (child_count >= 0),
+    -- NULL이면 그 귀속연도에 적용된 세법 버전이 아직 없다. 첫 버전이 적용될 때 채운다.
+    law_version_id   BIGINT,
+    row_version      BIGINT      NOT NULL DEFAULT 0,
+    created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT uq_tax_year_records_owner_year UNIQUE (owner_id, tax_year),
+    CONSTRAINT fk_tax_year_records_law_version FOREIGN KEY (law_version_id, tax_year)
+        REFERENCES tax_law_versions (id, tax_year)
+);
+
+-- 신용·체크 자료. 카드사별로 여러 건이고 금액 칸의 NULL은 미입력(모름), 0은 없음이다.
+CREATE TABLE tax_card_statements (
+    id             BIGSERIAL PRIMARY KEY,
+    record_id      BIGINT      NOT NULL REFERENCES tax_year_records (id) ON DELETE CASCADE,
+    issuer_name    VARCHAR(50) NOT NULL,
+    as_of_date     DATE        NOT NULL,
+    memo           VARCHAR(200),
+    credit_general BIGINT CHECK (credit_general BETWEEN 0 AND 9999999999999),
+    credit_market  BIGINT CHECK (credit_market BETWEEN 0 AND 9999999999999),
+    credit_transit BIGINT CHECK (credit_transit BETWEEN 0 AND 9999999999999),
+    credit_culture BIGINT CHECK (credit_culture BETWEEN 0 AND 9999999999999),
+    debit_general  BIGINT CHECK (debit_general BETWEEN 0 AND 9999999999999),
+    debit_market   BIGINT CHECK (debit_market BETWEEN 0 AND 9999999999999),
+    debit_transit  BIGINT CHECK (debit_transit BETWEEN 0 AND 9999999999999),
+    debit_culture  BIGINT CHECK (debit_culture BETWEEN 0 AND 9999999999999),
+    row_version    BIGINT      NOT NULL DEFAULT 0
+);
+
+CREATE INDEX idx_tax_card_statements_record ON tax_card_statements (record_id);
+
+-- 현금영수증 자료. 연도 기록당 하나다. 행이 없으면 한 번도 입력하지 않은 것(4칸이 빈 미완료)이다.
+CREATE TABLE tax_cash_receipts (
+    record_id   BIGINT PRIMARY KEY REFERENCES tax_year_records (id) ON DELETE CASCADE,
+    as_of_date  DATE   NOT NULL,
+    memo        VARCHAR(200),
+    general     BIGINT CHECK (general BETWEEN 0 AND 9999999999999),
+    market      BIGINT CHECK (market BETWEEN 0 AND 9999999999999),
+    transit     BIGINT CHECK (transit BETWEEN 0 AND 9999999999999),
+    culture     BIGINT CHECK (culture BETWEEN 0 AND 9999999999999),
+    row_version BIGINT NOT NULL DEFAULT 0
+);
+
+-- 지출계획. 연도 기록당 하나다. 소비구분 4 x (신용카드 고정 / 체크카드·현금영수증 고정 / 변경 가능).
+CREATE TABLE tax_spending_plans (
+    record_id            BIGINT PRIMARY KEY REFERENCES tax_year_records (id) ON DELETE CASCADE,
+    general_credit_fixed BIGINT NOT NULL DEFAULT 0 CHECK (general_credit_fixed BETWEEN 0 AND 9999999999999),
+    general_debit_fixed  BIGINT NOT NULL DEFAULT 0 CHECK (general_debit_fixed BETWEEN 0 AND 9999999999999),
+    general_flexible     BIGINT NOT NULL DEFAULT 0 CHECK (general_flexible BETWEEN 0 AND 9999999999999),
+    market_credit_fixed  BIGINT NOT NULL DEFAULT 0 CHECK (market_credit_fixed BETWEEN 0 AND 9999999999999),
+    market_debit_fixed   BIGINT NOT NULL DEFAULT 0 CHECK (market_debit_fixed BETWEEN 0 AND 9999999999999),
+    market_flexible      BIGINT NOT NULL DEFAULT 0 CHECK (market_flexible BETWEEN 0 AND 9999999999999),
+    transit_credit_fixed BIGINT NOT NULL DEFAULT 0 CHECK (transit_credit_fixed BETWEEN 0 AND 9999999999999),
+    transit_debit_fixed  BIGINT NOT NULL DEFAULT 0 CHECK (transit_debit_fixed BETWEEN 0 AND 9999999999999),
+    transit_flexible     BIGINT NOT NULL DEFAULT 0 CHECK (transit_flexible BETWEEN 0 AND 9999999999999),
+    culture_credit_fixed BIGINT NOT NULL DEFAULT 0 CHECK (culture_credit_fixed BETWEEN 0 AND 9999999999999),
+    culture_debit_fixed  BIGINT NOT NULL DEFAULT 0 CHECK (culture_debit_fixed BETWEEN 0 AND 9999999999999),
+    culture_flexible     BIGINT NOT NULL DEFAULT 0 CHECK (culture_flexible BETWEEN 0 AND 9999999999999),
+    row_version          BIGINT NOT NULL DEFAULT 0
+);
+```
+
+- [ ] **Step 4: 엔티티와 저장소**
+
+소유 회원·귀속연도는 만든 뒤 바뀌지 않는다(`updatable = false`). 저장소에는 소유 회원 조건이 있는 조회만 더한다.
+
+`main/tax/record/TaxYearRecord.java`
+
+```java
+package com.saladbowl.api.tax.record;
+
+import com.saladbowl.api.tax.record.TaxRecordDtos.YearRequest;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
+import jakarta.persistence.Table;
+import jakarta.persistence.Version;
+
+import java.time.OffsetDateTime;
+
+/** 회원 x 귀속연도마다 하나인 소득공제 연도 기록. 카드 자료·현금영수증 자료·지출계획이 이 행에 딸린다. */
+@Entity
+@Table(name = "tax_year_records")
+public class TaxYearRecord {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(name = "owner_id", nullable = false, updatable = false)
+    private long ownerId;
+
+    @Column(name = "tax_year", nullable = false, updatable = false)
+    private int taxYear;
+
+    @Column(name = "total_salary", nullable = false)
+    private long totalSalary;
+
+    @Column(name = "work_start_month", nullable = false)
+    private int workStartMonth;
+
+    @Column(name = "work_end_month", nullable = false)
+    private int workEndMonth;
+
+    @Column(name = "child_count", nullable = false)
+    private int childCount;
+
+    // 계산에 쓰는 세법 버전. null이면 그 귀속연도에 적용 버전이 아직 없다.
+    @Column(name = "law_version_id")
+    private Long lawVersionId;
+
+    // 수정 요청의 rowVersion과 비교해 다른 곳에서 먼저 고친 기본정보를 덮어쓰지 않게 한다.
+    @Version
+    @Column(name = "row_version", nullable = false)
+    private long rowVersion;
+
+    @Column(name = "created_at", nullable = false)
+    private OffsetDateTime createdAt;
+
+    @Column(name = "updated_at", nullable = false)
+    private OffsetDateTime updatedAt;
+
+    protected TaxYearRecord() {
+    }
+
+    public static TaxYearRecord create(long ownerId, int taxYear, YearRequest request, Long lawVersionId) {
+        TaxYearRecord record = new TaxYearRecord();
+        record.ownerId = ownerId;
+        record.taxYear = taxYear;
+        record.lawVersionId = lawVersionId;
+        record.edit(request);
+        return record;
+    }
+
+    /** 기본정보를 덮어쓴다. 이전 값은 남지 않는다. */
+    public void edit(YearRequest request) {
+        totalSalary = request.totalSalary();
+        workStartMonth = request.workStartMonth();
+        workEndMonth = request.workEndMonth();
+        childCount = request.childCount();
+    }
+
+    @PrePersist
+    void onCreate() {
+        createdAt = updatedAt = OffsetDateTime.now();
+    }
+
+    @PreUpdate
+    void onUpdate() {
+        updatedAt = OffsetDateTime.now();
+    }
+
+    public Long getId() { return id; }
+    public long getOwnerId() { return ownerId; }
+    public int getTaxYear() { return taxYear; }
+    public long getTotalSalary() { return totalSalary; }
+    public int getWorkStartMonth() { return workStartMonth; }
+    public int getWorkEndMonth() { return workEndMonth; }
+    public int getChildCount() { return childCount; }
+    public Long getLawVersionId() { return lawVersionId; }
+    public long getRowVersion() { return rowVersion; }
+}
+```
+
+`main/tax/record/TaxYearRecordRepository.java`
+
+```java
+package com.saladbowl.api.tax.record;
+
+import jakarta.persistence.LockModeType;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+import java.util.Optional;
+
+/** 연도 기록은 항상 소유 회원 조건으로 읽는다. id만으로 읽는 메서드(findById 등)를 서비스에서 쓰지 않는다. */
+public interface TaxYearRecordRepository extends JpaRepository<TaxYearRecord, Long> {
+
+    Optional<TaxYearRecord> findByOwnerIdAndTaxYear(long ownerId, int taxYear);
+
+    /** 연도 기록과 딸린 자료의 쓰기를 한 번에 하나만 실행하도록 연도 기록 행을 잠근다. */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select r from TaxYearRecord r where r.ownerId = :ownerId and r.taxYear = :taxYear")
+    Optional<TaxYearRecord> findOwnedForUpdate(@Param("ownerId") long ownerId, @Param("taxYear") int taxYear);
+}
+```
+
+- [ ] **Step 5: DTO**
+
+`@WholeNumber`는 PR 2의 `RowVersionDeserializer`를 금액에도 쓰기 위한 표시다. 붙이지 않으면 `40000000.7`이 40000000으로 잘려 저장된다(임시 복사본에서 확인).
+
+`main/tax/record/TaxRecordDtos.java`
+
+```java
+package com.saladbowl.api.tax.record;
+
+import com.saladbowl.api.tax.law.TaxLawDtos.RowVersionDeserializer;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
+import com.fasterxml.jackson.annotation.JacksonAnnotationsInside;
+import tools.jackson.databind.annotation.JsonDeserialize;
+
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+import java.time.OffsetDateTime;
+
+public final class TaxRecordDtos {
+
+    /** 금액 한 칸의 상한. 화면의 금액 입력(MoneyField), 세법 금액 검증과 같은 값이다. */
+    public static final long MAX_AMOUNT = 9_999_999_999_999L;
+
+    private TaxRecordDtos() {
+    }
+
+    /** 정수 토큰만 받는다. 기본 설정은 1000.7 같은 소수를 말없이 1000으로 잘라 저장한다. */
+    @Target({ElementType.FIELD, ElementType.PARAMETER, ElementType.RECORD_COMPONENT})
+    @Retention(RetentionPolicy.RUNTIME)
+    @JacksonAnnotationsInside
+    @JsonDeserialize(using = RowVersionDeserializer.class)
+    public @interface WholeNumber {
+    }
+
+    /** 기본정보. rowVersion이 없으면 새로 만들고, 있으면 그 버전의 기록을 고친다. */
+    public record YearRequest(
+            @NotNull @Min(1) @Max(MAX_AMOUNT) @WholeNumber Long totalSalary,
+            @NotNull @Min(1) @Max(12) Integer workStartMonth,
+            @NotNull @Min(1) @Max(12) Integer workEndMonth,
+            @NotNull @Min(0) @Max(99) Integer childCount,
+            @WholeNumber Long rowVersion) {
+    }
+
+    /** 연도 기록이 기억하는 세법 버전. childTiersApply는 웹이 자녀등 입력란을 보일지 판단하는 값이다. */
+    public record LawVersionRef(long id, int versionNo, OffsetDateTime appliedAt, boolean childTiersApply) {
+    }
+
+    /** 연도 기록 묶음. 모든 조회·저장 응답이 이 모양이다. */
+    public record TaxYearView(
+            int taxYear,
+            long rowVersion,
+            long totalSalary,
+            int workStartMonth,
+            int workEndMonth,
+            int childCount,
+            LawVersionRef lawVersion) {
+    }
+
+    /** 저장 결과. created가 true면 새로 만든 것(201)이다. */
+    public record SavedYear(boolean created, TaxYearView view) {
+    }
+}
+```
+
+- [ ] **Step 6: 서비스**
+
+`main/tax/record/TaxRecordService.java`
+
+```java
+package com.saladbowl.api.tax.record;
+
+import com.saladbowl.api.common.ApiException;
+import com.saladbowl.api.common.ErrorCode;
+import com.saladbowl.api.tax.law.TaxLawDtos.VersionResponse;
+import com.saladbowl.api.tax.law.TaxLawService;
+import com.saladbowl.api.tax.law.TaxLawVersion;
+import com.saladbowl.api.tax.law.TaxLawVersionRepository;
+import com.saladbowl.api.tax.record.TaxRecordDtos.LawVersionRef;
+import com.saladbowl.api.tax.record.TaxRecordDtos.SavedYear;
+import com.saladbowl.api.tax.record.TaxRecordDtos.TaxYearView;
+import com.saladbowl.api.tax.record.TaxRecordDtos.YearRequest;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.Clock;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.util.Optional;
+
+/**
+ * 회원 본인의 소득공제 자료. 서버 검사는 "요청자 = 소유자" 하나이고 그룹과 무관하다(GroupAccess를 쓰지 않는다).
+ * 모든 접근은 (요청자, 귀속연도)로 연도 기록을 찾는 데서 시작하므로 남의 자료와 없는 자료는 똑같이 404다.
+ */
+@Service
+public class TaxRecordService {
+
+    // "올해"는 한국 시각 기준이다. 서버 시계는 UTC라 그대로 쓰면 1월 1일 0~9시에 전년도가 올해가 된다.
+    private static final ZoneId KST = ZoneId.of("Asia/Seoul");
+
+    private final TaxYearRecordRepository records;
+    private final TaxLawService laws;
+    private final TaxLawVersionRepository lawVersions;
+    private final Clock clock;
+
+    public TaxRecordService(TaxYearRecordRepository records, TaxLawService laws,
+                            TaxLawVersionRepository lawVersions, Clock clock) {
+        this.records = records;
+        this.laws = laws;
+        this.lawVersions = lawVersions;
+        this.clock = clock;
+    }
+
+    @Transactional(readOnly = true)
+    public TaxYearView get(long userId, int year) {
+        return view(requireOwned(userId, year));
+    }
+
+    /** 없으면 만들고(rowVersion 없이), 있으면 기본정보를 고친다(rowVersion 필수). */
+    @Transactional
+    public SavedYear saveYear(long userId, int year, YearRequest request) {
+        if (request.workStartMonth() > request.workEndMonth()) {
+            throw invalid("workEndMonth: 종료월이 시작월보다 빠릅니다");
+        }
+        Optional<TaxYearRecord> existing = records.findOwnedForUpdate(userId, year);
+        if (existing.isEmpty()) {
+            if (request.rowVersion() != null) {
+                // 고치려던 기록이 다른 곳에서 삭제됐다. 말없이 다시 만들지 않는다.
+                throw notFound();
+            }
+            requireCreatableYear(year);
+            Long lawVersionId = laws.currentApplied(year).map(TaxLawVersion::getId).orElse(null);
+            // 같은 회원이 동시에 두 번 만들면 UNIQUE (owner_id, tax_year)가 한쪽을 409로 만든다.
+            TaxYearRecord created = records.saveAndFlush(TaxYearRecord.create(userId, year, request, lawVersionId));
+            return new SavedYear(true, view(created));
+        }
+        TaxYearRecord record = existing.get();
+        requireRowVersion(record.getRowVersion(), request.rowVersion());
+        record.edit(request);
+        // 응답에 올라간 rowVersion을 싣기 위해 여기서 반영한다.
+        return new SavedYear(false, view(records.saveAndFlush(record)));
+    }
+
+    /** 연도 기록과 딸린 카드 자료·현금영수증 자료·지출계획을 지운다(딸린 행은 DB의 ON DELETE CASCADE). */
+    @Transactional
+    public void deleteYear(long userId, int year) {
+        records.delete(lockOwned(userId, year));
+    }
+
+    /** 읽기용. 요청자의 그 귀속연도 기록이 없으면 404다. 조회(이 클래스와 PR 4의 분석)가 쓴다. */
+    public TaxYearRecord requireOwned(long userId, int year) {
+        return records.findByOwnerIdAndTaxYear(userId, year).orElseThrow(TaxRecordService::notFound);
+    }
+
+    /** 쓰기용. 연도 기록 행을 잠근다. 딸린 자료의 쓰기도 이 잠금 뒤에서 하므로 한 연도의 쓰기는 차례로 실행된다. */
+    TaxYearRecord lockOwned(long userId, int year) {
+        return records.findOwnedForUpdate(userId, year).orElseThrow(TaxRecordService::notFound);
+    }
+
+    private void requireCreatableYear(int year) {
+        int thisYear = LocalDate.now(clock.withZone(KST)).getYear();
+        if (year < thisYear - 1 || year > thisYear + 1) {
+            throw invalid("year: 올해·전년도·다음 해만 만들 수 있습니다");
+        }
+    }
+
+    private TaxYearView view(TaxYearRecord record) {
+        LawVersionRef lawVersion = record.getLawVersionId() == null ? null
+                : lawVersions.findById(record.getLawVersionId()).map(TaxRecordService::toRef).orElse(null);
+        return new TaxYearView(record.getTaxYear(), record.getRowVersion(), record.getTotalSalary(),
+                record.getWorkStartMonth(), record.getWorkEndMonth(), record.getChildCount(), lawVersion);
+    }
+
+    private static LawVersionRef toRef(TaxLawVersion version) {
+        boolean childTiersApply = VersionResponse.of(version, null, null, null).childTiersApply();
+        return new LawVersionRef(version.getId(), version.getVersionNo(), version.getAppliedAt(), childTiersApply);
+    }
+
+    /** 저장된 값과 요청의 rowVersion이 다르면(없는 것 포함) 다른 곳에서 먼저 바뀐 것이다. */
+    static void requireRowVersion(long stored, Long requested) {
+        if (requested == null || stored != requested) {
+            throw new ApiException(ErrorCode.CONFLICT, "tax record was modified elsewhere");
+        }
+    }
+
+    static ApiException invalid(String message) {
+        return new ApiException(ErrorCode.VALIDATION_FAILED, message);
+    }
+
+    static ApiException notFound() {
+        return new ApiException(ErrorCode.NOT_FOUND, "tax record not found");
+    }
+}
+```
+
+- [ ] **Step 7: 컨트롤러** — `@PathVariable`의 `@Min`·`@Max` 위반은 `HandlerMethodValidationException`, 숫자가 아닌 연도는 `MethodArgumentTypeMismatchException`이고 둘 다 기존 `GlobalExceptionHandler`가 400 `VALIDATION_FAILED`로 바꾼다. `GlobalExceptionHandler`·`SecurityConfig`·`TaxAdminInterceptor`는 고치지 않는다.
+
+`main/tax/record/TaxRecordController.java`
+
+```java
+package com.saladbowl.api.tax.record;
+
+import com.saladbowl.api.auth.CurrentUser;
+import com.saladbowl.api.tax.record.TaxRecordDtos.SavedYear;
+import com.saladbowl.api.tax.record.TaxRecordDtos.TaxYearView;
+import com.saladbowl.api.tax.record.TaxRecordDtos.YearRequest;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+/** 로그인한 회원 본인의 소득공제 자료. 경로에 회원 id가 없고 항상 요청자의 자료만 다룬다. */
+@RestController
+@RequestMapping("/tax/years/{year}")
+public class TaxRecordController {
+
+    private final TaxRecordService service;
+
+    public TaxRecordController(TaxRecordService service) {
+        this.service = service;
+    }
+
+    @GetMapping
+    public TaxYearView get(@CurrentUser Long userId, @PathVariable @Min(1000) @Max(9999) int year) {
+        return service.get(userId, year);
+    }
+
+    @PutMapping
+    public ResponseEntity<TaxYearView> save(@CurrentUser Long userId, @PathVariable @Min(1000) @Max(9999) int year,
+                                            @Valid @RequestBody YearRequest request) {
+        SavedYear saved = service.saveYear(userId, year, request);
+        return ResponseEntity.status(saved.created() ? HttpStatus.CREATED : HttpStatus.OK).body(saved.view());
+    }
+
+    @DeleteMapping
+    public ResponseEntity<Void> delete(@CurrentUser Long userId, @PathVariable @Min(1000) @Max(9999) int year) {
+        service.deleteYear(userId, year);
+        return ResponseEntity.noContent().build();
+    }
+}
+```
+
+- [ ] **Step 8: 통과 확인**
+
+Run: `cd apps/api && ./gradlew test --tests '*TaxYearApiTest'`
+Expected: `BUILD SUCCESSFUL`. `TaxYearApiTest` 15건 통과.
+
+- [ ] **Step 9: 전체 테스트**
+
+Run: `cd apps/api && ./gradlew test`
+Expected: `BUILD SUCCESSFUL`(임시 복사본에서는 전체 344건 통과. `ddl-auto: validate`와 V10이 맞는지 여기서 확인된다).
+
+- [ ] **Step 10: 커밋(컨트롤러)** — Codex는 커밋하지 않는다. 컨트롤러가 보고와 diff를 확인한 뒤 커밋한다.
+
+```bash
+git add apps/api/src/main/resources/db/migration/V10__create_tax_records.sql apps/api/src/main/java/com/saladbowl/api/tax/record apps/api/src/test/java/com/saladbowl/api/support/TestClock.java apps/api/src/test/java/com/saladbowl/api/support/TestTaxRecords.java apps/api/src/test/java/com/saladbowl/api/tax/record apps/api/src/test/java/com/saladbowl/api/tax/law/TaxLawConcurrencyTest.java
+git commit -m "feat(api): 소득공제 연도 기록 만들기·조회·수정·삭제와 소유권" -m "Co-Authored-By: Codex (gpt-6-astra) <noreply@openai.com>"
+```
+
+---
 
 ### Task 3.2: 카드 자료·현금영수증 자료와 연도 합계 (TAX-21, 22, 23, 24, 26, 27, 28)
 
-**담당:** Codex `gpt-6-sol` / `medium` (`api`), 태그 `impl-api`. 리뷰: Claude Fable 5.2.
+**담당:** Codex `gpt-6-sol` / `medium` (`api`), 태그 `impl-api`. 리뷰: Claude Fable 5.2 (`review-task`).
 
-- Files: Create `tax/record/TaxCardStatement.java`, `TaxCashReceipt.java`, 저장소 2개, `SpendingTotals.java`, `tax/record/TaxStatementApiTest.java`. Modify `TaxRecordService.java`, `TaxRecordController.java`, `TaxRecordDtos.java`.
-- Interfaces — Produces: `record SpendingTotals(long creditGeneral, long creditMarket, long creditTransit, long creditCulture, long debitGeneral, long debitMarket, long debitTransit, long debitCulture, long cashGeneral, long cashMarket, long cashTransit, long cashCulture)`와 `SpendingTotals.of(cards, cashReceipt)`, `blankCount`, `asOfDateMismatch` 계산. 위 표의 cards·cash-receipt 경로.
-- 테스트 대상(AC-01, 14, 15, 22, 28, 31, 33, 37): 남의 `cardId`로 수정·삭제 404이고 데이터 불변, 같은 카드사명 두 건 저장 가능, 빈 칸(null)과 0 구별·`blankCount`, 현금영수증 미입력 연도의 `blankCount`에 4 포함, 0으로 채우면 0, 음수·상한 초과 400, 기준일이 귀속연도 밖이면 400, 카드사명 공백 제거·빈 값 400·50자 초과 400, 합계가 그 연도 자료의 합과 같고 다른 연도는 더하지 않음, 카드 자료 삭제 뒤 합계 감소, 현금영수증 `DELETE`는 405(경로 없음), 연도 기록 삭제 시 현금영수증도 삭제, 기준일이 서로 다르면 `asOfDateMismatch=true`·같으면 false, `rowVersion` 불일치 409.
+**Files:**
+- Create: `main/tax/record/TaxCardStatement.java`, `TaxCashReceipt.java`, `TaxCardStatementRepository.java`, `TaxCashReceiptRepository.java`, `SpendingTotals.java`
+- Modify: `main/tax/record/TaxRecordDtos.java`, `TaxRecordService.java`, `TaxRecordController.java`
+- Modify: `test/support/TestTaxRecords.java`
+- Test: `test/tax/record/TaxStatementApiTest.java`(생성)
+
+**Interfaces:**
+- Consumes: Task 3.1의 `TaxRecordService.lockOwned(long userId, int year): TaxYearRecord`, `requireRowVersion(long stored, Long requested)`, `invalid(String)`, `notFound()`, `view(TaxYearRecord)`, `TaxRecordDtos.MAX_AMOUNT`·`@WholeNumber`·`TaxYearView`, `TestClock.Config`, `TestTaxRecords.URL`·`createYear`.
+- Produces:
+  - `TaxRecordDtos.CardAmounts(Long creditGeneral, Long creditMarket, Long creditTransit, Long creditCulture, Long debitGeneral, Long debitMarket, Long debitTransit, Long debitCulture)`, `CashAmounts(Long general, Long market, Long transit, Long culture)`, `CardRequest(String issuerName, LocalDate asOfDate, String memo, CardAmounts amounts, Long rowVersion)`, `CashRequest(LocalDate asOfDate, String memo, CashAmounts amounts, Long rowVersion)`, `CardView(long id, long rowVersion, String issuerName, LocalDate asOfDate, String memo, CardAmounts amounts, int blankCount)`, `CashView(long rowVersion, LocalDate asOfDate, String memo, CashAmounts amounts, int blankCount)`.
+  - `TaxYearView`에 `List<CardView> cards, CashView cashReceipt, SpendingTotals totals, int blankCount, boolean hasInputs, boolean asOfDateMismatch`가 `lawVersion` 뒤에 붙는다.
+  - `record SpendingTotals(long creditGeneral, long creditMarket, long creditTransit, long creditCulture, long debitGeneral, long debitMarket, long debitTransit, long debitCulture, long cashGeneral, long cashMarket, long cashTransit, long cashCulture)`, `static SpendingTotals.of(List<TaxCardStatement> cards, TaxCashReceipt cashReceiptOrNull)`, `max(): long`. PR 4의 계산기 입력이다.
+  - `TaxCardStatement`: `static create(long recordId, String issuerName, LocalDate asOfDate, String memo, CardAmounts)`, `edit(...)`, `amounts(): CardAmounts`, `blankCount(): int`, `getId()`, `getIssuerName()`, `getAsOfDate()`, `getMemo()`, `getRowVersion(): long`. `TaxCashReceipt`: `static create(long recordId, LocalDate asOfDate, String memo, CashAmounts)`, `edit(...)`, `amounts()`, `blankCount()`, `getAsOfDate()`, `getMemo()`, `getRowVersion(): Long`.
+  - `TaxCardStatementRepository.findByRecordIdOrderByIdAsc(long recordId)`, `findByIdAndRecordId(long id, long recordId)`. `TaxCashReceiptRepository`(기본 키 = 연도 기록 id).
+  - `TaxRecordService`: `addCard(long userId, int year, CardRequest): TaxYearView`, `updateCard(long userId, int year, long cardId, CardRequest): TaxYearView`, `deleteCard(long userId, int year, long cardId, long rowVersion): void`, `saveCashReceipt(long userId, int year, CashRequest): TaxYearView`, `static conflict()`.
+  - HTTP: `POST /tax/years/{year}/cards`, `PUT`·`DELETE /tax/years/{year}/cards/{cardId}`, `PUT /tax/years/{year}/cash-receipt`.
+  - 테스트 헬퍼 `TestTaxRecords.cardBody(String issuerName, String asOfDate, Long rowVersion, Long... amounts8)`, `cashBody(String asOfDate, Long rowVersion, Long... amounts4)`, `postCard`, `addCard(mvc, user, year, body): long`(id), `putCard(mvc, user, year, cardId, body)`, `putCash(mvc, user, year, body)`.
+
+건수 상한: `TaxRecordDtos.MAX_CARDS = 50`. `addCard`는 `lockOwned` 안에서 그 연도 기록의 카드 자료 수가 이미 50이면 `invalid`(400)를 던진다(테스트: 50건 추가 후 51번째 400, 한 건 삭제 뒤 다시 추가 201, 다른 연도·다른 회원의 건수와 무관).
+
+합계 규칙: `totals`는 그 연도 기록의 카드 자료 행과 현금영수증 자료 행에서 `SpendingTotals.of`가 더한다. 미입력(`null`)은 0으로 더하고 `blankCount`에 따로 센다. 현금영수증 자료 행이 없으면 4칸이 빈 것으로 센다. `asOfDateMismatch`는 카드 자료와 현금영수증 자료의 기준일이 두 가지 이상인지다. 테스트의 합계 기대값은 합성 금액을 손으로 더한 값이다(예: 신용카드 일반 1,000,000 + 500,000 = 1,500,000).
+
+- [ ] **Step 1: 실패하는 테스트 작성**
+
+헬퍼를 더한다.
+
+`test/support/TestTaxRecords.java`
+
+```diff
+--- a/apps/api/src/test/java/com/saladbowl/api/support/TestTaxRecords.java
++++ b/apps/api/src/test/java/com/saladbowl/api/support/TestTaxRecords.java
+@@ -1,9 +1,11 @@
+ package com.saladbowl.api.support;
+ 
++import com.jayway.jsonpath.JsonPath;
+ import org.springframework.http.MediaType;
+ import org.springframework.test.web.servlet.MockMvc;
+ import org.springframework.test.web.servlet.ResultActions;
+ 
++import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+ 
+@@ -32,4 +34,50 @@
+     public static void createYear(MockMvc mvc, TestAuth.AuthedUser user, int year) throws Exception {
+         putYear(mvc, user, year, yearBody(40_000_000L, 1, 12, 0, null)).andExpect(status().isCreated());
+     }
++
++    /**
++     * 카드 자료 본문. amounts는 신용카드 일반·전통시장·대중교통·문화체육, 체크카드 일반·전통시장·대중교통·문화체육
++     * 순서의 8칸이고 null은 미입력이다.
++     */
++    public static String cardBody(String issuerName, String asOfDate, Long rowVersion, Long... amounts) {
++        return """
++                {"issuerName": "%s", "asOfDate": "%s", "rowVersion": %s, "amounts": {
++                  "creditGeneral": %s, "creditMarket": %s, "creditTransit": %s, "creditCulture": %s,
++                  "debitGeneral": %s, "debitMarket": %s, "debitTransit": %s, "debitCulture": %s}}
++                """.formatted(issuerName, asOfDate, rowVersion, amounts[0], amounts[1], amounts[2], amounts[3],
++                amounts[4], amounts[5], amounts[6], amounts[7]);
++    }
++
++    /** 현금영수증 자료 본문. amounts는 일반·전통시장·대중교통·문화체육 순서의 4칸이고 null은 미입력이다. */
++    public static String cashBody(String asOfDate, Long rowVersion, Long... amounts) {
++        return """
++                {"asOfDate": "%s", "rowVersion": %s, "amounts": {
++                  "general": %s, "market": %s, "transit": %s, "culture": %s}}
++                """.formatted(asOfDate, rowVersion, amounts[0], amounts[1], amounts[2], amounts[3]);
++    }
++
++    public static ResultActions postCard(MockMvc mvc, TestAuth.AuthedUser user, int year, String body)
++            throws Exception {
++        return mvc.perform(post(URL + "/" + year + "/cards").header("Authorization", user.bearer())
++                .contentType(MediaType.APPLICATION_JSON).content(body));
++    }
++
++    /** 카드 자료를 추가하고 그 id를 돌려준다. 만든 뒤의 rowVersion은 0이다. */
++    public static long addCard(MockMvc mvc, TestAuth.AuthedUser user, int year, String body) throws Exception {
++        String response = postCard(mvc, user, year, body).andExpect(status().isCreated())
++                .andReturn().getResponse().getContentAsString();
++        return ((Number) JsonPath.read(response, "$.cards[-1].id")).longValue();
++    }
++
++    public static ResultActions putCard(MockMvc mvc, TestAuth.AuthedUser user, int year, long cardId, String body)
++            throws Exception {
++        return mvc.perform(put(URL + "/" + year + "/cards/" + cardId).header("Authorization", user.bearer())
++                .contentType(MediaType.APPLICATION_JSON).content(body));
++    }
++
++    public static ResultActions putCash(MockMvc mvc, TestAuth.AuthedUser user, int year, String body)
++            throws Exception {
++        return mvc.perform(put(URL + "/" + year + "/cash-receipt").header("Authorization", user.bearer())
++                .contentType(MediaType.APPLICATION_JSON).content(body));
++    }
+ }
+```
+
+`test/tax/record/TaxStatementApiTest.java`
+
+```java
+package com.saladbowl.api.tax.record;
+
+import com.saladbowl.api.support.IntegrationTest;
+import com.saladbowl.api.support.TestAdmins;
+import com.saladbowl.api.support.TestAuth;
+import com.saladbowl.api.support.TestAuth.AuthedUser;
+import com.saladbowl.api.support.TestClock;
+import com.saladbowl.api.support.TestGroups;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Import;
+import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.web.servlet.MockMvc;
+
+import static com.saladbowl.api.support.TestTaxRecords.URL;
+import static com.saladbowl.api.support.TestTaxRecords.addCard;
+import static com.saladbowl.api.support.TestTaxRecords.cardBody;
+import static com.saladbowl.api.support.TestTaxRecords.cashBody;
+import static com.saladbowl.api.support.TestTaxRecords.createYear;
+import static com.saladbowl.api.support.TestTaxRecords.postCard;
+import static com.saladbowl.api.support.TestTaxRecords.putCard;
+import static com.saladbowl.api.support.TestTaxRecords.putCash;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.nullValue;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+/**
+ * 카드 자료·현금영수증 자료와 연도 합계
+ * (TAX-21, 22, 23, 24, 26, 27, 28, 29, AC-01, 14, 15, 22, 28, 31, 33, 37). 금액은 모두 합성값이고 테스트의 올해는 2026이다.
+ */
+@Import(TestClock.Config.class)
+class TaxStatementApiTest extends IntegrationTest {
+
+    private static final long MAX = 9_999_999_999_999L;
+
+    @Autowired
+    MockMvc mvc;
+
+    @Autowired
+    JdbcTemplate jdbc;
+
+    AuthedUser owner;
+
+    @BeforeEach
+    void createOwnerYear() throws Exception {
+        owner = TestAuth.signupAndLogin(mvc, "owner@example.test", "소유자");
+        createYear(mvc, owner, 2026);
+    }
+
+    /** 신용카드 1,000,000 / 200,000 / 50,000 / 30,000, 체크카드 400,000 / 100,000 / 20,000 / 10,000. */
+    private static String fullCard(String issuerName, String asOfDate, Long rowVersion) {
+        return cardBody(issuerName, asOfDate, rowVersion,
+                1_000_000L, 200_000L, 50_000L, 30_000L, 400_000L, 100_000L, 20_000L, 10_000L);
+    }
+
+    private int count(String table) {
+        return jdbc.queryForObject("SELECT count(*) FROM " + table, Integer.class);
+    }
+
+    private long creditGeneralOf(long cardId) {
+        return jdbc.queryForObject("SELECT credit_general FROM tax_card_statements WHERE id = ?", Long.class, cardId);
+    }
+
+    @Test
+    void yearWithoutStatementsIsIncompleteWithZeroTotals() throws Exception {
+        mvc.perform(get(URL + "/2026").header("Authorization", owner.bearer()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.cards", hasSize(0)))
+                .andExpect(jsonPath("$.cashReceipt").value(nullValue()))
+                .andExpect(jsonPath("$.hasInputs").value(false))
+                // 현금영수증 자료를 한 번도 입력하지 않았으므로 4칸이 비어 있다(TAX-24).
+                .andExpect(jsonPath("$.blankCount").value(4))
+                .andExpect(jsonPath("$.asOfDateMismatch").value(false))
+                .andExpect(jsonPath("$.totals.creditGeneral").value(0))
+                .andExpect(jsonPath("$.totals.cashCulture").value(0));
+    }
+
+    @Test
+    void addingACardReturnsTheYearViewWithIt() throws Exception {
+        postCard(mvc, owner, 2026, """
+                {"issuerName": "  합성카드  ", "asOfDate": "2026-10-31", "memo": "  10월 말 누계  ", "amounts": {
+                  "creditGeneral": 1000000, "creditMarket": 200000, "creditTransit": 50000, "creditCulture": 30000,
+                  "debitGeneral": 400000, "debitMarket": 100000, "debitTransit": 20000, "debitCulture": 10000}}
+                """)
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.cards", hasSize(1)))
+                .andExpect(jsonPath("$.cards[0].id").isNumber())
+                .andExpect(jsonPath("$.cards[0].rowVersion").value(0))
+                .andExpect(jsonPath("$.cards[0].issuerName").value("합성카드"))
+                .andExpect(jsonPath("$.cards[0].asOfDate").value("2026-10-31"))
+                .andExpect(jsonPath("$.cards[0].memo").value("10월 말 누계"))
+                .andExpect(jsonPath("$.cards[0].amounts.creditGeneral").value(1_000_000))
+                .andExpect(jsonPath("$.cards[0].amounts.debitCulture").value(10_000))
+                .andExpect(jsonPath("$.cards[0].blankCount").value(0))
+                .andExpect(jsonPath("$.hasInputs").value(true))
+                .andExpect(jsonPath("$.blankCount").value(4))
+                // 카드 자료를 더해도 연도 기록(기본정보)의 rowVersion은 그대로다. 비교 단위는 행 하나다.
+                .andExpect(jsonPath("$.rowVersion").value(0));
+    }
+
+    @Test
+    void sameIssuerNameCanBeSavedTwice() throws Exception {
+        addCard(mvc, owner, 2026, fullCard("합성카드", "2026-10-31", null));
+        addCard(mvc, owner, 2026, fullCard("합성카드", "2026-10-31", null));
+
+        mvc.perform(get(URL + "/2026").header("Authorization", owner.bearer()))
+                .andExpect(jsonPath("$.cards", hasSize(2)))
+                .andExpect(jsonPath("$.cards[0].issuerName").value("합성카드"))
+                .andExpect(jsonPath("$.cards[1].issuerName").value("합성카드"))
+                .andExpect(jsonPath("$.totals.creditGeneral").value(2_000_000));
+    }
+
+    @Test
+    void blankAndZeroAreDifferentAndFillingZerosCompletesTheYear() throws Exception {
+        long cardId = addCard(mvc, owner, 2026, cardBody("합성카드", "2026-10-31", null,
+                1_000_000L, null, 0L, null, 400_000L, 0L, null, 0L));
+
+        mvc.perform(get(URL + "/2026").header("Authorization", owner.bearer()))
+                .andExpect(jsonPath("$.cards[0].amounts.creditMarket").value(nullValue()))
+                .andExpect(jsonPath("$.cards[0].amounts.creditTransit").value(0))
+                .andExpect(jsonPath("$.cards[0].blankCount").value(3))
+                .andExpect(jsonPath("$.blankCount").value(7))
+                // 미입력 칸은 합계에서 0으로 더한다.
+                .andExpect(jsonPath("$.totals.creditGeneral").value(1_000_000))
+                .andExpect(jsonPath("$.totals.creditMarket").value(0));
+
+        putCard(mvc, owner, 2026, cardId, cardBody("합성카드", "2026-10-31", 0L,
+                1_000_000L, 0L, 0L, 0L, 400_000L, 0L, 0L, 0L))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.cards[0].blankCount").value(0))
+                .andExpect(jsonPath("$.blankCount").value(4));
+
+        putCash(mvc, owner, 2026, cashBody("2026-10-31", null, 0L, null, 0L, 0L))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.cashReceipt.blankCount").value(1))
+                .andExpect(jsonPath("$.blankCount").value(1));
+        putCash(mvc, owner, 2026, cashBody("2026-10-31", 0L, 0L, 0L, 0L, 0L))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.cashReceipt.blankCount").value(0))
+                .andExpect(jsonPath("$.blankCount").value(0));
+    }
+
+    @Test
+    void totalsAreTheSumOfThatYearsStatementsOnly() throws Exception {
+        createYear(mvc, owner, 2025);
+        addCard(mvc, owner, 2025, cardBody("작년카드", "2025-12-31", null,
+                7_000_000L, 7_000_000L, 7_000_000L, 7_000_000L, 7_000_000L, 7_000_000L, 7_000_000L, 7_000_000L));
+        putCash(mvc, owner, 2025, cashBody("2025-12-31", null, 7_000_000L, 7_000_000L, 7_000_000L, 7_000_000L))
+                .andExpect(status().isOk());
+        long first = addCard(mvc, owner, 2026, fullCard("합성카드", "2026-10-31", null));
+        long second = addCard(mvc, owner, 2026, cardBody("가상카드", "2026-10-31", null,
+                500_000L, 0L, 70_000L, 0L, 250_000L, 30_000L, 0L, 5_000L));
+        putCash(mvc, owner, 2026, cashBody("2026-10-31", null, 120_000L, 40_000L, 0L, 8_000L))
+                .andExpect(status().isOk());
+
+        mvc.perform(get(URL + "/2026").header("Authorization", owner.bearer()))
+                .andExpect(jsonPath("$.totals.creditGeneral").value(1_500_000))
+                .andExpect(jsonPath("$.totals.creditMarket").value(200_000))
+                .andExpect(jsonPath("$.totals.creditTransit").value(120_000))
+                .andExpect(jsonPath("$.totals.creditCulture").value(30_000))
+                .andExpect(jsonPath("$.totals.debitGeneral").value(650_000))
+                .andExpect(jsonPath("$.totals.debitMarket").value(130_000))
+                .andExpect(jsonPath("$.totals.debitTransit").value(20_000))
+                .andExpect(jsonPath("$.totals.debitCulture").value(15_000))
+                .andExpect(jsonPath("$.totals.cashGeneral").value(120_000))
+                .andExpect(jsonPath("$.totals.cashMarket").value(40_000))
+                .andExpect(jsonPath("$.totals.cashTransit").value(0))
+                .andExpect(jsonPath("$.totals.cashCulture").value(8_000));
+
+        // 수정은 덮어쓰기다. 이전 값에 더하지 않는다.
+        putCard(mvc, owner, 2026, second, cardBody("가상카드", "2026-10-31", 0L,
+                600_000L, 0L, 70_000L, 0L, 250_000L, 30_000L, 0L, 5_000L))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totals.creditGeneral").value(1_600_000));
+
+        // 한 건을 지우면 그 자료의 금액만 빠진다(AC-22).
+        mvc.perform(delete(URL + "/2026/cards/" + first).param("rowVersion", "0")
+                        .header("Authorization", owner.bearer()))
+                .andExpect(status().isNoContent());
+        mvc.perform(get(URL + "/2026").header("Authorization", owner.bearer()))
+                .andExpect(jsonPath("$.cards", hasSize(1)))
+                .andExpect(jsonPath("$.totals.creditGeneral").value(600_000))
+                .andExpect(jsonPath("$.totals.creditMarket").value(0))
+                .andExpect(jsonPath("$.totals.debitGeneral").value(250_000))
+                .andExpect(jsonPath("$.totals.cashGeneral").value(120_000));
+        mvc.perform(get(URL + "/2025").header("Authorization", owner.bearer()))
+                .andExpect(jsonPath("$.totals.creditGeneral").value(7_000_000));
+    }
+
+    @Test
+    void cashReceiptIsOnePerYearAndCannotBeDeleted() throws Exception {
+        putCash(mvc, owner, 2026, cashBody("2026-10-31", null, 120_000L, 40_000L, 0L, 8_000L))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.cashReceipt.rowVersion").value(0))
+                .andExpect(jsonPath("$.cashReceipt.asOfDate").value("2026-10-31"))
+                .andExpect(jsonPath("$.cashReceipt.amounts.general").value(120_000))
+                .andExpect(jsonPath("$.hasInputs").value(true));
+        putCash(mvc, owner, 2026, cashBody("2026-11-30", 0L, 150_000L, 40_000L, 0L, 8_000L))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.cashReceipt.rowVersion").value(1))
+                .andExpect(jsonPath("$.cashReceipt.amounts.general").value(150_000));
+        assertThat(count("tax_cash_receipts")).isEqualTo(1);
+
+        // 삭제 경로가 없다(D19, AC-37).
+        mvc.perform(delete(URL + "/2026/cash-receipt").header("Authorization", owner.bearer()))
+                .andExpect(status().isMethodNotAllowed());
+        mvc.perform(post(URL + "/2026/cash-receipt").header("Authorization", owner.bearer())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(cashBody("2026-11-30", 1L, 0L, 0L, 0L, 0L)))
+                .andExpect(status().isMethodNotAllowed());
+        assertThat(count("tax_cash_receipts")).isEqualTo(1);
+    }
+
+    @Test
+    void staleCashReceiptSaveIsConflictAndKeepsTheFirstSave() throws Exception {
+        // 아직 없는 자료를 고치려는 요청(rowVersion 있음)은 만들지 않는다.
+        putCash(mvc, owner, 2026, cashBody("2026-10-31", 0L, 1L, 1L, 1L, 1L)).andExpect(status().isConflict());
+        assertThat(count("tax_cash_receipts")).isZero();
+
+        putCash(mvc, owner, 2026, cashBody("2026-10-31", null, 120_000L, 0L, 0L, 0L)).andExpect(status().isOk());
+        putCash(mvc, owner, 2026, cashBody("2026-10-31", 0L, 150_000L, 0L, 0L, 0L)).andExpect(status().isOk());
+
+        // 옛 rowVersion, 그리고 이미 있는데 새로 만들려는 요청(rowVersion 없음) 모두 409다.
+        for (Long stale : new Long[]{0L, null}) {
+            putCash(mvc, owner, 2026, cashBody("2026-10-31", stale, 999_000L, 0L, 0L, 0L))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.code").value("CONFLICT"));
+        }
+        mvc.perform(get(URL + "/2026").header("Authorization", owner.bearer()))
+                .andExpect(jsonPath("$.cashReceipt.amounts.general").value(150_000))
+                .andExpect(jsonPath("$.cashReceipt.rowVersion").value(1));
+    }
+
+    @Test
+    void staleCardSaveOrDeleteIsConflictAndKeepsTheFirstSave() throws Exception {
+        long cardId = addCard(mvc, owner, 2026, fullCard("합성카드", "2026-10-31", null));
+        putCard(mvc, owner, 2026, cardId, cardBody("합성카드", "2026-11-30", 0L,
+                1_300_000L, 200_000L, 50_000L, 30_000L, 400_000L, 100_000L, 20_000L, 10_000L))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.cards[0].rowVersion").value(1));
+
+        for (Long stale : new Long[]{0L, null}) {
+            putCard(mvc, owner, 2026, cardId, fullCard("합성카드", "2026-10-31", stale))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.code").value("CONFLICT"));
+        }
+        mvc.perform(delete(URL + "/2026/cards/" + cardId).param("rowVersion", "0")
+                        .header("Authorization", owner.bearer()))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("CONFLICT"));
+        for (String invalid : new String[]{"", "wrong", "1.5"}) {
+            mvc.perform(delete(URL + "/2026/cards/" + cardId).param("rowVersion", invalid)
+                            .header("Authorization", owner.bearer()))
+                    .andExpect(status().isBadRequest());
+        }
+        mvc.perform(delete(URL + "/2026/cards/" + cardId).header("Authorization", owner.bearer()))
+                .andExpect(status().isBadRequest());
+        assertThat(creditGeneralOf(cardId)).isEqualTo(1_300_000L);
+
+        mvc.perform(delete(URL + "/2026/cards/" + cardId).param("rowVersion", "1")
+                        .header("Authorization", owner.bearer()))
+                .andExpect(status().isNoContent());
+        assertThat(count("tax_card_statements")).isZero();
+    }
+
+    @Test
+    void asOfDateMismatchIsReportedOnlyWhenDatesDiffer() throws Exception {
+        addCard(mvc, owner, 2026, fullCard("합성카드", "2026-10-31", null));
+        long second = addCard(mvc, owner, 2026, fullCard("가상카드", "2026-10-31", null));
+        putCash(mvc, owner, 2026, cashBody("2026-10-31", null, 0L, 0L, 0L, 0L))
+                .andExpect(jsonPath("$.asOfDateMismatch").value(false));
+
+        putCard(mvc, owner, 2026, second, fullCard("가상카드", "2026-11-30", 0L))
+                .andExpect(jsonPath("$.asOfDateMismatch").value(true));
+        putCard(mvc, owner, 2026, second, fullCard("가상카드", "2026-10-31", 1L))
+                .andExpect(jsonPath("$.asOfDateMismatch").value(false));
+        // 현금영수증 자료의 기준일만 달라도 불일치다.
+        putCash(mvc, owner, 2026, cashBody("2026-09-30", 0L, 0L, 0L, 0L, 0L))
+                .andExpect(jsonPath("$.asOfDateMismatch").value(true));
+    }
+
+    @Test
+    void rejectsInvalidStatements() throws Exception {
+        String fifty = "가".repeat(50);
+        addCard(mvc, owner, 2026, fullCard("  " + fifty + "  ", "2026-01-01", null));
+        addCard(mvc, owner, 2026, fullCard("연말카드", "2026-12-31", null));
+
+        String[] invalidCards = {
+                fullCard("   ", "2026-10-31", null),
+                fullCard(fifty + "가", "2026-10-31", null),
+                fullCard("합성카드", "2025-12-31", null),
+                fullCard("합성카드", "2027-01-01", null),
+                fullCard("합성카드", "2026-02-30", null),
+                cardBody("합성카드", "2026-10-31", null, -1L, 0L, 0L, 0L, 0L, 0L, 0L, 0L),
+                cardBody("합성카드", "2026-10-31", null, 0L, 0L, 0L, 0L, 0L, 0L, 0L, MAX + 1),
+                fullCard("합성카드", "2026-10-31", null).replace("1000000,", "1000000.5,"),
+                "{\"asOfDate\": \"2026-10-31\", \"amounts\": {}}",
+                "{\"issuerName\": \"합성카드\", \"amounts\": {}}",
+                "{\"issuerName\": \"합성카드\", \"asOfDate\": \"2026-10-31\"}",
+                "{\"issuerName\": \"합성카드\", \"asOfDate\": \"2026-10-31\", \"amounts\": {}, \"memo\": \""
+                        + "가".repeat(201) + "\"}"
+        };
+        for (String body : invalidCards) {
+            postCard(mvc, owner, 2026, body)
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+        }
+        assertThat(count("tax_card_statements")).isEqualTo(2);
+
+        String[] invalidCash = {
+                cashBody("2025-12-31", null, 0L, 0L, 0L, 0L),
+                cashBody("2026-10-31", null, -1L, 0L, 0L, 0L),
+                cashBody("2026-10-31", null, 0L, 0L, 0L, MAX + 1),
+                "{\"amounts\": {}}",
+                "{\"asOfDate\": \"2026-10-31\"}"
+        };
+        for (String body : invalidCash) {
+            putCash(mvc, owner, 2026, body)
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+        }
+        assertThat(count("tax_cash_receipts")).isZero();
+
+        // 금액 칸은 비워 둘 수 있고(8칸 모두 미입력), 한 칸의 상한은 9,999,999,999,999원이다.
+        postCard(mvc, owner, 2026, "{\"issuerName\": \"빈카드\", \"asOfDate\": \"2026-10-31\", \"amounts\": {}}")
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.cards[2].blankCount").value(8));
+        putCash(mvc, owner, 2026, cashBody("2026-10-31", null, MAX, 0L, 0L, 0L)).andExpect(status().isOk());
+    }
+
+    @Test
+    void yearTotalAboveTheLimitIsRejectedAndRolledBack() throws Exception {
+        long first = addCard(mvc, owner, 2026, cardBody("합성카드", "2026-10-31", null,
+                MAX, 0L, 0L, 0L, 0L, 0L, 0L, 0L));
+
+        postCard(mvc, owner, 2026, cardBody("가상카드", "2026-10-31", null, 1L, 0L, 0L, 0L, 0L, 0L, 0L, 0L))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+        assertThat(count("tax_card_statements")).isEqualTo(1);
+
+        long second = addCard(mvc, owner, 2026, cardBody("가상카드", "2026-10-31", null,
+                0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L));
+        putCard(mvc, owner, 2026, second, cardBody("가상카드", "2026-10-31", 0L, 1L, 0L, 0L, 0L, 0L, 0L, 0L, 0L))
+                .andExpect(status().isBadRequest());
+        assertThat(creditGeneralOf(second)).isZero();
+        assertThat(creditGeneralOf(first)).isEqualTo(MAX);
+    }
+
+    @Test
+    void deletingTheYearDeletesItsStatementsOnly() throws Exception {
+        createYear(mvc, owner, 2025);
+        addCard(mvc, owner, 2025, fullCard("작년카드", "2025-12-31", null));
+        putCash(mvc, owner, 2025, cashBody("2025-12-31", null, 0L, 0L, 0L, 0L)).andExpect(status().isOk());
+        addCard(mvc, owner, 2026, fullCard("합성카드", "2026-10-31", null));
+        addCard(mvc, owner, 2026, fullCard("가상카드", "2026-10-31", null));
+        putCash(mvc, owner, 2026, cashBody("2026-10-31", null, 0L, 0L, 0L, 0L)).andExpect(status().isOk());
+
+        mvc.perform(delete(URL + "/2026").header("Authorization", owner.bearer()))
+                .andExpect(status().isNoContent());
+
+        assertThat(count("tax_card_statements")).isEqualTo(1);
+        assertThat(count("tax_cash_receipts")).isEqualTo(1);
+        mvc.perform(get(URL + "/2025").header("Authorization", owner.bearer()))
+                .andExpect(jsonPath("$.cards", hasSize(1)))
+                .andExpect(jsonPath("$.cards[0].issuerName").value("작년카드"))
+                .andExpect(jsonPath("$.cashReceipt.asOfDate").value("2025-12-31"));
+    }
+
+    @Test
+    void anotherMembersStatementsAreNotFoundAndUnchanged() throws Exception {
+        long cardId = addCard(mvc, owner, 2026, fullCard("합성카드", "2026-10-31", null));
+        putCash(mvc, owner, 2026, cashBody("2026-10-31", null, 120_000L, 0L, 0L, 0L)).andExpect(status().isOk());
+        AuthedUser groupAdmin = TestAuth.signupAndLogin(mvc, "group-admin@example.test", "그룹장");
+        AuthedUser serviceAdmin = TestAuth.signupAndLogin(mvc, "service-admin@example.test", "관리자");
+        AuthedUser stranger = TestAuth.signupAndLogin(mvc, "stranger@example.test", "남");
+        TestAdmins.grant(jdbc, serviceAdmin.id());
+        long groupId = TestGroups.createGroup(mvc, groupAdmin, "합성 그룹");
+        TestGroups.join(mvc, groupAdmin, owner, groupId);
+        // 같은 연도 기록이 있는 회원과 없는 회원 모두 같은 404여야 한다.
+        createYear(mvc, groupAdmin, 2026);
+        createYear(mvc, serviceAdmin, 2026);
+
+        for (AuthedUser other : new AuthedUser[]{groupAdmin, serviceAdmin, stranger}) {
+            putCard(mvc, other, 2026, cardId, fullCard("남의카드", "2026-10-31", 0L))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.code").value("NOT_FOUND"));
+            mvc.perform(delete(URL + "/2026/cards/" + cardId).param("rowVersion", "0")
+                            .header("Authorization", other.bearer()))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.code").value("NOT_FOUND"));
+            // 틀린 rowVersion으로도 409가 아니라 404다(409면 그 id의 자료가 있다는 것이 드러난다).
+            putCard(mvc, other, 2026, cardId, fullCard("남의카드", "2026-10-31", 7L))
+                    .andExpect(status().isNotFound());
+            mvc.perform(delete(URL + "/2026/cards/" + cardId).param("rowVersion", "7")
+                            .header("Authorization", other.bearer()))
+                    .andExpect(status().isNotFound());
+        }
+        // 없는 id도 같은 응답이다.
+        putCard(mvc, groupAdmin, 2026, cardId + 1000, fullCard("남의카드", "2026-10-31", 0L))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("NOT_FOUND"));
+        // 연도 기록이 없는 회원은 자료를 더할 수도 없다.
+        postCard(mvc, stranger, 2026, fullCard("남의카드", "2026-10-31", null)).andExpect(status().isNotFound());
+        putCash(mvc, stranger, 2026, cashBody("2026-10-31", null, 1L, 1L, 1L, 1L)).andExpect(status().isNotFound());
+        // 내 자료라도 다른 귀속연도의 주소로는 닿지 않는다.
+        createYear(mvc, owner, 2025);
+        putCard(mvc, owner, 2025, cardId, fullCard("합성카드", "2025-10-31", 0L)).andExpect(status().isNotFound());
+
+        mvc.perform(get(URL + "/2026").header("Authorization", owner.bearer()))
+                .andExpect(jsonPath("$.cards", hasSize(1)))
+                .andExpect(jsonPath("$.cards[0].issuerName").value("합성카드"))
+                .andExpect(jsonPath("$.cards[0].rowVersion").value(0))
+                .andExpect(jsonPath("$.cashReceipt.amounts.general").value(120_000));
+        // 다른 회원의 연도에는 내 자료가 보이지 않는다.
+        mvc.perform(get(URL + "/2026").header("Authorization", groupAdmin.bearer()))
+                .andExpect(jsonPath("$.cards", hasSize(0)))
+                .andExpect(jsonPath("$.cashReceipt").value(nullValue()))
+                .andExpect(jsonPath("$.totals.creditGeneral").value(0));
+    }
+
+    @Test
+    void requiresLogin() throws Exception {
+        mvc.perform(post(URL + "/2026/cards").contentType(MediaType.APPLICATION_JSON)
+                        .content(fullCard("합성카드", "2026-10-31", null)))
+                .andExpect(status().isUnauthorized());
+        mvc.perform(delete(URL + "/2026/cards/1").param("rowVersion", "0")).andExpect(status().isUnauthorized());
+        mvc.perform(put(URL + "/2026/cash-receipt")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(cashBody("2026-10-31", null, 0L, 0L, 0L, 0L)))
+                .andExpect(status().isUnauthorized());
+    }
+}
+```
+
+- [ ] **Step 2: 실패 확인**
+
+Run: `cd apps/api && ./gradlew test --tests '*TaxStatementApiTest'`
+Expected: `14 tests completed, 13 failed`. 카드·현금영수증 경로가 없어 404이고 `TaxYearView`에 `cards`·`totals`가 없다. `requiresLogin`만 통과한다.
+
+- [ ] **Step 3: DTO**
+
+`main/tax/record/TaxRecordDtos.java`
+
+```diff
+--- a/apps/api/src/main/java/com/saladbowl/api/tax/record/TaxRecordDtos.java
++++ b/apps/api/src/main/java/com/saladbowl/api/tax/record/TaxRecordDtos.java
+@@ -3,7 +3,9 @@
+ import com.saladbowl.api.tax.law.TaxLawDtos.RowVersionDeserializer;
+ import jakarta.validation.constraints.Max;
+ import jakarta.validation.constraints.Min;
++import jakarta.validation.Valid;
+ import jakarta.validation.constraints.NotNull;
++import jakarta.validation.constraints.Size;
+ import com.fasterxml.jackson.annotation.JacksonAnnotationsInside;
+ import tools.jackson.databind.annotation.JsonDeserialize;
+ 
+@@ -11,7 +13,9 @@
+ import java.lang.annotation.Retention;
+ import java.lang.annotation.RetentionPolicy;
+ import java.lang.annotation.Target;
++import java.time.LocalDate;
+ import java.time.OffsetDateTime;
++import java.util.List;
+ 
+ public final class TaxRecordDtos {
+ 
+@@ -38,11 +42,59 @@
+             @WholeNumber Long rowVersion) {
+     }
+ 
++    /** 신용·체크 자료의 금액 8칸. null은 미입력이다. */
++    public record CardAmounts(
++            @Min(0) @Max(MAX_AMOUNT) @WholeNumber Long creditGeneral,
++            @Min(0) @Max(MAX_AMOUNT) @WholeNumber Long creditMarket,
++            @Min(0) @Max(MAX_AMOUNT) @WholeNumber Long creditTransit,
++            @Min(0) @Max(MAX_AMOUNT) @WholeNumber Long creditCulture,
++            @Min(0) @Max(MAX_AMOUNT) @WholeNumber Long debitGeneral,
++            @Min(0) @Max(MAX_AMOUNT) @WholeNumber Long debitMarket,
++            @Min(0) @Max(MAX_AMOUNT) @WholeNumber Long debitTransit,
++            @Min(0) @Max(MAX_AMOUNT) @WholeNumber Long debitCulture) {
++    }
++
++    /** 현금영수증 자료의 금액 4칸. null은 미입력이다. */
++    public record CashAmounts(
++            @Min(0) @Max(MAX_AMOUNT) @WholeNumber Long general,
++            @Min(0) @Max(MAX_AMOUNT) @WholeNumber Long market,
++            @Min(0) @Max(MAX_AMOUNT) @WholeNumber Long transit,
++            @Min(0) @Max(MAX_AMOUNT) @WholeNumber Long culture) {
++    }
++
++    /** 카드 자료 추가·수정. 추가는 rowVersion을 보내지 않고, 수정은 읽을 때 받은 rowVersion을 보낸다. */
++    public record CardRequest(
++            @NotNull String issuerName,
++            @NotNull LocalDate asOfDate,
++            @Size(max = 200) String memo,
++            @NotNull @Valid CardAmounts amounts,
++            @WholeNumber Long rowVersion) {
++    }
++
++    /** 현금영수증 자료 저장. 처음 저장은 rowVersion을 보내지 않고, 그 뒤로는 읽을 때 받은 rowVersion을 보낸다. */
++    public record CashRequest(
++            @NotNull LocalDate asOfDate,
++            @Size(max = 200) String memo,
++            @NotNull @Valid CashAmounts amounts,
++            @WholeNumber Long rowVersion) {
++    }
++
++    public record CardView(long id, long rowVersion, String issuerName, LocalDate asOfDate, String memo,
++                           CardAmounts amounts, int blankCount) {
++    }
++
++    public record CashView(long rowVersion, LocalDate asOfDate, String memo, CashAmounts amounts, int blankCount) {
++    }
++
+     /** 연도 기록이 기억하는 세법 버전. childTiersApply는 웹이 자녀등 입력란을 보일지 판단하는 값이다. */
+     public record LawVersionRef(long id, int versionNo, OffsetDateTime appliedAt, boolean childTiersApply) {
+     }
+ 
+-    /** 연도 기록 묶음. 모든 조회·저장 응답이 이 모양이다. */
++    /**
++     * 연도 기록 묶음. 모든 조회·저장 응답이 이 모양이다.
++     * cashReceipt가 null이면 한 번도 입력하지 않은 것이고 blankCount에 4칸으로 센다.
++     * totals는 미입력 칸을 0으로 더한 연도 합계표다. asOfDateMismatch는 자료끼리 기준일이 서로 다른지다.
++     */
+     public record TaxYearView(
+             int taxYear,
+             long rowVersion,
+@@ -50,7 +102,13 @@
+             int workStartMonth,
+             int workEndMonth,
+             int childCount,
+-            LawVersionRef lawVersion) {
++            LawVersionRef lawVersion,
++            List<CardView> cards,
++            CashView cashReceipt,
++            SpendingTotals totals,
++            int blankCount,
++            boolean hasInputs,
++            boolean asOfDateMismatch) {
+     }
+ 
+     /** 저장 결과. created가 true면 새로 만든 것(201)이다. */
+```
+
+- [ ] **Step 4: 엔티티와 저장소**
+
+`main/tax/record/TaxCardStatement.java`
+
+```java
+package com.saladbowl.api.tax.record;
+
+import com.saladbowl.api.tax.record.TaxRecordDtos.CardAmounts;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import jakarta.persistence.Version;
+
+import java.time.LocalDate;
+import java.util.Objects;
+import java.util.stream.Stream;
+
+/** 신용·체크 자료 한 건. 금액 8칸은 기준일까지의 누계이고 null은 미입력(모름), 0은 없음이다. */
+@Entity
+@Table(name = "tax_card_statements")
+public class TaxCardStatement {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(name = "record_id", nullable = false, updatable = false)
+    private long recordId;
+
+    @Column(name = "issuer_name", nullable = false)
+    private String issuerName;
+
+    @Column(name = "as_of_date", nullable = false)
+    private LocalDate asOfDate;
+
+    private String memo;
+
+    @Column(name = "credit_general")
+    private Long creditGeneral;
+
+    @Column(name = "credit_market")
+    private Long creditMarket;
+
+    @Column(name = "credit_transit")
+    private Long creditTransit;
+
+    @Column(name = "credit_culture")
+    private Long creditCulture;
+
+    @Column(name = "debit_general")
+    private Long debitGeneral;
+
+    @Column(name = "debit_market")
+    private Long debitMarket;
+
+    @Column(name = "debit_transit")
+    private Long debitTransit;
+
+    @Column(name = "debit_culture")
+    private Long debitCulture;
+
+    @Version
+    @Column(name = "row_version", nullable = false)
+    private long rowVersion;
+
+    protected TaxCardStatement() {
+    }
+
+    public static TaxCardStatement create(long recordId, String issuerName, LocalDate asOfDate, String memo,
+                                          CardAmounts amounts) {
+        TaxCardStatement card = new TaxCardStatement();
+        card.recordId = recordId;
+        card.edit(issuerName, asOfDate, memo, amounts);
+        return card;
+    }
+
+    /** 새 누계로 덮어쓴다. 이전 값은 남지 않는다. */
+    public void edit(String issuerName, LocalDate asOfDate, String memo, CardAmounts amounts) {
+        this.issuerName = issuerName;
+        this.asOfDate = asOfDate;
+        this.memo = memo;
+        creditGeneral = amounts.creditGeneral();
+        creditMarket = amounts.creditMarket();
+        creditTransit = amounts.creditTransit();
+        creditCulture = amounts.creditCulture();
+        debitGeneral = amounts.debitGeneral();
+        debitMarket = amounts.debitMarket();
+        debitTransit = amounts.debitTransit();
+        debitCulture = amounts.debitCulture();
+    }
+
+    public CardAmounts amounts() {
+        return new CardAmounts(creditGeneral, creditMarket, creditTransit, creditCulture,
+                debitGeneral, debitMarket, debitTransit, debitCulture);
+    }
+
+    /** 8칸 가운데 미입력 칸 수. */
+    public int blankCount() {
+        return (int) Stream.of(creditGeneral, creditMarket, creditTransit, creditCulture,
+                debitGeneral, debitMarket, debitTransit, debitCulture).filter(Objects::isNull).count();
+    }
+
+    public Long getId() { return id; }
+    public String getIssuerName() { return issuerName; }
+    public LocalDate getAsOfDate() { return asOfDate; }
+    public String getMemo() { return memo; }
+    public long getRowVersion() { return rowVersion; }
+}
+```
+
+`main/tax/record/TaxCashReceipt.java`
+
+```java
+package com.saladbowl.api.tax.record;
+
+import com.saladbowl.api.tax.record.TaxRecordDtos.CashAmounts;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import jakarta.persistence.Version;
+
+import java.time.LocalDate;
+import java.util.Objects;
+import java.util.stream.Stream;
+
+/** 현금영수증 자료. 연도 기록당 하나이고 따로 삭제하지 않는다(연도 기록과 함께만 지워진다). */
+@Entity
+@Table(name = "tax_cash_receipts")
+public class TaxCashReceipt {
+
+    @Id
+    @Column(name = "record_id")
+    private Long recordId;
+
+    @Column(name = "as_of_date", nullable = false)
+    private LocalDate asOfDate;
+
+    private String memo;
+
+    private Long general;
+
+    private Long market;
+
+    private Long transit;
+
+    private Long culture;
+
+    // id를 직접 넣는 엔티티라 저장소가 새 행인지를 이 값이 null인지로 판단한다. 그래서 long이 아니라 Long이다.
+    @Version
+    @Column(name = "row_version", nullable = false)
+    private Long rowVersion;
+
+    protected TaxCashReceipt() {
+    }
+
+    public static TaxCashReceipt create(long recordId, LocalDate asOfDate, String memo, CashAmounts amounts) {
+        TaxCashReceipt cash = new TaxCashReceipt();
+        cash.recordId = recordId;
+        cash.edit(asOfDate, memo, amounts);
+        return cash;
+    }
+
+    /** 새 누계로 덮어쓴다. 이전 값은 남지 않는다. */
+    public void edit(LocalDate asOfDate, String memo, CashAmounts amounts) {
+        this.asOfDate = asOfDate;
+        this.memo = memo;
+        general = amounts.general();
+        market = amounts.market();
+        transit = amounts.transit();
+        culture = amounts.culture();
+    }
+
+    public CashAmounts amounts() {
+        return new CashAmounts(general, market, transit, culture);
+    }
+
+    /** 4칸 가운데 미입력 칸 수. */
+    public int blankCount() {
+        return (int) Stream.of(general, market, transit, culture).filter(Objects::isNull).count();
+    }
+
+    public LocalDate getAsOfDate() { return asOfDate; }
+    public String getMemo() { return memo; }
+    public Long getRowVersion() { return rowVersion; }
+}
+```
+
+`main/tax/record/TaxCardStatementRepository.java`
+
+```java
+package com.saladbowl.api.tax.record;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.List;
+import java.util.Optional;
+
+/** 카드 자료는 항상 소유한 연도 기록의 id와 함께 읽는다. id만으로 읽는 메서드(findById 등)를 서비스에서 쓰지 않는다. */
+public interface TaxCardStatementRepository extends JpaRepository<TaxCardStatement, Long> {
+
+    List<TaxCardStatement> findByRecordIdOrderByIdAsc(long recordId);
+
+    Optional<TaxCardStatement> findByIdAndRecordId(long id, long recordId);
+}
+```
+
+`main/tax/record/TaxCashReceiptRepository.java`
+
+```java
+package com.saladbowl.api.tax.record;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+
+/** 기본 키가 연도 기록 id다. 소유한 연도 기록을 먼저 찾고 그 id로 읽는다. */
+public interface TaxCashReceiptRepository extends JpaRepository<TaxCashReceipt, Long> {
+}
+```
+
+- [ ] **Step 5: 연도 합계**
+
+`main/tax/record/SpendingTotals.java`
+
+```java
+package com.saladbowl.api.tax.record;
+
+import com.saladbowl.api.tax.record.TaxRecordDtos.CardAmounts;
+import com.saladbowl.api.tax.record.TaxRecordDtos.CashAmounts;
+
+import java.util.List;
+import java.util.stream.LongStream;
+
+/**
+ * 연도 합계표: 결제수단 3 x 소비구분 4. 그 연도 기록의 모든 카드 자료와 현금영수증 자료를 더한 값이고 저장하지 않는다.
+ * 미입력 칸(null)은 0으로 더한다. 합계는 여기 한 곳에서만 만들고 웹은 다시 더하지 않는다.
+ */
+public record SpendingTotals(
+        long creditGeneral, long creditMarket, long creditTransit, long creditCulture,
+        long debitGeneral, long debitMarket, long debitTransit, long debitCulture,
+        long cashGeneral, long cashMarket, long cashTransit, long cashCulture) {
+
+    /** cashReceipt는 한 번도 입력하지 않았으면 null이다. */
+    public static SpendingTotals of(List<TaxCardStatement> cards, TaxCashReceipt cashReceipt) {
+        long[] sum = new long[12];
+        for (TaxCardStatement card : cards) {
+            CardAmounts a = card.amounts();
+            add(sum, 0, a.creditGeneral(), a.creditMarket(), a.creditTransit(), a.creditCulture(),
+                    a.debitGeneral(), a.debitMarket(), a.debitTransit(), a.debitCulture());
+        }
+        if (cashReceipt != null) {
+            CashAmounts a = cashReceipt.amounts();
+            add(sum, 8, a.general(), a.market(), a.transit(), a.culture());
+        }
+        return new SpendingTotals(sum[0], sum[1], sum[2], sum[3], sum[4], sum[5], sum[6], sum[7],
+                sum[8], sum[9], sum[10], sum[11]);
+    }
+
+    /** 12칸 가운데 가장 큰 값. 합계 상한 검사에 쓴다. */
+    public long max() {
+        return LongStream.of(creditGeneral, creditMarket, creditTransit, creditCulture,
+                debitGeneral, debitMarket, debitTransit, debitCulture,
+                cashGeneral, cashMarket, cashTransit, cashCulture).max().getAsLong();
+    }
+
+    private static void add(long[] sum, int offset, Long... amounts) {
+        for (int i = 0; i < amounts.length; i++) {
+            if (amounts[i] != null) {
+                sum[offset + i] += amounts[i];
+            }
+        }
+    }
+}
+```
+
+- [ ] **Step 6: 서비스** — 쓰기는 모두 `lockOwned`로 시작한다. 카드 자료는 `requireCard`(소유한 연도 기록의 id와 함께 조회)로만 찾는다. 저장한 뒤 `viewWithinTotalLimit`가 합계 상한을 넘으면 400을 던지고 트랜잭션이 저장을 되돌린다.
+
+`main/tax/record/TaxRecordService.java`
+
+```diff
+--- a/apps/api/src/main/java/com/saladbowl/api/tax/record/TaxRecordService.java
++++ b/apps/api/src/main/java/com/saladbowl/api/tax/record/TaxRecordService.java
+@@ -6,6 +6,10 @@
+ import com.saladbowl.api.tax.law.TaxLawService;
+ import com.saladbowl.api.tax.law.TaxLawVersion;
+ import com.saladbowl.api.tax.law.TaxLawVersionRepository;
++import com.saladbowl.api.tax.record.TaxRecordDtos.CardRequest;
++import com.saladbowl.api.tax.record.TaxRecordDtos.CardView;
++import com.saladbowl.api.tax.record.TaxRecordDtos.CashRequest;
++import com.saladbowl.api.tax.record.TaxRecordDtos.CashView;
+ import com.saladbowl.api.tax.record.TaxRecordDtos.LawVersionRef;
+ import com.saladbowl.api.tax.record.TaxRecordDtos.SavedYear;
+ import com.saladbowl.api.tax.record.TaxRecordDtos.TaxYearView;
+@@ -16,7 +20,9 @@
+ import java.time.Clock;
+ import java.time.LocalDate;
+ import java.time.ZoneId;
++import java.util.List;
+ import java.util.Optional;
++import java.util.stream.Stream;
+ 
+ /**
+  * 회원 본인의 소득공제 자료. 서버 검사는 "요청자 = 소유자" 하나이고 그룹과 무관하다(GroupAccess를 쓰지 않는다).
+@@ -29,13 +35,18 @@
+     private static final ZoneId KST = ZoneId.of("Asia/Seoul");
+ 
+     private final TaxYearRecordRepository records;
++    private final TaxCardStatementRepository cards;
++    private final TaxCashReceiptRepository cashReceipts;
+     private final TaxLawService laws;
+     private final TaxLawVersionRepository lawVersions;
+     private final Clock clock;
+ 
+-    public TaxRecordService(TaxYearRecordRepository records, TaxLawService laws,
++    public TaxRecordService(TaxYearRecordRepository records, TaxCardStatementRepository cards,
++                            TaxCashReceiptRepository cashReceipts, TaxLawService laws,
+                             TaxLawVersionRepository lawVersions, Clock clock) {
+         this.records = records;
++        this.cards = cards;
++        this.cashReceipts = cashReceipts;
+         this.laws = laws;
+         this.lawVersions = lawVersions;
+         this.clock = clock;
+@@ -77,6 +88,55 @@
+         records.delete(lockOwned(userId, year));
+     }
+ 
++    @Transactional
++    public TaxYearView addCard(long userId, int year, CardRequest request) {
++        TaxYearRecord record = lockOwned(userId, year);
++        cards.saveAndFlush(TaxCardStatement.create(record.getId(), issuerName(request.issuerName()),
++                asOfDate(request.asOfDate(), year), blankToNull(request.memo()), request.amounts()));
++        return viewWithinTotalLimit(record);
++    }
++
++    @Transactional
++    public TaxYearView updateCard(long userId, int year, long cardId, CardRequest request) {
++        TaxYearRecord record = lockOwned(userId, year);
++        TaxCardStatement card = requireCard(record, cardId);
++        requireRowVersion(card.getRowVersion(), request.rowVersion());
++        card.edit(issuerName(request.issuerName()), asOfDate(request.asOfDate(), year),
++                blankToNull(request.memo()), request.amounts());
++        cards.saveAndFlush(card);
++        return viewWithinTotalLimit(record);
++    }
++
++    /** 다른 곳에서 새 누계로 고친 자료를 옛 화면에서 지우지 않도록 삭제도 rowVersion을 본다. */
++    @Transactional
++    public void deleteCard(long userId, int year, long cardId, long rowVersion) {
++        TaxYearRecord record = lockOwned(userId, year);
++        TaxCardStatement card = requireCard(record, cardId);
++        requireRowVersion(card.getRowVersion(), rowVersion);
++        cards.delete(card);
++    }
++
++    /** 현금영수증 자료는 연도에 하나다. 없으면 만들고(rowVersion 없이), 있으면 고친다(rowVersion 필수). */
++    @Transactional
++    public TaxYearView saveCashReceipt(long userId, int year, CashRequest request) {
++        TaxYearRecord record = lockOwned(userId, year);
++        LocalDate asOfDate = asOfDate(request.asOfDate(), year);
++        String memo = blankToNull(request.memo());
++        Optional<TaxCashReceipt> existing = cashReceipts.findById(record.getId());
++        if (existing.isEmpty()) {
++            if (request.rowVersion() != null) {
++                throw conflict();
++            }
++            cashReceipts.saveAndFlush(TaxCashReceipt.create(record.getId(), asOfDate, memo, request.amounts()));
++        } else {
++            TaxCashReceipt cash = existing.get();
++            requireRowVersion(cash.getRowVersion(), request.rowVersion());
++            cash.edit(asOfDate, memo, request.amounts());
++            cashReceipts.saveAndFlush(cash);
++        }
++        return viewWithinTotalLimit(record);
++    }
++
+     /** 읽기용. 요청자의 그 귀속연도 기록이 없으면 404다. 조회(이 클래스와 PR 4의 분석)가 쓴다. */
+     public TaxYearRecord requireOwned(long userId, int year) {
+         return records.findByOwnerIdAndTaxYear(userId, year).orElseThrow(TaxRecordService::notFound);
+@@ -87,6 +147,39 @@
+         return records.findOwnedForUpdate(userId, year).orElseThrow(TaxRecordService::notFound);
+     }
+ 
++    /** 소유한 연도 기록에 딸린 카드 자료만 찾는다. 남의 자료와 없는 자료는 같은 404다. */
++    private TaxCardStatement requireCard(TaxYearRecord record, long cardId) {
++        return cards.findByIdAndRecordId(cardId, record.getId()).orElseThrow(TaxRecordService::notFound);
++    }
++
++    private static String issuerName(String raw) {
++        String name = raw.trim();
++        if (name.isEmpty() || name.length() > 50) {
++            throw invalid("issuerName: 1~50자로 입력하세요");
++        }
++        return name;
++    }
++
++    private static LocalDate asOfDate(LocalDate date, int year) {
++        if (date.getYear() != year) {
++            throw invalid("asOfDate: 귀속연도 안의 날짜여야 합니다");
++        }
++        return date;
++    }
++
++    private static String blankToNull(String value) {
++        return value == null || value.isBlank() ? null : value.trim();
++    }
++
++    /** 저장한 뒤의 연도 합계가 금액 상한을 넘으면 저장을 되돌린다. 계산기(PR 4)는 합계가 상한 이하라고 가정한다. */
++    private TaxYearView viewWithinTotalLimit(TaxYearRecord record) {
++        TaxYearView view = view(record);
++        if (view.totals().max() > TaxRecordDtos.MAX_AMOUNT) {
++            throw invalid("amounts: 연도 합계가 9,999,999,999,999원을 넘습니다");
++        }
++        return view;
++    }
++
+     private void requireCreatableYear(int year) {
+         int thisYear = LocalDate.now(clock.withZone(KST)).getYear();
+         if (year < thisYear - 1 || year > thisYear + 1) {
+@@ -97,8 +190,21 @@
+     private TaxYearView view(TaxYearRecord record) {
+         LawVersionRef lawVersion = record.getLawVersionId() == null ? null
+                 : lawVersions.findById(record.getLawVersionId()).map(TaxRecordService::toRef).orElse(null);
++        List<TaxCardStatement> cardRows = cards.findByRecordIdOrderByIdAsc(record.getId());
++        TaxCashReceipt cash = cashReceipts.findById(record.getId()).orElse(null);
++        List<CardView> cardViews = cardRows.stream().map(c -> new CardView(c.getId(), c.getRowVersion(),
++                c.getIssuerName(), c.getAsOfDate(), c.getMemo(), c.amounts(), c.blankCount())).toList();
++        CashView cashView = cash == null ? null : new CashView(cash.getRowVersion(), cash.getAsOfDate(),
++                cash.getMemo(), cash.amounts(), cash.blankCount());
++        // 현금영수증 자료를 한 번도 입력하지 않은 연도는 4칸이 빈 것으로 센다(TAX-24).
++        int blankCount = cardRows.stream().mapToInt(TaxCardStatement::blankCount).sum()
++                + (cash == null ? 4 : cash.blankCount());
++        long asOfDates = Stream.concat(cardRows.stream().map(TaxCardStatement::getAsOfDate),
++                Stream.ofNullable(cash).map(TaxCashReceipt::getAsOfDate)).distinct().count();
+         return new TaxYearView(record.getTaxYear(), record.getRowVersion(), record.getTotalSalary(),
+-                record.getWorkStartMonth(), record.getWorkEndMonth(), record.getChildCount(), lawVersion);
++                record.getWorkStartMonth(), record.getWorkEndMonth(), record.getChildCount(), lawVersion,
++                cardViews, cashView, SpendingTotals.of(cardRows, cash), blankCount,
++                !cardRows.isEmpty() || cash != null, asOfDates > 1);
+     }
+ 
+     private static LawVersionRef toRef(TaxLawVersion version) {
+@@ -109,10 +215,14 @@
+     /** 저장된 값과 요청의 rowVersion이 다르면(없는 것 포함) 다른 곳에서 먼저 바뀐 것이다. */
+     static void requireRowVersion(long stored, Long requested) {
+         if (requested == null || stored != requested) {
+-            throw new ApiException(ErrorCode.CONFLICT, "tax record was modified elsewhere");
++            throw conflict();
+         }
+     }
+ 
++    static ApiException conflict() {
++        return new ApiException(ErrorCode.CONFLICT, "tax record was modified elsewhere");
++    }
++
+     static ApiException invalid(String message) {
+         return new ApiException(ErrorCode.VALIDATION_FAILED, message);
+     }
+```
+
+- [ ] **Step 7: 컨트롤러**
+
+`main/tax/record/TaxRecordController.java`
+
+```diff
+--- a/apps/api/src/main/java/com/saladbowl/api/tax/record/TaxRecordController.java
++++ b/apps/api/src/main/java/com/saladbowl/api/tax/record/TaxRecordController.java
+@@ -1,6 +1,8 @@
+ package com.saladbowl.api.tax.record;
+ 
+ import com.saladbowl.api.auth.CurrentUser;
++import com.saladbowl.api.tax.record.TaxRecordDtos.CardRequest;
++import com.saladbowl.api.tax.record.TaxRecordDtos.CashRequest;
+ import com.saladbowl.api.tax.record.TaxRecordDtos.SavedYear;
+ import com.saladbowl.api.tax.record.TaxRecordDtos.TaxYearView;
+ import com.saladbowl.api.tax.record.TaxRecordDtos.YearRequest;
+@@ -12,9 +14,11 @@
+ import org.springframework.web.bind.annotation.DeleteMapping;
+ import org.springframework.web.bind.annotation.GetMapping;
+ import org.springframework.web.bind.annotation.PathVariable;
++import org.springframework.web.bind.annotation.PostMapping;
+ import org.springframework.web.bind.annotation.PutMapping;
+ import org.springframework.web.bind.annotation.RequestBody;
+ import org.springframework.web.bind.annotation.RequestMapping;
++import org.springframework.web.bind.annotation.RequestParam;
+ import org.springframework.web.bind.annotation.RestController;
+ 
+ /** 로그인한 회원 본인의 소득공제 자료. 경로에 회원 id가 없고 항상 요청자의 자료만 다룬다. */
+@@ -45,4 +49,31 @@
+         service.deleteYear(userId, year);
+         return ResponseEntity.noContent().build();
+     }
++
++    @PostMapping("/cards")
++    public ResponseEntity<TaxYearView> addCard(@CurrentUser Long userId,
++                                               @PathVariable @Min(1000) @Max(9999) int year,
++                                               @Valid @RequestBody CardRequest request) {
++        return ResponseEntity.status(HttpStatus.CREATED).body(service.addCard(userId, year, request));
++    }
++
++    @PutMapping("/cards/{cardId}")
++    public TaxYearView updateCard(@CurrentUser Long userId, @PathVariable @Min(1000) @Max(9999) int year,
++                                  @PathVariable long cardId, @Valid @RequestBody CardRequest request) {
++        return service.updateCard(userId, year, cardId, request);
++    }
++
++    @DeleteMapping("/cards/{cardId}")
++    public ResponseEntity<Void> deleteCard(@CurrentUser Long userId, @PathVariable @Min(1000) @Max(9999) int year,
++                                           @PathVariable long cardId, @RequestParam long rowVersion) {
++        service.deleteCard(userId, year, cardId, rowVersion);
++        return ResponseEntity.noContent().build();
++    }
++
++    // 현금영수증 자료에는 삭제 경로를 두지 않는다(D19). 연도 기록을 지우면 함께 지워진다.
++    @PutMapping("/cash-receipt")
++    public TaxYearView saveCashReceipt(@CurrentUser Long userId, @PathVariable @Min(1000) @Max(9999) int year,
++                                       @Valid @RequestBody CashRequest request) {
++        return service.saveCashReceipt(userId, year, request);
++    }
+ }
+```
+
+- [ ] **Step 8: 통과 확인**
+
+Run: `cd apps/api && ./gradlew test --tests '*TaxStatementApiTest' --tests '*TaxYearApiTest'`
+Expected: `BUILD SUCCESSFUL`. `TaxStatementApiTest` 14건, `TaxYearApiTest` 15건 통과.
+
+- [ ] **Step 9: 전체 테스트**
+
+Run: `cd apps/api && ./gradlew test`
+Expected: `BUILD SUCCESSFUL`(임시 복사본에서는 전체 358건 통과).
+
+- [ ] **Step 10: 커밋(컨트롤러)**
+
+```bash
+git add apps/api/src/main/java/com/saladbowl/api/tax/record apps/api/src/test/java/com/saladbowl/api/support/TestTaxRecords.java apps/api/src/test/java/com/saladbowl/api/tax/record
+git commit -m "feat(api): 소득공제 카드 자료·현금영수증 자료와 연도 합계" -m "Co-Authored-By: Codex (gpt-6-sol) <noreply@openai.com>"
+```
+
+---
 
 ### Task 3.3: 지출계획 저장과 세법 버전 기억·다시 계산 (TAX-51, 66, 70, 29)
 
-**담당:** Codex `gpt-6-sol` / `medium` (`api`), 태그 `impl-api`. 리뷰: Claude Fable 5.2.
+**담당:** Codex `gpt-6-sol` / `medium` (`api`), 태그 `impl-api`. 리뷰: Claude Fable 5.2 (`review-task`).
 
-- Files: Create `tax/record/TaxSpendingPlan.java`, 저장소, `tax/record/TaxPlanApiTest.java`, `tax/record/TaxLawPinApiTest.java`. Modify `TaxRecordService.java`, `TaxRecordController.java`, `TaxRecordDtos.java`, `tax/law/TaxLawService.java`(`apply`에서 `law_version_id IS NULL`인 그 연도 기록에 버전 넣기).
-- Interfaces — Produces: `PUT /tax/years/{year}/plan`, `POST /tax/years/{year}/law-version/refresh`, `TaxYearView.newerLawVersion`(연도 기록의 버전 ≠ 현재 적용 버전).
-- 테스트 대상(AC-19, 33, 36, 01): 지출계획 12칸 저장·재조회, 음수 400, 남의 연도 404, `rowVersion` 불일치 409, 새 버전이 적용돼도 연도 기록의 `lawVersion.id`는 그대로이고 `newerLawVersion=true`, `refresh` 뒤 새 버전·`newerLawVersion=false`, 적용 버전이 없던 연도에 첫 버전이 적용되면 기존 연도 기록에 그 버전이 들어감.
+**Files:**
+- Create: `main/tax/record/TaxSpendingPlan.java`, `TaxSpendingPlanRepository.java`
+- Modify: `main/tax/record/TaxRecordDtos.java`, `TaxYearRecord.java`, `TaxRecordService.java`, `TaxRecordController.java`
+- Modify: `main/tax/law/TaxLawService.java`(`apply`의 NULL 채우기와 advisory lock, `currentAppliedForNewRecord`)
+- Modify: `test/support/TestTaxRecords.java`, `test/support/TestTaxLaws.java`
+- Test: `test/tax/record/TaxPlanApiTest.java`(생성), `test/tax/record/TaxLawPinApiTest.java`(생성)
+
+**Interfaces:**
+- Consumes: Task 3.1·3.2의 `TaxRecordService.lockOwned`·`requireRowVersion`·`conflict()`·`view`·`saveYear`, `TaxYearRecord`, `TaxRecordDtos.MAX_AMOUNT`·`@WholeNumber`·`YearRequest`, PR 2의 `TaxLawService.apply(long adminId, long id, long rowVersion)`·`currentApplied(int)`·`lockDraft`, `TestTaxLaws.createFilledDraft`(끝난 뒤 `rowVersion` 1), `TaxLawConcurrencyTest.runTogether`(Task 3.1에서 `public`).
+- Produces:
+  - `TaxRecordDtos.PlanRow(Long creditFixed, Long debitFixed, Long flexible)`, `PlanRequest(PlanRow general, PlanRow market, PlanRow transit, PlanRow culture, Long rowVersion)`, `PlanView(long rowVersion, PlanRow general, PlanRow market, PlanRow transit, PlanRow culture)`.
+  - `TaxYearView`에 `boolean newerLawVersion`(`lawVersion` 뒤)과 `PlanView plan`(`cashReceipt` 뒤)이 붙는다. 최종 순서: `taxYear, rowVersion, totalSalary, workStartMonth, workEndMonth, childCount, lawVersion, newerLawVersion, cards, cashReceipt, plan, totals, blankCount, hasInputs, asOfDateMismatch`.
+  - `TaxSpendingPlan`: `static create(long recordId, PlanRequest)`, `edit(PlanRequest)`, `general()`·`market()`·`transit()`·`culture(): PlanRow`, `getRowVersion(): Long`. `TaxSpendingPlanRepository`(기본 키 = 연도 기록 id). PR 4의 현재 계획 배분·추천이 `TaxYearView.plan`을 읽는다.
+  - `TaxYearRecord.useLawVersion(long lawVersionId)`.
+  - `TaxRecordService.savePlan(long userId, int year, PlanRequest): TaxYearView`, `refreshLawVersion(long userId, int year): TaxYearView`.
+  - `TaxLawService.currentAppliedForNewRecord(int taxYear): Optional<TaxLawVersion>`(연도 기록을 만드는 트랜잭션 안에서만 부른다).
+  - HTTP: `PUT /tax/years/{year}/plan`, `POST /tax/years/{year}/law-version/refresh`.
+  - 테스트 헬퍼 `TestTaxRecords.planBody(Long rowVersion, Long... amounts12)`, `putPlan(mvc, user, year, body)`, `TestTaxLaws.createApplied(mvc, admin, taxYear): long`.
+
+`apply`의 순서: 초안 행 잠금(`lockDraft`) → `rowVersion` 비교 → 검증 → 그 귀속연도의 advisory 배타 잠금 → 상태 변경·flush → `tax_year = ? AND law_version_id IS NULL`인 연도 기록에 이 버전 넣기. 모두 한 트랜잭션이다. 기존 `TaxLawApplyApiTest`·`TaxLawConcurrencyTest`는 고치지 않아도 통과한다(임시 복사본에서 확인).
+
+- [ ] **Step 1: 실패하는 테스트 작성**
+
+헬퍼를 더한다.
+
+`test/support/TestTaxRecords.java`
+
+```diff
+--- a/apps/api/src/test/java/com/saladbowl/api/support/TestTaxRecords.java
++++ b/apps/api/src/test/java/com/saladbowl/api/support/TestTaxRecords.java
+@@ -80,4 +80,25 @@
+         return mvc.perform(put(URL + "/" + year + "/cash-receipt").header("Authorization", user.bearer())
+                 .contentType(MediaType.APPLICATION_JSON).content(body));
+     }
++
++    /**
++     * 지출계획 본문. amounts는 일반·전통시장·대중교통·문화체육 순서로 각 행의
++     * 신용카드 고정 / 체크카드·현금영수증 고정 / 변경 가능, 모두 12칸이다.
++     */
++    public static String planBody(Long rowVersion, Long... amounts) {
++        return """
++                {"rowVersion": %s,
++                  "general": {"creditFixed": %s, "debitFixed": %s, "flexible": %s},
++                  "market": {"creditFixed": %s, "debitFixed": %s, "flexible": %s},
++                  "transit": {"creditFixed": %s, "debitFixed": %s, "flexible": %s},
++                  "culture": {"creditFixed": %s, "debitFixed": %s, "flexible": %s}}
++                """.formatted(rowVersion, amounts[0], amounts[1], amounts[2], amounts[3], amounts[4], amounts[5],
++                amounts[6], amounts[7], amounts[8], amounts[9], amounts[10], amounts[11]);
++    }
++
++    public static ResultActions putPlan(MockMvc mvc, TestAuth.AuthedUser user, int year, String body)
++            throws Exception {
++        return mvc.perform(put(URL + "/" + year + "/plan").header("Authorization", user.bearer())
++                .contentType(MediaType.APPLICATION_JSON).content(body));
++    }
+ }
+```
+
+`test/support/TestTaxLaws.java`
+
+```diff
+--- a/apps/api/src/test/java/com/saladbowl/api/support/TestTaxLaws.java
++++ b/apps/api/src/test/java/com/saladbowl/api/support/TestTaxLaws.java
+@@ -61,6 +61,15 @@
+         return id;
+     }
+ 
++    /** 새 초안을 2026 값으로 채워 적용하고 그 id를 돌려준다. */
++    public static long createApplied(MockMvc mvc, TestAuth.AuthedUser admin, int taxYear) throws Exception {
++        long id = createFilledDraft(mvc, admin, taxYear);
++        mvc.perform(post(URL + "/" + id + "/apply").header("Authorization", admin.bearer())
++                        .contentType(MediaType.APPLICATION_JSON).content("{\"rowVersion\":1}"))
++                .andExpect(status().isOk());
++        return id;
++    }
++
+     /** 적용 API(Task 2.3) 없이 적용본을 만든다. 적용본의 수정·삭제 거부와 current 조회 테스트에 쓴다. */
+     public static void markApplied(JdbcTemplate jdbc, long id, long adminId) {
+         jdbc.update("UPDATE tax_law_versions SET status = 'APPLIED', applied_by = ?, applied_at = now() WHERE id = ?",
+```
+
+`test/tax/record/TaxPlanApiTest.java`
+
+```java
+package com.saladbowl.api.tax.record;
+
+import com.saladbowl.api.support.IntegrationTest;
+import com.saladbowl.api.support.TestAuth;
+import com.saladbowl.api.support.TestAuth.AuthedUser;
+import com.saladbowl.api.support.TestClock;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Import;
+import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.web.servlet.MockMvc;
+
+import static com.saladbowl.api.support.TestTaxRecords.URL;
+import static com.saladbowl.api.support.TestTaxRecords.createYear;
+import static com.saladbowl.api.support.TestTaxRecords.planBody;
+import static com.saladbowl.api.support.TestTaxRecords.putPlan;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.nullValue;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+/** 지출계획 저장(TAX-51, 70, 29, AC-01, 33, 36). 금액은 모두 합성값이고 테스트의 올해는 2026이다. */
+@Import(TestClock.Config.class)
+class TaxPlanApiTest extends IntegrationTest {
+
+    private static final long MAX = 9_999_999_999_999L;
+
+    @Autowired
+    MockMvc mvc;
+
+    @Autowired
+    JdbcTemplate jdbc;
+
+    AuthedUser owner;
+
+    @BeforeEach
+    void createOwnerYear() throws Exception {
+        owner = TestAuth.signupAndLogin(mvc, "owner@example.test", "소유자");
+        createYear(mvc, owner, 2026);
+    }
+
+    /** 일반 300,000 / 200,000 / 900,000, 전통시장 0 / 50,000 / 100,000, 대중교통 0 / 0 / 120,000, 문화체육 40,000 / 0 / 60,000. */
+    private static String plan(Long rowVersion) {
+        return planBody(rowVersion, 300_000L, 200_000L, 900_000L, 0L, 50_000L, 100_000L,
+                0L, 0L, 120_000L, 40_000L, 0L, 60_000L);
+    }
+
+    private static String zeroPlanWith(Long rowVersion, long generalFlexible) {
+        return planBody(rowVersion, 0L, 0L, generalFlexible, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L);
+    }
+
+    private int planCount() {
+        return jdbc.queryForObject("SELECT count(*) FROM tax_spending_plans", Integer.class);
+    }
+
+    @Test
+    void planIsSavedAndReadBackEvenWithoutStatementsOrLaw() throws Exception {
+        mvc.perform(get(URL + "/2026").header("Authorization", owner.bearer()))
+                .andExpect(jsonPath("$.plan").value(nullValue()));
+
+        // 자료가 미완료이고 세법이 없어도 저장된다(TAX-75).
+        putPlan(mvc, owner, 2026, plan(null))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.plan.rowVersion").value(0))
+                .andExpect(jsonPath("$.plan.general.creditFixed").value(300_000))
+                .andExpect(jsonPath("$.plan.general.debitFixed").value(200_000))
+                .andExpect(jsonPath("$.plan.general.flexible").value(900_000))
+                .andExpect(jsonPath("$.plan.market.debitFixed").value(50_000))
+                .andExpect(jsonPath("$.plan.transit.flexible").value(120_000))
+                .andExpect(jsonPath("$.plan.culture.creditFixed").value(40_000))
+                .andExpect(jsonPath("$.plan.culture.flexible").value(60_000))
+                // 지출계획은 연도 합계표(입력자료의 합)에 들어가지 않는다.
+                .andExpect(jsonPath("$.totals.creditGeneral").value(0))
+                .andExpect(jsonPath("$.rowVersion").value(0));
+
+        mvc.perform(get(URL + "/2026").header("Authorization", owner.bearer()))
+                .andExpect(jsonPath("$.plan.general.flexible").value(900_000))
+                .andExpect(jsonPath("$.plan.culture.flexible").value(60_000));
+
+        putPlan(mvc, owner, 2026, zeroPlanWith(0L, 500_000L))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.plan.rowVersion").value(1))
+                .andExpect(jsonPath("$.plan.general.flexible").value(500_000))
+                .andExpect(jsonPath("$.plan.general.creditFixed").value(0));
+        assertThat(planCount()).isEqualTo(1);
+    }
+
+    @Test
+    void stalePlanSaveIsConflictAndKeepsTheFirstSave() throws Exception {
+        // 아직 없는 계획을 고치려는 요청(rowVersion 있음)은 만들지 않는다.
+        putPlan(mvc, owner, 2026, plan(0L)).andExpect(status().isConflict());
+        assertThat(planCount()).isZero();
+
+        putPlan(mvc, owner, 2026, plan(null)).andExpect(status().isOk());
+        putPlan(mvc, owner, 2026, zeroPlanWith(0L, 500_000L)).andExpect(status().isOk());
+
+        for (Long stale : new Long[]{0L, null}) {
+            putPlan(mvc, owner, 2026, zeroPlanWith(stale, 777_000L))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.code").value("CONFLICT"));
+        }
+        mvc.perform(get(URL + "/2026").header("Authorization", owner.bearer()))
+                .andExpect(jsonPath("$.plan.general.flexible").value(500_000))
+                .andExpect(jsonPath("$.plan.rowVersion").value(1));
+    }
+
+    @Test
+    void rejectsInvalidPlan() throws Exception {
+        String[] invalid = {
+                zeroPlanWith(null, -1L),
+                zeroPlanWith(null, MAX + 1),
+                planBody(null, 0L, null, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L),
+                plan(null).replace("900000}", "900000.5}"),
+                "{\"general\": {\"creditFixed\": 0, \"debitFixed\": 0, \"flexible\": 0}}",
+                "{}"
+        };
+        for (String body : invalid) {
+            putPlan(mvc, owner, 2026, body)
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+        }
+        assertThat(planCount()).isZero();
+
+        putPlan(mvc, owner, 2026, zeroPlanWith(null, MAX)).andExpect(status().isOk());
+    }
+
+    @Test
+    void anotherMemberCannotReachMyPlan() throws Exception {
+        putPlan(mvc, owner, 2026, plan(null)).andExpect(status().isOk());
+        AuthedUser stranger = TestAuth.signupAndLogin(mvc, "stranger@example.test", "남");
+
+        // 연도 기록이 없는 회원은 404다.
+        putPlan(mvc, stranger, 2026, zeroPlanWith(0L, 1L))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("NOT_FOUND"));
+        putPlan(mvc, stranger, 2026, zeroPlanWith(null, 1L)).andExpect(status().isNotFound());
+        // 자기 연도 기록이 있으면 자기 계획이 따로 생기고 내 계획은 그대로다.
+        createYear(mvc, stranger, 2026);
+        putPlan(mvc, stranger, 2026, zeroPlanWith(null, 1L))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.plan.general.flexible").value(1));
+
+        mvc.perform(get(URL + "/2026").header("Authorization", owner.bearer()))
+                .andExpect(jsonPath("$.plan.general.flexible").value(900_000))
+                .andExpect(jsonPath("$.plan.rowVersion").value(0));
+        assertThat(planCount()).isEqualTo(2);
+    }
+
+    @Test
+    void deletingTheYearDeletesItsPlanOnly() throws Exception {
+        createYear(mvc, owner, 2025);
+        putPlan(mvc, owner, 2025, zeroPlanWith(null, 25_000L)).andExpect(status().isOk());
+        putPlan(mvc, owner, 2026, plan(null)).andExpect(status().isOk());
+
+        mvc.perform(delete(URL + "/2026").header("Authorization", owner.bearer()))
+                .andExpect(status().isNoContent());
+
+        assertThat(planCount()).isEqualTo(1);
+        mvc.perform(get(URL + "/2025").header("Authorization", owner.bearer()))
+                .andExpect(jsonPath("$.plan.general.flexible").value(25_000));
+        // 같은 연도를 다시 만들면 계획 없이 시작한다.
+        createYear(mvc, owner, 2026);
+        mvc.perform(get(URL + "/2026").header("Authorization", owner.bearer()))
+                .andExpect(jsonPath("$.plan").value(nullValue()));
+    }
+
+    @Test
+    void requiresLogin() throws Exception {
+        mvc.perform(put(URL + "/2026/plan").contentType(MediaType.APPLICATION_JSON).content(plan(null)))
+                .andExpect(status().isUnauthorized());
+    }
+}
+```
+
+세법 버전 기억 테스트. 마지막 테스트는 첫 버전 적용과 연도 기록 만들기를 실제 트랜잭션으로 겹친다. advisory lock이 없으면 `law_version_id`가 NULL로 남는 회차가 나온다(임시 복사본에서 잠금을 빼고 2회 실행해 2회 모두 실패를 봤다).
+
+`test/tax/record/TaxLawPinApiTest.java`
+
+```java
+package com.saladbowl.api.tax.record;
+
+import com.saladbowl.api.support.IntegrationTest;
+import com.saladbowl.api.support.TestAdmins;
+import com.saladbowl.api.support.TestAuth;
+import com.saladbowl.api.support.TestAuth.AuthedUser;
+import com.saladbowl.api.support.TestClock;
+import com.saladbowl.api.support.TestTaxLaws;
+import com.saladbowl.api.tax.law.TaxLawConcurrencyTest;
+import com.saladbowl.api.tax.law.TaxLawService;
+import com.saladbowl.api.tax.record.TaxRecordDtos.YearRequest;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Import;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.web.servlet.MockMvc;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.Callable;
+
+import static com.saladbowl.api.support.TestTaxRecords.URL;
+import static com.saladbowl.api.support.TestTaxRecords.createYear;
+import static com.saladbowl.api.support.TestTaxRecords.putYear;
+import static com.saladbowl.api.support.TestTaxRecords.yearBody;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.nullValue;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+/** 연도 기록이 기억하는 세법 버전과 다시 계산(TAX-66, AC-19, 알려진 제약 7번). 테스트의 올해는 2026이다. */
+@Import(TestClock.Config.class)
+class TaxLawPinApiTest extends IntegrationTest {
+
+    private static final String REFRESH = "/law-version/refresh";
+
+    @Autowired
+    MockMvc mvc;
+
+    @Autowired
+    JdbcTemplate jdbc;
+
+    @Autowired
+    TaxLawService laws;
+
+    @Autowired
+    TaxRecordService records;
+
+    AuthedUser admin;
+    AuthedUser owner;
+
+    @BeforeEach
+    void signUp() throws Exception {
+        admin = TestAuth.signupAndLogin(mvc, "admin@example.test", "관리자");
+        TestAdmins.grant(jdbc, admin.id());
+        owner = TestAuth.signupAndLogin(mvc, "owner@example.test", "소유자");
+    }
+
+    private Long pinnedLawId(long ownerId, int year) {
+        return jdbc.queryForObject("SELECT law_version_id FROM tax_year_records WHERE owner_id = ? AND tax_year = ?",
+                Long.class, ownerId, year);
+    }
+
+    @Test
+    void newerVersionIsOnlyAnnouncedUntilTheMemberRefreshes() throws Exception {
+        long first = TestTaxLaws.createApplied(mvc, admin, 2026);
+        createYear(mvc, owner, 2026);
+        mvc.perform(get(URL + "/2026").header("Authorization", owner.bearer()))
+                .andExpect(jsonPath("$.lawVersion.id").value(first))
+                .andExpect(jsonPath("$.newerLawVersion").value(false));
+
+        // 초안은 회원에게 영향이 없다.
+        long second = TestTaxLaws.createFilledDraft(mvc, admin, 2026);
+        mvc.perform(get(URL + "/2026").header("Authorization", owner.bearer()))
+                .andExpect(jsonPath("$.newerLawVersion").value(false));
+
+        mvc.perform(post(TestTaxLaws.URL + "/" + second + "/apply").header("Authorization", admin.bearer())
+                        .contentType("application/json").content("{\"rowVersion\":1}"))
+                .andExpect(status().isOk());
+        // 새 버전이 적용돼도 연도 기록의 버전은 그대로이고 알림만 켜진다(AC-19).
+        mvc.perform(get(URL + "/2026").header("Authorization", owner.bearer()))
+                .andExpect(jsonPath("$.lawVersion.id").value(first))
+                .andExpect(jsonPath("$.lawVersion.versionNo").value(1))
+                .andExpect(jsonPath("$.newerLawVersion").value(true))
+                .andExpect(jsonPath("$.rowVersion").value(0));
+        assertThat(pinnedLawId(owner.id(), 2026)).isEqualTo(first);
+
+        mvc.perform(post(URL + "/2026" + REFRESH).header("Authorization", owner.bearer()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.lawVersion.id").value(second))
+                .andExpect(jsonPath("$.lawVersion.versionNo").value(2))
+                .andExpect(jsonPath("$.newerLawVersion").value(false))
+                .andExpect(jsonPath("$.rowVersion").value(1));
+        // 이미 현재 버전이면 아무것도 바뀌지 않는다.
+        mvc.perform(post(URL + "/2026" + REFRESH).header("Authorization", owner.bearer()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.lawVersion.id").value(second))
+                .andExpect(jsonPath("$.rowVersion").value(1));
+    }
+
+    @Test
+    void firstAppliedVersionReachesWaitingRecordsOfThatYearOnly() throws Exception {
+        AuthedUser other = TestAuth.signupAndLogin(mvc, "other@example.test", "다른 회원");
+        createYear(mvc, owner, 2025);
+        createYear(mvc, owner, 2026);
+        createYear(mvc, other, 2026);
+        mvc.perform(get(URL + "/2026").header("Authorization", owner.bearer()))
+                .andExpect(jsonPath("$.lawVersion").value(nullValue()))
+                .andExpect(jsonPath("$.newerLawVersion").value(false));
+
+        long lawId = TestTaxLaws.createApplied(mvc, admin, 2026);
+
+        // 회원이 누르지 않아도 "세법 준비 중"이 풀린다. 다른 귀속연도의 기록은 그대로다.
+        for (AuthedUser member : new AuthedUser[]{owner, other}) {
+            mvc.perform(get(URL + "/2026").header("Authorization", member.bearer()))
+                    .andExpect(jsonPath("$.lawVersion.id").value(lawId))
+                    .andExpect(jsonPath("$.newerLawVersion").value(false));
+        }
+        assertThat(pinnedLawId(owner.id(), 2025)).isNull();
+        // 세법 버전을 채워도 기본정보의 rowVersion은 오르지 않는다. 열어 둔 화면의 저장이 409가 되지 않는다.
+        putYear(mvc, owner, 2026, yearBody(52_000_000L, 1, 12, 0, 0L))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.lawVersion.id").value(lawId));
+    }
+
+    @Test
+    void refreshWithoutAnAppliedVersionKeepsTheRecordWaiting() throws Exception {
+        createYear(mvc, owner, 2026);
+        TestTaxLaws.createFilledDraft(mvc, admin, 2026);
+
+        mvc.perform(post(URL + "/2026" + REFRESH).header("Authorization", owner.bearer()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.lawVersion").value(nullValue()))
+                .andExpect(jsonPath("$.newerLawVersion").value(false))
+                .andExpect(jsonPath("$.rowVersion").value(0));
+    }
+
+    @Test
+    void refreshReachesOnlyTheRequestersOwnYear() throws Exception {
+        long first = TestTaxLaws.createApplied(mvc, admin, 2026);
+        createYear(mvc, owner, 2026);
+        TestTaxLaws.createApplied(mvc, admin, 2026);
+
+        // 연도 기록이 없는 회원(서비스 관리자 포함)은 404이고 남의 기록은 바뀌지 않는다.
+        mvc.perform(post(URL + "/2026" + REFRESH).header("Authorization", admin.bearer()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("NOT_FOUND"));
+        mvc.perform(post(URL + "/2026" + REFRESH)).andExpect(status().isUnauthorized());
+
+        assertThat(pinnedLawId(owner.id(), 2026)).isEqualTo(first);
+    }
+
+    /** 첫 버전 적용과 연도 기록 만들기가 겹쳐도 세법 버전 없이 남는 기록이 없어야 한다. */
+    @Test
+    void recordsCreatedWhileTheFirstVersionIsBeingAppliedStillGetIt() throws Exception {
+        List<AuthedUser> members = new ArrayList<>();
+        for (int i = 0; i < 4; i++) {
+            members.add(TestAuth.signupAndLogin(mvc, "member" + i + "@example.test", "회원" + i));
+        }
+        YearRequest request = new YearRequest(40_000_000L, 1, 12, 0, null);
+        for (int round = 0; round < 10; round++) {
+            jdbc.update("DELETE FROM tax_year_records");
+            jdbc.update("DELETE FROM tax_law_versions");
+            long lawId = TestTaxLaws.createFilledDraft(mvc, admin, 2026);
+            List<Callable<String>> calls = new ArrayList<>();
+            calls.add(() -> {
+                laws.apply(admin.id(), lawId, 1L);
+                return "APPLIED";
+            });
+            for (AuthedUser member : members) {
+                calls.add(() -> {
+                    records.saveYear(member.id(), 2026, request);
+                    return "CREATED";
+                });
+            }
+
+            List<String> results = TaxLawConcurrencyTest.runTogether(calls);
+
+            assertThat(results).as("round %d", round)
+                    .containsExactly("APPLIED", "CREATED", "CREATED", "CREATED", "CREATED");
+            assertThat(jdbc.queryForList("SELECT law_version_id FROM tax_year_records", Long.class))
+                    .as("round %d", round).containsOnly(lawId).hasSize(4);
+        }
+    }
+}
+```
+
+- [ ] **Step 2: 실패 확인**
+
+Run: `cd apps/api && ./gradlew test --tests '*TaxPlanApiTest' --tests '*TaxLawPinApiTest'`
+Expected: `11 tests completed, 9 failed`. `TaxPlanApiTest.requiresLogin`과 `TaxLawPinApiTest.refreshReachesOnlyTheRequestersOwnYear`만 통과한다(경로가 없어 404·401).
+
+- [ ] **Step 3: DTO**
+
+`main/tax/record/TaxRecordDtos.java`
+
+```diff
+--- a/apps/api/src/main/java/com/saladbowl/api/tax/record/TaxRecordDtos.java
++++ b/apps/api/src/main/java/com/saladbowl/api/tax/record/TaxRecordDtos.java
+@@ -86,13 +86,34 @@
+     public record CashView(long rowVersion, LocalDate asOfDate, String memo, CashAmounts amounts, int blankCount) {
+     }
+ 
++    /** 지출계획의 소비구분 한 행: 신용카드 고정 / 체크카드·현금영수증 고정 / 변경 가능. 빈 칸이 없다. */
++    public record PlanRow(
++            @NotNull @Min(0) @Max(MAX_AMOUNT) @WholeNumber Long creditFixed,
++            @NotNull @Min(0) @Max(MAX_AMOUNT) @WholeNumber Long debitFixed,
++            @NotNull @Min(0) @Max(MAX_AMOUNT) @WholeNumber Long flexible) {
++    }
++
++    /** 지출계획 저장. 처음 저장은 rowVersion을 보내지 않고, 그 뒤로는 읽을 때 받은 rowVersion을 보낸다. */
++    public record PlanRequest(
++            @NotNull @Valid PlanRow general,
++            @NotNull @Valid PlanRow market,
++            @NotNull @Valid PlanRow transit,
++            @NotNull @Valid PlanRow culture,
++            @WholeNumber Long rowVersion) {
++    }
++
++    public record PlanView(long rowVersion, PlanRow general, PlanRow market, PlanRow transit, PlanRow culture) {
++    }
++
+     /** 연도 기록이 기억하는 세법 버전. childTiersApply는 웹이 자녀등 입력란을 보일지 판단하는 값이다. */
+     public record LawVersionRef(long id, int versionNo, OffsetDateTime appliedAt, boolean childTiersApply) {
+     }
+ 
+     /**
+      * 연도 기록 묶음. 모든 조회·저장 응답이 이 모양이다.
++     * newerLawVersion은 연도 기록의 세법 버전이 그 귀속연도의 현재 적용 버전과 다른지다.
+      * cashReceipt가 null이면 한 번도 입력하지 않은 것이고 blankCount에 4칸으로 센다.
++     * plan이 null이면 지출계획을 저장한 적이 없다.
+      * totals는 미입력 칸을 0으로 더한 연도 합계표다. asOfDateMismatch는 자료끼리 기준일이 서로 다른지다.
+      */
+     public record TaxYearView(
+@@ -103,8 +124,10 @@
+             int workEndMonth,
+             int childCount,
+             LawVersionRef lawVersion,
++            boolean newerLawVersion,
+             List<CardView> cards,
+             CashView cashReceipt,
++            PlanView plan,
+             SpendingTotals totals,
+             int blankCount,
+             boolean hasInputs,
+```
+
+- [ ] **Step 4: 엔티티와 저장소**
+
+`main/tax/record/TaxSpendingPlan.java`
+
+```java
+package com.saladbowl.api.tax.record;
+
+import com.saladbowl.api.tax.record.TaxRecordDtos.PlanRequest;
+import com.saladbowl.api.tax.record.TaxRecordDtos.PlanRow;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import jakarta.persistence.Version;
+
+/**
+ * 지출계획. 연도 기록당 하나다. 남은 기간의 예상 공제대상액을 소비구분 4 x
+ * (신용카드 고정 / 체크카드·현금영수증 고정 / 변경 가능)으로 받는다. 추천 결과는 저장하지 않는다.
+ */
+@Entity
+@Table(name = "tax_spending_plans")
+public class TaxSpendingPlan {
+
+    @Id
+    @Column(name = "record_id")
+    private Long recordId;
+
+    @Column(name = "general_credit_fixed", nullable = false)
+    private long generalCreditFixed;
+
+    @Column(name = "general_debit_fixed", nullable = false)
+    private long generalDebitFixed;
+
+    @Column(name = "general_flexible", nullable = false)
+    private long generalFlexible;
+
+    @Column(name = "market_credit_fixed", nullable = false)
+    private long marketCreditFixed;
+
+    @Column(name = "market_debit_fixed", nullable = false)
+    private long marketDebitFixed;
+
+    @Column(name = "market_flexible", nullable = false)
+    private long marketFlexible;
+
+    @Column(name = "transit_credit_fixed", nullable = false)
+    private long transitCreditFixed;
+
+    @Column(name = "transit_debit_fixed", nullable = false)
+    private long transitDebitFixed;
+
+    @Column(name = "transit_flexible", nullable = false)
+    private long transitFlexible;
+
+    @Column(name = "culture_credit_fixed", nullable = false)
+    private long cultureCreditFixed;
+
+    @Column(name = "culture_debit_fixed", nullable = false)
+    private long cultureDebitFixed;
+
+    @Column(name = "culture_flexible", nullable = false)
+    private long cultureFlexible;
+
+    // id를 직접 넣는 엔티티라 저장소가 새 행인지를 이 값이 null인지로 판단한다. 그래서 long이 아니라 Long이다.
+    @Version
+    @Column(name = "row_version", nullable = false)
+    private Long rowVersion;
+
+    protected TaxSpendingPlan() {
+    }
+
+    public static TaxSpendingPlan create(long recordId, PlanRequest request) {
+        TaxSpendingPlan plan = new TaxSpendingPlan();
+        plan.recordId = recordId;
+        plan.edit(request);
+        return plan;
+    }
+
+    /** 12칸을 덮어쓴다. 이전 값은 남지 않는다. */
+    public void edit(PlanRequest request) {
+        generalCreditFixed = request.general().creditFixed();
+        generalDebitFixed = request.general().debitFixed();
+        generalFlexible = request.general().flexible();
+        marketCreditFixed = request.market().creditFixed();
+        marketDebitFixed = request.market().debitFixed();
+        marketFlexible = request.market().flexible();
+        transitCreditFixed = request.transit().creditFixed();
+        transitDebitFixed = request.transit().debitFixed();
+        transitFlexible = request.transit().flexible();
+        cultureCreditFixed = request.culture().creditFixed();
+        cultureDebitFixed = request.culture().debitFixed();
+        cultureFlexible = request.culture().flexible();
+    }
+
+    public PlanRow general() { return new PlanRow(generalCreditFixed, generalDebitFixed, generalFlexible); }
+    public PlanRow market() { return new PlanRow(marketCreditFixed, marketDebitFixed, marketFlexible); }
+    public PlanRow transit() { return new PlanRow(transitCreditFixed, transitDebitFixed, transitFlexible); }
+    public PlanRow culture() { return new PlanRow(cultureCreditFixed, cultureDebitFixed, cultureFlexible); }
+    public Long getRowVersion() { return rowVersion; }
+}
+```
+
+`main/tax/record/TaxSpendingPlanRepository.java`
+
+```java
+package com.saladbowl.api.tax.record;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+
+/** 기본 키가 연도 기록 id다. 소유한 연도 기록을 먼저 찾고 그 id로 읽는다. */
+public interface TaxSpendingPlanRepository extends JpaRepository<TaxSpendingPlan, Long> {
+}
+```
+
+`main/tax/record/TaxYearRecord.java`
+
+```diff
+--- a/apps/api/src/main/java/com/saladbowl/api/tax/record/TaxYearRecord.java
++++ b/apps/api/src/main/java/com/saladbowl/api/tax/record/TaxYearRecord.java
+@@ -75,6 +75,11 @@
+         childCount = request.childCount();
+     }
+ 
++    /** 현재 적용 버전으로 바꾼다. 회원이 다시 계산을 눌렀을 때만 부른다. */
++    public void useLawVersion(long lawVersionId) {
++        this.lawVersionId = lawVersionId;
++    }
++
+     @PrePersist
+     void onCreate() {
+         createdAt = updatedAt = OffsetDateTime.now();
+```
+
+- [ ] **Step 5: 세법 적용이 기다리던 연도 기록을 채우게 한다** — `JdbcTemplate`은 JPA와 같은 트랜잭션·같은 연결을 쓴다(번호 카운터와 같다). UPDATE는 `tax_year`와 `law_version_id IS NULL` 두 조건을 모두 건다.
+
+`main/tax/law/TaxLawService.java`
+
+```diff
+--- a/apps/api/src/main/java/com/saladbowl/api/tax/law/TaxLawService.java
++++ b/apps/api/src/main/java/com/saladbowl/api/tax/law/TaxLawService.java
+@@ -28,6 +28,9 @@
+             RETURNING last_version_no
+             """;
+ 
++    // 'TAXL'. 연도 기록 만들기(공유)와 그 귀속연도의 세법 적용(배타)이 서로를 기다리게 하는 advisory lock의 첫 번째 키.
++    private static final int APPLY_LOCK = 0x5441584C;
++
+     private final TaxLawVersionRepository versions;
+     private final UserRepository users;
+     private final JdbcTemplate jdbc;
+@@ -88,8 +91,16 @@
+             FieldError first = errors.get(0);
+             throw new ApiException(ErrorCode.VALIDATION_FAILED, first.field() + ": " + first.message());
+         }
++        // 만드는 중인 연도 기록이 커밋될 때까지 기다린다. 기다리지 않으면 아래 UPDATE가 그 행을 보지 못하고,
++        // 그 기록은 적용 버전을 못 본 채 세법 버전 없이 남는다.
++        jdbc.query("SELECT pg_advisory_xact_lock(?, ?)", rs -> { }, APPLY_LOCK, draft.getTaxYear());
+         draft.apply(adminId, OffsetDateTime.now());
+-        return toAdminResponse(versions.saveAndFlush(draft));
++        VersionResponse response = toAdminResponse(versions.saveAndFlush(draft));
++        // 적용 버전이 없어 기다리던 그 귀속연도의 연도 기록만 이 버전을 기억한다. 이미 버전이 있는 기록은
++        // 회원이 다시 계산을 누를 때까지 그대로다(TAX-66). 기본정보의 row_version은 올리지 않는다.
++        jdbc.update("UPDATE tax_year_records SET law_version_id = ? WHERE tax_year = ? AND law_version_id IS NULL",
++                draft.getId(), draft.getTaxYear());
++        return response;
+     }
+ 
+     /** 회원용: 그 귀속연도의 현재 적용 버전. 작성자·적용자 닉네임과 메모는 내리지 않는다. */
+@@ -103,6 +114,15 @@
+         return versions.findFirstByTaxYearAndStatusOrderByAppliedAtDescIdDesc(taxYear, TaxLawStatus.APPLIED);
+     }
+ 
++    /**
++     * 새 연도 기록이 기억할 현재 적용 버전. 연도 기록을 만드는 트랜잭션 안에서 부른다.
++     * 같은 귀속연도의 적용(apply)이 진행 중이면 끝날 때까지 기다렸다가 읽는다.
++     */
++    public Optional<TaxLawVersion> currentAppliedForNewRecord(int taxYear) {
++        jdbc.query("SELECT pg_advisory_xact_lock_shared(?, ?)", rs -> { }, APPLY_LOCK, taxYear);
++        return currentApplied(taxYear);
++    }
++
+     /** 행을 잠그고 초안인지 확인한다. 잠금 뒤에 상태를 보므로 동시에 적용된 버전은 여기서 409가 된다. */
+     private TaxLawVersion lockDraft(long id) {
+         TaxLawVersion version = versions.findByIdForUpdate(id).orElseThrow(TaxLawService::notFound);
+```
+
+- [ ] **Step 6: 서비스** — 연도 기록을 만들 때 `currentApplied` 대신 `currentAppliedForNewRecord`를 부른다.
+
+`main/tax/record/TaxRecordService.java`
+
+```diff
+--- a/apps/api/src/main/java/com/saladbowl/api/tax/record/TaxRecordService.java
++++ b/apps/api/src/main/java/com/saladbowl/api/tax/record/TaxRecordService.java
+@@ -11,6 +11,8 @@
+ import com.saladbowl.api.tax.record.TaxRecordDtos.CashRequest;
+ import com.saladbowl.api.tax.record.TaxRecordDtos.CashView;
+ import com.saladbowl.api.tax.record.TaxRecordDtos.LawVersionRef;
++import com.saladbowl.api.tax.record.TaxRecordDtos.PlanRequest;
++import com.saladbowl.api.tax.record.TaxRecordDtos.PlanView;
+ import com.saladbowl.api.tax.record.TaxRecordDtos.SavedYear;
+ import com.saladbowl.api.tax.record.TaxRecordDtos.TaxYearView;
+ import com.saladbowl.api.tax.record.TaxRecordDtos.YearRequest;
+@@ -21,6 +23,7 @@
+ import java.time.LocalDate;
+ import java.time.ZoneId;
+ import java.util.List;
++import java.util.Objects;
+ import java.util.Optional;
+ import java.util.stream.Stream;
+ 
+@@ -37,16 +40,18 @@
+     private final TaxYearRecordRepository records;
+     private final TaxCardStatementRepository cards;
+     private final TaxCashReceiptRepository cashReceipts;
++    private final TaxSpendingPlanRepository plans;
+     private final TaxLawService laws;
+     private final TaxLawVersionRepository lawVersions;
+     private final Clock clock;
+ 
+     public TaxRecordService(TaxYearRecordRepository records, TaxCardStatementRepository cards,
+-                            TaxCashReceiptRepository cashReceipts, TaxLawService laws,
+-                            TaxLawVersionRepository lawVersions, Clock clock) {
++                            TaxCashReceiptRepository cashReceipts, TaxSpendingPlanRepository plans,
++                            TaxLawService laws, TaxLawVersionRepository lawVersions, Clock clock) {
+         this.records = records;
+         this.cards = cards;
+         this.cashReceipts = cashReceipts;
++        this.plans = plans;
+         this.laws = laws;
+         this.lawVersions = lawVersions;
+         this.clock = clock;
+@@ -70,7 +75,7 @@
+                 throw notFound();
+             }
+             requireCreatableYear(year);
+-            Long lawVersionId = laws.currentApplied(year).map(TaxLawVersion::getId).orElse(null);
++            Long lawVersionId = laws.currentAppliedForNewRecord(year).map(TaxLawVersion::getId).orElse(null);
+             // 같은 회원이 동시에 두 번 만들면 UNIQUE (owner_id, tax_year)가 한쪽을 409로 만든다.
+             TaxYearRecord created = records.saveAndFlush(TaxYearRecord.create(userId, year, request, lawVersionId));
+             return new SavedYear(true, view(created));
+@@ -137,6 +142,33 @@
+         return viewWithinTotalLimit(record);
+     }
+ 
++    /** 지출계획은 연도에 하나다. 없으면 만들고(rowVersion 없이), 있으면 고친다(rowVersion 필수). 자료가 미완료여도 저장된다. */
++    @Transactional
++    public TaxYearView savePlan(long userId, int year, PlanRequest request) {
++        TaxYearRecord record = lockOwned(userId, year);
++        Optional<TaxSpendingPlan> existing = plans.findById(record.getId());
++        if (existing.isEmpty()) {
++            if (request.rowVersion() != null) {
++                throw conflict();
++            }
++            plans.saveAndFlush(TaxSpendingPlan.create(record.getId(), request));
++        } else {
++            TaxSpendingPlan plan = existing.get();
++            requireRowVersion(plan.getRowVersion(), request.rowVersion());
++            plan.edit(request);
++            plans.saveAndFlush(plan);
++        }
++        return view(record);
++    }
++
++    /** 회원이 [새 버전으로 다시 계산]을 눌렀을 때만 연도 기록의 세법 버전을 현재 적용 버전으로 바꾼다(TAX-66). */
++    @Transactional
++    public TaxYearView refreshLawVersion(long userId, int year) {
++        TaxYearRecord record = lockOwned(userId, year);
++        laws.currentApplied(year).ifPresent(current -> record.useLawVersion(current.getId()));
++        return view(records.saveAndFlush(record));
++    }
++
+     /** 읽기용. 요청자의 그 귀속연도 기록이 없으면 404다. 조회(이 클래스와 PR 4의 분석)가 쓴다. */
+     public TaxYearRecord requireOwned(long userId, int year) {
+         return records.findByOwnerIdAndTaxYear(userId, year).orElseThrow(TaxRecordService::notFound);
+@@ -190,6 +222,9 @@
+     private TaxYearView view(TaxYearRecord record) {
+         LawVersionRef lawVersion = record.getLawVersionId() == null ? null
+                 : lawVersions.findById(record.getLawVersionId()).map(TaxRecordService::toRef).orElse(null);
++        Long currentLawVersionId = laws.currentApplied(record.getTaxYear()).map(TaxLawVersion::getId).orElse(null);
++        PlanView plan = plans.findById(record.getId()).map(p -> new PlanView(p.getRowVersion(), p.general(),
++                p.market(), p.transit(), p.culture())).orElse(null);
+         List<TaxCardStatement> cardRows = cards.findByRecordIdOrderByIdAsc(record.getId());
+         TaxCashReceipt cash = cashReceipts.findById(record.getId()).orElse(null);
+         List<CardView> cardViews = cardRows.stream().map(c -> new CardView(c.getId(), c.getRowVersion(),
+@@ -203,7 +238,8 @@
+                 Stream.ofNullable(cash).map(TaxCashReceipt::getAsOfDate)).distinct().count();
+         return new TaxYearView(record.getTaxYear(), record.getRowVersion(), record.getTotalSalary(),
+                 record.getWorkStartMonth(), record.getWorkEndMonth(), record.getChildCount(), lawVersion,
+-                cardViews, cashView, SpendingTotals.of(cardRows, cash), blankCount,
++                !Objects.equals(record.getLawVersionId(), currentLawVersionId),
++                cardViews, cashView, plan, SpendingTotals.of(cardRows, cash), blankCount,
+                 !cardRows.isEmpty() || cash != null, asOfDates > 1);
+     }
+ 
+```
+
+- [ ] **Step 7: 컨트롤러**
+
+`main/tax/record/TaxRecordController.java`
+
+```diff
+--- a/apps/api/src/main/java/com/saladbowl/api/tax/record/TaxRecordController.java
++++ b/apps/api/src/main/java/com/saladbowl/api/tax/record/TaxRecordController.java
+@@ -3,6 +3,7 @@
+ import com.saladbowl.api.auth.CurrentUser;
+ import com.saladbowl.api.tax.record.TaxRecordDtos.CardRequest;
+ import com.saladbowl.api.tax.record.TaxRecordDtos.CashRequest;
++import com.saladbowl.api.tax.record.TaxRecordDtos.PlanRequest;
+ import com.saladbowl.api.tax.record.TaxRecordDtos.SavedYear;
+ import com.saladbowl.api.tax.record.TaxRecordDtos.TaxYearView;
+ import com.saladbowl.api.tax.record.TaxRecordDtos.YearRequest;
+@@ -76,4 +77,15 @@
+                                        @Valid @RequestBody CashRequest request) {
+         return service.saveCashReceipt(userId, year, request);
+     }
++
++    @PutMapping("/plan")
++    public TaxYearView savePlan(@CurrentUser Long userId, @PathVariable @Min(1000) @Max(9999) int year,
++                                @Valid @RequestBody PlanRequest request) {
++        return service.savePlan(userId, year, request);
++    }
++
++    @PostMapping("/law-version/refresh")
++    public TaxYearView refreshLawVersion(@CurrentUser Long userId, @PathVariable @Min(1000) @Max(9999) int year) {
++        return service.refreshLawVersion(userId, year);
++    }
+ }
+```
+
+- [ ] **Step 8: 통과 확인**
+
+Run: `cd apps/api && ./gradlew test --tests '*tax*'`
+Expected: `BUILD SUCCESSFUL`. `TaxPlanApiTest` 6건, `TaxLawPinApiTest` 5건, `TaxStatementApiTest` 14건, `TaxYearApiTest` 15건, 기존 `TaxLawApplyApiTest` 15건, `TaxLawConcurrencyTest` 4건, `TaxLawAdminApiTest` 13건, `TaxLawValidatorTest` 9건, `TaxAdminAccessTest` 5건 통과.
+
+- [ ] **Step 9: 전체 테스트**
+
+Run: `cd apps/api && ./gradlew test`
+Expected: `BUILD SUCCESSFUL`(임시 복사본에서는 전체 369건 통과).
+
+- [ ] **Step 10: 커밋(컨트롤러)**
+
+```bash
+git add apps/api/src/main/java/com/saladbowl/api/tax apps/api/src/test/java/com/saladbowl/api/support/TestTaxRecords.java apps/api/src/test/java/com/saladbowl/api/support/TestTaxLaws.java apps/api/src/test/java/com/saladbowl/api/tax/record
+git commit -m "feat(api): 소득공제 지출계획 저장과 세법 버전 기억·다시 계산" -m "Co-Authored-By: Codex (gpt-6-sol) <noreply@openai.com>"
+```
+
+---
 
 ### PR 3 마무리 (컨트롤러)
 
-- `cd apps/api && ./gradlew test`. 브랜치 최종 리뷰: Claude Fable 5.2 한 번. **반론 리뷰: Codex `gpt-6-astra` / `xhigh` (`review-risk`)** — 볼 것: `owner_id` 조건 없이 id만으로 읽는 쿼리, 404/403/409 응답 차이로 남의 자료 존재가 새는지, 삭제 연쇄 범위, `apply` 때 NULL 채우기가 다른 연도·이미 버전이 있는 기록을 건드리는지, 낙관적 잠금 우회.
+- [ ] `cd apps/api && ./gradlew test` 결과를 구현 보고와 대조한다(이미 통과한 것은 변경 없이 다시 돌리지 않는다). `memoryTest`는 생략하고 PR 본문 "확인"에 이유(업로드 한도·파서·메모리 변경 없음)를 적는다.
+- [ ] `api` 모드 뒤처리: `git status`에 `apps/api` 밖의 변경이 없는지, `~/.gradle/init.d`·`~/.gradle/gradle.properties`가 바뀌지 않았는지 확인한다.
+- [ ] 브랜치 최종 리뷰: Claude Fable 5.2 서브에이전트 한 번(`review-final`). 볼 것: 요구사항 추적표의 PR 3 항목(TAX-01·02·03·20~24·26~29·51·65·66·70, AC-01·02·03·14·15·19·20·22·28·30·31·33·36·37)이 테스트로 덮였는지, "HTTP 인터페이스" 표·`TaxYearView` 필드와 실제 응답이 같은지, PR 4가 쓸 `SpendingTotals`·`TaxRecordService.get`·`requireOwned`의 시그니처.
+- [ ] **반론 리뷰: Codex `gpt-6-astra` / `xhigh` (`read`, 템플릿 F, 태그 `review-risk`)**. 대상은 `origin/main..HEAD`의 `apps/api` 변경이다. 깨 보라고 요청할 것:
+  - 소유권 우회
+    - `owner_id` 조건 없이 읽거나 쓰는 쿼리가 있는가: `tax/record`의 `findById`·`getReferenceById`·`existsById`·`deleteById`·JPQL·native SQL을 모두 본다. `cashReceipts.findById`·`plans.findById`의 인자가 항상 `lockOwned`·`requireOwned`가 돌려준 기록의 id인지, `cards`를 `findByIdAndRecordId` 말고 다른 길로 읽는 곳이 있는지.
+    - `cardId`를 다른 회원의 것, 같은 회원의 다른 귀속연도 것으로 바꿔 수정·삭제할 수 있는가. 본문에 `recordId`·`ownerId`·`id`·`lawVersionId`를 넣어 엔티티에 바인딩되는 길이 있는가(요청 record에 없는 필드여야 한다).
+    - 그룹 ADMIN·공개 중인 같은 그룹 회원·서비스 관리자가 닿는 길: `tax/record`에 `GroupAccess`·`ServiceAdminGuard`·`groupId` 참조가 없어야 한다. `/tax/admin/**` 쪽에서 연도 기록을 읽어 내보내는 응답이 있는가(`apply` 응답에 채운 기록 수·회원 정보가 실리지 않는지).
+  - 응답 차이로 남의 자료 존재가 새는가
+    - 남의 `cardId`와 없는 `cardId`에 대해 상태 코드·`code`·`message`·응답 시간(잠금 대기)이 같은가. 틀린 `rowVersion`·잘못된 본문·기준일 오류를 섞었을 때 404보다 409·400이 먼저 나오는 조합이 있는가(판정 순서: 본문 형식 400 → 연도 기록 404 → 카드 자료 404 → `rowVersion` 409 → 서비스 검증 400).
+    - 다른 회원이 이미 만든 연도를 내가 만들 때 409가 나오는 길이 있는가(`UNIQUE (owner_id, tax_year)`는 회원별이어야 한다). 연속 id(`cards[].id`)로 다른 회원의 자료 수를 짐작하는 것 말고 내용이 새는 곳이 있는가.
+    - 403이 나오는 경로가 `/tax/years/**`에 있는가(없어야 한다).
+  - 삭제 연쇄
+    - 연도 기록 삭제가 그 회원·그 귀속연도의 카드 자료·현금영수증 자료·지출계획만 지우는가. 다른 귀속연도·다른 회원의 행, `tax_law_versions`에 닿는가.
+    - 연도 기록 삭제와 그 연도의 카드 추가·지출계획 저장이 겹치면 부모 없는 행이나 500이 나오는가(둘 다 연도 기록 행 잠금을 거치는지). 삭제 뒤 같은 연도를 다시 만들었을 때 옛 `cardId`·옛 `rowVersion`으로 새 기록을 고칠 수 있는가.
+    - 연도 기록 삭제가 부모 `rowVersion`만 비교하여 딸린 자료 변경은 감지하지 못하는 한계("결정이 필요한 점" 1번). 현금영수증 자료를 지우는 길(`DELETE`, 본문 `amounts: null`)이 있는가.
+    - 연도 기록이 가리키는 세법 버전을 지울 수 있는가(초안은 참조되지 않아야 한다. 복합 FK가 초안·다른 연도 버전 참조를 막는지).
+  - `apply`의 NULL 채우기 경합
+    - 적용과 연도 기록 만들기가 겹쳐 적용 버전이 있는데 `law_version_id`가 NULL로 남는 순서가 있는가. advisory lock을 잡는 시점(만들기: 현재 적용 버전을 읽기 전, 적용: 상태 변경 전)과 푸는 시점(커밋)이 맞는지, `currentAppliedForNewRecord`를 트랜잭션 밖에서 부르는 곳이 있는지.
+    - UPDATE가 다른 귀속연도나 이미 버전이 있는 기록을 건드리는가. 적용이 검증 실패·`rowVersion` 불일치로 롤백될 때 채운 값도 되돌아가는가.
+    - 서로 다른 초안 둘을 같은 연도에 동시에 적용하면 기다리던 기록이 어느 버전을 갖는가, 그때 `newerLawVersion`이 맞는가. 적용과 `refresh`·기본정보 수정이 겹칠 때 Hibernate가 전체 열을 쓰면서 `law_version_id`를 옛 값(NULL)으로 되돌리는 순서가 있는가.
+    - 초안 행 잠금 → advisory lock → 연도 기록 행 잠금 순서에서 교착이 생기는 조합이 있는가(연도 기록 쓰기는 advisory lock을 기다리지 않아야 한다).
+  - `rowVersion` 우회
+    - `rowVersion` 없이 또는 `null`·소수·문자열·음수·`Long` 범위 밖 값으로 기존 행을 덮어쓰는 길이 있는가. 현금영수증 자료·지출계획의 "없으면 만들기"가 이미 있는 행을 덮는 순서가 있는가.
+    - 잠금 없이 읽고 쓰는 쓰기 경로(`lockOwned`를 거치지 않는 `save`·`delete`)가 있는가. 같은 `rowVersion`으로 동시에 들어온 두 수정이 둘 다 성공하는가.
+    - 값이 같은 수정(변경 없음)에서 `rowVersion`이 오르지 않는 것이 문제를 만드는가.
+  - 금액·연도 검증 우회
+    - 음수·상한 초과·소수·지수 표기(`1e3`)·문자열 숫자·아주 큰 수가 저장되는가. 칸마다는 상한 이하인데 연도 합계가 상한을 넘거나 `long`을 넘치는 길(카드 자료를 많이 더하기, 수정으로 늘리기)이 있는가. 합계 상한 검사가 저장을 실제로 되돌리는가.
+    - 연도 범위: `PUT`의 만들기 말고 연도 기록이 생기는 길이 있는가. 한국 시각 연말·연초 경계, `year` 경로 값(`02026`, `+2026`, 공백, 음수)의 처리.
+    - 기준일이 귀속연도 밖이거나 없는 날짜, 카드사명이 공백·제어문자·51자 이상, 메모 201자 이상, 근로기간 역전, `childCount` 음수가 DB까지 가는가(가더라도 CHECK가 막아 500이 되지 않는지).
+- [ ] 반론 리뷰의 발견은 원래 구현자(`resume-api`)가 고치고, 고친 범위만 Claude가 다시 본다. 이중 리뷰를 하지 않는다.
+- [ ] PR 본문 "무엇"에 남길 것: 소유권 검사가 조회 조건 한 가지라는 점, 행 잠금 + `rowVersion` 비교 방식과 `GlobalExceptionHandler`를 고치지 않은 이유, 세법 적용 때의 NULL 채우기와 advisory lock, "계획 초안에서 달라진 점"·"결정이 필요한 점" 목록, 이 PR은 화면이 없어 캡처가 없다는 점. `## 소모값`은 `python3 scripts/pr_usage.py` 출력으로 채운다.
+- [ ] 배포 순서(`docs/deploy.md` 12절): 이 PR은 API만 바꾼다. 병합 뒤 Render 배포가 Live가 되면 V10이 실행된다(`tax_law_versions`에 UNIQUE 제약 추가 포함. 행이 몇 개뿐이라 잠금 시간은 무시할 수 있다).
 
 ---
 
@@ -3716,11 +6801,11 @@ HTTP 인터페이스: `GET /tax/years/{year}/analysis` (본인 연도 기록만,
 4. **확정 (2026-11-13, 기본값) (PR 5 전) — 중간 노출.** 웹은 `main` 병합 즉시 배포되므로 PR 5 병합부터 PR 7 병합 전까지 회원은 소득공제 메뉴에서 입력자료만 본다. PR 1 병합부터 PR 5 병합 전까지 하단 탭은 4칸이다. 기본값: 받아들인다. 다른 선택: PR 7까지 소득공제 메뉴를 서비스 관리자에게만 보인다.
 5. **해석 — 공제율이 서로 다를 때의 차감 순서.** PRD 7.1절 3번 식은 직불등과 문화체육, 전통시장과 대중교통의 공제율이 같다고 놓았다. 관리자는 5종을 따로 설정할 수 있으므로(8.2절) 알고리즘 버전 1은 차감 순서를 A → B → M → T → P로 고정했다. 2025·2026 값에서는 PRD 식과 결과가 같다.
 6. **해석 — 공제율·비율은 정수 퍼센트.** 소수 공제율(예: 12.5%)이 생기면 migration과 계산기 변경이 필요하다.
-7. **해석 — 세법 버전 기억 시점.** 연도 기록을 만들 때 현재 적용 버전을 기억하고, 적용 버전이 없던 연도는 첫 버전이 적용될 때 자동으로 그 버전을 기억한다(회원이 누르지 않아도 "세법 준비 중"이 풀린다). 이미 버전이 있는 연도 기록만 [새 버전으로 다시 계산]을 기다린다.
+7. **해석 — 세법 버전 기억 시점.** 연도 기록을 만들 때 현재 적용 버전을 기억하고, 적용 버전이 없던 연도는 첫 버전이 적용될 때 자동으로 그 버전을 기억한다(회원이 누르지 않아도 "세법 준비 중"이 풀린다). 이미 버전이 있는 연도 기록만 [새 버전으로 다시 계산]을 기다린다. 적용과 연도 기록 만들기가 겹쳐도 빠지는 기록이 없도록 귀속연도별 advisory lock을 쓴다(PR 3 "소유권·동시성 설계").
 8. **해석 — 자녀등 입력란.** 세법 버전의 자녀등 단계별 기본한도가 서로 다를 때만 보인다(별도 설정값 없음). 적용 버전이 없는 연도는 입력란이 없고 0으로 저장한다.
 9. **해석 — 선택 연도 기억.** 메모리(React 상태)에만 둔다. 새로 고치면 올해로 돌아간다.
 10. PR 1 뒤 홈의 넓은 화면은 문서 순서(요약 → 등록 현황)와 보이는 순서(등록 현황 왼쪽)가 다르다. 와이어프레임이 정한 배치이고 키보드 순서는 문서 순서를 따른다.
-11. 계획의 PR 1 코드는 임시 복사본에서 테스트·typecheck·lint·build까지 확인했지만 화면은 띄워 보지 않았다. PR 2의 코드는 임시 복사본에서 `./gradlew test`(320건)까지 실행해 확인했다(2.2·2.3의 RED 컴파일 오류 문구는 실행하지 않고 적음). PR 3~7의 설계는 실행해 보지 않았다.
+11. 계획의 PR 1 코드는 임시 복사본에서 테스트·typecheck·lint·build까지 확인했지만 화면은 띄워 보지 않았다. PR 2의 코드는 임시 복사본에서 `./gradlew test`(320건)까지 실행해 확인했다(2.2·2.3의 RED 컴파일 오류 문구는 실행하지 않고 적음). PR 3의 코드는 임시 복사본에서 Task 순서대로 실패 확인(3.1: 15건 중 13건, 3.2: 14건 중 13건, 3.3: 11건 중 9건 실패)과 `./gradlew cleanTest test`(3.3 뒤 369건)까지 실행해 확인했고, 계획에 실은 코드 블록을 차례로 넣으면 그 상태와 같아지는 것도 확인했다(2026-11-16, `2987768` 기준). `memoryTest`와 실제 서버 기동은 하지 않았다. PR 4~7의 설계는 실행해 보지 않았다.
 12. 세법 수치와 7.1절 산식은 독립적인 세무 검증을 거치지 않았다(PRD 14장). D03(합산 기간)·D08(원 단위)·D09(귀속 시점)의 법령 기준은 미확인이고 임시 규칙이다.
 13. 회원 탈퇴 기능이 없어 `ON DELETE CASCADE`에 따른 소득공제 자료 삭제는 검증 대상이 아니다(PRD 2장 비범위).
 14. 후속: 관리자 인가를 인터셉터에서 Spring Security 필터 체인으로 옮긴다. 현재는 지원하지 않는 HTTP 메서드의 405 응답으로 라우트 구조가 드러날 수 있다.

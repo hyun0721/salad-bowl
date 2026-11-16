@@ -28,6 +28,9 @@ public class TaxLawService {
             RETURNING last_version_no
             """;
 
+    // 'TAXL': 같은 귀속연도의 연도 기록 생성과 세법 적용을 직렬화한다.
+    private static final int APPLY_LOCK = 0x5441584C;
+
     private final TaxLawVersionRepository versions;
     private final UserRepository users;
     private final JdbcTemplate jdbc;
@@ -88,8 +91,14 @@ public class TaxLawService {
             FieldError first = errors.get(0);
             throw new ApiException(ErrorCode.VALIDATION_FAILED, first.field() + ": " + first.message());
         }
+        // 커밋 전 생성 중인 연도 기록은 아래 UPDATE에 보이지 않으므로 생성과 적용을 같은 연도별 잠금으로 맞춘다.
+        jdbc.query("SELECT pg_advisory_xact_lock(?, ?)", rs -> { }, APPLY_LOCK, draft.getTaxYear());
         draft.apply(adminId, OffsetDateTime.now());
-        return toAdminResponse(versions.saveAndFlush(draft));
+        VersionResponse response = toAdminResponse(versions.saveAndFlush(draft));
+        // 열어 둔 기본정보 화면의 저장이 409가 되지 않도록 row_version은 올리지 않는다.
+        jdbc.update("UPDATE tax_year_records SET law_version_id = ? WHERE tax_year = ? AND law_version_id IS NULL",
+                draft.getId(), draft.getTaxYear());
+        return response;
     }
 
     /** 회원용: 그 귀속연도의 현재 적용 버전. 작성자·적용자 닉네임과 메모는 내리지 않는다. */
@@ -101,6 +110,12 @@ public class TaxLawService {
 
     public Optional<TaxLawVersion> currentApplied(int taxYear) {
         return versions.findFirstByTaxYearAndStatusOrderByAppliedAtDescIdDesc(taxYear, TaxLawStatus.APPLIED);
+    }
+
+    /** 생성 트랜잭션 안에서 세법 적용의 배타 잠금과 맞춰 현재 적용 버전을 읽는다. */
+    public Optional<TaxLawVersion> currentAppliedForNewRecord(int taxYear) {
+        jdbc.query("SELECT pg_advisory_xact_lock_shared(?, ?)", rs -> { }, APPLY_LOCK, taxYear);
+        return currentApplied(taxYear);
     }
 
     /** 행을 잠그고 초안인지 확인한다. 잠금 뒤에 상태를 보므로 동시에 적용된 버전은 여기서 409가 된다. */
