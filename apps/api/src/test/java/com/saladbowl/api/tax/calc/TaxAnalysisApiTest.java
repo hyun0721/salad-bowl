@@ -134,6 +134,7 @@ class TaxAnalysisApiTest extends IntegrationTest {
                 .andExpect(jsonPath("$.asOfDateMin").value(nullValue()))
                 .andExpect(jsonPath("$.asOfDateMax").value(nullValue()))
                 .andExpect(jsonPath("$.law").value(nullValue()))
+                .andExpect(jsonPath("$.lawRates").value(nullValue()))
                 .andExpect(jsonPath("$.planSaved").value(false))
                 .andExpect(jsonPath("$.deduction").value(nullValue()))
                 .andExpect(jsonPath("$.recommendation").value(nullValue()));
@@ -144,6 +145,7 @@ class TaxAnalysisApiTest extends IntegrationTest {
         putPlan(mvc, owner, 2026, wireframePlan()).andExpect(status().isOk());
         analysis(owner, 2026).andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("INCOMPLETE"))
+                .andExpect(jsonPath("$.lawRates").value(nullValue()))
                 .andExpect(jsonPath("$.blankCount").value(5))
                 .andExpect(jsonPath("$.totals.creditGeneral").value(12_000_000))
                 .andExpect(jsonPath("$.planSaved").value(true))
@@ -159,6 +161,7 @@ class TaxAnalysisApiTest extends IntegrationTest {
                 .andExpect(jsonPath("$.status").value("LAW_PENDING"))
                 .andExpect(jsonPath("$.blankCount").value(0))
                 .andExpect(jsonPath("$.law").value(nullValue()))
+                .andExpect(jsonPath("$.lawRates").value(nullValue()))
                 .andExpect(jsonPath("$.planSaved").value(true))
                 .andExpect(jsonPath("$.deduction").value(nullValue()))
                 .andExpect(jsonPath("$.recommendation").value(nullValue()));
@@ -190,6 +193,13 @@ class TaxAnalysisApiTest extends IntegrationTest {
                 .andExpect(jsonPath("$.law.id").value(lawId))
                 .andExpect(jsonPath("$.law.versionNo").value(1))
                 .andExpect(jsonPath("$.law.appliedAt").isString())
+                .andExpect(jsonPath("$.lawRates.minSpendRatePct").value(25))
+                .andExpect(jsonPath("$.lawRates.bracketBoundary").value(70_000_000))
+                .andExpect(jsonPath("$.lawRates.rateCreditPct").value(15))
+                .andExpect(jsonPath("$.lawRates.rateDebitCashPct").value(30))
+                .andExpect(jsonPath("$.lawRates.rateCulturePct").value(30))
+                .andExpect(jsonPath("$.lawRates.rateMarketPct").value(40))
+                .andExpect(jsonPath("$.lawRates.rateTransitPct").value(40))
                 .andExpect(jsonPath("$.newerLawVersion").value(false))
                 .andExpect(jsonPath("$.planSaved").value(false))
                 .andExpect(jsonPath("$.recommendation").value(nullValue()))
@@ -212,6 +222,21 @@ class TaxAnalysisApiTest extends IntegrationTest {
                 .andExpect(jsonPath("$.deduction.extraEligible").value(750_000))
                 .andExpect(jsonPath("$.deduction.extraUsed").value(0))
                 .andExpect(jsonPath("$.deduction.amount").value(1_950_000));
+    }
+
+    @Test
+    void belowThresholdShowsTheMinimumWonNeededToStartDeduction() throws Exception {
+        TestTaxLaws.createApplied(mvc, admin, 2026);
+        createYear(mvc, owner, 2026);
+        addCard(mvc, owner, 2026, cardBody("가나카드", "2026-06-30", null,
+                6_000_000L, 0L, 0L, 0L, 0L, 0L, 0L, 0L));
+        putCash(mvc, owner, 2026, cashBody("2026-06-30", null, 0L, 0L, 0L, 0L))
+                .andExpect(status().isOk());
+
+        analysis(owner, 2026).andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("READY"))
+                .andExpect(jsonPath("$.deduction.thresholdReached").value(false))
+                .andExpect(jsonPath("$.deduction.remainingToThreshold").value(4_000_001));
     }
 
     @Test
@@ -291,6 +316,7 @@ class TaxAnalysisApiTest extends IntegrationTest {
         // 회원이 다시 계산하기 전에는 기억한 버전의 결과 그대로다(AC-19).
         analysis(owner, 2026).andExpect(status().isOk())
                 .andExpect(jsonPath("$.law.id").value(first))
+                .andExpect(jsonPath("$.lawRates.rateCreditPct").value(15))
                 .andExpect(jsonPath("$.newerLawVersion").value(true))
                 .andExpect(jsonPath("$.deduction.amount").value(1_950_000));
 
@@ -300,6 +326,7 @@ class TaxAnalysisApiTest extends IntegrationTest {
         analysis(owner, 2026).andExpect(status().isOk())
                 .andExpect(jsonPath("$.law.id").value(second))
                 .andExpect(jsonPath("$.law.versionNo").value(2))
+                .andExpect(jsonPath("$.lawRates.rateCreditPct").value(20))
                 .andExpect(jsonPath("$.newerLawVersion").value(false))
                 .andExpect(jsonPath("$.deduction.thresholdCut").value(2_000_000))
                 .andExpect(jsonPath("$.deduction.amount").value(2_050_000));

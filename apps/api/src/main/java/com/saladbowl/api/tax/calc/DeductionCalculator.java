@@ -56,7 +56,7 @@ public final class DeductionCalculator {
         boolean thresholdReached = total * 100 > threshold;
 
         return new DeductionResult(high, credit, debitCash, culture, market, transit, total,
-                threshold / 100, thresholdReached, thresholdReached ? 0 : Math.max(1, (unfilled + 99) / 100),
+                threshold / 100, thresholdReached, thresholdReached ? 0 : unfilled / 100 + 1,
                 before / SCALE, cut / SCALE, deductible / SCALE,
                 basicLimit, basicUsed / SCALE, extraCap, extraEligible / SCALE, extraUsed / SCALE,
                 (basicUsed + extraUsed) / SCALE);

@@ -1,11 +1,15 @@
 package com.saladbowl.api.tax.calc;
 
 import com.saladbowl.api.tax.record.SpendingTotals;
+import com.saladbowl.api.tax.law.TaxLawVersion;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 /**
  * 소득공제액 산식(PRD 7.1절, TAX-40~42·45·71, AC-07~13). DB 없이 계산만 본다.
@@ -26,6 +30,15 @@ class DeductionCalculatorTest {
     /** 12칸 순서: 신용카드(일반·전통시장·대중교통·문화체육), 체크카드 4칸, 현금영수증 4칸. */
     static SpendingTotals totals(long... c) {
         return new SpendingTotals(c[0], c[1], c[2], c[3], c[4], c[5], c[6], c[7], c[8], c[9], c[10], c[11]);
+    }
+
+    @Test
+    void rejectsUnsupportedAlgorithmVersion() {
+        TaxLawVersion version = mock(TaxLawVersion.class);
+        when(version.getAlgorithmVersion()).thenReturn(2);
+        assertThatThrownBy(() -> TaxLawValues.from(version))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("unsupported tax algorithm version: 2");
     }
 
     private static long amount(long salary, int childCount, TaxLawValues law, long... cells) {
@@ -103,13 +116,20 @@ class DeductionCalculatorTest {
         DeductionResult below = DeductionCalculator.calculate(40_000_000L, 0,
                 totals(4_000_000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0), LAW_2026);
         assertThat(below.thresholdReached()).isFalse();
-        assertThat(below.remainingToThreshold()).isEqualTo(6_000_000L);
+        assertThat(below.remainingToThreshold()).isEqualTo(6_000_001L);
         assertThat(below.deductible()).isZero();
+
+        DeductionResult oneBelow = DeductionCalculator.calculate(40_000_000L, 0,
+                totals(9_999_999, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0), LAW_2026);
+        assertThat(oneBelow.remainingToThreshold()).isEqualTo(2L);
+        DeductionResult oneAbove = DeductionCalculator.calculate(40_000_000L, 0,
+                totals(10_000_001, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0), LAW_2026);
+        assertThat(oneAbove.remainingToThreshold()).isZero();
     }
 
     @Test
-    void remainingThresholdRoundsUpWithoutChangingWhetherItWasReached() {
-        // 70,000,001 × 25% = 17,500,000.25원. 17,500,000원 소비 시 남은 0.25원은 1원으로 표시한다.
+    void remainingThresholdIsTheMinimumWholeWonNeededToExceedIt() {
+        // 70,000,001 × 25% = 17,500,000.25원. 17,500,000원 소비 시 1원을 더 써야 넘는다.
         DeductionResult below = DeductionCalculator.calculate(70_000_001L, 0,
                 totals(17_500_000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0), LAW_2026);
         assertThat(below.thresholdReached()).isFalse();

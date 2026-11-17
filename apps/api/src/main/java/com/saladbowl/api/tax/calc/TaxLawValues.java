@@ -23,6 +23,10 @@ public record TaxLawValues(
 
     /** 적용된 세법 버전만 넘긴다. 적용본은 검증(TaxLawValidator)을 거쳐 빈 값이 없다. */
     public static TaxLawValues from(TaxLawVersion v) {
+        // 계산기는 현재 알고리즘 버전 1만 지원한다.
+        if (v.getAlgorithmVersion() != 1) {
+            throw new IllegalStateException("unsupported tax algorithm version: " + v.getAlgorithmVersion());
+        }
         return new TaxLawValues(v.getMinSpendRatePct(), v.getBracketBoundary(), v.getRateCreditPct(),
                 v.getRateDebitCashPct(), v.getRateCulturePct(), v.getRateMarketPct(), v.getRateTransitPct(),
                 List.of(v.getBasicLimitLow0(), v.getBasicLimitLow1(), v.getBasicLimitLow2()),

@@ -6513,6 +6513,8 @@ git commit -m "feat(api): 소득공제 지출계획 저장과 세법 버전 기�
 
 # PR 4 — 계산기·추천·분석 조회 API
 
+구현 뒤 주의(2026-11-17): remainingToThreshold 정의와 lawRates 필드는 구현 코드가 우선.
+
 반론 리뷰 대상이 아니다(이유는 "PR 4 마무리"). 브랜치: `feat/tax-calc-api`(최신 `origin/main` `f908524`에서 만든 worktree). PR 제목 예: `feat(api): 소득공제 계산기·추천·분석 조회 API`.
 
 검증: `cd apps/api && ./gradlew test`. 업로드·파서를 건드리지 않으므로 `memoryTest`는 생략하고 PR 본문에 이유를 적는다(API CI는 둘 다 돌린다). JDK 21과 Docker(Testcontainers)가 필요하다. 계산기·배분·추천 테스트는 Spring 없이 도는 단위 테스트다.
@@ -6549,7 +6551,7 @@ PRD 7.1절 산식과 8.1절 값을 착수 전에 공개 자료와 다시 대조�
 - 기본한도 H = 구간 × 자녀등 단계(0 / 1 / 2명 이상). **자녀등 단계가 없는 세법(세 칸이 같은 값, `childTiersApply == false`)에서는 저장된 `childCount`를 쓰지 않고 0명 칸을 읽는다.** 서버는 `childCount`를 항상 저장하기 때문이다(PR 3). 추가 인정액 = min(공제 가능 금액 − H, 전통시장·대중교통·문화체육의 금액 × 공제율 합계, 구간별 추가한도 상한), 공제 가능 금액 ≤ H면 0. 소득공제액 = min(공제 가능 금액, H) + 추가 인정액.
 - 정수 연산: 중간값은 원 × 10,000 `long`이다(금액 × 100 × 퍼센트). 최종 소득공제액에서 10,000으로 나눠 한 번 내린다(TAX-45). 부동소수점을 쓰지 않는다.
 - 오버플로: 연도 합계표 한 칸과 지출계획 한 칸의 상한이 9,999,999,999,999원이므로 계산기에 들어가는 12칸의 합은 누계 12칸 + 지출계획 12칸 = 24 × 상한 < 240조 원이다. 공제율이 모두 100%여도 중간값은 240조 × 100 × 100 = 2.4 × 10^18로 `long` 최댓값(약 9.22 × 10^18) 안이다. 최저사용금액은 상한 × 100 = 10^15, 한도는 상한 × 10,000 = 10^17 이하다. 이 최악 입력을 계산기·추천 테스트에 넣었다. 현재 계획 배분의 `V × 입력액`(약 10^26)만 `BigInteger`로 곱한다.
-- 과정 값(`threshold`, `beforeThresholdCut`, `thresholdCut`, `deductible`, `basicUsed`, `extraEligible`, `extraUsed`, `remainingToThreshold`)은 화면 표시용으로 각각 원 미만을 버린 값이다. 계산 결과는 `amount` 하나이고, 과정 값을 다시 더해 `amount`를 만들지 않는다("결정이 필요한 점" 1번).
+- 과정 값(`threshold`, `beforeThresholdCut`, `thresholdCut`, `deductible`, `basicUsed`, `extraEligible`, `extraUsed`)은 화면 표시용으로 각각 원 미만을 버린 값이다. `remainingToThreshold`는 사용 합계에 더해 최저사용금액을 넘기는 최소 정수 원(이미 넘었으면 0)이다. 계산 결과는 `amount` 하나이고, 과정 값을 다시 더해 `amount`를 만들지 않는다("결정이 필요한 점" 1번).
 - 현재 계획 배분: PRD 7.2절 규칙 1~5. 신용카드 몫은 "바꿀 수 있는 금액 − 체크카드 몫 − 현금영수증 몫"으로 구한다(신용카드 몫도 원 미만을 버린 뒤 남는 원을 더한 값과 같다).
 - 추천: 현재 계획에서 시작해 소비구분을 일반 → 문화체육 → 전통시장 → 대중교통 순으로 보며, 그 소비구분의 "바꿀 수 있는 금액"을 전부 체크카드·현금영수증 / 전부 신용카드에 둔 두 후보를 같은 계산기로 계산해 지금까지의 최댓값보다 엄격히 클 때만 바꾼다. 같으면 현재 계획의 배분을 유지한다. 근사식을 쓰지 않는다. 비교하는 값은 원 미만을 버린 소득공제액이다.
 - 이유는 문장이 아니라 코드와 숫자로 내려 준다(문장은 웹이 만든다). 공제액이 커진 소비구분마다 `CREDIT_OVER_THRESHOLD`(체크카드·현금영수증으로 옮김, `category`, `amount` = 현재 계획에서 신용카드에 있던 금액) 또는 `CREDIT_RATE_HIGHER`(신용카드로 옮김. 신용카드 공제율을 더 높게 설정한 세법에서만 나온다). 차이가 없으면 아래 순서로 먼저 맞는 것 하나: `NO_FLEXIBLE_AMOUNT`(바꿀 수 있는 금액이 모두 0) → `BELOW_THRESHOLD`(현재 계획의 연말 예상이 최저사용금액 이하, `amount` = 남은 금액) → `LIMIT_REACHED`(소득공제액 = 기본한도 + min(추가한도 대상 공제액, 추가한도 상한)) → `METHOD_NEUTRAL`(바꿀 수 있는 금액이 일반에 없고, 문화체육에도 없거나 낮은 급여구간) → `ALREADY_BEST`(그 밖. 예: 지금까지 체크카드만 써서 현재 계획이 이미 전부 체크카드, 신용카드가 최저사용금액 아래).
@@ -6566,7 +6568,8 @@ PRD 7.1절 산식과 8.1절 값을 착수 전에 공개 자료와 다시 대조�
 응답 `TaxAnalysisView`
 
 - 공통: `taxYear, status, blankCount, totals`(12칸. `TaxYearView.totals`와 같은 값)`, totalSalary, estimated`(= `asOfDateMismatch`)`, asOfDateMin, asOfDateMax`(자료가 없으면 `null`)`, partialYear`(근로기간이 1~12월 전체가 아님)`, law: {id, versionNo, appliedAt, childTiersApply} | null`(연도 기록이 기억한 버전. `TaxYearView.lawVersion`과 같은 모양)`, newerLawVersion, planSaved`.
-- `deduction`(`READY`일 때만, 아니면 `null`): `{highBracket, credit, debitCash, culture, market, transit, total, threshold, thresholdReached, remainingToThreshold, beforeThresholdCut, thresholdCut, deductible, basicLimit, basicUsed, extraCap, extraEligible, extraUsed, amount}`. `credit`~`transit`은 계산에 쓴 구분 합계(PRD 7.1절의 A, B, M, T, P)다.
+- `lawRates`(`READY`일 때만, 아니면 `null`): `{minSpendRatePct, bracketBoundary, rateCreditPct, rateDebitCashPct, rateCulturePct, rateMarketPct, rateTransitPct}`. 연도 기록이 기억한 세법 버전의 계산 수치다.
+- `deduction`(`READY`일 때만, 아니면 `null`): `{highBracket, credit, debitCash, culture, market, transit, total, threshold, thresholdReached, remainingToThreshold, beforeThresholdCut, thresholdCut, deductible, basicLimit, basicUsed, extraCap, extraEligible, extraUsed, amount}`. `credit`~`transit`은 계산에 쓴 구분 합계(PRD 7.1절의 A, B, M, T, P)다. `remainingToThreshold`는 최저사용금액을 넘기기 위해 더 쓸 최소 정수 원(이미 넘었으면 0)이며, `thresholdReached`는 원 미만까지 정확히 비교한 초과 여부다.
 - `recommendation`(`READY`이고 지출계획이 저장돼 있을 때만, 아니면 `null`): `{methodShare: {creditPct, debitPct, cashPct} | null, current: {allocation, yearEndDeduction}, recommended: {allocation, yearEndDeduction}, difference, reasons: [{code, category, amount}]}`.
   - `methodShare`는 연도 합계표 전체의 결제수단 비율이다(퍼센트, 소수 첫째 자리 반올림, 예 `82.0`). 연도 합계가 0원이면 `null`이다. 반올림 때문에 세 값의 합이 100.0이 아닐 수 있다.
   - `allocation`은 소비구분 4개(`general, market, transit, culture`)마다 지출계획의 "바꿀 수 있는 금액"을 결제수단에 둔 금액이다. 고정액은 들어 있지 않다. `current`는 `{credit, debit, cash}`, `recommended`는 `{credit, debitCash}`다. 추천이 바꾸지 않은 소비구분은 `recommended.credit == current.credit`이다.
@@ -8489,6 +8492,8 @@ git commit -m "feat(api): 소득공제 분석 조회 API" -m "Co-Authored-By: Co
 
 # PR 7 — 분석·지출계획 화면
 
+① 결제수단 비율은 웹이 `totals`로 계산한다. 서버의 `methodShare`는 계획 저장 시에만 내려오므로 ①도 소수 첫째 자리 `HALF_UP`으로 반올림한다.
+
 **이 PR에 착수할 때 컨트롤러가 Task 상세를 채운다.** 화면 PR이다.
 
 브랜치 예: `feat/tax-analysis`. 검증: 웹 4종 + verify.
@@ -8572,4 +8577,4 @@ git commit -m "feat(api): 소득공제 분석 조회 API" -m "Co-Authored-By: Co
 13. 회원 탈퇴 기능이 없어 `ON DELETE CASCADE`에 따른 소득공제 자료 삭제는 검증 대상이 아니다(PRD 2장 비범위).
 14. 후속: 관리자 인가를 인터셉터에서 Spring Security 필터 체인으로 옮긴다. 현재는 지원하지 않는 HTTP 메서드의 405 응답으로 라우트 구조가 드러날 수 있다.
 15. **2027 귀속 세법(미확정).** 2026.8.3. 발표된 세제개편안은 2027년 사용분부터 대중교통 우대 폐지, 추가한도 축소, 문화체육 30%의 7천만원 요건 폐지를 담고 있다(https://news.mtn.co.kr/news-detail/2026080315521251297 , 확인 시점에 국회 미확정). 2026 귀속에는 영향이 없다. 확정되면 "문화체육 우대는 낮은 급여구간만"이 계산기(알고리즘 버전 1)에 고정돼 있어 2027 귀속 세법 버전을 값만으로 등록할 수 없고 알고리즘 버전 2가 필요하다(PRD 8.2절).
-16. **해석 — 분석의 과정 값과 추천 탐색(PR 4).** 계산 과정 값은 표시용으로 각각 원 미만을 버리며 소득공제액만 계산 결과다. 추천은 소비구분을 하나씩 보는 탐색이고, 신용카드 공제율이 직불등보다 높게 설정된 세법에서는 최댓값을 놓칠 수 있다(2025·2026 값에서는 16개 조합의 최댓값과 같음을 테스트로 고정). 상세와 다른 선택은 PR 4 "결정이 필요한 점".
+16. **해석 — 분석의 과정 값과 추천 탐색(PR 4).** 계산 과정 값은 표시용으로 각각 원 미만을 버리되 `remainingToThreshold`는 최저사용금액을 넘기 위해 더 쓸 최소 정수 원(이미 넘었으면 0)이며, 소득공제액만 계산 결과다. 추천은 소비구분을 하나씩 보는 탐색이고, 신용카드 공제율이 직불등보다 높게 설정된 세법에서는 최댓값을 놓칠 수 있다(2025·2026 값에서는 16개 조합의 최댓값과 같음을 테스트로 고정). 상세와 다른 선택은 PR 4 "결정이 필요한 점".

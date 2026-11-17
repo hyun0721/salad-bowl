@@ -38,9 +38,11 @@ public class TaxAnalysisService {
 
         DeductionResult deduction = null;
         Recommendation recommendation = null;
+        TaxAnalysisView.LawRates lawRates = null;
         if (status == Status.READY) {
             // 현재 적용 버전이 아니라 연도 기록이 기억한 버전으로 계산한다(TAX-66).
             TaxLawValues law = TaxLawValues.from(lawVersions.findById(view.lawVersion().id()).orElseThrow());
+            lawRates = TaxAnalysisView.LawRates.from(law);
             deduction = DeductionCalculator.calculate(view.totalSalary(), view.childCount(), view.totals(), law);
             if (view.plan() != null) {
                 recommendation = Recommender.recommend(view.totalSalary(), view.childCount(), view.totals(),
@@ -54,6 +56,6 @@ public class TaxAnalysisService {
                 asOfDates.isEmpty() ? null : asOfDates.getFirst(),
                 asOfDates.isEmpty() ? null : asOfDates.getLast(),
                 view.workStartMonth() != 1 || view.workEndMonth() != 12,
-                view.lawVersion(), view.newerLawVersion(), view.plan() != null, deduction, recommendation);
+                view.lawVersion(), lawRates, view.newerLawVersion(), view.plan() != null, deduction, recommendation);
     }
 }

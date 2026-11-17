@@ -133,12 +133,12 @@ class RecommenderTest {
 
     @Test
     void noDifferenceBelowTheThreshold() {
-        // 연말 예상 400만 ≤ 최저사용금액 1,000만. 남은 금액 600만
+        // 연말 예상 400만 ≤ 최저사용금액 1,000만. 넘기 위한 최소 금액 600만 1원
         Recommendation r = noDifference(40_000_000L, totals(3_000_000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
                 plan(0, 0, 1_000_000, 0, 0, 0, 0, 0, 0, 0, 0, 0));
 
         assertThat(r.current().yearEndDeduction()).isZero();
-        assertThat(r.reasons()).containsExactly(new Reason(ReasonCode.BELOW_THRESHOLD, null, 6_000_000L));
+        assertThat(r.reasons()).containsExactly(new Reason(ReasonCode.BELOW_THRESHOLD, null, 6_000_001L));
     }
 
     @Test
