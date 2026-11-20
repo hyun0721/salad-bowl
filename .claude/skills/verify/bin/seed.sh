@@ -41,30 +41,42 @@ curl -sf -H "$json" -d "{\"email\":\"$SEED_EMAIL5\",\"password\":\"$SEED_PASSWOR
 
 # 소득공제: 소유자를 서비스 관리자로 지정하고(화면 없이 DB에서, PR 2), 올해 귀속 세법(2026 귀속 값)을 적용한 뒤
 # 소유자에게 합성 연도 기록을 넣는다. 금액은 와이어프레임 합성값과 같다(PR 7 확인 숫자의 전제).
+token=$(curl -sf -H "$json" -d "{\"email\":\"$SEED_EMAIL\",\"password\":\"$SEED_PASSWORD\"}" "$WEB/api/auth/login" \
+  | python3 -c 'import json,sys; print(json.load(sys.stdin)["accessToken"])')
+auth="Authorization: Bearer $token"
 tax_year=$(TZ=Asia/Seoul date +%Y)
+# 검증 스택 전용. 운영 절차는 docs/deploy.md 13절이며 구글 전용 계정 조건을 따른다.
 docker exec "$PG_NAME" psql -U saladbowl -d saladbowl -qc "UPDATE users SET service_admin = true WHERE email = '$SEED_EMAIL'" >/dev/null
 field() { python3 -c "import json,sys; print(json.load(sys.stdin)[\"$1\"])"; }
-law=$(curl -sf -H "$auth" -H "$json" -d "{\"taxYear\":$tax_year}" "$WEB/api/tax/admin/law-versions")
+tax_call() {
+  local response status
+  response=$(mktemp)
+  status=$(curl -sS -o "$response" -w '%{http_code}' "$@") || { cat "$response" >&2; rm -f "$response"; return 1; }
+  if (( status >= 400 )); then cat "$response" >&2; rm -f "$response"; return 1; fi
+  cat "$response"
+  rm -f "$response"
+}
+law=$(tax_call -H "$auth" -H "$json" -d "{\"taxYear\":$tax_year}" "$WEB/api/tax/admin/law-versions")
 law_id=$(field id <<<"$law")
-law=$(curl -sf -X PUT -H "$auth" -H "$json" "$WEB/api/tax/admin/law-versions/$law_id" -d "{
+law=$(tax_call -X PUT -H "$auth" -H "$json" "$WEB/api/tax/admin/law-versions/$law_id" -d "{
   \"rowVersion\":$(field rowVersion <<<"$law"), \"minSpendRatePct\":25, \"bracketBoundary\":70000000,
   \"rateCreditPct\":15, \"rateDebitCashPct\":30, \"rateCulturePct\":30, \"rateMarketPct\":40, \"rateTransitPct\":40,
   \"basicLimitLow\":[3000000,3500000,4000000], \"basicLimitHigh\":[2500000,2750000,3000000],
   \"extraLimitLow\":3000000, \"extraLimitHigh\":2000000,
   \"basisLawName\":\"조세특례제한법\", \"basisArticle\":\"제126조의2\", \"basisUrl\":\"https://www.law.go.kr\",
   \"periodStart\":\"$tax_year-01-01\", \"periodEnd\":\"$tax_year-12-31\", \"memo\":\"검증용 합성 세법\"}")
-curl -sf -H "$auth" -H "$json" -d "{\"rowVersion\":$(field rowVersion <<<"$law")}" "$WEB/api/tax/admin/law-versions/$law_id/apply" >/dev/null
+tax_call -H "$auth" -H "$json" -d "{\"rowVersion\":$(field rowVersion <<<"$law")}" "$WEB/api/tax/admin/law-versions/$law_id/apply" >/dev/null
 tax="$WEB/api/tax/years/$tax_year"
-curl -sf -X PUT -H "$auth" -H "$json" -d '{"totalSalary":50000000,"workStartMonth":1,"workEndMonth":12,"childCount":0}' "$tax" >/dev/null
-curl -sf -H "$auth" -H "$json" "$tax/cards" -d "{\"issuerName\":\"A카드\",\"asOfDate\":\"$tax_year-06-30\",\"memo\":\"주 사용 카드\",
+tax_call -X PUT -H "$auth" -H "$json" -d '{"totalSalary":50000000,"workStartMonth":1,"workEndMonth":12,"childCount":0}' "$tax" >/dev/null
+tax_call -H "$auth" -H "$json" "$tax/cards" -d "{\"issuerName\":\"A카드\",\"asOfDate\":\"$tax_year-06-30\",\"memo\":\"주 사용 카드\",
   \"amounts\":{\"creditGeneral\":9000000,\"creditMarket\":300000,\"creditTransit\":200000,\"creditCulture\":100000,
   \"debitGeneral\":0,\"debitMarket\":0,\"debitTransit\":0,\"debitCulture\":0}}" >/dev/null
-curl -sf -H "$auth" -H "$json" "$tax/cards" -d "{\"issuerName\":\"B카드\",\"asOfDate\":\"$tax_year-06-30\",
+tax_call -H "$auth" -H "$json" "$tax/cards" -d "{\"issuerName\":\"B카드\",\"asOfDate\":\"$tax_year-06-30\",
   \"amounts\":{\"creditGeneral\":5000000,\"creditMarket\":0,\"creditTransit\":0,\"creditCulture\":0,
   \"debitGeneral\":2000000,\"debitMarket\":200000,\"debitTransit\":300000,\"debitCulture\":100000}}" >/dev/null
-curl -sf -X PUT -H "$auth" -H "$json" "$tax/cash-receipt" \
+tax_call -X PUT -H "$auth" -H "$json" "$tax/cash-receipt" \
   -d "{\"asOfDate\":\"$tax_year-06-30\",\"amounts\":{\"general\":500000,\"market\":100000,\"transit\":0,\"culture\":0}}" >/dev/null
-curl -sf -X PUT -H "$auth" -H "$json" "$tax/plan" -d '{
+tax_call -X PUT -H "$auth" -H "$json" "$tax/plan" -d '{
   "general":{"creditFixed":500000,"debitFixed":300000,"flexible":1200000},
   "market":{"creditFixed":0,"debitFixed":100000,"flexible":100000},
   "transit":{"creditFixed":100000,"debitFixed":0,"flexible":0},

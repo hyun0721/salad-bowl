@@ -21,7 +21,7 @@ Preconditions:
 
 - Baseline state, logged in, seed group `검증그룹` selected.
 
-- **Wide links.** Use preset `desktop`, then reload. Run `find "주 메뉴"` and click each link. Each click changes the `h1` and moves `aria-current` to the clicked link. The link list reads 홈, 소득공제, 입력자료, 대시보드, 대분류, 소분류, 거래 목록, 그룹 관리. No `세법 관리` link shows for a member.
+- **Wide links.** Use preset `desktop`, then reload. Run `find "주 메뉴"` and click each link. Each click changes the `h1` and moves `aria-current` to the clicked link. The link list reads 홈, 소득공제, 입력자료, 대시보드, 대분류, 소분류, 거래 목록, 그룹 관리. Check the missing `세법 관리` link with a regular member account such as `verify2@example.test` after PR 6 adds that menu.
 - **Narrow tabs.** Use preset `mobile`, then reload. The same nav holds 5 tab links with the short labels. The sidebar is gone from the accessibility tree.
 - **Account sheet.** In `mobile`, click the button `계정`. A sheet titled `계정` shows `검증러` and a logout button.
 

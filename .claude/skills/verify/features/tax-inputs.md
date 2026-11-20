@@ -24,13 +24,15 @@ Preconditions:
 - Baseline seed. `seed.sh` printed `SEEDED group=… tax_year=YYYY`. `verify@example.test` is a service admin, the `YYYY` law is applied with child tiers, and the owner's `YYYY` record has salary ₩ 50,000,000, A카드 (₩ 9,600,000), B카드 (₩ 7,600,000), cash ₩ 600,000, all dated `YYYY-06-30`. `verify5@example.test` (그룹없음) has no group and no record.
 
 - **Seeded record.** At `mobile` and `desktop`, open `소득공제`. The totals table reads 일반 14,000,000 / 2,000,000 / 500,000 and 합계 14,600,000 / 2,600,000 / 600,000 (17,800,000 on desktop). No warning shows. No page-level horizontal scroll at 375px and 320px (`resize_window` 320×700).
-- **Centered dialogs.** At `mobile`, open `기본정보 수정`, `A카드 자료 편집`, `현금영수증 자료 편집`, `A카드 자료 삭제`, and `YYYY년 기록 삭제`. Each dialog is centered with space above and below; none slides up from the bottom. The 8-cell grid shows two columns (신용카드, 체크카드) per category with no horizontal scroll.
+- **Centered dialogs.** At `desktop`, `mobile` (375px), and 320×700, open `기본정보 수정`, `A카드 자료 편집`, `현금영수증 자료 편집`, `A카드 자료 삭제`, and `YYYY년 기록 삭제`. Each dialog is centered with space above and below; none slides up from the bottom. The 8-cell grid shows two columns (신용카드, 체크카드) per category with no horizontal scroll.
 - **Blank vs 0.** Add a card `C카드` with only 일반 신용카드 filled. Its row reads `미완료 · 빈 칸 7개`, the totals card shows the blank warning, then `[빈 칸 0원으로 채우기]` on the row turns it into `완료`. Delete `C카드` (one confirmation) to restore.
 - **Long name.** Add a card whose name is 40 characters. At 375px and 320px the name wraps on the left and `[편집] [삭제]` stay right-aligned on the row. Delete it afterwards.
 - **Help.** In the 기본정보 dialog, tap `자녀등 수 도움말`, tap it again, tap outside, press Esc: the popover closes each time, focus returns to `?`, the dialog stays open, and the value does not change.
 - **Different dates.** Edit B카드 기준일 to `YYYY-05-31`. The totals card warns `자료의 기준일이 서로 다릅니다(…)`. Restore `YYYY-06-30`.
-- **No group.** Log out, log in as `verify5@example.test`, open `소득공제`, enter basic info, add one card, then switch nothing (there is no group) and reload: the same data shows. Then, as `verify@example.test`, change the header group and confirm the tax page shows the same numbers without reloading.
+- **No group.** Log out, log in as `verify5@example.test`, open `소득공제`, enter basic info, add one card, then reload: the same data shows.
+- **Group switch.** As `verify@example.test`, change the header group and confirm the tax page shows the same numbers without reloading.
 - **Delete year.** As `verify5@example.test`, open `YYYY년 기록 삭제`: `삭제` stays disabled for an empty value and for the previous year, enables on the exact year, and the page returns to `YYYY년 귀속 기록이 없습니다`. Reopen the dialog before confirming once to see the input start empty.
+  Run this after **No group**, which creates the record to delete.
 - **Mask.** Turn on the `수입` mask: the salary shows `₩ •••••` and totals stay visible. Turn on only `지출`: totals and card sums show `•••••`, the salary is visible. Turn masks off afterwards.
 
 ## Gotchas

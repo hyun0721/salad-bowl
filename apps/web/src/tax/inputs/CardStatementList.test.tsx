@@ -90,6 +90,8 @@ describe('신용·체크 자료', () => {
     await user.click(await screen.findByRole('button', { name: '신용·체크 자료 추가' }))
     const dialog = await screen.findByRole('dialog', { name: '신용·체크 자료 추가' })
     expect(within(dialog).getByRole('group', { name: '기준일' })).toHaveTextContent('2026')
+    expect(within(dialog).getByRole('group', { name: '기준일' })).toHaveTextContent('10')
+    expect(within(dialog).getByRole('group', { name: '기준일' })).toHaveTextContent('31')
     await user.type(within(dialog).getByLabelText('카드사명'), 'A카드')
     await user.click(within(dialog).getByRole('button', { name: '빈 칸 0원으로 채우기' }))
     await user.click(within(dialog).getByRole('button', { name: '저장' }))
@@ -100,7 +102,7 @@ describe('신용·체크 자료', () => {
     expect(screen.queryByText(/중복|이미 있/)).not.toBeInTheDocument()
   })
 
-  it('does not save a negative amount or a date outside the year', async () => {
+  it('does not save a negative amount', async () => {
     serveTax(yearView())
     let posted = 0
     server.use(http.post('*/api/tax/years/2026/cards', () => { posted++; return HttpResponse.json(yearView(), { status: 201 }) }))
@@ -109,13 +111,55 @@ describe('신용·체크 자료', () => {
     await user.click(await screen.findByRole('button', { name: '신용·체크 자료 추가' }))
     const dialog = await screen.findByRole('dialog', { name: '신용·체크 자료 추가' })
     await user.type(within(dialog).getByLabelText('카드사명'), 'B카드')
-    await typeDate(user, dialog, '20251231')
+    await typeDate(user, dialog, '20261031')
     await user.type(cell(dialog, '일반', '신용카드'), '-5')
     await user.tab()
     await user.click(within(dialog).getByRole('button', { name: '저장' }))
 
     expect(await within(dialog).findByText('0원 이상 입력하세요')).toBeInTheDocument()
+    expect(posted).toBe(0)
+  })
+
+  it('does not save a date outside the year', async () => {
+    serveTax(yearView())
+    let posted = 0
+    server.use(http.post('*/api/tax/years/2026/cards', () => { posted++; return HttpResponse.json(yearView(), { status: 201 }) }))
+    const { user } = renderTaxInputs()
+    await user.click(await screen.findByRole('button', { name: '신용·체크 자료 추가' }))
+    const dialog = await screen.findByRole('dialog')
+    await user.type(within(dialog).getByLabelText('카드사명'), 'B카드')
+    await typeDate(user, dialog, '20251231')
+    await user.click(within(dialog).getByRole('button', { name: '저장' }))
     expect(within(dialog).getByRole('group', { name: '기준일' }).closest('[data-invalid]')).not.toBeNull()
+    expect(posted).toBe(0)
+  })
+
+  it('does not save an amount above the limit', async () => {
+    serveTax(yearView())
+    let posted = 0
+    server.use(http.post('*/api/tax/years/2026/cards', () => { posted++; return HttpResponse.json(yearView(), { status: 201 }) }))
+    const { user } = renderTaxInputs()
+    await user.click(await screen.findByRole('button', { name: '신용·체크 자료 추가' }))
+    const dialog = await screen.findByRole('dialog')
+    await user.type(within(dialog).getByLabelText('카드사명'), 'B카드')
+    await typeDate(user, dialog, '20261031')
+    await user.type(cell(dialog, '일반', '신용카드'), '10000000000000')
+    await user.click(within(dialog).getByRole('button', { name: '저장' }))
+    expect(await within(dialog).findByText('금액이 너무 큽니다')).toBeInTheDocument()
+    expect(posted).toBe(0)
+  })
+
+  it('rejects a whitespace-only issuer name before submitting', async () => {
+    serveTax(yearView())
+    let posted = 0
+    server.use(http.post('*/api/tax/years/2026/cards', () => { posted++; return HttpResponse.json(yearView(), { status: 201 }) }))
+    const { user } = renderTaxInputs()
+    await user.click(await screen.findByRole('button', { name: '신용·체크 자료 추가' }))
+    const dialog = await screen.findByRole('dialog')
+    await user.type(within(dialog).getByLabelText('카드사명'), '   ')
+    await typeDate(user, dialog, '20261031')
+    await user.click(within(dialog).getByRole('button', { name: '저장' }))
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('카드사명을 입력하세요.')
     expect(posted).toBe(0)
   })
 

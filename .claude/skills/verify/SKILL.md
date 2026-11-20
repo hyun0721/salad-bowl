@@ -21,6 +21,7 @@ The user often has their own dev stack running on 5432/8080/5173. Never drive or
 What the seed creates:
 - Five accounts in `bin/env.sh`, sharing `SEED_PASSWORD`: verify@example.test / 검증러 (owner), verify2@example.test / 검증둘, verify3@example.test / 검증셋, verify4@example.test / 비공개러, and verify5@example.test / 그룹없음 (no group, no data).
 - The owner is a service admin (set by SQL). This year's tax law (Korean time) is applied with 2026 values, and the owner has a synthetic tax record for this year: salary 50,000,000, A카드·B카드, cash receipt, and a spending plan (the wireframe numbers).
+  The SQL service-admin assignment is for this verification stack only; production follows docs/deploy.md section 13 and its Google-only account condition.
 - The first four join 검증그룹 through invitations. First three share ON, 비공개러 explicitly OFF (membership defaults ON).
 - Previous 12 complete months, 45 expense majors × 24 minors, plus salary for each member. Monthly files keep each upload below the API's 92-day limit.
 - 식비 신규 starts two months ago; 재등장 returns last month after missing months 2–4; 환불초과 is negative net spending two months ago. Private member adds 문화 공연 ₩ 990,000 monthly, excluded from group totals.

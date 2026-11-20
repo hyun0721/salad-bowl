@@ -17,10 +17,12 @@ export default function CardStatementDialog({ year, card, defaultAsOfDate, onClo
   const [memo, setMemo] = useState(card?.memo ?? '')
   const [amounts, setAmounts] = useState<CardAmounts>(card?.amounts ?? EMPTY_CARD)
   const [rowVersion] = useState(card?.rowVersion)
+  const [nameError, setNameError] = useState(false)
   const save = useTaxSave(year, (body: CardInput) => (card ? taxApi.saveCard(year, card.id, { ...body, rowVersion }) : taxApi.addCard(year, body)))
 
   function onSubmit(event: FormEvent) {
     event.preventDefault()
+    if (!issuerName.trim()) { setNameError(true); return }
     save.mutate({ issuerName: issuerName.trim(), asOfDate, memo: memo.trim() || null, amounts }, { onSuccess: onClose })
   }
 
@@ -28,7 +30,8 @@ export default function CardStatementDialog({ year, card, defaultAsOfDate, onClo
     <Dialog title={card ? `${card.issuerName} 자료 편집` : '신용·체크 자료 추가'} onClose={onClose} closeDisabled={save.isPending} centered>
       <form className={ui.stack} onSubmit={onSubmit}>
         <SaveError error={save.error} year={year} onReload={onClose} />
-        <TextField label="카드사명" value={issuerName} onChange={setIssuerName} isRequired maxLength={50} />
+        <TextField label="카드사명" value={issuerName} onChange={(value) => { setIssuerName(value); setNameError(false) }} isRequired maxLength={50} />
+        {nameError && <p role="alert" className={ui.alert}>카드사명을 입력하세요.</p>}
         <div className={ui.stack}>
           <DateTimePicker label="기준일" granularity="day" minValue={`${year}-01-01`} maxValue={`${year}-12-31`}
             value={asOfDate} onChange={setAsOfDate} isRequired />

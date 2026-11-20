@@ -5,6 +5,7 @@
 .page { --text-base: var(--text-lg); --text-sm: var(--text-md); --text-label: var(--text-md); display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; font-size: var(--text-base); line-height: 1.5; }
 .page h2 { margin: 0; font-size: var(--text-xl); line-height: 1.5; }
 .page p { margin: 0; }
+.page section p { font-size: var(--text-lg); }
 .page section button { font-size: var(--text-card-action); }
 
 /* 정보는 왼쪽, 조작은 오른쪽 끝. 줄이 바뀌어도 조작은 오른쪽에 남고 긴 이름이 버튼을 밀어내지 않는다. */
