@@ -10,7 +10,7 @@
 - `tax-cards` lists `신용·체크 자료` rows: issuer, `완료` or `미완료 · 빈 칸 n개`, `기준일 … · 합계 ₩ … · 메모`, and on the right `[빈 칸 0원으로 채우기]` (incomplete only), `[편집]`, `[삭제]`. Delete asks once. 50 rows per year at most.
 - `tax-cash` shows `현금영수증 자료`: `[입력]` and `[4칸 0원으로 채우기]` before the first save, `[편집]` after. There is no delete.
 - `tax-totals` shows `연도 합계표` from the server's 12 totals, the blank-cell and different-date warnings, and `—` when the year has no inputs. Narrow screens move the row total under the category name as `계 …`.
-- `tax-delete-year` deletes the whole year after the user types the exact year in `확인을 위해 귀속연도 YYYY을 입력하세요`.
+- `tax-delete-year` deletes the whole year after the user types the exact year in `확인을 위해 귀속연도(YYYY)를 입력하세요`.
 - `tax-mask` follows the amount mask: `수입` hides the salary, `지출` hides card totals and the totals table. Fields being edited never hide.
 
 ## How to get to it (user POV)

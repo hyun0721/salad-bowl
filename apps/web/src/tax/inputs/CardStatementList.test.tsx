@@ -224,6 +224,32 @@ describe('신용·체크 자료', () => {
     expect(new URL(url).search).toBe('?rowVersion=5')
   })
 
+  it.each([409, 404])('reloads and explains a %i card delete conflict', async (status) => {
+    const calls = serveTax(yearView({ cards: [cardView()], hasInputs: true }))
+    server.use(http.delete('*/api/tax/years/2026/cards/7', () => HttpResponse.json({ code: 'X', message: 'x' }, { status })))
+    const { user } = renderTaxInputs()
+
+    await user.click(await screen.findByRole('button', { name: 'A카드 자료 삭제' }))
+    const dialog = await screen.findByRole('dialog')
+    await user.click(within(dialog).getByRole('button', { name: '삭제' }))
+
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('새로 불러온 내용을 확인한 뒤 다시 시도해 주세요.')
+    await waitFor(() => expect(calls.year).toBeGreaterThan(1))
+  })
+
+  it.each([409, 404])('reloads and explains a %i row fill conflict', async (status) => {
+    const incomplete = cardView({ blankCount: 1, amounts: { ...cardView().amounts, debitMarket: null } })
+    const calls = serveTax(yearView({ cards: [incomplete], hasInputs: true }))
+    server.use(http.put('*/api/tax/years/2026/cards/7', () => HttpResponse.json({ code: 'X', message: 'x' }, { status })))
+    const { user } = renderTaxInputs()
+
+    const row = await screen.findByRole('listitem')
+    await user.click(within(row).getByRole('button', { name: '빈 칸 0원으로 채우기' }))
+
+    expect(await within(row).findByRole('alert')).toHaveTextContent('새로 불러온 내용을 확인한 뒤 다시 시도해 주세요.')
+    await waitFor(() => expect(calls.year).toBeGreaterThan(1))
+  })
+
   it('stops a stale card save and keeps the input', async () => {
     serveTax(yearView({ cards: [cardView()], hasInputs: true }))
     server.use(http.put('*/api/tax/years/2026/cards/7', () => HttpResponse.json({ code: 'CONFLICT', message: 'x' }, { status: 409 })))

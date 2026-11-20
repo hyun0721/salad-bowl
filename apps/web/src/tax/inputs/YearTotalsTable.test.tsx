@@ -30,7 +30,7 @@ describe('연도 합계표', () => {
     expect(rowCells(table, '일반')).toEqual(['14,000,000', '2,000,000', '500,000', '16,500,000'])
     expect(rowCells(table, '전통시장')).toEqual(['300,000', '200,000', '100,000', '600,000'])
     expect(rowCells(table, '합계')).toEqual(['14,600,000', '2,600,000', '600,000', '17,800,000'])
-    expect(within(table).getByRole('rowheader', { name: /^일반/ })).toHaveTextContent('일반계 16,500,000')
+    expect(within(table).getByRole('rowheader', { name: /^일반/ })).toHaveTextContent('일반 계 16,500,000')
     expect(section).not.toHaveTextContent('미입력 칸이 있습니다')
     expect(section).not.toHaveTextContent('기준일이 서로 다릅니다')
   })

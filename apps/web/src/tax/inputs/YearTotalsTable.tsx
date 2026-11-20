@@ -55,7 +55,7 @@ export default function YearTotalsTable({ view }: { view: TaxYearView }) {
           <tbody>
             {CATEGORIES.map(([category, label]) => (
               <tr key={category}>
-                <th scope="row">{label}<span className={styles.narrowOnly}>계 {amount(categoryTotal(category))}</span></th>
+                <th scope="row">{label}{' '}<span className={styles.narrowOnly}>계 {amount(categoryTotal(category))}</span></th>
                 {METHODS.map(([method]) => <td key={method}>{amount(cell(method, category))}</td>)}
                 <td className={styles.wideOnly}>{amount(categoryTotal(category))}</td>
               </tr>

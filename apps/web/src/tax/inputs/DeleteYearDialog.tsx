@@ -26,7 +26,7 @@ export default function DeleteYearDialog({ view, onClose }: { view: TaxYearView;
     <Dialog title={`${year}년 기록을 삭제할까요?`} onClose={onClose} closeDisabled={remove.isPending} centered>
       <p>{year}년 귀속의 기본정보, 신용·체크 자료 {view.cards.length}건, 현금영수증 자료, 지출계획이 모두 지워집니다. 다른 연도의 기록은 남습니다. 복구할 수 없습니다.</p>
       {remove.error && <p role="alert" className={ui.alert}>{actionError(remove.error)}</p>}
-      <TextField label={`확인을 위해 귀속연도 ${year}을 입력하세요`} value={typed} onChange={setTyped} autoComplete="off" />
+      <TextField label={`확인을 위해 귀속연도(${year})를 입력하세요`} value={typed} onChange={setTyped} autoComplete="off" inputMode="numeric" />
       <div className={ui.confirmActions}>
         <button type="button" className={ui.button} disabled={remove.isPending} onClick={onClose}>취소</button>
         <button type="button" className={`${ui.button} ${ui.dangerFill} ${ui.cta}`}
