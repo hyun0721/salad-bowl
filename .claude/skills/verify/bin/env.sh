@@ -10,3 +10,5 @@ SEED_EMAIL=verify@example.test SEED_PASSWORD=verify-pass-1234 SEED_NICK=검증�
 SEED_EMAIL2=verify2@example.test SEED_NICK2=검증둘
 SEED_EMAIL3=verify3@example.test SEED_NICK3=검증셋
 SEED_EMAIL4=verify4@example.test SEED_NICK4=비공개러
+# 그룹에 들지 않은 계정(소득공제 TAX-03·AC-02 확인용). 가입만 한다.
+SEED_EMAIL5=verify5@example.test SEED_NICK5=그룹없음
