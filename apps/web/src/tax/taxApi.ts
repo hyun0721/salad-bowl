@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiFetch } from '../api/client'
 import { ApiError } from '../api/errors'
+import { errorMessage } from '../common/errorMessage'
 
 // PR 3 응답(TaxRecordDtos)과 같은 모양. 금액은 원 단위 정수, null은 미입력이다.
 // rowVersion은 서버가 주는 불투명한 값(JS 안전 정수 이하)이다. 받은 값을 그대로 돌려보내고 계산하지 않는다.
@@ -73,4 +74,9 @@ export function useTaxSave<T>(year: number, save: (input: T) => Promise<TaxYearV
 /** 다른 곳에서 먼저 고쳤거나(409) 지운(404) 자료에 대한 저장. 새로 불러와야 다시 저장할 수 있다. */
 export function isStale(error: unknown): boolean {
   return error instanceof ApiError && (error.status === 409 || error.status === 404)
+}
+
+/** 확인·채우기처럼 입력이 없는 동작의 실패 문구. 다른 곳에서 바뀌었으면 호출한 쪽이 새로 불러온다. */
+export function actionError(error: unknown): string {
+  return isStale(error) ? '다른 곳에서 수정되거나 삭제됐습니다. 새로 불러온 내용을 확인한 뒤 다시 시도해 주세요.' : errorMessage(error)
 }

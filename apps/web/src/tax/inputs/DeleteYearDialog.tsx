@@ -1,11 +1,10 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import Dialog from '../../common/Dialog'
-import { errorMessage } from '../../common/errorMessage'
 import TextField from '../../common/TextField'
 import { toast } from '../../common/Toast'
 import ui from '../../common/ui.module.css'
-import { isStale, taxApi, taxKeys, type TaxYearView } from '../taxApi'
+import { actionError, isStale, taxApi, taxKeys, type TaxYearView } from '../taxApi'
 
 /** 연도 기록 삭제 확인(D22). 귀속연도 4자리를 똑같이 입력해야 [삭제]가 켜진다. 닫으면 입력이 사라진다(창을 조건부로 그린다). */
 export default function DeleteYearDialog({ view, onClose }: { view: TaxYearView; onClose: () => void }) {
@@ -26,11 +25,7 @@ export default function DeleteYearDialog({ view, onClose }: { view: TaxYearView;
   return (
     <Dialog title={`${year}년 기록을 삭제할까요?`} onClose={onClose} closeDisabled={remove.isPending} centered>
       <p>{year}년 귀속의 기본정보, 신용·체크 자료 {view.cards.length}건, 현금영수증 자료, 지출계획이 모두 지워집니다. 다른 연도의 기록은 남습니다. 복구할 수 없습니다.</p>
-      {remove.error && (
-        <p role="alert" className={ui.alert}>
-          {isStale(remove.error) ? '다른 곳에서 수정되거나 삭제됐습니다. 새로 불러온 내용을 확인한 뒤 다시 시도해 주세요.' : errorMessage(remove.error)}
-        </p>
-      )}
+      {remove.error && <p role="alert" className={ui.alert}>{actionError(remove.error)}</p>}
       <TextField label={`확인을 위해 귀속연도 ${year}을 입력하세요`} value={typed} onChange={setTyped} autoComplete="off" />
       <div className={ui.confirmActions}>
         <button type="button" className={ui.button} disabled={remove.isPending} onClick={onClose}>취소</button>

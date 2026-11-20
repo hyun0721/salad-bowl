@@ -9,6 +9,8 @@ import TaxHeader from '../TaxHeader'
 import { useTaxYear } from '../TaxYearProvider'
 import { taxApi, taxKeys, useTaxYearView, type TaxYearView } from '../taxApi'
 import BasicInfoDialog from './BasicInfoDialog'
+import CardStatementList from './CardStatementList'
+import CashReceiptSection from './CashReceiptSection'
 import DeleteYearDialog from './DeleteYearDialog'
 import styles from './inputs.module.css'
 
@@ -24,6 +26,8 @@ export default function TaxInputsPage() {
   const [deleting, setDeleting] = useState(false)
   const lawPending = view ? view.lawVersion === null : view === null && law.data === null
   const childTiersApply = (view ? view.lawVersion?.childTiersApply : law.data?.childTiersApply) ?? false
+  // 새 자료의 기준일은 이미 넣은 자료의 것으로 미리 채워 기준일 불일치(TAX-27)를 줄인다. 바꿀 수 있다.
+  const defaultAsOfDate = view?.cards.at(-1)?.asOfDate ?? view?.cashReceipt?.asOfDate ?? ''
 
   return (
     <div className={styles.page}>
@@ -48,6 +52,8 @@ export default function TaxInputsPage() {
       {view && (
         <>
           <BasicInfoCard view={view} onEdit={() => setEditing(true)} />
+          <CardStatementList view={view} defaultAsOfDate={defaultAsOfDate} />
+          <CashReceiptSection view={view} defaultAsOfDate={defaultAsOfDate} />
           <section aria-label="연도 기록 삭제" className={`${ui.card} ${styles.split}`}>
             <p>이 연도의 기본정보·입력자료·금액·지출계획을 모두 지웁니다.</p>
             <button type="button" className={`${ui.button} ${ui.danger}`} onClick={() => setDeleting(true)}>{year}년 기록 삭제</button>
