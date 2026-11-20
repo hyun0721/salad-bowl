@@ -1,6 +1,7 @@
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
+import { mockViewport } from '../test/mockViewport'
 import ConfirmDialog from './ConfirmDialog'
 
 function renderConfirm(props: Partial<Parameters<typeof ConfirmDialog>[0]> = {}) {
@@ -92,4 +93,13 @@ describe('ConfirmDialog', () => {
     await user.click(screen.getByRole('button', { name: '짝꿍 내보내기' }))
     expect(screen.getByRole('button', { name: '짝꿍 내보내기 확인' })).toBeInTheDocument()
   })
+})
+
+it('opens as a centered modal on a narrow screen when centered', async () => {
+  mockViewport(true)
+  const { user } = renderConfirm({ centered: true })
+
+  await user.click(screen.getByRole('button', { name: '그룹 나가기' }))
+
+  expect(screen.getByRole('dialog', { name: '그룹 나가기' }).parentElement).toHaveClass('modal')
 })

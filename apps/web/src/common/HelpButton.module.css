@@ -1,0 +1,6 @@
+.helpButton { flex: none; color: var(--ink-muted); }
+.helpButton span { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border: 1px solid currentColor; border-radius: 50%; font-size: var(--text-sm); }
+.helpPopover { width: min(280px, calc(100vw - 32px)); max-height: var(--available-height); overflow: auto; overscroll-behavior: contain; background: var(--surface-000); border: 1px solid var(--line); border-radius: var(--radius-sm); box-shadow: 0 4px 16px var(--overlay); }
+.helpContent { padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); outline: none; font-size: var(--text-lg); line-height: 1.5; }
+.helpContent p { margin: 0; overflow-wrap: anywhere; }
+.helpContent > button { align-self: flex-end; font-size: var(--text-card-action); }

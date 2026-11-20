@@ -5,7 +5,7 @@ import { errorMessage } from '../common/errorMessage'
 import ui from '../common/ui.module.css'
 import TextField from '../common/TextField'
 import field from '../common/Field.module.css'
-import GroupHelp from './GroupHelp'
+import HelpButton from '../common/HelpButton'
 import styles from './GroupsPage.module.css'
 import { toast } from '../common/Toast'
 import { useGroupMutations } from './useGroupMutations'
@@ -36,7 +36,7 @@ export function ShareToggle({ groupId, enabled }: { groupId: number; enabled: bo
         <div className={styles.settingCopy}>
           <div className={styles.titleWithHelp}>
             <label id={`${shareId}-label`} htmlFor={shareId}>내 거래 그룹 공개</label>
-            <GroupHelp title="내 거래 그룹 공개">끄면 그룹 대시보드와 그룹 거래에서 내 거래가 제외됩니다. 숨긴 거래는 공개해도 보이지 않습니다.</GroupHelp>
+            <HelpButton title="내 거래 그룹 공개">끄면 그룹 대시보드와 그룹 거래에서 내 거래가 제외됩니다. 숨긴 거래는 공개해도 보이지 않습니다.</HelpButton>
           </div>
           <Text slot="description" className={ui.muted}>이 그룹에 내 거래를 공유해요.</Text>
         </div>

@@ -7,7 +7,7 @@ import { groupsApi } from './groupsApi'
 import styles from './GroupsPage.module.css'
 import { useGroupMutations } from './useGroupMutations'
 import Icon from '../common/Icon'
-import GroupHelp from './GroupHelp'
+import HelpButton from '../common/HelpButton'
 
 export default function BanList({ groupId }: { groupId: number }) {
   const bans = useQuery({ queryKey: ['bans', groupId], queryFn: () => groupsApi.bans(groupId) })
@@ -17,7 +17,7 @@ export default function BanList({ groupId }: { groupId: number }) {
     <section aria-labelledby="bans-title" className={ui.stack}>
       <div className={styles.titleWithHelp}>
         <h3 id="bans-title" className={styles.subTitle}>차단 목록</h3>
-        <GroupHelp title="차단 목록">내보낸 멤버는 다시 합류할 수 없습니다. 차단을 해제하면 다시 초대할 수 있습니다.</GroupHelp>
+        <HelpButton title="차단 목록">내보낸 멤버는 다시 합류할 수 없습니다. 차단을 해제하면 다시 초대할 수 있습니다.</HelpButton>
       </div>
       {bans.isPending && <SkeletonRegion><ul className={styles.memberList}>
         {[0, 1].map((i) => <li key={i} className={styles.member}>
