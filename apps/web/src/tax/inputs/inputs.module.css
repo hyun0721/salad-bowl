@@ -1,0 +1,25 @@
+/* 소득공제 입력자료 화면과 창. 글자 크기는 UI 표준(카드 제목 16px, 내용·금액 15px, 실행 버튼 14px, 보조 13px)을 이 모듈 안에서만 정한다. */
+.page { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
+.page h2 { margin: 0; font-size: var(--text-xl); line-height: 1.5; }
+.page section button { font-size: var(--text-card-action); }
+.page section p { margin: 0; }
+
+/* 정보는 왼쪽, 조작은 오른쪽 끝. 줄이 바뀌어도 조작은 오른쪽에 남고 긴 이름이 밀어내지 않는다. */
+.split { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2) var(--space-3); }
+.split > :first-child { flex: 1 1 12rem; min-width: 0; overflow-wrap: anywhere; }
+.actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-2); margin-left: auto; }
+.titleWithHelp { display: flex; align-items: center; gap: var(--space-1); min-width: 0; }
+.titleWithHelp > :first-child { min-width: 0; overflow-wrap: anywhere; }
+
+.facts { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--space-1) var(--space-4); margin: 0; font-size: var(--text-lg); line-height: 1.5; }
+.facts dt { color: var(--ink-muted); font-size: var(--text-md); }
+.facts dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.amount { font-variant-numeric: tabular-nums; }
+.note { margin-left: var(--space-2); color: var(--pending); font-size: var(--text-md); }
+.empty { align-items: flex-start; }
+
+/* 창 */
+.months { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); margin: 0; padding: 0; border: 0; min-width: 0; }
+.months legend { padding: 0; margin-bottom: var(--space-1); font-size: var(--text-md); font-weight: 500; color: var(--ink-muted); }
+.labelRow { display: flex; align-items: center; gap: var(--space-1); }
+.fieldError { margin: 0; color: var(--danger); font-size: var(--text-md); }

@@ -9,6 +9,8 @@ import { setAccessToken } from '../api/client'
 import { AuthProvider } from '../auth/AuthProvider'
 import { mockViewport } from '../test/mockViewport'
 import { server } from '../test/server'
+import { serveTax, yearView } from '../test/taxFixtures'
+import { seoulYear } from '../tax/TaxYearProvider'
 import AppRoutes from './AppRoutes'
 
 const me = { userId: 1, email: 'me@test.com', nickname: '나' }
@@ -334,6 +336,58 @@ describe('AppRoutes', () => {
     expect(await screen.findByText('그룹 불러오는 중')).toBeInTheDocument()
     expect(screen.queryByText('A의 그룹')).not.toBeInTheDocument()
     expect(await screen.findByRole('button', { name: /그룹/ })).toHaveTextContent('B의 그룹')
+  })
+
+  it('clears tax data on logout and never shows it to the next member or keeps it in browser storage', async () => {
+    const year = seoulYear(new Date())
+    signedIn([])
+    serveTax(yearView({ taxYear: year, totalSalary: 52_340_000 }))
+    server.use(http.post('*/api/auth/logout', () => new HttpResponse(null, { status: 204 })))
+    const client = renderApp('/tax/inputs')
+    const user = userEvent.setup()
+
+    expect(await screen.findByText('₩ 52,340,000')).toBeInTheDocument()
+    const stored = JSON.stringify({ ...window.localStorage }) + JSON.stringify({ ...window.sessionStorage })
+    expect(stored).not.toMatch(/52,?340,?000/)
+
+    await user.click(screen.getByRole('button', { name: '로그아웃' }))
+    await screen.findByRole('button', { name: '로그인' })
+    expect(client.getQueryData(['tax', 'year', year])).toBeUndefined()
+
+    server.use(
+      http.post('*/api/auth/login', () => HttpResponse.json({ accessToken: 'b1' })),
+      http.get('*/api/me', () => HttpResponse.json({ userId: 2, email: 'b@test.com', nickname: '비' })),
+      http.get('*/api/tax/years/:year', async () => {
+        await delay(300)
+        return HttpResponse.json({ code: 'NOT_FOUND', message: 'x' }, { status: 404 })
+      }),
+    )
+    await user.type(screen.getByLabelText('이메일'), 'b@test.com')
+    await user.type(screen.getByLabelText('비밀번호'), 'password1')
+    await user.click(screen.getByRole('button', { name: '로그인' }))
+    await user.click(await screen.findByRole('link', { name: '소득공제' }))
+
+    expect(await screen.findByText('입력자료 불러오는 중')).toBeInTheDocument()
+    expect(screen.queryByText('₩ 52,340,000')).not.toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: `${year}년 귀속 기록이 없습니다` })).toBeInTheDocument()
+  })
+
+  it('keeps the same tax data without a new request when the header group changes', async () => {
+    signedIn([
+      { groupId: 10, name: '우리집', myRole: 'ADMIN', memberCount: 3 },
+      { groupId: 20, name: '커플 가계부', myRole: 'MEMBER', memberCount: 2 },
+    ])
+    const calls = serveTax(yearView({ taxYear: seoulYear(new Date()) }))
+    renderApp('/tax/inputs')
+    const user = userEvent.setup()
+
+    expect(await screen.findByText('₩ 50,000,000')).toBeInTheDocument()
+    await user.click(await screen.findByRole('button', { name: /그룹/ }))
+    await user.click(screen.getByRole('option', { name: '커플 가계부' }))
+
+    expect(screen.getByRole('button', { name: /그룹/ })).toHaveTextContent('커플 가계부')
+    expect(screen.getByText('₩ 50,000,000')).toBeInTheDocument()
+    expect(calls.year).toBe(1)
   })
 
   it('returns to the invite page after logging in', async () => {
