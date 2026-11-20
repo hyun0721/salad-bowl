@@ -260,6 +260,18 @@ describe('TaxInputsPage — 기본정보와 연도 기록', () => {
     expect(new URL(url).search).toBe('?rowVersion=777')
   })
 
+  it('places the delete explanation and button inside a split wrapper', async () => {
+    serveTax(yearView())
+    renderTaxInputs()
+
+    const section = await screen.findByRole('region', { name: '연도 기록 삭제' })
+    const wrapper = section.firstElementChild
+    expect(wrapper).toHaveClass('split')
+    expect(wrapper?.children).toHaveLength(2)
+    expect(wrapper?.firstElementChild).toHaveTextContent('이 연도의 기본정보·입력자료·금액·지출계획을 모두 지웁니다.')
+    expect(wrapper?.lastElementChild).toBe(within(section).getByRole('button', { name: '2026년 기록 삭제' }))
+  })
+
   it.each([409, 404])('reloads the year and explains a %i delete conflict', async (status) => {
     const calls = serveTax(yearView())
     server.use(http.delete('*/api/tax/years/2026', () => HttpResponse.json({ code: 'X', message: 'x' }, { status })))

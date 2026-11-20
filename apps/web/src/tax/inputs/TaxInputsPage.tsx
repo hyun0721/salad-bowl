@@ -64,9 +64,11 @@ export default function TaxInputsPage() {
             </div>
             <YearTotalsTable view={view} />
           </div>
-          <section aria-label="연도 기록 삭제" className={`${ui.card} ${styles.split}`}>
-            <p>이 연도의 기본정보·입력자료·금액·지출계획을 모두 지웁니다.</p>
-            <button type="button" className={`${ui.button} ${ui.danger}`} onClick={() => setDeleting(true)}>{year}년 기록 삭제</button>
+          <section aria-label="연도 기록 삭제" className={ui.card}>
+            <div className={styles.split}>
+              <p>이 연도의 기본정보·입력자료·금액·지출계획을 모두 지웁니다.</p>
+              <button type="button" className={`${ui.button} ${ui.danger}`} onClick={() => setDeleting(true)}>{year}년 기록 삭제</button>
+            </div>
           </section>
         </>
       )}
