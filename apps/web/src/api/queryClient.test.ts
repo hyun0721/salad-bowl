@@ -27,6 +27,8 @@ describe('isGroupScopedKey', () => {
     expect(isGroupScopedKey(['categories'])).toBe(false)
     expect(isGroupScopedKey(['groups'])).toBe(false)
     expect(isGroupScopedKey(['transactions', 'mine', '2026-10'])).toBe(false)
+    expect(isGroupScopedKey(['tax', 'year', 2026])).toBe(false)
+    expect(isGroupScopedKey(['tax', 'law', 'current', 2026])).toBe(false)
   })
 })
 
@@ -49,6 +51,18 @@ describe('createQueryClient', () => {
 
     await client.prefetchQuery({
       queryKey: ['transactions', 'mine', '2026-10'],
+      queryFn: () => Promise.reject(new ApiError(404, 'NOT_FOUND', 'x')),
+    })
+
+    expect(client.getQueryState(['groups'])?.isInvalidated).toBe(false)
+  })
+
+  it('leaves the group list alone when a tax query is not found', async () => {
+    const client = createQueryClient()
+    client.setQueryData(['groups'], [])
+
+    await client.prefetchQuery({
+      queryKey: ['tax', 'year', 2026],
       queryFn: () => Promise.reject(new ApiError(404, 'NOT_FOUND', 'x')),
     })
 
