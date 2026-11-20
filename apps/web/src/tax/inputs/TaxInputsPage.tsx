@@ -12,6 +12,7 @@ import BasicInfoDialog from './BasicInfoDialog'
 import CardStatementList from './CardStatementList'
 import CashReceiptSection from './CashReceiptSection'
 import DeleteYearDialog from './DeleteYearDialog'
+import YearTotalsTable from './YearTotalsTable'
 import styles from './inputs.module.css'
 
 /** 소득공제 › 입력자료. 선택 연도의 기록 하나를 보여 주고 고친다. 그룹과 무관하다(useGroups를 쓰지 않는다). */
@@ -51,9 +52,14 @@ export default function TaxInputsPage() {
       )}
       {view && (
         <>
-          <BasicInfoCard view={view} onEdit={() => setEditing(true)} />
-          <CardStatementList view={view} defaultAsOfDate={defaultAsOfDate} />
-          <CashReceiptSection view={view} defaultAsOfDate={defaultAsOfDate} />
+          <div className={styles.columns}>
+            <div className={styles.column}>
+              <BasicInfoCard view={view} onEdit={() => setEditing(true)} />
+              <CardStatementList view={view} defaultAsOfDate={defaultAsOfDate} />
+              <CashReceiptSection view={view} defaultAsOfDate={defaultAsOfDate} />
+            </div>
+            <YearTotalsTable view={view} />
+          </div>
           <section aria-label="연도 기록 삭제" className={`${ui.card} ${styles.split}`}>
             <p>이 연도의 기본정보·입력자료·금액·지출계획을 모두 지웁니다.</p>
             <button type="button" className={`${ui.button} ${ui.danger}`} onClick={() => setDeleting(true)}>{year}년 기록 삭제</button>
