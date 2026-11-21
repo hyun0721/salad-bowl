@@ -43,7 +43,7 @@
 | 3 `feat(api)` | 연도 기록·입력자료·지출계획 저장 API, 소유권, 동시 수정 409, 세법 버전 기억 | TAX-01, 02, 03, 20~24, 26~29(서버), 51, 65, 66, 70(저장) | 2 | **예 — 소유권(404 숨김), 삭제(연도 기록·카드 자료)** | 아니오 |
 | 4 `feat(api)` | 계산기(7.1)·현재 계획 배분·추천(7.2) 순수 로직과 분석 조회 API | TAX-24(빈 칸 수), 35(값), 36(값), 38(상태), 40~46, 50, 52~54, 65(상태), 69, 71(단계 값), 75(상태) | 3 | 아니오 (읽기 전용 조회 하나. 회원 자료는 PR 3의 `TaxRecordService.get`으로만 읽고 새 테이블이 없다) | 아니오 |
 | 5 `feat(web)` | 소득공제 메뉴·라우트, 선택 연도, 입력자료 화면 | TAX-07, 10, 12, 13, 19, 20~31, 37, 68(일부), 76 | 3 (자녀등 입력란 판단에 2) | 아니오 (서버 권한·삭제는 PR 2·3에서 검토. 로그아웃 캐시 테스트 포함) | 예 |
-| 6 `feat(web)` | 연도별 세법 관리 화면(관리자), 권한 없음 화면 | TAX-04, 06(화면), 10, 11, 19(세 번째 탭), 60~64, 67, 72 | 2, 5 | 아니오 (화면 숨김은 편의이고 권한은 서버가 판단) | 예 |
+| 6 `feat(web)` | 연도별 세법 관리 화면(관리자), 권한 없음 화면, 좁은 화면 안 탭(관리자) | TAX-04, 06(화면), 10, 11, 19(세법 관리 탭), 60~64, 67, 72, 76 | 2, 5 | 아니오 (화면 숨김은 편의이고 권한은 서버가 판단) | 예 |
 | 7 `feat(web)` | 분석·지출계획 화면(① 현황 ② 지출계획 ③ 추천), 메뉴 진입 규칙 | TAX-10, 13, 27(추정), 32~38, 43, 50~55, 65, 66, 68, 69, 70, 71, 73, 75 | 4, 5 | 아니오 | 예 |
 
 순서와 묶음의 이유
@@ -54,7 +54,7 @@
 - 웹은 입력자료(PR 5) → 세법 관리(PR 6) → 분석(PR 7) 순이다. 분석 화면이 나가기 전에 운영자가 화면으로 2026 귀속 세법을 등록할 수 있어야 "세법 준비 중"만 보이는 기간이 없다.
 - PR 5~7은 병합할 때마다 운영에 보인다. PR 5 병합 뒤 PR 7 병합 전까지 회원은 입력자료 화면만 본다(중간 노출을 받아들이는 것이 이 계획의 기본값이다. "알려진 제약" 참고).
 
-**PR 5~7의 Task 상세는 그 PR에 착수할 때 컨트롤러가 채운다(PR 2는 2026-11-14에, PR 3은 2026-11-16에, PR 4는 2026-11-17에, PR 5는 2026-11-20에 채웠다).** 뒤 PR의 코드는 앞 PR 결과(실제 엔티티·응답 필드 이름)에 의존하기 때문이다. 이 문서에는 PR 6·7의 Task 목록·파일·인터페이스·테스트 대상·검증 명령까지 적었다. PR 1~5는 실행 가능한 상세까지 적었다.
+**PR 5~7의 Task 상세는 그 PR에 착수할 때 컨트롤러가 채운다(PR 2는 2026-11-14에, PR 3은 2026-11-16에, PR 4는 2026-11-17에, PR 5는 2026-11-20에, PR 6은 2026-11-21에 채웠다).** 뒤 PR의 코드는 앞 PR 결과(실제 엔티티·응답 필드 이름)에 의존하기 때문이다. 이 문서에는 PR 7의 Task 목록·파일·인터페이스·테스트 대상·검증 명령까지 적었다. PR 1~6은 실행 가능한 상세까지 적었다.
 
 ## 요구사항 추적표
 
@@ -11397,34 +11397,1670 @@ git commit -m "chore(verify): 소득공제 시드와 입력자료 검증 지도"
 
 # PR 6 — 연도별 세법 관리 화면
 
-**이 PR에 착수할 때 컨트롤러가 Task 상세를 채운다.** 화면 PR이다.
+> **에이전트 모델 배치(2026-11-21):** PR 5와 같다. 구현은 Codex(`codex-collab` 3장 표: 공용 부품·앱 셸처럼 설계 판단이 큰 Task는 `gpt-6-astra`, 일반 화면은 `gpt-6-sol`, 문서는 `gpt-6-luna`), Task 리뷰는 Claude Sonnet 5.5(`review-task`), 브랜치 최종 리뷰와 Task 상세 계획 작성은 Claude Opus 5.5(`review-final`·`controller`). 모든 Agent 호출은 `model`을 명시한다.
 
-브랜치 예: `feat/tax-law-admin`. 검증: 웹 4종 + verify.
+화면 PR이다(375px 이전·이후 캡처). 브랜치: `feat/tax-law-admin-web`(최신 `origin/main` `15b38dc`에서 만든 worktree). PR 제목 예: `feat(web): 연도별 세법 관리 화면`.
 
-### Task 6.1: 관리자 메뉴 노출·권한 없음 화면·버전 목록 (TAX-06, 10, 11, 19, 67, 72)
+검증: `cd apps/web && npm run typecheck && npm test && npm run lint && npm run build` + verify 스킬(관리자 `verify@example.test`와 일반 회원 `verify2@example.test`). API는 바꾸지 않는다(PR 2의 세법 API와 `/me`만 부른다).
 
-**담당:** Codex `gpt-6-sol` / `medium` (`write`), 태그 `impl-web`. 리뷰: Claude Sonnet 5.5.
+이 PR의 코드와 테스트는 계획을 쓸 때 저장소 밖 임시 복사본(`15b38dc` 기준)에서 Task 순서대로 실행해 확인했다(2026-11-21). Task마다 테스트만 먼저 넣어 실패를 보고(6.1: `AppRoutes.test.tsx`와 새 `TaxLawPage.test.tsx`가 `Failed to resolve import "../tax/law/TaxLawPage"`로 파일째 실패, 6.2: 새 12건 모두 실패) 구현을 넣은 뒤 통과를 봤고, 마지막에 `typecheck`·`lint`(새 경고 없음)·`build`와 전체 `vitest run --maxWorkers=4`(87파일 726건 통과)를 돌렸다. 아래 코드 블록을 Task 순서대로 넣으면 그 상태와 같아지는 것도 확인했다. 브라우저 화면은 띄워 보지 않았다(PR 마무리의 verify에서 본다).
 
-- Files: Create `tax/law/TaxLawPage.tsx`, `LawVersionList.tsx`, `tax/law/taxLawApi.ts`, 테스트. Modify `app/menu.ts`(`{ to: '/tax/law', label: '연도별 세법 관리', adminOnly: true }`), `app/AppRoutes.tsx`, `tax/TaxTabs.tsx`(관리자에게 세 번째 탭 "세법 관리").
-- 쿼리 키: `['tax', 'admin', 'law', year]`.
-- 테스트 대상(AC-29, 39 일부): 회원에게 하위 메뉴 2개(PR 7 뒤)·관리자에게 +1, 일반 회원이 `/tax/law`로 들어오면 권한 없음 화면(요청 403도 같은 화면), 375px 세 번째 탭 라벨 "세법 관리"·화면 제목과 사이드바 "연도별 세법 관리", 연도 목록과 버전 목록(초안 여러 개·적용, 작성자·적용자·시각), [새 초안 만들기]는 초안이 있어도 켜져 있음.
+경로 줄임: 코드 블록 위 줄에 `<경로>` 전체(새 파일) 또는 `git apply`(기존 파일 고침, 저장소 루트에서 실행)를 적었다. 줄 번호가 어긋나면 내용을 보고 손으로 넣는다.
 
-### Task 6.2: 초안 편집·검증·적용·삭제 (TAX-04, 60~64, 72, 76)
+## 웹 설계
 
-**담당:** Codex `gpt-6-sol` / `medium` (`write`), 태그 `impl-web`. 리뷰: Claude Sonnet 5.5.
+- 라우트: `/tax/law`는 `TaxLawPage`(lazy). 다른 소득공제 화면처럼 `RequireAuth > GroupProvider > TaxYearProvider > AppLayout` 아래다.
+- 메뉴: `MENU`의 소득공제 `children`에 `{ to: '/tax/law', label: '연도별 세법 관리', shortLabel: '세법 관리', adminOnly: true }`를 더한다. 사이드바(`AppLayout`)와 화면 안 탭은 `visibleChildren(item, me.serviceAdmin)`으로 거른다. 숨김은 편의이고 권한은 서버가 요청마다 판단한다(PR 2 `TaxAdminInterceptor`).
+- `Me.serviceAdmin`: `/me`가 PR 2부터 내려 주는 값이다. 웹 타입에 더하고 메뉴·화면 진입 판단에만 쓴다. 로그인(세션 복원) 때 한 번 읽으므로 메뉴는 새로 고친 뒤 바뀐다.
+- 좁은 화면 안 탭(`TaxTabs`, TAX-19): 820px 이하에서 보이는 하위 화면이 둘 이상일 때만 `nav "소득공제 메뉴"` 링크 묶음을 그린다. PR 6 시점에는 관리자만 `입력자료 | 세법 관리` 두 개이고 회원은 하위 화면이 하나라 그리지 않는다. PR 7이 "분석·지출계획"을 두 번째에 넣으면 회원 2개·관리자 3개가 된다. 모양은 대시보드 화면 안 메뉴(`DashboardMenu.module.css`)를 그대로 쓰고, 형제 화면 이동이라 `replace`다. 같은 첫 경로 안의 이동이라 포커스는 누른 링크에 남는다.
+- 화면 머리: `TaxHeader`에 `title`·`note`를 더한다. 세법 화면은 넓은 화면 `h1`과 문서 제목이 "연도별 세법 관리"이고 아래 줄은 "모든 회원의 계산에 쓰는 기준 · 서비스 관리자 전용"이다(개인 자료가 아니다). 귀속연도 선택은 다른 소득공제 화면과 같은 선택 연도(올해·전년도·다음 해)를 쓴다. 좁은 화면 앱 머리 제목은 다른 소득공제 화면처럼 "소득공제"다.
+- 권한 없음(TAX-06): `me.serviceAdmin`이 아니면 요청을 보내지 않고 권한 없음 화면("권한 없음", "이 화면은 서비스 관리자만 볼 수 있습니다.", [입력자료로 가기])을 보인다. 관리자로 들어왔는데 서버가 403을 주면(그 사이 권한 회수) 같은 화면이다.
+- 쿼리 키: 버전 목록 `['tax', 'admin', 'law', year]`(그룹 범위 키가 아니고, 로그아웃 때 `queryClient.clear()`로 지워진다). 목록 응답이 버전 전체 값을 담으므로 `GET /{id}`는 쓰지 않는다. "현재 적용" 표시는 서버 규칙(가장 늦게 적용)을 다시 판단하지 않으려고 회원용 `taxKeys.currentLaw(year)`를 함께 읽는다.
+- 선택 버전: 화면 상태(`selectedId`)이고 처음과 사라졌을 때(연도 변경·삭제)는 가장 큰 번호(목록 첫 행)다.
+- 초안 편집: 연 시점(또는 마지막 저장)의 값과 `rowVersion`을 폼 상태로 잡아 `PUT`(전체 교체)한다. 목록이 다시 읽혀도 폼은 다시 열리지 않는다(입력을 잃지 않게 폼 `key`는 `id`와 [다시 불러오기] 횟수다). 저장 응답으로 목록 캐시의 그 버전만 바꾸고, 다음 저장은 응답의 `rowVersion`으로 보낸다. 글 칸은 앞뒤 공백을 지우고 빈 칸은 `null`로 보낸다.
+- 검증·적용: 서버는 저장된 초안을 검사한다. 그래서 저장하지 않은 변경이 있으면 [검증]·[적용]을 끄고 아래 줄에 이유를 적는다. 검증 실패는 `필드 이름: 설명` 목록, 통과는 "검증 통과 — 적용할 수 있습니다."다. [적용]은 가운데 확인 창 한 번 뒤 `POST …/apply { rowVersion }`이고, 창에 "다른 초안은 초안으로 남습니다."를 적는다. 적용 400(`VALIDATION_FAILED`)은 창 안에 "[검증]으로 이유를 확인"을 안내한다. 적용하면 그 버전은 읽기 전용 보기로 바뀌고, 회원용 현재 세법·내 연도 기록 캐시를 무효화한다.
+- 409·404: 저장은 입력을 남기고 "다른 곳에서 수정·적용되거나 삭제됐습니다. 저장하지 않았습니다."와 [다시 불러오기](목록을 다시 받고 폼을 새 값으로 연다). 입력이 없는 동작(적용·초안 삭제·검증)은 바로 목록을 다시 읽고 `actionError`("…새로 불러온 내용을 확인한 뒤 다시 시도해 주세요.")를 보인다. PR 5의 두 흐름과 같다. 그 밖의 실패는 `errorMessage`와 "입력한 값은 그대로 있습니다."
+- 적용본: 입력란 없는 읽기 전용 텍스트(`dl`)이고 삭제 버튼이 없다. 초안 삭제는 목록 행 오른쪽 [삭제] → 가운데 확인 창 한 번(`ConfirmDialog centered`) → `DELETE …?rowVersion=`(204면 목록을 다시 읽는다).
+- 근거 URL: 읽기 전용 보기는 `http://`·`https://`로 시작할 때만 링크로 그린다(서버 검증은 적용 때만 하므로 초안 값을 믿지 않는다).
+- 배치·글자: 화면 뿌리는 입력자료와 같은 `inputs.module.css`의 `.page`(15px·13px 토큰)·`.split`·`.actions`·`.facts`를 쓴다. 넓은 화면(1100px 이상)은 목록(1) | 상세(2) 2단, 그보다 좁으면 목록 → 상세. 버전 행은 행 전체가 선택 버튼이라 `.page section button`(14px)보다 구체적인 `.versions .version`으로 이름 15px·보조 13px를 지킨다. 초안 입력 묶음은 칸 최소 9rem 자동 열 수(320px에서 한 열, 넓은 상세 칸에서 여러 열)이고 기간 날짜는 한 줄에 하나다. `ui.card`는 세로 flex라 `.split`은 카드 안쪽 `div`에 둔다(PR 5 교훈).
+- 화면은 `useGroups()`를 쓰지 않는다. 세법 값은 개인 금액이 아니어서 금액 가림을 따르지 않는다(`formatWon`).
 
-- Files: Create `tax/law/LawVersionForm.tsx`, 테스트.
-- 테스트 대상(AC-21, 39, 44): 수치 입력(비율 6, 경계, 기본한도 2 × 3, 추가한도 2, 근거·기간·메모), 알고리즘 버전은 고정 표시, [초안 저장]·[검증](실패 목록 표시)·[적용](확인 창에 "다른 초안은 초안으로 남습니다"), 적용본은 모든 입력이 꺼진 읽기 전용이고 삭제 없음, 초안 삭제는 확인 한 번, 확인 창은 `centered`, 409·통신 오류 안내.
+## 계획 초안에서 달라진 점 (2026-11-21)
 
-### Task 6.3: 검증 지도 (AC-23)
+- `TaxTabs.tsx`를 PR 6에서 만든다. 관리자에게 하위 화면이 두 개가 되는 첫 PR이라 좁은 화면에서 세법 관리로 갈 길이 필요하다. PR 5 절의 "PR 7 Task 7.1이 둘을 새로 만든다"와 Task 7.1의 `TaxTabs.tsx`는 "Modify"로 읽는다(`TaxIndexRedirect.tsx`는 여전히 7.1이 만든다). `TaxTabs`는 `MENU`에서 하위 화면을 읽으므로 7.1은 `menu.ts`에 항목만 더하면 된다.
+- 계획 초안의 테스트 대상 "회원에게 하위 메뉴 2개(PR 7 뒤)·관리자에게 +1"은 PR 6 시점에 회원 1개·관리자 2개다. AC-29의 2개·3개는 PR 7 마무리에서 확인한다.
+- `Me.serviceAdmin`, `testMe.serviceAdmin`, `renderPage`의 `me` 옵션을 Task 6.1에 넣는다(PR 5 "달라진 점"에서 넘긴 것). `/me` 응답은 PR 2부터 이 값을 담고 있다(`MeController.MeResponse`).
+- Files를 나눴다: 목록 `LawVersionList.tsx`, 읽기 전용 보기 `LawVersionFacts.tsx`(상세 머리 `LawDetailHeading` 포함), 스타일 `law.module.css`, 테스트 지원 `test/taxLawFixtures.tsx`. 초안 삭제는 폼이 아니라 목록 행에 있다(UI 표준 표 "버전 행: 초안만 [삭제]").
+- 적용본은 "모든 입력이 꺼진" 폼이 아니라 읽기 전용 텍스트다. UI 표준의 "일반 멤버에게는 읽기 전용 텍스트"와 같은 방식이고, 꺼진 입력란은 대비가 낮아 읽기 어렵다. 기간 입력(`DateTimePicker`)에 끄기 선택지가 없어 공용 부품을 고치지 않아도 된다.
+- 와이어프레임의 "귀속연도 목록" 카드(연도마다 요약) 대신 머리의 귀속연도 선택과 목록 머리 요약 한 줄(`현재 적용 v1 · 초안 2개` / `적용 버전 없음(회원 화면은 "세법 준비 중")`)을 쓴다. 연도 목록 API가 없고, 선택 연도가 다른 소득공제 화면과 같아야 해서다.
+- Task 6.1 담당을 `gpt-6-sol`에서 `gpt-6-astra`로 바꿨다. 앱 셸(`AppLayout`·`menu.ts`)·`Me` 타입·테스트 공용 `renderPage`를 바꾸는 Task다.
+- `docs/deploy.md` 13절의 "웹은 `/me`의 `serviceAdmin`으로 메뉴를 보인다(PR 5부터)"는 사실과 달라 Task 6.3에서 "PR 6부터"로 고친다.
+- verify 시드는 바꾸지 않는다. PR 5 시드가 이미 소유자를 서비스 관리자로 지정하고 올해 귀속 v1을 적용한다. 초안은 verify 여정에서 화면으로 만든다.
 
-**담당:** Codex `gpt-6-luna` / `low` (`write`), 태그 `docs`. 리뷰: Claude Sonnet 5.5.
+## 결정이 필요한 점 (기본값으로 썼다)
 
-- Files: Create `.claude/skills/verify/features/tax-law.md`. Modify `features/README.md`, `features/navigation.md`.
+1. **귀속연도 목록 카드를 두지 않는다**(위 "달라진 점"). 다른 선택: 연도 3개 카드와 연도별 요약(목록 요청 3번).
+2. **검증·적용은 저장한 값으로 하고, 저장하지 않은 변경이 있으면 끈다**(이유를 화면에 적는다). 다른 선택: [검증]·[적용]이 먼저 저장한다(한 번에 되지만 누르지 않은 저장이 생긴다).
+3. **저장의 409·404는 입력을 남기고 [다시 불러오기]**, 입력이 없는 적용·삭제·검증은 바로 다시 읽는다(PR 5 결정 3과 같다). 다른 선택: 저장도 바로 다시 읽는다(편집 중인 값을 잃는다).
+4. **적용본은 읽기 전용 텍스트**(위 "달라진 점"). 다른 선택: 꺼진 입력란(`DateTimePicker`에 `isDisabled`를 더하는 공용 부품 변경).
+5. **좁은 화면 앱 머리 제목은 "소득공제"를 유지**하고 화면 안 탭 "세법 관리"가 현재 화면을 표시한다. 넓은 화면 `h1`·사이드바·문서 제목은 "연도별 세법 관리"(TAX-19). 다른 선택: 좁은 화면 머리 제목을 하위 화면 이름으로 바꾼다(`AppLayout` 변경, 입력자료 화면 제목도 바뀐다).
+6. **비율은 정수 입력이고 0~100 범위는 서버 검증이 본다.** 화면은 금액 칸만 `MoneyField`의 0 이상·상한 검사를 한다. 소수를 넣으면 칸을 벗어날 때 정수로 반올림해 보인다(알려진 제약 6: 정수 퍼센트).
+7. **현재 적용 표시는 회원용 `current` 응답으로 정한다**(요청 1번 더, 서버 규칙과 어긋나지 않음). 다른 선택: 목록의 `appliedAt`으로 웹이 판단한다.
+8. **작성·적용 시각은 서울 기준 `YYYY-MM-DD HH:mm`**(`lawTime`). 공용 `formatInstant`는 연도가 없고, 버전은 귀속연도와 다른 해에 만들 수 있다.
+9. **`TaxTabs`는 대시보드 메뉴 CSS를 가져다 쓴다.** 다른 선택: 공용 부품으로 옮긴다(대시보드 코드 변경).
+10. **반론 리뷰(Codex 템플릿 F)는 하지 않는다**(아래 마무리 4).
+
+---
+
+### Task 6.1: 관리자 메뉴·화면 안 탭·권한 없음 화면·버전 목록 (TAX-04, 06, 10, 11, 19, 67, 72, AC-29 일부)
+
+**담당:** Codex `gpt-6-astra` / `medium` (`write`, 앱 셸·`Me` 타입·테스트 공용 부품), 태그 `impl-web-common`. 리뷰: Claude Sonnet 5.5 (`review-task`).
+
+**Files:**
+- Modify: `apps/web/src/auth/authApi.ts`, `apps/web/src/app/menu.ts`, `apps/web/src/app/AppLayout.tsx`, `apps/web/src/app/AppRoutes.tsx`, `apps/web/src/tax/TaxHeader.tsx`, `apps/web/src/tax/inputs/TaxInputsPage.tsx`, `apps/web/src/test/renderPage.tsx`
+- Create: `apps/web/src/tax/TaxTabs.tsx`, `apps/web/src/tax/law/taxLawApi.ts`, `law.module.css`, `LawVersionFacts.tsx`, `LawVersionList.tsx`, `TaxLawPage.tsx`, `apps/web/src/test/taxLawFixtures.tsx`
+- Test: `apps/web/src/tax/law/TaxLawPage.test.tsx`(새 파일), `apps/web/src/app/AppRoutes.test.tsx`(4건 추가)
+
+**Interfaces:**
+- Consumes: `GET /me`의 `serviceAdmin`(PR 2), `GET /tax/admin/law-versions?year=`(번호 내림차순 `VersionResponse[]`), `POST /tax/admin/law-versions {taxYear}`(201, 현재 적용 버전 값을 복사한 초안), `taxApi.currentLaw`·`taxKeys.currentLaw`(PR 5), `useAuth().me`, `useTaxYear()`, `inputs.module.css`의 `.page`·`.split`·`.actions`·`.rowInfo`·`.name`·`.list`·`.facts`·`.amount`·`.titleWithHelp`·`.empty`, `DashboardMenu.module.css`의 `.menu`·`.group`·`.link`.
+- Produces: `Me.serviceAdmin: boolean`; `SubMenuItem`, `visibleChildren(item, serviceAdmin): SubMenuItem[]`, 하위 메뉴도 찾는 `menuLabel(to)`; `TaxTabs`(default); `TaxHeader({ title?, note? })`; `taxLawApi.list(year)`·`create(taxYear)`, `taxLawKeys.list(year)` = `['tax', 'admin', 'law', year]`, 타입 `LawValues`·`LawVersion`, `LAW_FIELDS`(`field`는 서버 검증 오류 이름과 같음), `lawTime(iso)`, `lawHistory(version)`; `LawDetailHeading({ version })`(`h2#law-detail-title`), `LawVersionFacts({ version })`; `LawVersionList({ year, versions, selectedId, onSelect })`; `TaxLawPage`(default). 테스트 지원: `renderPage(ui, { me })`, `testMe.serviceAdmin === false`, `adminMe`, `lawVersion()`(적용본 v1), `lawDraft()`, `serveLaw(versions, current = law2026)` → `{ list, current, years }`, `renderTaxLaw({ admin = true })`.
+
+- [ ] **Step 1: 실패하는 테스트 작성** — 테스트 지원 파일, 화면 테스트, 앱 테스트. 값은 모두 합성값이다.
+
+`git apply`:
+
+```diff
+diff --git a/apps/web/src/app/AppRoutes.test.tsx b/apps/web/src/app/AppRoutes.test.tsx
+index b1c008a..cf176fa 100644
+--- a/apps/web/src/app/AppRoutes.test.tsx
++++ b/apps/web/src/app/AppRoutes.test.tsx
+@@ -10,10 +10,12 @@ import { AuthProvider } from '../auth/AuthProvider'
+ import { mockViewport } from '../test/mockViewport'
+ import { server } from '../test/server'
+ import { serveTax, yearView } from '../test/taxFixtures'
++import { lawVersion, serveLaw } from '../test/taxLawFixtures'
+ import { seoulYear } from '../tax/TaxYearProvider'
+ import AppRoutes from './AppRoutes'
+ 
+-const me = { userId: 1, email: 'me@test.com', nickname: '나' }
++const me = { userId: 1, email: 'me@test.com', nickname: '나', serviceAdmin: false }
++const admin = { ...me, serviceAdmin: true }
+ 
+ function renderApp(path: string) {
+   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+@@ -38,10 +40,10 @@ const homeHandlers = [
+   http.get('*/api/imports', () => HttpResponse.json([])),
+ ]
+ 
+-function signedIn(groups: unknown[]) {
++function signedIn(groups: unknown[], profile = me) {
+   server.use(
+     http.post('*/api/auth/refresh', () => HttpResponse.json({ accessToken: 'a1' })),
+-    http.get('*/api/me', () => HttpResponse.json(me)),
++    http.get('*/api/me', () => HttpResponse.json(profile)),
+     http.get('*/api/groups', () => HttpResponse.json(groups)),
+     ...homeHandlers,
+   )
+@@ -107,6 +109,33 @@ describe('AppRoutes', () => {
+     expect(screen.queryByRole('link', { name: /세법 관리/ })).not.toBeInTheDocument()
+   })
+ 
++  it('shows 연도별 세법 관리 third under 소득공제 to a service admin only and opens it', async () => {
++    mockViewport(false)
++    signedIn([], admin)
++    serveTax(null)
++    serveLaw([lawVersion()])
++    renderApp('/tax/inputs')
++    const user = userEvent.setup()
++
++    const nav = await screen.findByRole('navigation', { name: '주 메뉴' })
++    expect(within(nav).getAllByRole('link').map((l) => l.textContent))
++      .toEqual(['홈', '소득공제', '입력자료', '연도별 세법 관리', '대시보드', '대분류', '소분류', '거래 목록', '그룹 관리'])
++    await user.click(within(nav).getByRole('link', { name: '연도별 세법 관리' }))
++
++    expect(await screen.findByRole('heading', { level: 1, name: '연도별 세법 관리' })).toBeInTheDocument()
++    expect(within(nav).getByRole('link', { name: '연도별 세법 관리' })).toHaveAttribute('aria-current', 'page')
++    expect(within(nav).getByRole('link', { name: '소득공제' })).toHaveAttribute('aria-current', 'true')
++  })
++
++  it('shows the no-permission screen to a member who types the law address', async () => {
++    signedIn([])
++    const calls = serveLaw([lawVersion()])
++    renderApp('/tax/law')
++
++    expect(await screen.findByRole('heading', { name: '권한 없음' })).toBeInTheDocument()
++    expect(calls.list).toBe(0)
++  })
++
+   it('does not carry the dashboard month into the tax sub-link', async () => {
+     mockViewport(false)
+     signedIn([{ groupId: 10, name: '우리집', myRole: 'ADMIN', memberCount: 3 }])
+@@ -527,6 +556,33 @@ describe('AppRoutes on a narrow screen', () => {
+     expect(within(screen.getByRole('main')).queryByRole('heading', { level: 1 })).not.toBeInTheDocument()
+   })
+ 
++  it('gives a service admin in-page tabs 입력자료 · 세법 관리', async () => {
++    signedIn([], admin)
++    serveTax(null)
++    serveLaw([lawVersion()])
++    renderApp('/tax/inputs')
++    const user = userEvent.setup()
++
++    const tabs = await screen.findByRole('navigation', { name: '소득공제 메뉴' })
++    expect(within(tabs).getAllByRole('link').map((l) => l.textContent)).toEqual(['입력자료', '세법 관리'])
++    expect(within(tabs).getByRole('link', { name: '입력자료' })).toHaveAttribute('aria-current', 'page')
++    await user.click(within(tabs).getByRole('link', { name: '세법 관리' }))
++
++    expect(await screen.findByRole('region', { name: '2026년 버전' })).toBeInTheDocument()
++    expect(within(screen.getByRole('navigation', { name: '소득공제 메뉴' })).getByRole('link', { name: '세법 관리' }))
++      .toHaveAttribute('aria-current', 'page')
++    expect(within(screen.getByRole('banner')).getByRole('heading', { level: 1 })).toHaveTextContent('소득공제')
++  })
++
++  it('shows no in-page tax tabs to a member', async () => {
++    signedIn([])
++    serveTax(null)
++    renderApp('/tax/inputs')
++
++    expect(await screen.findByRole('heading', { name: /귀속 기록이 없습니다/ })).toBeInTheDocument()
++    expect(screen.queryByRole('navigation', { name: '소득공제 메뉴' })).not.toBeInTheDocument()
++  })
++
+   it('signs out from the account sheet', async () => {
+     signedIn([])
+     server.use(http.post('*/api/auth/logout', () => new HttpResponse(null, { status: 204 })))
+diff --git a/apps/web/src/test/renderPage.tsx b/apps/web/src/test/renderPage.tsx
+index d4a0619..eb77a2d 100644
+--- a/apps/web/src/test/renderPage.tsx
++++ b/apps/web/src/test/renderPage.tsx
+@@ -7,20 +7,21 @@ import { I18nProvider } from 'react-aria-components'
+ import { MemoryRouter } from 'react-router'
+ import RequireAuth from '../app/RequireAuth'
+ import { AuthProvider } from '../auth/AuthProvider'
++import type { Me } from '../auth/authApi'
+ import { DialogHistoryProvider } from '../common/DialogHistory'
+ import ToastRegion from '../common/Toast'
+ import { GroupProvider } from '../groups/GroupProvider'
+ import { server } from './server'
+ 
+-export const testMe = { userId: 1, email: 'me@test.com', nickname: '나' }
++export const testMe: Me = { userId: 1, email: 'me@test.com', nickname: '나', serviceAdmin: false }
+ 
+-type Options = { groups?: unknown[]; path?: string }
++type Options = { groups?: unknown[]; path?: string; me?: Me }
+ 
+ /** 로그인한 회원으로 화면 하나를 렌더한다. 화면이 쓰는 API 핸들러는 테스트에서 server.use로 더한다. */
+-export function renderPage(ui: ReactElement, { groups = [], path = '/' }: Options = {}) {
++export function renderPage(ui: ReactElement, { groups = [], path = '/', me = testMe }: Options = {}) {
+   server.use(
+     http.post('*/api/auth/refresh', () => HttpResponse.json({ accessToken: 'test-token' })),
+-    http.get('*/api/me', () => HttpResponse.json(testMe)),
++    http.get('*/api/me', () => HttpResponse.json(me)),
+     http.get('*/api/groups', () => HttpResponse.json(groups)),
+   )
+   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
+```
+
+`apps/web/src/test/taxLawFixtures.tsx` (새 파일):
+
+```tsx
+import { http, HttpResponse } from 'msw'
+import type { Me } from '../auth/authApi'
+import TaxLawPage from '../tax/law/TaxLawPage'
+import type { LawVersion } from '../tax/law/taxLawApi'
+import type { CurrentLaw } from '../tax/taxApi'
+import { TaxYearProvider } from '../tax/TaxYearProvider'
+import { renderPage, testMe } from './renderPage'
+import { server } from './server'
+import { law2026, taxToday } from './taxFixtures'
+
+// 세법 관리 화면 테스트용. 수치는 PRD 8.1절의 공개 법령 값, 닉네임·메모는 합성값이다.
+export const adminMe: Me = { ...testMe, serviceAdmin: true }
+
+/** 적용본 v1. 시각은 서울 기준 작성 2026-01-10 09:00, 적용 2026-01-15 10:00이다. */
+export function lawVersion(overrides: Partial<LawVersion> = {}): LawVersion {
+  return {
+    id: 1, taxYear: 2026, versionNo: 1, status: 'APPLIED', algorithmVersion: 1,
+    minSpendRatePct: 25, bracketBoundary: 70_000_000,
+    rateCreditPct: 15, rateDebitCashPct: 30, rateCulturePct: 30, rateMarketPct: 40, rateTransitPct: 40,
+    basicLimitLow: [3_000_000, 3_500_000, 4_000_000], basicLimitHigh: [2_500_000, 2_750_000, 3_000_000],
+    extraLimitLow: 3_000_000, extraLimitHigh: 2_000_000, childTiersApply: true,
+    basisLawName: '조세특례제한법', basisArticle: '제126조의2', basisUrl: 'https://www.law.go.kr/',
+    periodStart: '2026-01-01', periodEnd: '2026-12-31', memo: '합성 메모',
+    createdByNickname: '관리자가', appliedByNickname: '관리자나', createdAt: '2026-01-10T00:00:00Z', appliedAt: '2026-01-15T01:00:00Z',
+    rowVersion: 11,
+    ...overrides,
+  }
+}
+
+/** 초안. 적용자·적용 시각이 없다. */
+export function lawDraft(overrides: Partial<LawVersion> = {}): LawVersion {
+  return lawVersion({ status: 'DRAFT', appliedByNickname: null, appliedAt: null, ...overrides })
+}
+
+const notFound = () => HttpResponse.json({ code: 'NOT_FOUND', message: 'not found' }, { status: 404 })
+
+/** 관리자 버전 목록(요청한 연도의 것만)과 회원용 현재 적용 세법. 요청 횟수를 센다. */
+export function serveLaw(versions: LawVersion[], current: CurrentLaw | null = law2026) {
+  const calls = { list: 0, current: 0, years: [] as number[] }
+  server.use(
+    http.get('*/api/tax/admin/law-versions', ({ request }) => {
+      calls.list++
+      const year = Number(new URL(request.url).searchParams.get('year'))
+      calls.years.push(year)
+      return HttpResponse.json(versions.filter((version) => version.taxYear === year))
+    }),
+    http.get('*/api/tax/law-versions/current', () => {
+      calls.current++
+      return current ? HttpResponse.json(current) : notFound()
+    }),
+  )
+  return calls
+}
+
+export function renderTaxLaw({ admin = true }: { admin?: boolean } = {}) {
+  return renderPage(<TaxYearProvider today={taxToday}><TaxLawPage /></TaxYearProvider>, { me: admin ? adminMe : testMe, path: '/tax/law' })
+}
+```
+
+`apps/web/src/tax/law/TaxLawPage.test.tsx` (새 파일):
+
+```tsx
+import { screen, waitFor, within } from '@testing-library/react'
+import { http, HttpResponse } from 'msw'
+import { describe, expect, it } from 'vitest'
+import { server } from '../../test/server'
+import { lawDraft, lawVersion, renderTaxLaw, serveLaw } from '../../test/taxLawFixtures'
+
+const v1 = lawVersion()
+const v2 = lawDraft({ id: 2, versionNo: 2, rowVersion: 21, createdByNickname: '관리자다', createdAt: '2026-11-05T05:00:00Z' })
+const v3 = lawDraft({ id: 3, versionNo: 3, rowVersion: 31, createdByNickname: '관리자라', createdAt: '2026-11-10T00:30:00Z' })
+
+const rows = (list: HTMLElement) => within(list).getAllByRole('listitem')
+const versionButton = (list: HTMLElement, no: number) => within(list).getByRole('button', { name: new RegExp(`^v${no} · `) })
+
+describe('TaxLawPage — 권한', () => {
+  it('shows the no-permission screen to a member without asking the admin API', async () => {
+    const calls = serveLaw([v1])
+    renderTaxLaw({ admin: false })
+
+    expect(await screen.findByRole('heading', { name: '권한 없음' })).toBeInTheDocument()
+    expect(screen.getByText('이 화면은 서비스 관리자만 볼 수 있습니다.')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: '입력자료로 가기' })).toHaveAttribute('href', '/tax/inputs')
+    expect(screen.queryByRole('button', { name: /귀속연도/ })).not.toBeInTheDocument()
+    expect(calls.list).toBe(0)
+  })
+
+  it('shows the same screen when the server answers 403 (권한을 회수한 뒤)', async () => {
+    server.use(http.get('*/api/tax/admin/law-versions', () => HttpResponse.json({ code: 'FORBIDDEN', message: 'x' }, { status: 403 })))
+    renderTaxLaw()
+
+    expect(await screen.findByRole('heading', { name: '권한 없음' })).toBeInTheDocument()
+  })
+})
+
+describe('TaxLawPage — 버전 목록', () => {
+  it('lists drafts and applied versions newest first with who and when, and marks the current one', async () => {
+    serveLaw([v3, v2, v1])
+    renderTaxLaw()
+
+    expect(await screen.findByRole('heading', { level: 1, name: '연도별 세법 관리' })).toBeInTheDocument()
+    expect(screen.queryByText('개인 자료 · 그룹과 무관')).not.toBeInTheDocument()
+    const list = await screen.findByRole('region', { name: '2026년 버전' })
+    expect(await within(list).findByText('현재 적용 v1 · 초안 2개')).toBeInTheDocument()
+    const [first, second, third] = rows(list)
+    expect(first).toHaveTextContent('v3 · 초안')
+    expect(first).toHaveTextContent('작성 관리자라 · 2026-11-10 09:30')
+    expect(second).toHaveTextContent('v2 · 초안')
+    expect(second).toHaveTextContent('작성 관리자다 · 2026-11-05 14:00')
+    expect(third).toHaveTextContent('v1 · 현재 적용')
+    expect(third).toHaveTextContent('적용 관리자나 · 2026-01-15 10:00')
+    // 초안이 있어도 새 초안을 만들 수 있다(TAX-72).
+    expect(within(list).getByRole('button', { name: '새 초안 만들기' })).toBeEnabled()
+  })
+
+  it('opens the newest version first and shows an applied version as read-only text', async () => {
+    serveLaw([v3, v2, v1])
+    const { user } = renderTaxLaw()
+
+    const list = await screen.findByRole('region', { name: '2026년 버전' })
+    expect(versionButton(list, 3)).toHaveAttribute('aria-current', 'true')
+    await user.click(versionButton(list, 1))
+
+    expect(versionButton(list, 1)).toHaveAttribute('aria-current', 'true')
+    const detail = screen.getByRole('region', { name: /2026년 귀속 v1/ })
+    expect(detail).toHaveTextContent('적용된 버전은 고칠 수 없습니다. 바꾸려면 새 초안을 만듭니다.')
+    expect(detail).toHaveTextContent('계산 알고리즘 버전 1 (고정)')
+    expect(detail).toHaveTextContent('작성 관리자가 · 2026-01-10 09:00 · 적용 관리자나 · 2026-01-15 10:00')
+    const term = (label: string) => within(detail).getByText(label, { selector: 'dt' }).nextElementSibling
+    expect(term('신용카드 공제율')).toHaveTextContent('15%')
+    expect(term('급여구간 경계 금액')).toHaveTextContent('₩ 70,000,000')
+    expect(term('기본한도 · 경계 초과 · 자녀등 1명')).toHaveTextContent('₩ 2,750,000')
+    expect(term('추가한도 상한 · 경계 이하')).toHaveTextContent('₩ 3,000,000')
+    expect(within(detail).getByRole('link', { name: 'https://www.law.go.kr/' })).toHaveAttribute('href', 'https://www.law.go.kr/')
+    expect(term('메모')).toHaveTextContent('합성 메모')
+    expect(within(detail).queryByRole('textbox')).not.toBeInTheDocument()
+    expect(within(list).queryByRole('button', { name: 'v1 초안 삭제' })).not.toBeInTheDocument()
+  })
+
+  it('never turns a non-http basis address into a link', async () => {
+    serveLaw([lawVersion({ basisUrl: 'javascript:alert(1)', memo: null })])
+    renderTaxLaw()
+
+    const detail = await screen.findByRole('region', { name: /2026년 귀속 v1/ })
+    expect(within(detail).queryByRole('link')).not.toBeInTheDocument()
+    expect(detail).toHaveTextContent('javascript:alert(1)')
+    expect(within(detail).getByText('메모', { selector: 'dt' }).nextElementSibling).toHaveTextContent('—')
+  })
+
+  it('creates a new draft even when drafts exist and selects it', async () => {
+    serveLaw([v3, v2, v1])
+    let body: unknown
+    server.use(http.post('*/api/tax/admin/law-versions', async ({ request }) => {
+      body = await request.json()
+      return HttpResponse.json(lawDraft({ id: 4, versionNo: 4, rowVersion: 41, createdByNickname: '관리자마' }), { status: 201 })
+    }))
+    const { user } = renderTaxLaw()
+
+    const list = await screen.findByRole('region', { name: '2026년 버전' })
+    await user.click(within(list).getByRole('button', { name: '새 초안 만들기' }))
+
+    await waitFor(() => expect(rows(list)).toHaveLength(4))
+    expect(body).toEqual({ taxYear: 2026 })
+    expect(rows(list)[0]).toHaveTextContent('v4 · 초안')
+    expect(versionButton(list, 4)).toHaveAttribute('aria-current', 'true')
+    expect(screen.getByRole('region', { name: /2026년 귀속 v4/ })).toBeInTheDocument()
+    expect(within(list).getByText('현재 적용 v1 · 초안 3개')).toBeInTheDocument()
+  })
+
+  it('shows an empty year that has no applied law yet', async () => {
+    serveLaw([], null)
+    renderTaxLaw()
+
+    const list = await screen.findByRole('region', { name: '2026년 버전' })
+    expect(within(list).getByText('2026년 귀속 세법 버전이 없습니다. [새 초안 만들기]로 시작합니다.')).toBeInTheDocument()
+    expect(await within(list).findByText('적용 버전 없음(회원 화면은 "세법 준비 중") · 초안 0개')).toBeInTheDocument()
+  })
+
+  it('reads the versions of the year picked in the header', async () => {
+    const calls = serveLaw([v1, lawDraft({ id: 9, taxYear: 2027, versionNo: 1 })])
+    const { user } = renderTaxLaw()
+
+    await screen.findByRole('region', { name: '2026년 버전' })
+    await user.click(screen.getByRole('button', { name: /귀속연도/ }))
+    await user.click(screen.getByRole('option', { name: '2027년' }))
+
+    const list = await screen.findByRole('region', { name: '2027년 버전' })
+    expect(within(list).getByText(/^v1 · 초안/)).toBeInTheDocument()
+    expect(calls.years).toEqual([2026, 2027])
+  })
+
+  it('shows a load error with retry', async () => {
+    let fail = true
+    serveLaw([v1])
+    server.use(http.get('*/api/tax/admin/law-versions', () => (fail
+      ? HttpResponse.json({ code: 'INTERNAL_ERROR', message: 'x' }, { status: 500 })
+      : HttpResponse.json([v1]))))
+    const { user } = renderTaxLaw()
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('세법 버전을 불러오지 못했습니다.')
+    fail = false
+    await user.click(screen.getByRole('button', { name: '다시 시도' }))
+
+    expect(await screen.findByRole('region', { name: '2026년 버전' })).toBeInTheDocument()
+  })
+})
+```
+
+- [ ] **Step 2: 실패 확인**
+
+Run: `cd apps/web && npx vitest run src/app/AppRoutes.test.tsx src/app/BottomTabBar.test.tsx src/tax`
+Expected: `src/app/AppRoutes.test.tsx`·`src/tax/law/TaxLawPage.test.tsx`는 `Failed to resolve import "../tax/law/TaxLawPage" from "src/test/taxLawFixtures.tsx"`로 파일째 FAIL. 나머지 7파일 53건 PASS.
+
+- [ ] **Step 3: `Me`·메뉴·사이드바·라우트·화면 머리**
+
+`git apply`:
+
+```diff
+diff --git a/apps/web/src/app/AppLayout.tsx b/apps/web/src/app/AppLayout.tsx
+index 74f3cc6..81740ef 100644
+--- a/apps/web/src/app/AppLayout.tsx
++++ b/apps/web/src/app/AppLayout.tsx
+@@ -16,7 +16,7 @@ import BottomSheet from '../common/BottomSheet'
+ import { Radio, RadioGroup } from 'react-aria-components'
+ import { Indicator } from '../common/SelectionIndicator'
+ import optionStyles from '../common/OptionButton.module.css'
+-import { MENU } from './menu'
++import { MENU, visibleChildren } from './menu'
+ 
+ const firstSegment = (pathname: string) => pathname.split('/')[1] ?? ''
+ 
+@@ -89,7 +89,7 @@ export default function AppLayout() {
+                 className={({ isActive }) => (isActive ? `${styles.link} ${styles.active}` : styles.link)}>
+                 <Icon name={item.icon} />{item.label}
+               </NavLink>
+-              {item.children?.map((child) => (
++              {visibleChildren(item, me?.serviceAdmin ?? false).map((child) => (
+                 <NavLink key={child.to} to={inDashboard && item.to === '/dashboard' ? child.to + location.search : child.to}
+                   replace={inDashboard && item.to === '/dashboard'}
+                   className={({ isActive }) => `${styles.link} ${styles.subLink}${isActive ? ` ${styles.active}` : ''}`}>
+diff --git a/apps/web/src/app/AppRoutes.tsx b/apps/web/src/app/AppRoutes.tsx
+index c06bc31..577bf2e 100644
+--- a/apps/web/src/app/AppRoutes.tsx
++++ b/apps/web/src/app/AppRoutes.tsx
+@@ -16,6 +16,7 @@ const DashboardPage = lazy(() => import('../dashboard/DashboardPage'))
+ const TransactionsPage = lazy(() => import('../transactions/TransactionsPage'))
+ const GroupsPage = lazy(() => import('../groups/GroupsPage'))
+ const TaxInputsPage = lazy(() => import('../tax/inputs/TaxInputsPage'))
++const TaxLawPage = lazy(() => import('../tax/law/TaxLawPage'))
+ 
+ /** 옛 업로드 주소. 홈의 월별 등록 현황이 ?month=를 받아 그 달 창을 연다. */
+ function UploadRedirect() {
+@@ -35,6 +36,7 @@ export default function AppRoutes() {
+             {/* PR 7에서 TAX-68(자료가 있으면 분석) 규칙으로 바꾼다. */}
+             <Route path="tax" element={<Navigate to="/tax/inputs" replace />} />
+             <Route path="tax/inputs" element={<TaxInputsPage />} />
++            <Route path="tax/law" element={<TaxLawPage />} />
+             <Route path="dashboard/:level?/:view?" element={<DashboardPage />} />
+             <Route path="transactions" element={<TransactionsPage />} />
+             <Route path="upload" element={<UploadRedirect />} />
+diff --git a/apps/web/src/app/menu.ts b/apps/web/src/app/menu.ts
+index 2f78e63..4859c76 100644
+--- a/apps/web/src/app/menu.ts
++++ b/apps/web/src/app/menu.ts
+@@ -1,25 +1,36 @@
+ import type { IconName } from '../common/Icon'
+ 
++/** shortLabel은 좁은 화면의 화면 안 탭 라벨이다(없으면 label). adminOnly는 서비스 관리자에게만 보인다. */
++export type SubMenuItem = { to: string; label: string; shortLabel?: string; adminOnly?: boolean }
++
+ export type MenuItem = {
+   to: string; label: string; shortLabel: string; icon: IconName; end: boolean
+   // 사이드바에서만 들여 써서 그린다. 하단 탭은 무시한다.
+-  children?: { to: string; label: string }[]
++  children?: SubMenuItem[]
+ }
+ 
+ // 사이드바는 label, 좁은 화면의 하단 탭은 shortLabel을 쓴다.
+ export const MENU: MenuItem[] = [
+   { to: '/', label: '홈', shortLabel: '홈', icon: 'home', end: true },
+   { to: '/tax', label: '소득공제', shortLabel: '소득공제', icon: 'calculator', end: false,
+-    children: [{ to: '/tax/inputs', label: '입력자료' }] },
++    children: [
++      { to: '/tax/inputs', label: '입력자료' },
++      { to: '/tax/law', label: '연도별 세법 관리', shortLabel: '세법 관리', adminOnly: true },
++    ] },
+   { to: '/dashboard', label: '대시보드', shortLabel: '대시보드', icon: 'dashboard', end: false,
+     children: [{ to: '/dashboard/major', label: '대분류' }, { to: '/dashboard/minor', label: '소분류' }] },
+   { to: '/transactions', label: '거래 목록', shortLabel: '거래', icon: 'receipt', end: false },
+   { to: '/groups', label: '그룹 관리', shortLabel: '그룹', icon: 'users', end: false },
+ ]
+ 
+-/** 화면 제목은 메뉴 이름과 같게 둔다. */
++/** 보이는 하위 메뉴. 관리자 전용 메뉴를 숨기는 것은 편의이고 권한은 서버가 판단한다(TAX-06). */
++export function visibleChildren(item: MenuItem, serviceAdmin: boolean): SubMenuItem[] {
++  return (item.children ?? []).filter((child) => serviceAdmin || !child.adminOnly)
++}
++
++/** 화면 제목은 메뉴 이름과 같게 둔다. 하위 메뉴도 찾는다. */
+ export function menuLabel(to: string): string {
+-  const item = MENU.find((m) => m.to === to)
++  const item = MENU.flatMap((m) => [m, ...(m.children ?? [])]).find((m) => m.to === to)
+   if (!item) throw new Error(`메뉴에 없는 경로: ${to}`)
+   return item.label
+ }
+diff --git a/apps/web/src/auth/authApi.ts b/apps/web/src/auth/authApi.ts
+index 9bd1dca..74ef8e4 100644
+--- a/apps/web/src/auth/authApi.ts
++++ b/apps/web/src/auth/authApi.ts
+@@ -1,6 +1,7 @@
+ import { apiFetch } from '../api/client'
+ 
+-export type Me = { userId: number; email: string; nickname: string }
++/** serviceAdmin은 메뉴를 보일지 정하는 데만 쓴다. 세법 관리 권한은 서버가 요청마다 DB로 확인한다. */
++export type Me = { userId: number; email: string; nickname: string; serviceAdmin: boolean }
+ 
+ export const authApi = {
+   login: (email: string, password: string) =>
+diff --git a/apps/web/src/tax/TaxHeader.tsx b/apps/web/src/tax/TaxHeader.tsx
+index 5271b1b..8159193 100644
+--- a/apps/web/src/tax/TaxHeader.tsx
++++ b/apps/web/src/tax/TaxHeader.tsx
+@@ -4,16 +4,18 @@ import Select from '../common/Select'
+ import ui from '../common/ui.module.css'
+ import { useTaxYear } from './TaxYearProvider'
+ 
+-/** 소득공제 화면 머리: 제목(넓은 화면), 오른쪽 귀속연도 선택, 개인 자료 표시(TAX-13). */
+-export default function TaxHeader() {
++type Props = { title?: string; note?: string }
++
++/** 소득공제 화면 머리: 제목(넓은 화면), 오른쪽 귀속연도 선택, 아래 한 줄 안내(기본은 개인 자료 표시, TAX-13). */
++export default function TaxHeader({ title = menuLabel('/tax'), note = '개인 자료 · 그룹과 무관' }: Props) {
+   const { year, setYear, choices } = useTaxYear()
+   return (
+     <>
+-      <PageHeader title={menuLabel('/tax')} action={
++      <PageHeader title={title} action={
+         <Select label="귀속연도" items={choices.map((y) => ({ id: y, label: `${y}년` }))}
+           selectedKey={year} onSelectionChange={(key) => { if (key != null) setYear(Number(key)) }} />
+       } />
+-      <p className={ui.muted}>개인 자료 · 그룹과 무관</p>
++      <p className={ui.muted}>{note}</p>
+     </>
+   )
+ }
+diff --git a/apps/web/src/tax/inputs/TaxInputsPage.tsx b/apps/web/src/tax/inputs/TaxInputsPage.tsx
+index a9c7c0e..9fb9f80 100644
+--- a/apps/web/src/tax/inputs/TaxInputsPage.tsx
++++ b/apps/web/src/tax/inputs/TaxInputsPage.tsx
+@@ -6,6 +6,7 @@ import Skeleton, { SkeletonRegion } from '../../common/Skeleton'
+ import ui from '../../common/ui.module.css'
+ import { usePageTitle } from '../../common/usePageTitle'
+ import TaxHeader from '../TaxHeader'
++import TaxTabs from '../TaxTabs'
+ import { useTaxYear } from '../TaxYearProvider'
+ import { taxApi, taxKeys, useTaxYearView, type TaxYearView } from '../taxApi'
+ import BasicInfoDialog from './BasicInfoDialog'
+@@ -33,6 +34,7 @@ export default function TaxInputsPage() {
+   return (
+     <div className={styles.page}>
+       <TaxHeader />
++      <TaxTabs />
+       {record.isPending && (
+         <SkeletonRegion label="입력자료 불러오는 중"><Skeleton height={160} radius="var(--radius-md)" /></SkeletonRegion>
+       )}
+```
+
+- [ ] **Step 4: 화면 안 탭**
+
+`apps/web/src/tax/TaxTabs.tsx` (새 파일):
+
+```tsx
+import { NavLink } from 'react-router'
+import { MENU, visibleChildren } from '../app/menu'
+import { useAuth } from '../auth/AuthProvider'
+import { useMediaQuery } from '../common/useMediaQuery'
+// 대시보드 화면 안 메뉴와 같은 모양을 쓴다.
+import styles from '../dashboard/DashboardMenu.module.css'
+
+const TAX = MENU.find((item) => item.to === '/tax')!
+
+/**
+ * 좁은 화면의 소득공제 하위 화면 이동(TAX-19). 사이드바가 없는 폭에서, 보이는 하위 화면이 둘 이상일 때만 그린다.
+ * 화면을 바꾸는 형제 링크이므로 대시보드 메뉴처럼 replace로 이동한다.
+ */
+export default function TaxTabs() {
+  const { me } = useAuth()
+  const narrow = useMediaQuery('(max-width: 820px)')
+  const links = visibleChildren(TAX, me?.serviceAdmin ?? false)
+  if (!narrow || links.length < 2) return null
+  return (
+    <nav aria-label="소득공제 메뉴" className={styles.menu}>
+      <div className={styles.group}>
+        {links.map((link) => (
+          <NavLink key={link.to} to={link.to} replace className={styles.link}>{link.shortLabel ?? link.label}</NavLink>
+        ))}
+      </div>
+    </nav>
+  )
+}
+```
+
+- [ ] **Step 5: API 모듈과 스타일**
+
+`apps/web/src/tax/law/taxLawApi.ts` (새 파일):
+
+```ts
+import { apiFetch } from '../../api/client'
+
+// PR 2 응답(TaxLawDtos.VersionResponse)과 같은 모양. 초안의 빈 칸은 null이다.
+// rowVersion은 서버가 주는 불투명한 값이다. 받은 값을 그대로 돌려보내고 계산하지 않는다.
+export type LawValues = {
+  minSpendRatePct: number | null; bracketBoundary: number | null
+  rateCreditPct: number | null; rateDebitCashPct: number | null; rateCulturePct: number | null
+  rateMarketPct: number | null; rateTransitPct: number | null
+  /** 자녀등 0명 / 1명 / 2명 이상 순서의 3칸. low는 급여구간 경계 이하, high는 초과. */
+  basicLimitLow: (number | null)[]; basicLimitHigh: (number | null)[]
+  extraLimitLow: number | null; extraLimitHigh: number | null
+  basisLawName: string | null; basisArticle: string | null; basisUrl: string | null
+  periodStart: string | null; periodEnd: string | null; memo: string | null
+}
+export type LawVersion = LawValues & {
+  id: number; taxYear: number; versionNo: number; status: 'DRAFT' | 'APPLIED'; algorithmVersion: number; childTiersApply: boolean
+  createdByNickname: string | null; appliedByNickname: string | null; createdAt: string; appliedAt: string | null; rowVersion: number
+}
+
+const BASE = '/tax/admin/law-versions'
+
+export const taxLawApi = {
+  list: (year: number) => apiFetch<LawVersion[]>(`${BASE}?year=${year}`),
+  create: (taxYear: number) => apiFetch<LawVersion>(BASE, { method: 'POST', json: { taxYear } }),
+}
+
+/** 관리자 세법 목록 키. 머리말 `tax`라 그룹 범위 키가 아니고, 로그아웃 때 queryClient.clear()로 지워진다. */
+export const taxLawKeys = {
+  list: (year: number) => ['tax', 'admin', 'law', year] as const,
+}
+
+type LawField = { field: string; label: string; kind: 'pct' | 'won' | 'text' | 'url'; get: (v: LawValues) => number | string | null }
+
+const TIERS = ['0명', '1명', '2명 이상']
+const tiers = (key: 'basicLimitLow' | 'basicLimitHigh', side: string): LawField[] =>
+  TIERS.map((tier, i) => ({ field: `${key}[${i}]`, label: `기본한도 · 경계 ${side} · 자녀등 ${tier}`, kind: 'won', get: (v) => v[key][i] }))
+
+/** 화면에 보이는 설정값 순서와 이름. field는 서버 검증 오류(FieldError.field)의 이름과 같다. */
+export const LAW_FIELDS: LawField[] = [
+  { field: 'minSpendRatePct', label: '최저사용금액 비율', kind: 'pct', get: (v) => v.minSpendRatePct },
+  { field: 'rateCreditPct', label: '신용카드 공제율', kind: 'pct', get: (v) => v.rateCreditPct },
+  { field: 'rateDebitCashPct', label: '체크카드·현금영수증 공제율', kind: 'pct', get: (v) => v.rateDebitCashPct },
+  { field: 'rateCulturePct', label: '문화체육 공제율', kind: 'pct', get: (v) => v.rateCulturePct },
+  { field: 'rateMarketPct', label: '전통시장 공제율', kind: 'pct', get: (v) => v.rateMarketPct },
+  { field: 'rateTransitPct', label: '대중교통 공제율', kind: 'pct', get: (v) => v.rateTransitPct },
+  { field: 'bracketBoundary', label: '급여구간 경계 금액', kind: 'won', get: (v) => v.bracketBoundary },
+  ...tiers('basicLimitLow', '이하'),
+  ...tiers('basicLimitHigh', '초과'),
+  { field: 'extraLimitLow', label: '추가한도 상한 · 경계 이하', kind: 'won', get: (v) => v.extraLimitLow },
+  { field: 'extraLimitHigh', label: '추가한도 상한 · 경계 초과', kind: 'won', get: (v) => v.extraLimitHigh },
+  { field: 'basisLawName', label: '법령명', kind: 'text', get: (v) => v.basisLawName },
+  { field: 'basisArticle', label: '조문', kind: 'text', get: (v) => v.basisArticle },
+  { field: 'basisUrl', label: '근거 URL', kind: 'url', get: (v) => v.basisUrl },
+  { field: 'periodStart', label: '적용 대상 기간 시작', kind: 'text', get: (v) => v.periodStart },
+  { field: 'periodEnd', label: '적용 대상 기간 끝', kind: 'text', get: (v) => v.periodEnd },
+  { field: 'memo', label: '메모', kind: 'text', get: (v) => v.memo },
+]
+
+const seoulTime = new Intl.DateTimeFormat('sv-SE', {
+  timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+})
+
+/** 작성·적용 시각(오프셋 포함 ISO) → 서울 시간 `YYYY-MM-DD HH:mm`. 귀속연도와 다른 해에 만든 버전도 있어 연도를 남긴다. */
+export function lawTime(iso: string): string {
+  return seoulTime.format(new Date(iso))
+}
+
+/** 버전의 작성·적용 기록(TAX-67). 작성자·적용자 계정이 없어지면(FK `ON DELETE SET NULL`) 닉네임 자리에 `—`. */
+export function lawHistory(v: LawVersion): string {
+  const created = `작성 ${v.createdByNickname ?? '—'} · ${lawTime(v.createdAt)}`
+  return v.appliedAt ? `${created} · 적용 ${v.appliedByNickname ?? '—'} · ${lawTime(v.appliedAt)}` : created
+}
+```
+
+`apps/web/src/tax/law/law.module.css` (새 파일):
+
+```css
+/*
+ * 연도별 세법 관리 화면. 화면 뿌리 글자 토큰·.split·.facts는 입력자료의 inputs.module.css를 같이 쓴다.
+ * 넓은 화면(1100px 이상)은 버전 목록(1) | 상세(2) 2단, 그보다 좁으면 목록 → 상세 순으로 쌓는다.
+ */
+.columns { display: grid; gap: var(--space-3); align-items: start; min-width: 0; }
+@media (min-width: 1100px) {
+  .columns { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); }
+}
+
+/* 버전 행 전체가 선택 버튼이다. `.page section button`(14px)보다 구체적으로 써서 이름 15px·보조 13px를 지킨다. */
+.versions .version {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-height: 44px; padding: var(--space-1) var(--space-2);
+  border: 1px solid transparent; border-radius: var(--radius-sm); background: transparent; color: var(--ink);
+  font-size: var(--text-base); text-align: left; cursor: pointer;
+}
+.versions .version[aria-current='true'] { border-color: var(--brand); background: var(--surface-100); }
+.versions .version:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+```
+
+- [ ] **Step 6: 읽기 전용 보기·목록·화면**
+
+`apps/web/src/tax/law/LawVersionFacts.tsx` (새 파일):
+
+```tsx
+import { Fragment } from 'react'
+import { formatWon } from '../../common/format'
+import HelpButton from '../../common/HelpButton'
+import ui from '../../common/ui.module.css'
+import inputs from '../inputs/inputs.module.css'
+import { LAW_FIELDS, lawHistory, type LawVersion } from './taxLawApi'
+
+/** 상세 머리: 귀속연도·번호·상태, 고정된 계산 알고리즘 버전(TAX-62), 작성·적용 기록(TAX-67). section의 이름이 된다. */
+export function LawDetailHeading({ version }: { version: LawVersion }) {
+  return (
+    <div className={inputs.rowInfo}>
+      <div className={inputs.titleWithHelp}>
+        <h2 id="law-detail-title">{version.taxYear}년 귀속 v{version.versionNo} · {version.status === 'DRAFT' ? '초안' : '적용 · 읽기 전용'}</h2>
+        <HelpButton title="세법 수치">
+          총급여가 급여구간 경계 금액 이하이면 "경계 이하", 넘으면 "경계 초과"의 기본한도와 추가한도 상한을 씁니다. 추가한도 상한은 기본한도를 넘은 전통시장·대중교통·문화체육 공제액을 더 인정하는 최대 금액입니다. 문화체육 공제율은 경계 이하에만 적용됩니다(계산 알고리즘에 고정). 자녀등 조건이 없는 연도는 세 단계에 같은 값을 넣습니다.
+        </HelpButton>
+      </div>
+      <p className={ui.muted}>계산 알고리즘 버전 {version.algorithmVersion} (고정)</p>
+      <p className={ui.muted}>{lawHistory(version)}</p>
+    </div>
+  )
+}
+
+function show(kind: (typeof LAW_FIELDS)[number]['kind'], value: number | string | null) {
+  if (value === null || value === '') return '—'
+  if (kind === 'pct') return `${value}%`
+  if (kind === 'won') return formatWon(Number(value))
+  // http(s)만 링크로 그린다. 초안이나 손으로 고친 값에 javascript: 같은 주소가 있어도 링크가 되지 않는다.
+  if (kind === 'url' && /^https?:\/\//i.test(String(value))) return <a href={String(value)} target="_blank" rel="noreferrer">{value}</a>
+  return value
+}
+
+/** 버전을 글로만 보인다. 적용본은 고칠 수 없으므로 입력란 없이 읽기 전용 텍스트다(UI 표준: 고칠 수 없는 값은 읽기 전용 텍스트). */
+export default function LawVersionFacts({ version }: { version: LawVersion }) {
+  return (
+    <section aria-labelledby="law-detail-title" className={ui.card}>
+      <LawDetailHeading version={version} />
+      {version.status === 'APPLIED' && <p className={ui.status}>적용된 버전은 고칠 수 없습니다. 바꾸려면 새 초안을 만듭니다.</p>}
+      <dl className={inputs.facts}>
+        {LAW_FIELDS.map((f) => (
+          <Fragment key={f.field}>
+            <dt>{f.label}</dt>
+            <dd className={f.kind === 'won' ? inputs.amount : undefined}>{show(f.kind, f.get(version))}</dd>
+          </Fragment>
+        ))}
+      </dl>
+    </section>
+  )
+}
+```
+
+`apps/web/src/tax/law/LawVersionList.tsx` (새 파일):
+
+```tsx
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { errorMessage } from '../../common/errorMessage'
+import Icon from '../../common/Icon'
+import ui from '../../common/ui.module.css'
+import inputs from '../inputs/inputs.module.css'
+import { taxApi, taxKeys } from '../taxApi'
+import { lawTime, taxLawApi, taxLawKeys, type LawVersion } from './taxLawApi'
+import styles from './law.module.css'
+
+type Props = { year: number; versions: LawVersion[]; selectedId: number | undefined; onSelect: (id: number) => void }
+
+/** 한 귀속연도의 버전 목록(번호 내림차순, 서버 순서 그대로). 초안이 있어도 새 초안을 만들 수 있다(TAX-72). */
+export default function LawVersionList({ year, versions, selectedId, onSelect }: Props) {
+  const client = useQueryClient()
+  // 현재 적용 버전은 서버 규칙(가장 늦게 적용한 것)을 따른다. 화면에서 다시 판단하지 않는다.
+  const current = useQuery({ queryKey: taxKeys.currentLaw(year), queryFn: () => taxApi.currentLaw(year) })
+  const create = useMutation({
+    mutationFn: () => taxLawApi.create(year),
+    onSuccess: (created) => {
+      client.setQueryData<LawVersion[]>(taxLawKeys.list(year), (old) => [created, ...(old ?? [])])
+      onSelect(created.id)
+    },
+  })
+  const drafts = versions.filter((v) => v.status === 'DRAFT').length
+  const applied = current.isSuccess ? (current.data ? `현재 적용 v${current.data.versionNo}` : '적용 버전 없음(회원 화면은 "세법 준비 중")') : null
+  return (
+    <section aria-labelledby="law-versions-title" className={ui.card}>
+      <div className={inputs.split}>
+        <div className={inputs.rowInfo}>
+          <h2 id="law-versions-title">{year}년 버전</h2>
+          <p className={ui.muted}>{[applied, `초안 ${drafts}개`].filter(Boolean).join(' · ')}</p>
+        </div>
+        <div className={inputs.actions}>
+          <button type="button" className={ui.button} disabled={create.isPending} onClick={() => create.mutate()}>
+            <Icon name="plus" size={18} />새 초안 만들기
+          </button>
+        </div>
+      </div>
+      {create.error && <p role="alert" className={ui.alert}>{errorMessage(create.error)}</p>}
+      {versions.length === 0 ? (
+        <p className={ui.status}>{year}년 귀속 세법 버전이 없습니다. [새 초안 만들기]로 시작합니다.</p>
+      ) : (
+        <ul className={`${inputs.list} ${styles.versions}`}>
+          {versions.map((v) => (
+            <li key={v.id} className={inputs.split}>
+              <button type="button" className={styles.version} aria-current={v.id === selectedId ? 'true' : undefined} onClick={() => onSelect(v.id)}>
+                <span className={inputs.name}>v{v.versionNo} · {v.status === 'DRAFT' ? '초안' : v.id === current.data?.id ? '현재 적용' : '적용'}</span>
+                <span className={ui.muted}>
+                  {v.appliedAt ? `적용 ${v.appliedByNickname ?? '—'} · ${lawTime(v.appliedAt)}` : `작성 ${v.createdByNickname ?? '—'} · ${lawTime(v.createdAt)}`}
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  )
+}
+```
+
+`apps/web/src/tax/law/TaxLawPage.tsx` (새 파일):
+
+```tsx
+import { useQuery } from '@tanstack/react-query'
+import { useState } from 'react'
+import { Link } from 'react-router'
+import { ApiError } from '../../api/errors'
+import { menuLabel } from '../../app/menu'
+import { useAuth } from '../../auth/AuthProvider'
+import Icon from '../../common/Icon'
+import PageHeader from '../../common/PageHeader'
+import Skeleton, { SkeletonRegion } from '../../common/Skeleton'
+import ui from '../../common/ui.module.css'
+import { usePageTitle } from '../../common/usePageTitle'
+import inputs from '../inputs/inputs.module.css'
+import TaxHeader from '../TaxHeader'
+import TaxTabs from '../TaxTabs'
+import { useTaxYear } from '../TaxYearProvider'
+import LawVersionFacts from './LawVersionFacts'
+import LawVersionList from './LawVersionList'
+import { taxLawApi, taxLawKeys } from './taxLawApi'
+import styles from './law.module.css'
+
+/**
+ * 소득공제 › 연도별 세법 관리(서비스 관리자 전용, TAX-04·11). 메뉴를 숨기는 것은 편의이고 권한은 서버가 요청마다 판단한다.
+ * 관리자가 아니면(`/me`의 serviceAdmin, 또는 서버 403) 요청 없이 권한 없음 화면을 보인다(TAX-06).
+ */
+export default function TaxLawPage() {
+  const title = menuLabel('/tax/law')
+  usePageTitle(`${title} · 소득공제`)
+  const { me } = useAuth()
+  const admin = me?.serviceAdmin === true
+  const { year } = useTaxYear()
+  const list = useQuery({ queryKey: taxLawKeys.list(year), queryFn: () => taxLawApi.list(year), enabled: admin })
+  const [selectedId, setSelectedId] = useState<number | null>(null)
+
+  if (!admin || (list.error instanceof ApiError && list.error.status === 403)) return <NoPermission title={title} />
+  const versions = list.data ?? []
+  // 고른 버전이 목록에 없으면(연도를 바꿨거나 지워짐) 가장 최근 번호를 연다.
+  const selected = versions.find((v) => v.id === selectedId) ?? versions[0]
+  return (
+    <div className={inputs.page}>
+      <TaxHeader title={title} note="모든 회원의 계산에 쓰는 기준 · 서비스 관리자 전용" />
+      <TaxTabs />
+      {list.isPending && <SkeletonRegion label="세법 버전 불러오는 중"><Skeleton height={160} radius="var(--radius-md)" /></SkeletonRegion>}
+      {list.isError && (
+        <div className={inputs.split}>
+          <p role="alert" className={ui.alert}>세법 버전을 불러오지 못했습니다.</p>
+          <div className={inputs.actions}>
+            <button type="button" className={ui.button} onClick={() => void list.refetch()}><Icon name="refresh-cw" size={18} />다시 시도</button>
+          </div>
+        </div>
+      )}
+      {list.isSuccess && (
+        <div className={styles.columns}>
+          <LawVersionList year={year} versions={versions} selectedId={selected?.id} onSelect={setSelectedId} />
+          {selected && <LawVersionFacts version={selected} />}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function NoPermission({ title }: { title: string }) {
+  return (
+    <div className={inputs.page}>
+      <PageHeader title={title} />
+      <section aria-labelledby="law-forbidden-title" className={`${ui.card} ${inputs.empty}`}>
+        <h2 id="law-forbidden-title">권한 없음</h2>
+        <p>이 화면은 서비스 관리자만 볼 수 있습니다.</p>
+        <Link to="/tax/inputs" className={`${ui.button} ${ui.linkButton}`}>입력자료로 가기</Link>
+      </section>
+    </div>
+  )
+}
+```
+
+- [ ] **Step 7: 통과 확인**
+
+Run: `cd apps/web && npx vitest run src/app/AppRoutes.test.tsx src/app/BottomTabBar.test.tsx src/tax && npx tsc -b && npx oxlint src/tax src/app src/test src/auth`
+Expected: 9파일 100건 PASS(`AppRoutes` 38건, `TaxLawPage` 9건 포함), 타입 오류 없음, lint 경고 없음. 이 Task 뒤 초안도 읽기 전용 보기로 열린다(편집은 6.2).
+
+- [ ] **Step 8: 커밋(컨트롤러)** — Codex는 커밋하지 않는다. 컨트롤러가 보고와 diff를 확인한 뒤 커밋한다.
+
+### Task 6.2: 초안 편집·검증·적용·초안 삭제 (TAX-04, 60~64, 72, 76, AC-21 화면, AC-39, AC-44)
+
+**담당:** Codex `gpt-6-sol` / `medium` (`write`), 태그 `impl-web`. 리뷰: Claude Sonnet 5.5 (`review-task`).
+
+**Files:**
+- Create: `apps/web/src/tax/law/LawVersionForm.tsx`
+- Modify: `apps/web/src/tax/law/taxLawApi.ts`, `LawVersionList.tsx`, `TaxLawPage.tsx`, `law.module.css`
+- Test: `apps/web/src/tax/law/LawVersionForm.test.tsx`(새 파일, 12건)
+
+**Interfaces:**
+- Consumes: Task 6.1의 `taxLawKeys`·`LawVersion`·`LAW_FIELDS`·`LawDetailHeading`·`renderTaxLaw`·`serveLaw`·`lawDraft`; `PUT /tax/admin/law-versions/{id}`(본문 `LawValues` + `rowVersion`, 적용본·`rowVersion` 불일치 409), `POST …/{id}/validate` → `{ errors: [{ field, message }] }`, `POST …/{id}/apply { rowVersion }`(검증 실패 400 `VALIDATION_FAILED`, 409, 404), `DELETE …/{id}?rowVersion=`(204, 적용본 409, 404); `taxApi`의 `isStale`·`actionError`·`taxKeys`; 공용 `MoneyField`·`TextField`·`TextAreaField`·`DateTimePicker`(`granularity="day"`)·`Dialog`/`ConfirmDialog`의 `centered`·`toast`.
+- Produces: `taxLawApi.update(id, body)`·`validate(id)`·`apply(id, rowVersion)`·`remove(id, rowVersion)`, 타입 `LawUpdate`·`LawFieldError`, `LAW_LABEL`(검증 오류 필드 → 화면 이름); `LawVersionForm({ version, onReload })`(default); 목록 행의 초안 [삭제](`v<n> 초안 삭제`). `TaxLawPage`는 초안이면 폼, 적용본이면 읽기 전용 보기를 연다.
+
+- [ ] **Step 1: 실패하는 테스트 작성**
+
+`apps/web/src/tax/law/LawVersionForm.test.tsx` (새 파일):
+
+```tsx
+import { screen, waitFor, within } from '@testing-library/react'
+import { http, HttpResponse } from 'msw'
+import { describe, expect, it } from 'vitest'
+import { mockViewport } from '../../test/mockViewport'
+import { server } from '../../test/server'
+import { lawDraft, lawVersion, renderTaxLaw, serveLaw } from '../../test/taxLawFixtures'
+
+const v1 = lawVersion()
+// v2는 v1을 복사해 만든 초안이다. 기본한도(경계 초과 · 자녀등 1명)와 메모만 비어 있다.
+const v2 = lawDraft({ id: 2, versionNo: 2, rowVersion: 21, basicLimitHigh: [2_500_000, null, 3_000_000], memo: null, createdByNickname: '관리자다' })
+const v3 = lawDraft({ id: 3, versionNo: 3, rowVersion: 31, createdByNickname: '관리자라' })
+
+const conflict = (status: number) => HttpResponse.json({ code: status === 404 ? 'NOT_FOUND' : 'CONFLICT', message: 'x' }, { status })
+
+async function openDraft(no: number) {
+  const view = renderTaxLaw()
+  const list = await screen.findByRole('region', { name: '2026년 버전' })
+  await view.user.click(within(list).getByRole('button', { name: new RegExp(`^v${no} · `) }))
+  const form = screen.getByRole('region', { name: new RegExp(`2026년 귀속 v${no} · 초안`) })
+  return { ...view, list, form }
+}
+
+const field = (form: HTMLElement, group: string, label: string) => within(within(form).getByRole('group', { name: group })).getByLabelText(label)
+
+describe('LawVersionForm — 초안 편집', () => {
+  it('saves the whole draft with the rowVersion it opened with and only then allows validate and apply', async () => {
+    serveLaw([v3, v2, v1])
+    let body: unknown
+    server.use(http.put('*/api/tax/admin/law-versions/2', async ({ request }) => {
+      body = await request.json()
+      return HttpResponse.json(lawDraft({ ...v2, rowVersion: 22, rateCreditPct: 20, basicLimitHigh: [2_500_000, 2_750_000, 3_000_000], memo: '자녀등 한도 반영' }))
+    }))
+    const { user, form } = await openDraft(2)
+
+    expect(form).toHaveTextContent('계산 알고리즘 버전 1 (고정)')
+    expect(within(form).getByRole('button', { name: '검증' })).toBeEnabled()
+    await user.clear(field(form, '비율 (%)', '신용카드 공제율'))
+    await user.type(field(form, '비율 (%)', '신용카드 공제율'), '20')
+    await user.type(field(form, '기본한도 · 경계 초과 (원)', '자녀등 1명'), '2750000')
+    await user.type(within(form).getByLabelText('메모 (선택)'), '  자녀등 한도 반영  ')
+    await user.tab()
+
+    expect(form).toHaveTextContent('저장하지 않은 변경이 있습니다. 초안을 저장한 뒤 검증·적용할 수 있습니다.')
+    expect(within(form).getByRole('button', { name: '검증' })).toBeDisabled()
+    expect(within(form).getByRole('button', { name: '적용' })).toBeDisabled()
+    await user.click(within(form).getByRole('button', { name: '초안 저장' }))
+
+    await waitFor(() => expect(body).toBeDefined())
+    expect(body).toEqual({
+      rowVersion: 21, minSpendRatePct: 25, bracketBoundary: 70_000_000,
+      rateCreditPct: 20, rateDebitCashPct: 30, rateCulturePct: 30, rateMarketPct: 40, rateTransitPct: 40,
+      basicLimitLow: [3_000_000, 3_500_000, 4_000_000], basicLimitHigh: [2_500_000, 2_750_000, 3_000_000],
+      extraLimitLow: 3_000_000, extraLimitHigh: 2_000_000,
+      basisLawName: '조세특례제한법', basisArticle: '제126조의2', basisUrl: 'https://www.law.go.kr/',
+      periodStart: '2026-01-01', periodEnd: '2026-12-31', memo: '자녀등 한도 반영',
+    })
+    expect(await screen.findByText('2026년 귀속 v2 초안을 저장했습니다.')).toBeInTheDocument()
+    expect(within(form).getByRole('button', { name: '검증' })).toBeEnabled()
+    expect(field(form, '비율 (%)', '신용카드 공제율')).toHaveValue('20')
+  })
+
+  it('sends the next save with the rowVersion the server returned', async () => {
+    serveLaw([v2, v1])
+    const sent: unknown[] = []
+    server.use(http.put('*/api/tax/admin/law-versions/2', async ({ request }) => {
+      const body = await request.json() as { rowVersion: number }
+      sent.push(body.rowVersion)
+      return HttpResponse.json(lawDraft({ ...v2, rowVersion: body.rowVersion === 21 ? 900 : 901, memo: 'a' }))
+    }))
+    const { user, form } = await openDraft(2)
+
+    await user.type(within(form).getByLabelText('메모 (선택)'), 'a')
+    await user.click(within(form).getByRole('button', { name: '초안 저장' }))
+    await waitFor(() => expect(sent).toEqual([21]))
+    await user.type(within(form).getByLabelText('메모 (선택)'), 'b')
+    await user.click(within(form).getByRole('button', { name: '초안 저장' }))
+
+    await waitFor(() => expect(sent).toEqual([21, 900]))
+  })
+
+  it('validates the saved draft and lists failures with field names, then a pass', async () => {
+    serveLaw([v2, v1])
+    let errors = [
+      { field: 'rateCulturePct', message: '0~100 사이여야 합니다' },
+      { field: 'basicLimitHigh[1]', message: '값을 입력해야 합니다' },
+    ]
+    server.use(http.post('*/api/tax/admin/law-versions/2/validate', () => HttpResponse.json({ errors })))
+    const { user, form } = await openDraft(2)
+
+    await user.click(within(form).getByRole('button', { name: '검증' }))
+
+    const failed = await within(form).findByRole('alert')
+    expect(failed).toHaveTextContent('검증 실패 — 적용할 수 없습니다.')
+    expect(within(failed).getAllByRole('listitem').map((li) => li.textContent)).toEqual([
+      '문화체육 공제율: 0~100 사이여야 합니다',
+      '기본한도 · 경계 초과 · 자녀등 1명: 값을 입력해야 합니다',
+    ])
+    errors = []
+    await user.click(within(form).getByRole('button', { name: '검증' }))
+
+    expect(await within(form).findByRole('status')).toHaveTextContent('검증 통과 — 적용할 수 있습니다.')
+  })
+
+  it('keeps the input after a stale save and reloads the draft on request', async () => {
+    const calls = serveLaw([v2, v1])
+    server.use(http.put('*/api/tax/admin/law-versions/2', () => conflict(409)))
+    const { user, form } = await openDraft(2)
+
+    await user.clear(field(form, '비율 (%)', '신용카드 공제율'))
+    await user.type(field(form, '비율 (%)', '신용카드 공제율'), '20')
+    await user.click(within(form).getByRole('button', { name: '초안 저장' }))
+
+    expect(await within(form).findByRole('alert')).toHaveTextContent('다른 곳에서 수정·적용되거나 삭제됐습니다. 저장하지 않았습니다.')
+    expect(field(form, '비율 (%)', '신용카드 공제율')).toHaveValue('20')
+    await user.click(within(form).getByRole('button', { name: '다시 불러오기' }))
+
+    await waitFor(() => expect(calls.list).toBe(2))
+    const reloaded = screen.getByRole('region', { name: /2026년 귀속 v2 · 초안/ })
+    await waitFor(() => expect(field(reloaded, '비율 (%)', '신용카드 공제율')).toHaveValue('15'))
+    expect(within(reloaded).queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('keeps the input and says so when the server cannot be reached', async () => {
+    serveLaw([v2, v1])
+    server.use(http.put('*/api/tax/admin/law-versions/2', () => HttpResponse.error()))
+    const { user, form } = await openDraft(2)
+
+    await user.type(within(form).getByLabelText('메모 (선택)'), '합성')
+    await user.click(within(form).getByRole('button', { name: '초안 저장' }))
+
+    expect(await within(form).findByRole('alert')).toHaveTextContent('서버에 연결하지 못했습니다. 잠시 후 다시 시도해 주세요. 입력한 값은 그대로 있습니다.')
+    expect(within(form).getByLabelText('메모 (선택)')).toHaveValue('합성')
+  })
+})
+
+describe('LawVersionForm — 적용', () => {
+  it('applies a draft after one centered confirmation that says other drafts stay drafts', async () => {
+    mockViewport(true)
+    const calls = serveLaw([v3, v2, v1])
+    let body: unknown
+    server.use(http.post('*/api/tax/admin/law-versions/2/apply', async ({ request }) => {
+      body = await request.json()
+      return HttpResponse.json(lawVersion({ ...v2, status: 'APPLIED', rowVersion: 22, appliedByNickname: '관리자나', appliedAt: '2026-11-21T01:00:00Z' }))
+    }))
+    const { user, list, form } = await openDraft(2)
+
+    await user.click(within(form).getByRole('button', { name: '적용' }))
+    const dialog = await screen.findByRole('dialog', { name: '2026년 귀속 v2 적용' })
+    expect(dialog.parentElement).toHaveClass('modal')
+    expect(dialog).toHaveTextContent('적용하면 이 버전은 고치거나 삭제할 수 없습니다.')
+    expect(dialog).toHaveTextContent('다른 초안은 초안으로 남습니다.')
+    await user.click(within(dialog).getByRole('button', { name: '적용' }))
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(body).toEqual({ rowVersion: 21 })
+    expect(within(list).getAllByRole('listitem')[1]).toHaveTextContent('v2 · 적용')
+    expect(within(list).getAllByRole('listitem')[0]).toHaveTextContent('v3 · 초안')
+    const detail = screen.getByRole('region', { name: /2026년 귀속 v2 · 적용/ })
+    expect(within(detail).queryByRole('textbox')).not.toBeInTheDocument()
+    expect(within(list).queryByRole('button', { name: 'v2 초안 삭제' })).not.toBeInTheDocument()
+    // 회원 화면의 현재 적용 세법을 다시 읽는다.
+    await waitFor(() => expect(calls.current).toBe(2))
+  })
+
+  it('keeps the dialog open when the draft fails validation on apply', async () => {
+    serveLaw([v2, v1])
+    server.use(http.post('*/api/tax/admin/law-versions/2/apply', () =>
+      HttpResponse.json({ code: 'VALIDATION_FAILED', message: 'basicLimitHigh[1]: 값을 입력해야 합니다' }, { status: 400 })))
+    const { user, form } = await openDraft(2)
+
+    await user.click(within(form).getByRole('button', { name: '적용' }))
+    const dialog = await screen.findByRole('dialog', { name: '2026년 귀속 v2 적용' })
+    await user.click(within(dialog).getByRole('button', { name: '적용' }))
+
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('검증을 통과하지 못해 적용하지 않았습니다. [검증]으로 이유를 확인해 주세요.')
+  })
+
+  it.each([409, 404])('reloads the list after a %i apply', async (status) => {
+    const calls = serveLaw([v2, v1])
+    server.use(http.post('*/api/tax/admin/law-versions/2/apply', () => conflict(status)))
+    const { user, form } = await openDraft(2)
+
+    await user.click(within(form).getByRole('button', { name: '적용' }))
+    const dialog = await screen.findByRole('dialog', { name: '2026년 귀속 v2 적용' })
+    await user.click(within(dialog).getByRole('button', { name: '적용' }))
+
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('새로 불러온 내용을 확인한 뒤 다시 시도해 주세요.')
+    await waitFor(() => expect(calls.list).toBe(2))
+  })
+})
+
+describe('LawVersionList — 초안 삭제', () => {
+  it('deletes a draft after one centered confirmation with its rowVersion and has no delete for applied versions', async () => {
+    mockViewport(true)
+    serveLaw([v3, v2, v1])
+    let url = ''
+    server.use(http.delete('*/api/tax/admin/law-versions/3', ({ request }) => {
+      url = request.url
+      serveLaw([v2, v1])
+      return new HttpResponse(null, { status: 204 })
+    }))
+    const { user } = renderTaxLaw()
+
+    const list = await screen.findByRole('region', { name: '2026년 버전' })
+    expect(within(list).queryByRole('button', { name: 'v1 초안 삭제' })).not.toBeInTheDocument()
+    await user.click(within(list).getByRole('button', { name: 'v3 초안 삭제' }))
+    const dialog = await screen.findByRole('dialog', { name: '2026년 귀속 v3 초안을 삭제할까요?' })
+    expect(dialog.parentElement).toHaveClass('modal')
+    expect(dialog).toHaveTextContent('이 초안에 입력한 값이 지워집니다. 적용된 버전과 다른 초안은 남습니다. 복구할 수 없습니다.')
+    await user.click(within(dialog).getByRole('button', { name: '삭제' }))
+
+    await waitFor(() => expect(within(list).getAllByRole('listitem')).toHaveLength(2))
+    expect(new URL(url).search).toBe('?rowVersion=31')
+    expect(screen.getByRole('region', { name: /2026년 귀속 v2 · 초안/ })).toBeInTheDocument()
+  })
+
+  it.each([409, 404])('reloads and explains a %i draft delete', async (status) => {
+    const calls = serveLaw([v3, v1])
+    server.use(http.delete('*/api/tax/admin/law-versions/3', () => conflict(status)))
+    const { user } = renderTaxLaw()
+
+    const list = await screen.findByRole('region', { name: '2026년 버전' })
+    await user.click(within(list).getByRole('button', { name: 'v3 초안 삭제' }))
+    const dialog = await screen.findByRole('dialog')
+    await user.click(within(dialog).getByRole('button', { name: '삭제' }))
+
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('새로 불러온 내용을 확인한 뒤 다시 시도해 주세요.')
+    await waitFor(() => expect(calls.list).toBe(2))
+  })
+})
+```
+
+- [ ] **Step 2: 실패 확인**
+
+Run: `cd apps/web && npx vitest run src/tax/law`
+Expected: `LawVersionForm.test.tsx` 12건 모두 FAIL — `Unable to find … role "button" and name "적용"`(4건)·`"v3 초안 삭제"`(3건)·`"검증"`(2건), `Unable to find a label with the text of: 메모 (선택)`(2건), `role "group" and name "비율 (%)"`(1건). `TaxLawPage.test.tsx` 9건 PASS.
+
+- [ ] **Step 3: API·목록·화면 고침**
+
+`git apply`:
+
+```diff
+diff --git a/apps/web/src/tax/law/LawVersionList.tsx b/apps/web/src/tax/law/LawVersionList.tsx
+index 4e9bdc0..2a836e0 100644
+--- a/apps/web/src/tax/law/LawVersionList.tsx
++++ b/apps/web/src/tax/law/LawVersionList.tsx
+@@ -1,9 +1,10 @@
+ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
++import ConfirmDialog from '../../common/ConfirmDialog'
+ import { errorMessage } from '../../common/errorMessage'
+ import Icon from '../../common/Icon'
+ import ui from '../../common/ui.module.css'
+ import inputs from '../inputs/inputs.module.css'
+-import { taxApi, taxKeys } from '../taxApi'
++import { actionError, isStale, taxApi, taxKeys } from '../taxApi'
+ import { lawTime, taxLawApi, taxLawKeys, type LawVersion } from './taxLawApi'
+ import styles from './law.module.css'
+ 
+@@ -49,6 +50,7 @@ export default function LawVersionList({ year, versions, selectedId, onSelect }:
+                   {v.appliedAt ? `적용 ${v.appliedByNickname ?? '—'} · ${lawTime(v.appliedAt)}` : `작성 ${v.createdByNickname ?? '—'} · ${lawTime(v.createdAt)}`}
+                 </span>
+               </button>
++              {v.status === 'DRAFT' && <div className={inputs.actions}><DeleteDraft version={v} /></div>}
+             </li>
+           ))}
+         </ul>
+@@ -56,3 +58,21 @@ export default function LawVersionList({ year, versions, selectedId, onSelect }:
+     </section>
+   )
+ }
++
++/** 초안 삭제는 확인 한 번(TAX-72). 적용본에는 이 버튼이 없다. 삭제는 204라 목록을 다시 읽는다. */
++function DeleteDraft({ version }: { version: LawVersion }) {
++  const client = useQueryClient()
++  const reload = () => client.invalidateQueries({ queryKey: taxLawKeys.list(version.taxYear) })
++  const remove = useMutation({
++    mutationFn: () => taxLawApi.remove(version.id, version.rowVersion),
++    onSuccess: () => reload(),
++    onError: (error) => { if (isStale(error)) void reload() },
++  })
++  const name = `${version.taxYear}년 귀속 v${version.versionNo}`
++  return (
++    <ConfirmDialog centered triggerLabel="삭제" triggerAriaLabel={`v${version.versionNo} 초안 삭제`}
++      title={`${name} 초안을 삭제할까요?`} description="이 초안에 입력한 값이 지워집니다. 적용된 버전과 다른 초안은 남습니다. 복구할 수 없습니다."
++      confirmLabel="삭제" isPending={remove.isPending} error={remove.error ? actionError(remove.error) : null}
++      onOpen={() => remove.reset()} onConfirm={(close) => remove.mutate(undefined, { onSuccess: close })} />
++  )
++}
+diff --git a/apps/web/src/tax/law/TaxLawPage.tsx b/apps/web/src/tax/law/TaxLawPage.tsx
+index a4150f4..7c70cde 100644
+--- a/apps/web/src/tax/law/TaxLawPage.tsx
++++ b/apps/web/src/tax/law/TaxLawPage.tsx
+@@ -1,4 +1,4 @@
+-import { useQuery } from '@tanstack/react-query'
++import { useQuery, useQueryClient } from '@tanstack/react-query'
+ import { useState } from 'react'
+ import { Link } from 'react-router'
+ import { ApiError } from '../../api/errors'
+@@ -14,6 +14,7 @@ import TaxHeader from '../TaxHeader'
+ import TaxTabs from '../TaxTabs'
+ import { useTaxYear } from '../TaxYearProvider'
+ import LawVersionFacts from './LawVersionFacts'
++import LawVersionForm from './LawVersionForm'
+ import LawVersionList from './LawVersionList'
+ import { taxLawApi, taxLawKeys } from './taxLawApi'
+ import styles from './law.module.css'
+@@ -30,6 +31,10 @@ export default function TaxLawPage() {
+   const { year } = useTaxYear()
+   const list = useQuery({ queryKey: taxLawKeys.list(year), queryFn: () => taxLawApi.list(year), enabled: admin })
+   const [selectedId, setSelectedId] = useState<number | null>(null)
++  const client = useQueryClient()
++  // [다시 불러오기]: 목록을 새로 받은 뒤 편집 중인 초안을 새 값으로 다시 연다.
++  const [reloads, setReloads] = useState(0)
++  const reload = () => void client.invalidateQueries({ queryKey: taxLawKeys.list(year) }).then(() => setReloads((n) => n + 1))
+ 
+   if (!admin || (list.error instanceof ApiError && list.error.status === 403)) return <NoPermission title={title} />
+   const versions = list.data ?? []
+@@ -51,7 +56,8 @@ export default function TaxLawPage() {
+       {list.isSuccess && (
+         <div className={styles.columns}>
+           <LawVersionList year={year} versions={versions} selectedId={selected?.id} onSelect={setSelectedId} />
+-          {selected && <LawVersionFacts version={selected} />}
++          {selected?.status === 'DRAFT' && <LawVersionForm key={`${selected.id}:${reloads}`} version={selected} onReload={reload} />}
++          {selected?.status === 'APPLIED' && <LawVersionFacts version={selected} />}
+         </div>
+       )}
+     </div>
+diff --git a/apps/web/src/tax/law/law.module.css b/apps/web/src/tax/law/law.module.css
+index ef484c4..7d8bf80 100644
+--- a/apps/web/src/tax/law/law.module.css
++++ b/apps/web/src/tax/law/law.module.css
+@@ -15,3 +15,8 @@
+ }
+ .versions .version[aria-current='true'] { border-color: var(--brand); background: var(--surface-100); }
+ .versions .version:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
++
++/* 초안 입력 묶음. 칸이 9rem보다 좁아지면(320px) 한 줄에 하나씩 놓아 큰 금액이 칸 안에서 다 보이게 한다. */
++.fields { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 9rem), 1fr)); gap: var(--space-2) var(--space-3); margin: 0; padding: 0; border: 0; min-width: 0; }
++.basis { display: flex; flex-direction: column; gap: var(--space-3); margin: 0; padding: 0; border: 0; min-width: 0; }
++.fields legend, .basis legend { padding: 0; margin-bottom: var(--space-1); font-weight: 500; }
+diff --git a/apps/web/src/tax/law/taxLawApi.ts b/apps/web/src/tax/law/taxLawApi.ts
+index 82d1628..49081c9 100644
+--- a/apps/web/src/tax/law/taxLawApi.ts
++++ b/apps/web/src/tax/law/taxLawApi.ts
+@@ -19,9 +19,18 @@ export type LawVersion = LawValues & {
+ 
+ const BASE = '/tax/admin/law-versions'
+ 
++/** 초안 전체 교체 본문. 빈 값은 null이고 범위 검사는 적용할 때 서버가 한다. */
++export type LawUpdate = LawValues & { rowVersion: number }
++export type LawFieldError = { field: string; message: string }
++
+ export const taxLawApi = {
+   list: (year: number) => apiFetch<LawVersion[]>(`${BASE}?year=${year}`),
+   create: (taxYear: number) => apiFetch<LawVersion>(BASE, { method: 'POST', json: { taxYear } }),
++  update: (id: number, body: LawUpdate) => apiFetch<LawVersion>(`${BASE}/${id}`, { method: 'PUT', json: body }),
++  /** 저장된 값을 검사한다. errors가 비면 적용할 수 있다. 상태를 바꾸지 않는다. */
++  validate: (id: number) => apiFetch<{ errors: LawFieldError[] }>(`${BASE}/${id}/validate`, { method: 'POST' }),
++  apply: (id: number, rowVersion: number) => apiFetch<LawVersion>(`${BASE}/${id}/apply`, { method: 'POST', json: { rowVersion } }),
++  remove: (id: number, rowVersion: number) => apiFetch<void>(`${BASE}/${id}?rowVersion=${rowVersion}`, { method: 'DELETE' }),
+ }
+ 
+ /** 관리자 세법 목록 키. 머리말 `tax`라 그룹 범위 키가 아니고, 로그아웃 때 queryClient.clear()로 지워진다. */
+@@ -56,6 +65,9 @@ export const LAW_FIELDS: LawField[] = [
+   { field: 'memo', label: '메모', kind: 'text', get: (v) => v.memo },
+ ]
+ 
++/** 검증 오류의 필드 이름 → 화면 이름. */
++export const LAW_LABEL: Record<string, string> = Object.fromEntries(LAW_FIELDS.map((f) => [f.field, f.label]))
++
+ const seoulTime = new Intl.DateTimeFormat('sv-SE', {
+   timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+ })
+```
+
+- [ ] **Step 4: 초안 폼과 적용 창**
+
+`apps/web/src/tax/law/LawVersionForm.tsx` (새 파일):
+
+```tsx
+import { useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query'
+import { useState, type FormEvent } from 'react'
+import { FieldError, Group, Input, Label, NumberField } from 'react-aria-components'
+import DateTimePicker from '../../common/DateTimePicker'
+import Dialog from '../../common/Dialog'
+import { errorMessage } from '../../common/errorMessage'
+import fields from '../../common/Field.module.css'
+import MoneyField from '../../common/MoneyField'
+import money from '../../common/MoneyField.module.css'
+import TextField, { TextAreaField } from '../../common/TextField'
+import { toast } from '../../common/Toast'
+import ui from '../../common/ui.module.css'
+import inputs from '../inputs/inputs.module.css'
+import { actionError, isStale, taxKeys } from '../taxApi'
+import { LawDetailHeading } from './LawVersionFacts'
+import { LAW_LABEL, taxLawApi, taxLawKeys, type LawFieldError, type LawValues, type LawVersion } from './taxLawApi'
+import styles from './law.module.css'
+
+type TextKey = 'basisLawName' | 'basisArticle' | 'basisUrl' | 'periodStart' | 'periodEnd' | 'memo'
+/** 입력 중인 값. 글 칸은 빈 문자열, 숫자 칸은 null이 "비어 있음"이다. */
+type LawForm = Omit<LawValues, TextKey> & Record<TextKey, string>
+type Tiers = 'basicLimitLow' | 'basicLimitHigh'
+
+function toForm(v: LawValues): LawForm {
+  return {
+    minSpendRatePct: v.minSpendRatePct, bracketBoundary: v.bracketBoundary,
+    rateCreditPct: v.rateCreditPct, rateDebitCashPct: v.rateDebitCashPct, rateCulturePct: v.rateCulturePct,
+    rateMarketPct: v.rateMarketPct, rateTransitPct: v.rateTransitPct,
+    basicLimitLow: [...v.basicLimitLow], basicLimitHigh: [...v.basicLimitHigh], extraLimitLow: v.extraLimitLow, extraLimitHigh: v.extraLimitHigh,
+    basisLawName: v.basisLawName ?? '', basisArticle: v.basisArticle ?? '', basisUrl: v.basisUrl ?? '',
+    periodStart: v.periodStart ?? '', periodEnd: v.periodEnd ?? '', memo: v.memo ?? '',
+  }
+}
+
+function toBody(f: LawForm): LawValues {
+  const text = (value: string) => value.trim() || null
+  return {
+    ...f, basisLawName: text(f.basisLawName), basisArticle: text(f.basisArticle), basisUrl: text(f.basisUrl),
+    periodStart: text(f.periodStart), periodEnd: text(f.periodEnd), memo: text(f.memo),
+  }
+}
+
+/** 버전 하나를 목록 캐시에서 바꾼다. 다른 버전은 그대로 둔다. */
+function putVersion(client: QueryClient, saved: LawVersion) {
+  client.setQueryData<LawVersion[]>(taxLawKeys.list(saved.taxYear), (old) => old?.map((v) => (v.id === saved.id ? saved : v)))
+}
+
+/** 0~100 정수 퍼센트. 범위는 적용할 때 서버가 검사한다(TAX-64). 비우면 null. */
+function PercentField({ label, value, onChange }: { label: string; value: number | null; onChange: (value: number | null) => void }) {
+  return (
+    <NumberField value={value ?? Number.NaN} onChange={(v) => onChange(Number.isNaN(v) ? null : v)}
+      formatOptions={{ maximumFractionDigits: 0 }} validationBehavior="native" isWheelDisabled className={fields.field}>
+      <Label className={fields.label}>{label}</Label>
+      <Group className={money.money}>
+        <Input className={`${fields.input} ${money.input}`} />
+        <span className={money.unit} aria-hidden="true">%</span>
+      </Group>
+      <FieldError className={fields.error} />
+    </NumberField>
+  )
+}
+
+const RATES = [
+  ['minSpendRatePct', '최저사용금액 비율'], ['rateCreditPct', '신용카드 공제율'], ['rateDebitCashPct', '체크카드·현금영수증 공제율'],
+  ['rateCulturePct', '문화체육 공제율'], ['rateMarketPct', '전통시장 공제율'], ['rateTransitPct', '대중교통 공제율'],
+] as const
+const TIERS = ['자녀등 0명', '자녀등 1명', '자녀등 2명 이상']
+
+type Props = { version: LawVersion; onReload: () => void }
+
+/**
+ * 초안 편집(TAX-62~64). 연 시점(또는 마지막 저장)의 값과 rowVersion으로 저장하고, 다른 곳에서 바뀌었으면 서버가 409로 막는다.
+ * 검증·적용은 저장된 값으로 하므로 저장하지 않은 변경이 있으면 끈다.
+ */
+export default function LawVersionForm({ version, onReload }: Props) {
+  const client = useQueryClient()
+  const [base, setBase] = useState(version)
+  const [values, setValues] = useState(() => toForm(version))
+  const [checked, setChecked] = useState<LawFieldError[] | null>(null)
+  const [applying, setApplying] = useState(false)
+  const name = `${base.taxYear}년 귀속 v${base.versionNo}`
+  const dirty = JSON.stringify(toBody(values)) !== JSON.stringify(toBody(toForm(base)))
+  const save = useMutation({
+    mutationFn: () => taxLawApi.update(base.id, { ...toBody(values), rowVersion: base.rowVersion }),
+    onSuccess: (saved) => {
+      putVersion(client, saved)
+      setBase(saved)
+      setValues(toForm(saved))
+      toast(`${name} 초안을 저장했습니다.`)
+    },
+  })
+  const validate = useMutation({
+    mutationFn: () => taxLawApi.validate(base.id),
+    onSuccess: (result) => setChecked(result.errors),
+    onError: (error) => { if (isStale(error)) onReload() },
+  })
+  const busy = save.isPending || validate.isPending
+
+  function change(next: Partial<LawForm>) {
+    setValues((current) => ({ ...current, ...next }))
+    setChecked(null)
+  }
+  const tier = (key: Tiers, i: number) => (value: number | null) => change({ [key]: values[key].map((v, j) => (j === i ? value : v)) })
+
+  function onSubmit(event: FormEvent) {
+    event.preventDefault()
+    save.mutate()
+  }
+
+  return (
+    <section aria-labelledby="law-detail-title" className={ui.card}>
+      <LawDetailHeading version={base} />
+      <form className={ui.stack} onSubmit={onSubmit}>
+        <fieldset className={styles.fields}>
+          <legend>비율 (%)</legend>
+          {RATES.map(([key, label]) => <PercentField key={key} label={label} value={values[key]} onChange={(v) => change({ [key]: v })} />)}
+        </fieldset>
+        <fieldset className={styles.fields}>
+          <legend>급여구간 (원)</legend>
+          <MoneyField label="급여구간 경계 금액" value={values.bracketBoundary} minValue={0} onChange={(v) => change({ bracketBoundary: v })} />
+        </fieldset>
+        {(['basicLimitLow', 'basicLimitHigh'] as const).map((key) => (
+          <fieldset key={key} className={styles.fields}>
+            <legend>기본한도 · 경계 {key === 'basicLimitLow' ? '이하' : '초과'} (원)</legend>
+            {TIERS.map((label, i) => <MoneyField key={label} label={label} value={values[key][i]} minValue={0} onChange={tier(key, i)} />)}
+          </fieldset>
+        ))}
+        <fieldset className={styles.fields}>
+          <legend>추가한도 상한 (원)</legend>
+          <MoneyField label="경계 이하" value={values.extraLimitLow} minValue={0} onChange={(v) => change({ extraLimitLow: v })} />
+          <MoneyField label="경계 초과" value={values.extraLimitHigh} minValue={0} onChange={(v) => change({ extraLimitHigh: v })} />
+        </fieldset>
+        <fieldset className={styles.basis}>
+          <legend>근거·적용 대상 기간</legend>
+          <TextField label="법령명" value={values.basisLawName} onChange={(v) => change({ basisLawName: v })} maxLength={200} />
+          <TextField label="조문" value={values.basisArticle} onChange={(v) => change({ basisArticle: v })} maxLength={200} />
+          <TextField label="근거 URL" value={values.basisUrl} onChange={(v) => change({ basisUrl: v })} maxLength={500} />
+          <DateTimePicker label="적용 대상 기간 시작" granularity="day" value={values.periodStart} onChange={(v) => change({ periodStart: v })} />
+          <DateTimePicker label="적용 대상 기간 끝" granularity="day" value={values.periodEnd} onChange={(v) => change({ periodEnd: v })} />
+          <TextAreaField label="메모 (선택)" value={values.memo} onChange={(v) => change({ memo: v })} maxLength={1000} />
+        </fieldset>
+        {save.error && (isStale(save.error) ? (
+          <div className={inputs.split}>
+            <p role="alert" className={ui.alert}>다른 곳에서 수정·적용되거나 삭제됐습니다. 저장하지 않았습니다.</p>
+            <div className={inputs.actions}><button type="button" className={ui.button} onClick={onReload}>다시 불러오기</button></div>
+          </div>
+        ) : <p role="alert" className={ui.alert}>{errorMessage(save.error)} 입력한 값은 그대로 있습니다.</p>)}
+        {validate.error && <p role="alert" className={ui.alert}>{actionError(validate.error)}</p>}
+        {checked && (checked.length === 0
+          ? <p role="status" className={ui.status}>검증 통과 — 적용할 수 있습니다.</p>
+          : (
+            <div role="alert" className={ui.alert}>
+              <p>검증 실패 — 적용할 수 없습니다.</p>
+              <ul>{checked.map((e) => <li key={`${e.field}:${e.message}`}>{LAW_LABEL[e.field] ?? e.field}: {e.message}</li>)}</ul>
+            </div>
+          ))}
+        <div className={inputs.split}>
+          <p className={ui.muted}>{dirty ? '저장하지 않은 변경이 있습니다. 초안을 저장한 뒤 검증·적용할 수 있습니다.' : '검증과 적용은 저장한 값으로 합니다.'}</p>
+          <div className={inputs.actions}>
+            <button type="submit" className={ui.button} disabled={busy}>초안 저장</button>
+            <button type="button" className={ui.button} disabled={busy || dirty} onClick={() => validate.mutate()}>검증</button>
+            <button type="button" className={`${ui.button} ${ui.primary}`} disabled={busy || dirty} onClick={() => setApplying(true)}>적용</button>
+          </div>
+        </div>
+      </form>
+      {applying && <ApplyDialog version={base} onClose={() => setApplying(false)} />}
+    </section>
+  )
+}
+
+/** 적용 확인(TAX-61·72). 적용하면 상태가 바뀌어 이 화면은 읽기 전용 보기로 바뀐다. */
+function ApplyDialog({ version, onClose }: { version: LawVersion; onClose: () => void }) {
+  const client = useQueryClient()
+  const year = version.taxYear
+  const apply = useMutation({
+    mutationFn: () => taxLawApi.apply(version.id, version.rowVersion),
+    onSuccess: (applied) => {
+      onClose()
+      putVersion(client, applied)
+      // 이 연도의 회원용 현재 적용 세법과, 세법이 없던 내 연도 기록(적용 때 서버가 이 버전을 붙인다)을 다시 읽는다.
+      void client.invalidateQueries({ queryKey: taxKeys.currentLaw(year) })
+      void client.invalidateQueries({ queryKey: taxKeys.year(year) })
+      toast(`${year}년 귀속 v${applied.versionNo} 적용을 마쳤습니다.`)
+    },
+    onError: (error) => { if (isStale(error)) void client.invalidateQueries({ queryKey: taxLawKeys.list(year) }) },
+  })
+  const failure = apply.error && (isStale(apply.error)
+    ? actionError(apply.error)
+    : errorMessage(apply.error, { VALIDATION_FAILED: '검증을 통과하지 못해 적용하지 않았습니다. [검증]으로 이유를 확인해 주세요.' }))
+  return (
+    <Dialog title={`${year}년 귀속 v${version.versionNo} 적용`} onClose={onClose} closeDisabled={apply.isPending} centered>
+      <p>적용하면 이 버전은 고치거나 삭제할 수 없습니다. {year}년 귀속 연도 기록에는 "새 세법 버전 있음"이 표시되고, 회원이 직접 눌러야 새 버전으로 다시 계산됩니다. 세법이 없던 기록은 바로 이 버전으로 계산됩니다.</p>
+      <p>다른 초안은 초안으로 남습니다.</p>
+      {failure && <p role="alert" className={ui.alert}>{failure}</p>}
+      <div className={ui.confirmActions}>
+        <button type="button" className={ui.button} disabled={apply.isPending} onClick={onClose}>취소</button>
+        <button type="button" className={`${ui.button} ${ui.primary} ${ui.cta}`} disabled={apply.isPending} onClick={() => apply.mutate()}>적용</button>
+      </div>
+    </Dialog>
+  )
+}
+```
+
+- [ ] **Step 5: 통과와 웹 전체 확인**
+
+Run: `cd apps/web && npx vitest run src/tax src/app && npm run typecheck && npm run lint && npm run build && npx vitest run --maxWorkers=4`
+Expected: `src/tax`·`src/app` 16파일 133건 PASS(`src/tax/law` 2파일 21건 포함), typecheck 통과, lint는 기존 `imports/CoverageSection.tsx` 경고 1건 말고 새 경고 없음, build 통과(`TaxLawPage` 청크가 따로 나뉜다), 전체 87파일 726건 PASS. 전체 병렬 실행에서 소득공제와 무관한 시간 의존 테스트(이번에는 `transactions/TransactionsPage.test.tsx` 2건)가 한 번 실패했고 그 파일만 다시 돌리면 통과했다(PR 5 때와 같은 현상). 실패하면 그 파일만 다시 돌려 통과를 확인하고 보고한다.
+
+- [ ] **Step 6: 커밋(컨트롤러)**
+
+### Task 6.3: 검증 지도와 운영 문서 (AC-23, AC-29)
+
+**담당:** Codex `gpt-6-luna` / `low` (`write`), 태그 `docs`. 리뷰: Claude Sonnet 5.5 (`review-task`).
+
+**Files:**
+- Create: `.claude/skills/verify/features/tax-law.md`
+- Modify: `.claude/skills/verify/features/README.md`, `features/navigation.md`, `docs/deploy.md`(13절 마지막 줄)
+
+**Interfaces:**
+- Consumes: Task 6.1·6.2의 화면 이름(`소득공제 메뉴`, `YYYY년 버전`, `YYYY년 귀속 vN 적용`, `vN 초안 삭제` 등), PR 5 시드(`verify@example.test` 서비스 관리자, 올해 귀속 v1 적용), `verify2@example.test`(일반 회원).
+- Produces: 검증 지도 `tax-law.md`(feature 계약의 네 H2), 관리자·회원 메뉴 목록이 맞는 `navigation.md`, 사실과 맞는 `deploy.md` 13절.
+
+- [ ] **Step 1: 검증 지도**
+
+`.claude/skills/verify/features/tax-law.md` (새 파일):
+
+```markdown
+# Tax law admin
+
+소득공제 › 연도별 세법 관리 (`/tax/law`, `h1` `연도별 세법 관리` on wide screens) is for service admins only. It lists the law versions of the selected tax year (drafts and applied versions, newest number first), lets an admin create drafts, edit and save them, validate them, apply one, and delete drafts. Applied versions are read-only text with no delete. A member who is not a service admin never sees the menu or the tab, and gets the `권한 없음` screen on the address; the server also answers 403 on every admin request. Every confirm dialog opens centered at every width.
+
+## Sub-features
+
+- `law-menu` adds the third sub-link `연도별 세법 관리` under `소득공제` in the sidebar, for service admins only. On narrow screens a service admin sees the in-page `소득공제 메뉴` with `입력자료` and `세법 관리`; members see no in-page menu.
+- `law-forbidden` shows `권한 없음`, `이 화면은 서비스 관리자만 볼 수 있습니다.`, and the link `입력자료로 가기` to a member who opens `/tax/law`. The page sends no admin request then. A 403 from the server (for example after the admin flag is revoked) shows the same screen.
+- `law-list` shows `YYYY년 버전` with `현재 적용 vN · 초안 n개` (or `적용 버전 없음(회원 화면은 "세법 준비 중")`), and one row per version: `vN · 초안 | 적용 | 현재 적용`, then `작성 <nickname> · YYYY-MM-DD HH:mm` for drafts or `적용 <nickname> · …` for applied versions. `[새 초안 만들기]` stays enabled while drafts exist. Each draft row has `[삭제]` on the right; applied rows have none.
+- `law-detail` opens the newest version by default; clicking a row opens it. The heading reads `YYYY년 귀속 vN · 초안` or `… · 적용 · 읽기 전용`, with `계산 알고리즘 버전 1 (고정)` and the creation and apply history. `세법 수치 도움말` explains the salary bracket and the extra limit.
+- `law-edit` (drafts) has groups `비율 (%)` (6 rates), `급여구간 (원)`, `기본한도 · 경계 이하 (원)` and `기본한도 · 경계 초과 (원)` (`자녀등 0명`, `자녀등 1명`, `자녀등 2명 이상`), `추가한도 상한 (원)`, and `근거·적용 대상 기간` (법령명, 조문, 근거 URL, two dates, `메모 (선택)`). `[초안 저장]` saves the whole draft. While there are unsaved changes, `[검증]` and `[적용]` are disabled and the bottom line says why.
+- `law-validate` lists failures as `<field name>: <message>` under `검증 실패 — 적용할 수 없습니다.`, or shows `검증 통과 — 적용할 수 있습니다.`.
+- `law-apply` asks once in `YYYY년 귀속 vN 적용`, which says other drafts stay drafts. After applying, the row reads `vN · 현재 적용` and the detail becomes read-only.
+- `law-delete` asks once in `YYYY년 귀속 vN 초안을 삭제할까요?`. Numbers are never reused.
+
+## How to get to it (user POV)
+
+- As a service admin on wide screens, click `연도별 세법 관리` under `소득공제` in `navigation "주 메뉴"`.
+- As a service admin on narrow screens, tap the bottom tab `소득공제`, then `세법 관리` in `navigation "소득공제 메뉴"`.
+
+## Driving it with the built-in browser
+
+Preconditions:
+
+- Baseline seed. `verify@example.test` is a service admin and the `YYYY` law (this Korean year) is applied as v1 with the 2026 values. `verify2@example.test` is a regular member.
+
+- **Member.** Log in as `verify2@example.test`. At `desktop`, the sidebar reads 홈, 소득공제, 입력자료, 대시보드, … with no `연도별 세법 관리`. At `mobile`, `소득공제` shows no `소득공제 메뉴`. Type `/tax/law`: `권한 없음` shows, and the network panel has no `/api/tax/admin/` request. `입력자료로 가기` opens `/tax/inputs`.
+- **Admin menu.** Log in as `verify@example.test`. At `desktop` the sidebar has `연도별 세법 관리` third under `소득공제`; clicking it shows `h1` `연도별 세법 관리` and marks the link `aria-current="page"`. At `mobile` and at 320×700, the in-page menu reads `입력자료 | 세법 관리`, the header title stays `소득공제`, and switching keeps focus on the tapped link.
+- **List and read-only v1.** The list reads `현재 적용 v1 · 초안 0개`. v1 shows as text with `적용된 버전은 고칠 수 없습니다. 바꾸려면 새 초안을 만듭니다.`, no inputs, and no `[삭제]`.
+- **Drafts.** Click `[새 초안 만들기]` twice: v2 and v3 appear as drafts copied from v1, and the button stays enabled. Change `신용카드 공제율` in v3: `[검증]` and `[적용]` turn off with the reason line. Save, then reload the page and confirm the value stayed.
+- **Validate.** In v3, set `문화체육 공제율` to 130, clear `기본한도 · 경계 초과 (원)` › `자녀등 1명`, save, and press `[검증]`: the alert lists `문화체육 공제율: 0~100 사이여야 합니다` and `기본한도 · 경계 초과 · 자녀등 1명: 값을 입력해야 합니다`. Restore the values (30, ₩ 2,750,000), save, validate again: `검증 통과`.
+- **Delete.** Delete v2 from its row (one centered confirmation at `mobile`). The list keeps v3 and v1. Creating another draft gives v4, not v2.
+- **Apply.** Apply v3 at `mobile`: the dialog is centered and says `다른 초안은 초안으로 남습니다.`. After applying, v3 reads `현재 적용` and v1 reads `적용`; v4 stays a draft.
+- **Help.** Tap `세법 수치 도움말`, tap again, tap outside, press Esc: it closes each time, focus returns to `?`, and no request is sent.
+- **Font sizes.** In the browser, read computed sizes: version name 15px, history line 13px, card titles 16px, section buttons 14px, field labels 13px, input text 16px at `mobile`.
+- **States.** Stop the stack's API briefly: the page shows `세법 버전을 불러오지 못했습니다.` with `[다시 시도]`. Saving while it is down shows the network message and keeps the input.
+
+## Gotchas
+
+- The admin flag comes from `/me` at sign-in, so the menu changes only after a reload. The server checks every request, so a revoked admin sees `권한 없음` on the next list request.
+- Validate and apply use the saved draft, not the unsaved form. That is why both turn off while the form has changes.
+- A 409 or 404 on save keeps the input and shows `[다시 불러오기]`; on apply, delete, or validate the list reloads at once with `…새로 불러온 내용을 확인한 뒤 다시 시도해 주세요.`.
+- Applying changes what every member's tax screens use. Restore by relaunching the stack for a clean DB; applied versions cannot be deleted.
+- The year select offers last, this and next Korean year only, the same as the inputs page.
+```
+
+- [ ] **Step 2: 목록·셸 지도·운영 문서 고침**
+
+`git apply`:
+
+```diff
+diff --git a/.claude/skills/verify/features/README.md b/.claude/skills/verify/features/README.md
+index e34ec31..1201067 100644
+--- a/.claude/skills/verify/features/README.md
++++ b/.claude/skills/verify/features/README.md
+@@ -34,3 +34,4 @@ Each feature file starts with an H1 title and one paragraph describing the user-
+ - [Transactions](./transactions.md): my or group transaction list, search, detail, manual add.
+ - [Groups](./groups.md): create, rename, invite link, members, bans.
+ - [Tax deduction inputs](./tax-inputs.md): 소득공제 › 입력자료 — basic info, card and cash-receipt statements, year totals, delete year.
++- [Tax law admin](./tax-law.md): 소득공제 › 연도별 세법 관리 — service admins only; versions per tax year, drafts, validate, apply, delete drafts, and the no-permission screen for members.
+diff --git a/.claude/skills/verify/features/navigation.md b/.claude/skills/verify/features/navigation.md
+index caba965..2452a89 100644
+--- a/.claude/skills/verify/features/navigation.md
++++ b/.claude/skills/verify/features/navigation.md
+@@ -4,8 +4,8 @@ Every signed-in page shares one shell. Wide screens get a left sidebar and a hea
+ 
+ ## Sub-features
+ 
+-- `nav-sidebar` shows five sidebar links on wide screens: 홈, 소득공제, 대시보드, 거래 목록, 그룹 관리. Under 소득공제 sits the indented sub-link `입력자료` (`/tax/inputs`). Under 대시보드 sit indented sub-links `대분류` (`/dashboard/major`) and `소분류` (`/dashboard/minor`). Inside the dashboard the dashboard sub-links replace history and keep `?month=`; the 소득공제 sub-link never takes `?month=`.
+-- `nav-tabs` shows five bottom tabs on narrow screens: 홈, 소득공제, 대시보드, 거래, 그룹. The tabs ignore sub-links; the dashboard has its own `대시보드 메뉴` (see dashboard.md). 소득공제 has one sub-screen for now and no in-page tabs.
++- `nav-sidebar` shows five sidebar links on wide screens: 홈, 소득공제, 대시보드, 거래 목록, 그룹 관리. Under 소득공제 sits the indented sub-link `입력자료` (`/tax/inputs`), plus `연도별 세법 관리` (`/tax/law`) for service admins only. Under 대시보드 sit indented sub-links `대분류` (`/dashboard/major`) and `소분류` (`/dashboard/minor`). Inside the dashboard the dashboard sub-links replace history and keep `?month=`; the 소득공제 sub-link never takes `?month=`.
++- `nav-tabs` shows five bottom tabs on narrow screens: 홈, 소득공제, 대시보드, 거래, 그룹. The tabs ignore sub-links; the dashboard has its own `대시보드 메뉴` (see dashboard.md). 소득공제 shows the in-page `소득공제 메뉴` (`입력자료 | 세법 관리`) to service admins only; members have one sub-screen and no in-page menu (see tax-law.md).
+ - `nav-active` marks the current page link with `aria-current="page"`. Home matches `/` exactly. Other links also match sub-paths, so on `/dashboard/major` both `대시보드` and `대분류` are highlighted. Only `대분류` gets `aria-current="page"`; the parent gets `aria-current="true"`. `/tax/inputs` works the same way for `소득공제` and `입력자료`.
+ - `nav-account` opens the account sheet with the nickname and logout (narrow screens).
+ - `nav-group` uses the header `그룹` select to change the group that group-scoped pages show.
+@@ -21,7 +21,7 @@ Preconditions:
+ 
+ - Baseline state, logged in, seed group `검증그룹` selected.
+ 
+-- **Wide links.** Use preset `desktop`, then reload. Run `find "주 메뉴"` and click each link. Each click changes the `h1` and moves `aria-current` to the clicked link. The link list reads 홈, 소득공제, 입력자료, 대시보드, 대분류, 소분류, 거래 목록, 그룹 관리. Check the missing `세법 관리` link with a regular member account such as `verify2@example.test` after PR 6 adds that menu.
++- **Wide links.** Use preset `desktop`, then reload. Run `find "주 메뉴"` and click each link. Each click changes the `h1` and moves `aria-current` to the clicked link. As the service admin `verify@example.test` the link list reads 홈, 소득공제, 입력자료, 연도별 세법 관리, 대시보드, 대분류, 소분류, 거래 목록, 그룹 관리. As the member `verify2@example.test` it has no `연도별 세법 관리`.
+ - **Narrow tabs.** Use preset `mobile`, then reload. The same nav holds 5 tab links with the short labels. The sidebar is gone from the accessibility tree.
+ - **Account sheet.** In `mobile`, click the button `계정`. A sheet titled `계정` shows `검증러` and a logout button.
+ 
+diff --git a/docs/deploy.md b/docs/deploy.md
+index 6553d0b..31c2bf0 100644
+--- a/docs/deploy.md
++++ b/docs/deploy.md
+@@ -277,4 +277,4 @@ SELECT id, email, service_admin FROM users WHERE id = <회원 id>;
+ - `UPDATE` 결과가 1행인지 확인한다. 0행이면 회원 id 또는 지정 조건을 다시 확인한다.
+ - 가입 때 이메일 소유를 확인하지 않으므로, 비밀번호로 먼저 가입된 계정(다른 사람이 선점했을 수 있음)은 지정하지 않는다. 비밀번호가 있는 계정을 관리자로 쓰려면 먼저 그 계정 처리(비밀번호 제거 등)를 별도로 정한다.
+ - API는 세법 관리 요청마다 DB의 이 값을 읽는다. 다시 로그인하지 않아도 다음 요청부터 반영된다.
+-- 웹은 `/me`의 `serviceAdmin`으로 메뉴를 보인다(PR 5부터). 화면의 메뉴는 새로 고친 뒤에 바뀐다.
++- 웹은 `/me`의 `serviceAdmin`으로 "연도별 세법 관리" 메뉴와 좁은 화면의 화면 안 탭을 보인다(PR 6부터). 메뉴는 새로 고친 뒤에 바뀐다. 회수한 뒤 열어 둔 세법 관리 화면은 다음 요청의 403으로 권한 없음 화면이 된다.
+```
+
+- [ ] **Step 3: 확인** — 문서만 바꾼다. 링크와 이름을 화면 코드와 대조한다.
+
+Run: `grep -n "tax-law.md" .claude/skills/verify/features/README.md .claude/skills/verify/features/navigation.md && grep -c "^## " .claude/skills/verify/features/tax-law.md`
+Expected: 두 파일에서 링크·언급 각 1줄, H2 4개(`Sub-features`, `How to get to it (user POV)`, `Driving it with the built-in browser`, `Gotchas`). 여정의 실제 실행은 PR 마무리의 verify에서 한다.
+
+- [ ] **Step 4: 커밋(컨트롤러)**
 
 ### PR 6 마무리 (컨트롤러)
 
-- 웹 검증 4종, verify(관리자 계정과 일반 계정 둘 다), 캡처, "UI 표준 적용" 절의 검증 항목, 브랜치 최종 리뷰 Claude Opus 5.5 한 번. 병합 뒤 운영자가 관리자 지정 SQL과 2026 귀속 세법 등록을 해야 한다는 점을 PR "참고"에 적는다.
+1. **웹 검증 4종**: `cd apps/web && npm run typecheck && npm test && npm run lint && npm run build`. 흔들린 테스트는 그 파일만 다시 돌린 결과와 함께 보고한다.
+2. **verify**(`.claude/skills/verify`, `features/tax-law.md`·`navigation.md`). 375px(`mobile`)·320×700·데스크톱 각각, 관리자 `verify@example.test`와 일반 회원 `verify2@example.test` 둘 다:
+   - 회원: 사이드바에 "연도별 세법 관리" 없음, 좁은 화면에 `소득공제 메뉴` 없음, `/tax/law` 주소로 권한 없음 화면과 `/api/tax/admin/` 요청 0건, [입력자료로 가기].
+   - 관리자: 사이드바 세 번째 하위 링크와 `aria-current`, 좁은 화면 탭 `입력자료 | 세법 관리`(320px에서 한 줄·44px), 탭 전환 뒤 포커스가 누른 링크에 남음, 앱 머리 제목 "소득공제", 넓은 화면 `h1` "연도별 세법 관리".
+   - 목록·읽기 전용 v1(입력란·[삭제] 없음), [새 초안 만들기] 두 번(v2·v3, 버튼 계속 켜짐), 저장하지 않은 변경 때 [검증]·[적용] 꺼짐과 이유, 저장 뒤 새로 고쳐도 값 유지, 검증 실패 목록(문화체육 130%, 빈 기본한도)과 통과, v2 삭제(가운데 창 한 번) 뒤 새 초안이 v4, v3 적용(가운데 창, "다른 초안은 초안으로 남습니다") 뒤 v3 "현재 적용"·v1 "적용"·v4 초안 유지.
+   - 글자 크기를 브라우저 computed 값으로 잰다: 카드 제목 16px, 버전 이름·본문 15px, 버전 행 보조·입력 라벨·머리 아래 줄 13px(상위 `.page section button`·`.page p`에 덮이지 않는지), 섹션 버튼 14px, 좁은 화면 입력 글자 16px.
+   - 320px에서 큰 금액(₩ 9,999,999,999,999)이 칸 안에 다 보이고 페이지 가로 스크롤이 없음, 긴 법령명·메모(40자) 줄바꿈, 글자 확대.
+   - `세법 수치 도움말`: 누르기·다시 누르기·바깥 누르기·Esc·포커스 복귀, 요청 없음.
+   - 상태: 로딩, 목록 오류와 [다시 시도](API를 잠깐 멈춤), 저장 중 버튼 꺼짐, 통신 오류 때 입력 유지. 브라우저 두 탭으로 같은 초안을 고쳐 두 번째 저장이 409와 [다시 불러오기]가 되는지.
+   - PR용 375px 이전(`main`: 관리자의 입력자료 화면, 화면 안 탭 없음)·이후(관리자 입력자료의 `입력자료 | 세법 관리` 탭, 세법 관리 목록·초안 폼, 적용 확인 창, 회원의 권한 없음 화면) 캡처를 `pr-assets` 브랜치 `pr-<번호>/`에 올린다. 화면은 시드 합성값만 쓴다.
+3. **브랜치 최종 리뷰 — Claude Opus 5.5 한 번**(`review-final`). 볼 항목:
+   - 권한 표시: 관리자 아님이면 `/tax/admin/` 요청이 없는지(`enabled`), 403이면 같은 권한 없음 화면, 메뉴·탭 숨김이 서버 권한을 대신한다고 쓴 곳이 없는지, `Me.serviceAdmin`을 메뉴·진입 판단 밖에서 쓰지 않는지.
+   - 계약: `rowVersion`을 응답 값 그대로 보내는지(저장은 마지막 응답, 적용은 연 시점·마지막 저장, 삭제는 목록 값; 계산·+1 없음), `DELETE`에 `?rowVersion=`, 적용 본문 `{ rowVersion }`, `PUT` 본문이 `LawValues` 키만 담고 빈 글 칸이 `null`인지.
+   - 409·404 두 흐름이 입력을 잃지 않는지, 목록 재조회가 편집 중인 폼을 다시 열지 않는지, [다시 불러오기]가 새 값으로 다시 여는지.
+   - 삭제·적용: 초안만 [삭제], 확인 한 번, 적용본 삭제·편집 수단 없음, 적용 창 문구(고칠 수 없음, 다른 초안은 남음, "새 세법 버전 있음"과 세법 없던 기록의 자동 반영), 적용 뒤 `taxKeys.currentLaw`·`taxKeys.year` 무효화.
+   - 개인정보·캐시: `['tax', 'admin', 'law', year]` 키, 로그아웃 때 비움(`ClearCacheOnSignOut`), 브라우저 저장소 사용 없음, `useGroups()` 없음.
+   - 보안: 근거 URL은 `http(s)`일 때만 링크, `rel="noreferrer"`, `dangerouslySetInnerHTML` 없음.
+   - 공용 변경 범위: `menuLabel`이 하위 메뉴를 찾아도 기존 호출이 같은 값, `TaxHeader` 기본값에서 입력자료 화면 불변, `renderPage` 기본 `me`가 기존 테스트를 바꾸지 않는지, `AppLayout`의 대시보드 `?month=` 규칙 불변.
+   - UI 표준: 정보 왼쪽·조작 오른쪽(목록 머리 [새 초안 만들기], 행 [삭제], 폼 하단 [초안 저장] [검증] [적용]), 글자 토큰, 44px, 확인 창 `centered`, 실행 불가 이유를 화면에 적음.
+4. **반론 리뷰(Codex 템플릿 F)는 하지 않는다.** 이유: 권한·삭제·동시 수정의 판단은 모두 서버(PR 2, 반론 리뷰 완료)에 있고 이 PR은 서버를 바꾸지 않는다. 메뉴·탭 숨김과 권한 없음 화면은 편의이고, 숨김이 뚫려도 서버가 요청마다 DB로 403을 준다. 화면이 새로 만드는 위험(관리자 값의 링크 렌더링, 관리자 아닌 회원의 요청 발생, 캐시 키)은 Task 6.1 테스트(`never turns a non-http basis address into a link`, `…without asking the admin API`)와 위 3의 권한·보안 항목으로 대신한다. 리뷰 중 서버 동작을 바꿔야 하는 문제가 나오면 그때 반론 리뷰 대상으로 올린다.
+5. **PR 본문** — 무엇: 관리자 전용 하위 메뉴와 좁은 화면 안 탭(`TaxTabs`, 관리자 2개), 권한 없음 화면(요청 없음·403 동일), 버전 목록·읽기 전용 적용본·초안 편집·검증·적용·초안 삭제, `Me.serviceAdmin`, `docs/deploy.md` 13절 정정, verify 지도, "계획 초안에서 달라진 점"과 "결정이 필요한 점"의 기본값, **분석·지출계획은 PR 7**. 확인: 웹 4종 결과와 흔들린 테스트, verify 375px·320px·데스크톱 × 관리자·회원 결과와 이전·이후 캡처 표, 글자 computed 측정값, 브라우저 확인과 실기기(iOS·Android 설치형 PWA) 미확인 구분. 리뷰: Task 리뷰(Sonnet 5.5) 3회와 최종 리뷰(Opus 5.5) 결과, 반론 리뷰를 하지 않은 이유. 참고: 이 계획, PRD, 와이어프레임, 그리고 **병합 뒤 운영자가 할 일** — ① `docs/deploy.md` 13절 SQL로 관리자 지정(구글 전용 계정 조건 확인, `UPDATE` 1행 확인) ② 그 관리자가 새로 고친 뒤 "연도별 세법 관리"에서 2026 귀속 초안을 만들고 PRD 8.1절 값(최저사용금액 25%, 공제율 15/30/30/40/40, 경계 70,000,000원, 기본한도 3,000,000·3,500,000·4,000,000 / 2,500,000·2,750,000·3,000,000원, 추가한도 3,000,000·2,000,000원, 근거 조세특례제한법 제126조의2와 국가법령정보센터 URL, 기간 2026-01-01~2026-12-31)을 넣어 검증·적용 ③ 적용 전까지 회원 입력자료 화면에는 "세법 준비 중" 안내가 보인다. 맨 끝에 `## 소모값`(`python3 scripts/pr_usage.py`).
 
 ---
 
@@ -11510,7 +13146,7 @@ git commit -m "chore(verify): 소득공제 시드와 입력자료 검증 지도"
 8. **해석 — 자녀등 입력란.** 세법 버전의 자녀등 단계별 기본한도가 서로 다를 때만 보인다(별도 설정값 없음). 적용 버전이 없는 연도는 입력란이 없고 0으로 저장한다.
 9. **해석 — 선택 연도 기억.** 메모리(React 상태)에만 둔다. 새로 고치면 올해로 돌아간다.
 10. PR 1 뒤 홈의 넓은 화면은 문서 순서(요약 → 등록 현황)와 보이는 순서(등록 현황 왼쪽)가 다르다. 와이어프레임이 정한 배치이고 키보드 순서는 문서 순서를 따른다.
-11. 계획의 PR 1 코드는 임시 복사본에서 테스트·typecheck·lint·build까지 확인했지만 화면은 띄워 보지 않았다. PR 2의 코드는 임시 복사본에서 `./gradlew test`(320건)까지 실행해 확인했다(2.2·2.3의 RED 컴파일 오류 문구는 실행하지 않고 적음). PR 3의 코드는 임시 복사본에서 Task 순서대로 실패 확인(3.1: 15건 중 13건, 3.2: 14건 중 13건, 3.3: 11건 중 9건 실패)과 `./gradlew cleanTest test`(3.3 뒤 369건)까지 실행해 확인했고, 계획에 실은 코드 블록을 차례로 넣으면 그 상태와 같아지는 것도 확인했다(2026-11-16, `2987768` 기준). PR 4의 코드는 임시 복사본에서 Task 순서대로 실패 확인(4.1: 10건 중 10건, 4.2: 16건 중 16건, 4.3: 7건 중 7건 실패)과 `./gradlew cleanTest test`(4.1 뒤 385건, 4.2 뒤 401건, 4.3 뒤 408건)까지 실행해 확인했다(2026-11-17, `f908524` 기준). `memoryTest`와 실제 서버 기동은 하지 않았다. PR 5의 웹 코드는 임시 복사본에서 Task 순서대로 실패 확인(5.1: 새 5건 중 3건, 5.2: 7건과 새 파일 2개, 5.3: 12건, 5.4: 12건, 5.5: 5건 실패)과 `typecheck`·`lint`·`build`·전체 `vitest run --maxWorkers=4`(85파일 684건)까지 실행했고, 계획의 코드 블록을 차례로 넣으면 그 상태와 같아지는 것도 확인했다(2026-11-20, `4aecc38` 기준). 화면과 verify 시드(`seed.sh`·`doctor.sh`는 `bash -n`만)는 실행하지 않았다. PR 6·7의 설계는 실행해 보지 않았다.
+11. 계획의 PR 1 코드는 임시 복사본에서 테스트·typecheck·lint·build까지 확인했지만 화면은 띄워 보지 않았다. PR 2의 코드는 임시 복사본에서 `./gradlew test`(320건)까지 실행해 확인했다(2.2·2.3의 RED 컴파일 오류 문구는 실행하지 않고 적음). PR 3의 코드는 임시 복사본에서 Task 순서대로 실패 확인(3.1: 15건 중 13건, 3.2: 14건 중 13건, 3.3: 11건 중 9건 실패)과 `./gradlew cleanTest test`(3.3 뒤 369건)까지 실행해 확인했고, 계획에 실은 코드 블록을 차례로 넣으면 그 상태와 같아지는 것도 확인했다(2026-11-16, `2987768` 기준). PR 4의 코드는 임시 복사본에서 Task 순서대로 실패 확인(4.1: 10건 중 10건, 4.2: 16건 중 16건, 4.3: 7건 중 7건 실패)과 `./gradlew cleanTest test`(4.1 뒤 385건, 4.2 뒤 401건, 4.3 뒤 408건)까지 실행해 확인했다(2026-11-17, `f908524` 기준). `memoryTest`와 실제 서버 기동은 하지 않았다. PR 5의 웹 코드는 임시 복사본에서 Task 순서대로 실패 확인(5.1: 새 5건 중 3건, 5.2: 7건과 새 파일 2개, 5.3: 12건, 5.4: 12건, 5.5: 5건 실패)과 `typecheck`·`lint`·`build`·전체 `vitest run --maxWorkers=4`(85파일 684건)까지 실행했고, 계획의 코드 블록을 차례로 넣으면 그 상태와 같아지는 것도 확인했다(2026-11-20, `4aecc38` 기준). 화면과 verify 시드(`seed.sh`·`doctor.sh`는 `bash -n`만)는 실행하지 않았다. PR 6의 웹 코드는 임시 복사본에서 Task 순서대로 실패 확인(6.1: 테스트 파일 2개가 import 해석 실패로 파일째, 6.2: 새 12건 실패)과 `typecheck`·`lint`·`build`·전체 `vitest run --maxWorkers=4`(87파일 726건)까지 실행했고, 계획의 코드 블록을 차례로 넣으면 그 상태와 같아지는 것도 확인했다(2026-11-21, `15b38dc` 기준). 화면은 띄워 보지 않았다. PR 7의 설계는 실행해 보지 않았다.
 12. 세법 수치와 7.1절 산식은 독립적인 세무 검증을 거치지 않았다(PRD 14장). D03(합산 기간)·D08(원 단위)·D09(귀속 시점)의 법령 기준은 미확인이고 임시 규칙이다. PR 4 착수 전 조문 대조(2026-11-17)에서 PRD와 다른 값은 없었다: 최저사용금액 25%, 공제율 15/30/30/40/40, 7천만원 경계, 차감액 3경우, 기본한도 300만·250만과 2026 귀속 자녀등 350만·400만 / 275만·300만, 추가한도 300만·200만이 국세청 안내(https://www.nts.go.kr/nts/cm/cntnts/cntntsView.do?mi=2469&cntntsId=7794)와 조문 열람 사이트(https://casenote.kr/법령/조세특례제한법/제126조의2)의 내용과 같다. 다만 국가법령정보센터 원문은 이번 도구로 읽지 못했고 두 자료 모두 요약 도구를 거쳐 읽었으며, 자녀등 한도는 국세청 안내에 없어 조문 열람 사이트와 2차 자료로만 확인했다. 상세는 PR 4 "조문 대조".
 13. 회원 탈퇴 기능이 없어 `ON DELETE CASCADE`에 따른 소득공제 자료 삭제는 검증 대상이 아니다(PRD 2장 비범위).
 14. 후속: 관리자 인가를 인터셉터에서 Spring Security 필터 체인으로 옮긴다. 현재는 지원하지 않는 HTTP 메서드의 405 응답으로 라우트 구조가 드러날 수 있다.
