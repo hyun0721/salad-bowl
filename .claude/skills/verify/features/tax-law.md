@@ -39,6 +39,6 @@ Preconditions:
 
 - The admin flag comes from `/me` at sign-in, so the menu changes only after a reload. The server checks every request, so a revoked admin sees `권한 없음` on the next list request.
 - Validate and apply use the saved draft, not the unsaved form. That is why both turn off while the form has changes.
-- A 409 or 404 on save keeps the input and shows `[다시 불러오기]`; on apply, delete, or validate the list reloads at once with `…새로 불러온 내용을 확인한 뒤 다시 시도해 주세요.`.
+- A 409 or 404 on save keeps the input and shows `[다시 불러오기]`; on validate, delete, or apply the list reloads at once, the open form reopens with the new values, and a line `다른 곳에서 바뀌어 새로 불러왔습니다.` shows above the list (delete and validate also keep their own error text in the dialog).
 - Applying changes what every member's tax screens use. Restore by relaunching the stack for a clean DB; applied versions cannot be deleted.
 - The year select offers last, this and next Korean year only, the same as the inputs page.
