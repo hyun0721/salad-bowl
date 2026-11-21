@@ -7,20 +7,21 @@ import { I18nProvider } from 'react-aria-components'
 import { MemoryRouter } from 'react-router'
 import RequireAuth from '../app/RequireAuth'
 import { AuthProvider } from '../auth/AuthProvider'
+import type { Me } from '../auth/authApi'
 import { DialogHistoryProvider } from '../common/DialogHistory'
 import ToastRegion from '../common/Toast'
 import { GroupProvider } from '../groups/GroupProvider'
 import { server } from './server'
 
-export const testMe = { userId: 1, email: 'me@test.com', nickname: '나' }
+export const testMe: Me = { userId: 1, email: 'me@test.com', nickname: '나', serviceAdmin: false }
 
-type Options = { groups?: unknown[]; path?: string }
+type Options = { groups?: unknown[]; path?: string; me?: Me }
 
 /** 로그인한 회원으로 화면 하나를 렌더한다. 화면이 쓰는 API 핸들러는 테스트에서 server.use로 더한다. */
-export function renderPage(ui: ReactElement, { groups = [], path = '/' }: Options = {}) {
+export function renderPage(ui: ReactElement, { groups = [], path = '/', me = testMe }: Options = {}) {
   server.use(
     http.post('*/api/auth/refresh', () => HttpResponse.json({ accessToken: 'test-token' })),
-    http.get('*/api/me', () => HttpResponse.json(testMe)),
+    http.get('*/api/me', () => HttpResponse.json(me)),
     http.get('*/api/groups', () => HttpResponse.json(groups)),
   )
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })

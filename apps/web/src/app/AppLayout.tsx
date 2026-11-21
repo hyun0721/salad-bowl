@@ -16,7 +16,7 @@ import BottomSheet from '../common/BottomSheet'
 import { Radio, RadioGroup } from 'react-aria-components'
 import { Indicator } from '../common/SelectionIndicator'
 import optionStyles from '../common/OptionButton.module.css'
-import { MENU } from './menu'
+import { MENU, visibleChildren } from './menu'
 
 const firstSegment = (pathname: string) => pathname.split('/')[1] ?? ''
 
@@ -89,7 +89,7 @@ export default function AppLayout() {
                 className={({ isActive }) => (isActive ? `${styles.link} ${styles.active}` : styles.link)}>
                 <Icon name={item.icon} />{item.label}
               </NavLink>
-              {item.children?.map((child) => (
+              {visibleChildren(item, me?.serviceAdmin ?? false).map((child) => (
                 <NavLink key={child.to} to={inDashboard && item.to === '/dashboard' ? child.to + location.search : child.to}
                   replace={inDashboard && item.to === '/dashboard'}
                   className={({ isActive }) => `${styles.link} ${styles.subLink}${isActive ? ` ${styles.active}` : ''}`}>

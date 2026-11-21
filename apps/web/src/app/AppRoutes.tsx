@@ -16,6 +16,7 @@ const DashboardPage = lazy(() => import('../dashboard/DashboardPage'))
 const TransactionsPage = lazy(() => import('../transactions/TransactionsPage'))
 const GroupsPage = lazy(() => import('../groups/GroupsPage'))
 const TaxInputsPage = lazy(() => import('../tax/inputs/TaxInputsPage'))
+const TaxLawPage = lazy(() => import('../tax/law/TaxLawPage'))
 
 /** 옛 업로드 주소. 홈의 월별 등록 현황이 ?month=를 받아 그 달 창을 연다. */
 function UploadRedirect() {
@@ -35,6 +36,7 @@ export default function AppRoutes() {
             {/* PR 7에서 TAX-68(자료가 있으면 분석) 규칙으로 바꾼다. */}
             <Route path="tax" element={<Navigate to="/tax/inputs" replace />} />
             <Route path="tax/inputs" element={<TaxInputsPage />} />
+            <Route path="tax/law" element={<TaxLawPage />} />
             <Route path="dashboard/:level?/:view?" element={<DashboardPage />} />
             <Route path="transactions" element={<TransactionsPage />} />
             <Route path="upload" element={<UploadRedirect />} />
