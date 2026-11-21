@@ -19,9 +19,18 @@ export type LawVersion = LawValues & {
 
 const BASE = '/tax/admin/law-versions'
 
+/** 초안 전체 교체 본문. 빈 값은 null이고 범위 검사는 적용할 때 서버가 한다. */
+export type LawUpdate = LawValues & { rowVersion: number }
+export type LawFieldError = { field: string; message: string }
+
 export const taxLawApi = {
   list: (year: number) => apiFetch<LawVersion[]>(`${BASE}?year=${year}`),
   create: (taxYear: number) => apiFetch<LawVersion>(BASE, { method: 'POST', json: { taxYear } }),
+  update: (id: number, body: LawUpdate) => apiFetch<LawVersion>(`${BASE}/${id}`, { method: 'PUT', json: body }),
+  /** 저장된 값을 검사한다. errors가 비면 적용할 수 있다. 상태를 바꾸지 않는다. */
+  validate: (id: number) => apiFetch<{ errors: LawFieldError[] }>(`${BASE}/${id}/validate`, { method: 'POST' }),
+  apply: (id: number, rowVersion: number) => apiFetch<LawVersion>(`${BASE}/${id}/apply`, { method: 'POST', json: { rowVersion } }),
+  remove: (id: number, rowVersion: number) => apiFetch<void>(`${BASE}/${id}?rowVersion=${rowVersion}`, { method: 'DELETE' }),
 }
 
 /** 관리자 세법 목록 키. 머리말 `tax`라 그룹 범위 키가 아니고, 로그아웃 때 queryClient.clear()로 지워진다. */
@@ -55,6 +64,9 @@ export const LAW_FIELDS: LawField[] = [
   { field: 'periodEnd', label: '적용 대상 기간 끝', kind: 'text', get: (v) => v.periodEnd },
   { field: 'memo', label: '메모', kind: 'text', get: (v) => v.memo },
 ]
+
+/** 검증 오류의 필드 이름 → 화면 이름. */
+export const LAW_LABEL: Record<string, string> = Object.fromEntries(LAW_FIELDS.map((f) => [f.field, f.label]))
 
 const seoulTime = new Intl.DateTimeFormat('sv-SE', {
   timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',

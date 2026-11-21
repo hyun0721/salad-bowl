@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router'
 import { MENU, visibleChildren } from '../app/menu'
 import { useAuth } from '../auth/AuthProvider'
-import { useMediaQuery } from '../common/useMediaQuery'
+import { NARROW, useMediaQuery } from '../common/useMediaQuery'
 // 대시보드 화면 안 메뉴와 같은 모양을 쓴다.
 import styles from '../dashboard/DashboardMenu.module.css'
 
@@ -13,7 +13,7 @@ const TAX = MENU.find((item) => item.to === '/tax')!
  */
 export default function TaxTabs() {
   const { me } = useAuth()
-  const narrow = useMediaQuery('(max-width: 820px)')
+  const narrow = useMediaQuery(NARROW)
   const links = visibleChildren(TAX, me?.serviceAdmin ?? false)
   if (!narrow || links.length < 2) return null
   return (

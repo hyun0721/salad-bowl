@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Link } from 'react-router'
 import { ApiError } from '../../api/errors'
@@ -14,6 +14,7 @@ import TaxHeader from '../TaxHeader'
 import TaxTabs from '../TaxTabs'
 import { useTaxYear } from '../TaxYearProvider'
 import LawVersionFacts from './LawVersionFacts'
+import LawVersionForm from './LawVersionForm'
 import LawVersionList from './LawVersionList'
 import { taxLawApi, taxLawKeys } from './taxLawApi'
 import styles from './law.module.css'
@@ -30,6 +31,10 @@ export default function TaxLawPage() {
   const { year } = useTaxYear()
   const list = useQuery({ queryKey: taxLawKeys.list(year), queryFn: () => taxLawApi.list(year), enabled: admin })
   const [selectedId, setSelectedId] = useState<number | null>(null)
+  const client = useQueryClient()
+  // [다시 불러오기]: 목록을 새로 받은 뒤 편집 중인 초안을 새 값으로 다시 연다.
+  const [reloads, setReloads] = useState(0)
+  const reload = () => void client.invalidateQueries({ queryKey: taxLawKeys.list(year) }).then(() => setReloads((n) => n + 1))
 
   if (!admin || (list.error instanceof ApiError && list.error.status === 403)) return <NoPermission title={title} />
   const versions = list.data ?? []
@@ -51,7 +56,8 @@ export default function TaxLawPage() {
       {list.isSuccess && (
         <div className={styles.columns}>
           <LawVersionList year={year} versions={versions} selectedId={selected?.id} onSelect={setSelectedId} />
-          {selected && <LawVersionFacts version={selected} />}
+          {selected?.status === 'DRAFT' && <LawVersionForm key={`${selected.id}:${reloads}`} version={selected} onReload={reload} />}
+          {selected?.status === 'APPLIED' && <LawVersionFacts version={selected} />}
         </div>
       )}
     </div>
