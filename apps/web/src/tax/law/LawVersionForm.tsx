@@ -66,7 +66,7 @@ const RATES = [
 ] as const
 const TIERS = ['자녀등 0명', '자녀등 1명', '자녀등 2명 이상']
 
-type Props = { version: LawVersion; onReload: () => void }
+type Props = { version: LawVersion; onReload: (showNotice?: boolean) => void }
 
 /**
  * 초안 편집(TAX-62~64). 연 시점(또는 마지막 저장)의 값과 rowVersion으로 저장하고, 다른 곳에서 바뀌었으면 서버가 409로 막는다.
@@ -142,7 +142,7 @@ export default function LawVersionForm({ version, onReload }: Props) {
         {save.error && (isStale(save.error) ? (
           <div className={inputs.split}>
             <p role="alert" className={ui.alert}>다른 곳에서 수정·적용되거나 삭제됐습니다. 저장하지 않았습니다.</p>
-            <div className={inputs.actions}><button type="button" className={ui.button} onClick={onReload}>다시 불러오기</button></div>
+            <div className={inputs.actions}><button type="button" className={ui.button} onClick={() => onReload()}>다시 불러오기</button></div>
           </div>
         ) : <p role="alert" className={ui.alert}>{errorMessage(save.error)} 입력한 값은 그대로 있습니다.</p>)}
         {validate.error && <p role="alert" className={ui.alert}>{actionError(validate.error)}</p>}
@@ -163,13 +163,13 @@ export default function LawVersionForm({ version, onReload }: Props) {
           </div>
         </div>
       </form>
-      {applying && <ApplyDialog version={base} onClose={() => setApplying(false)} />}
+      {applying && <ApplyDialog version={base} onClose={() => setApplying(false)} onReload={() => onReload(true)} />}
     </section>
   )
 }
 
 /** 적용 확인(TAX-61·72). 적용하면 상태가 바뀌어 이 화면은 읽기 전용 보기로 바뀐다. */
-function ApplyDialog({ version, onClose }: { version: LawVersion; onClose: () => void }) {
+function ApplyDialog({ version, onClose, onReload }: { version: LawVersion; onClose: () => void; onReload: () => void }) {
   const client = useQueryClient()
   const year = version.taxYear
   const apply = useMutation({
@@ -182,7 +182,7 @@ function ApplyDialog({ version, onClose }: { version: LawVersion; onClose: () =>
       void client.invalidateQueries({ queryKey: taxKeys.year(year) })
       toast(`${year}년 귀속 v${applied.versionNo} 적용을 마쳤습니다.`)
     },
-    onError: (error) => { if (isStale(error)) void client.invalidateQueries({ queryKey: taxLawKeys.list(year) }) },
+    onError: (error) => { if (isStale(error)) { onClose(); onReload() } },
   })
   const failure = apply.error && (isStale(apply.error)
     ? actionError(apply.error)

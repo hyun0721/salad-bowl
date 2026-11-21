@@ -184,8 +184,36 @@ describe('LawVersionForm — 적용', () => {
     const dialog = await screen.findByRole('dialog', { name: '2026년 귀속 v2 적용' })
     await user.click(within(dialog).getByRole('button', { name: '적용' }))
 
-    expect(await within(dialog).findByRole('alert')).toHaveTextContent('새로 불러온 내용을 확인한 뒤 다시 시도해 주세요.')
     await waitFor(() => expect(calls.list).toBe(2))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(screen.getByRole('alert')).toHaveTextContent('다른 곳에서 바뀌어 새로 불러왔습니다.')
+  })
+
+  it('reopens a changed draft with its new rowVersion after an apply conflict', async () => {
+    serveLaw([v2, v1])
+    const appliedBodies: unknown[] = []
+    server.use(http.post('*/api/tax/admin/law-versions/2/apply', async ({ request }) => {
+      const body = await request.json()
+      appliedBodies.push(body)
+      if (appliedBodies.length === 1) {
+        serveLaw([lawDraft({ ...v2, rowVersion: 22, rateCreditPct: 20 }), v1])
+        return conflict(409)
+      }
+      return HttpResponse.json(lawVersion({ ...v2, status: 'APPLIED', rowVersion: 23 }))
+    }))
+    const { user, form } = await openDraft(2)
+
+    await user.click(within(form).getByRole('button', { name: '적용' }))
+    await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: '적용' }))
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    const reloaded = screen.getByRole('region', { name: /2026년 귀속 v2 · 초안/ })
+    expect(screen.getByRole('alert')).toHaveTextContent('다른 곳에서 바뀌어 새로 불러왔습니다.')
+    expect(field(reloaded, '비율 (%)', '신용카드 공제율')).toHaveValue('20')
+    await user.click(within(reloaded).getByRole('button', { name: '적용' }))
+    await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: '적용' }))
+
+    await waitFor(() => expect(appliedBodies).toEqual([{ rowVersion: 21 }, { rowVersion: 22 }]))
   })
 })
 

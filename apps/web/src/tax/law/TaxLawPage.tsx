@@ -34,7 +34,11 @@ export default function TaxLawPage() {
   const client = useQueryClient()
   // [다시 불러오기]: 목록을 새로 받은 뒤 편집 중인 초안을 새 값으로 다시 연다.
   const [reloads, setReloads] = useState(0)
-  const reload = () => void client.invalidateQueries({ queryKey: taxLawKeys.list(year) }).then(() => setReloads((n) => n + 1))
+  const [reloadNoticeYear, setReloadNoticeYear] = useState<number | null>(null)
+  const reload = (showNotice = false) => void client.invalidateQueries({ queryKey: taxLawKeys.list(year) }).then(() => {
+    setReloadNoticeYear(showNotice ? year : null)
+    setReloads((n) => n + 1)
+  })
 
   if (!admin || (list.error instanceof ApiError && list.error.status === 403)) return <NoPermission title={title} />
   const versions = list.data ?? []
@@ -44,6 +48,7 @@ export default function TaxLawPage() {
     <div className={inputs.page}>
       <TaxHeader title={title} note="모든 회원의 계산에 쓰는 기준 · 서비스 관리자 전용" />
       <TaxTabs />
+      {reloadNoticeYear === year && <p role="alert" className={ui.alert}>다른 곳에서 바뀌어 새로 불러왔습니다.</p>}
       {list.isPending && <SkeletonRegion label="세법 버전 불러오는 중"><Skeleton height={160} radius="var(--radius-md)" /></SkeletonRegion>}
       {list.isError && (
         <div className={inputs.split}>
@@ -55,7 +60,7 @@ export default function TaxLawPage() {
       )}
       {list.isSuccess && (
         <div className={styles.columns}>
-          <LawVersionList year={year} versions={versions} selectedId={selected?.id} onSelect={setSelectedId} />
+          <LawVersionList year={year} versions={versions} selectedId={selected?.id} onSelect={(id) => { setSelectedId(id); setReloadNoticeYear(null) }} />
           {selected?.status === 'DRAFT' && <LawVersionForm key={`${selected.id}:${reloads}`} version={selected} onReload={reload} />}
           {selected?.status === 'APPLIED' && <LawVersionFacts version={selected} />}
         </div>
