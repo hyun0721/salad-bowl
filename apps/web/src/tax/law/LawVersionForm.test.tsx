@@ -156,6 +156,7 @@ describe('LawVersionForm — 적용', () => {
     expect(within(list).getAllByRole('listitem')[1]).toHaveTextContent('v2 · 적용')
     expect(within(list).getAllByRole('listitem')[0]).toHaveTextContent('v3 · 초안')
     const detail = screen.getByRole('region', { name: /2026년 귀속 v2 · 적용/ })
+    await waitFor(() => expect(document.activeElement).toBe(within(detail).getByRole('heading', { name: /2026년 귀속 v2/ })))
     expect(within(detail).queryByRole('textbox')).not.toBeInTheDocument()
     expect(within(list).queryByRole('button', { name: 'v2 초안 삭제' })).not.toBeInTheDocument()
     // 회원 화면의 현재 적용 세법을 다시 읽는다.
@@ -214,6 +215,29 @@ describe('LawVersionForm — 적용', () => {
     await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: '적용' }))
 
     await waitFor(() => expect(appliedBodies).toEqual([{ rowVersion: 21 }, { rowVersion: 22 }]))
+    await waitFor(() => expect(screen.queryByText('다른 곳에서 바뀌어 새로 불러왔습니다.')).not.toBeInTheDocument())
+  })
+})
+
+describe('LawVersionForm — 검증 충돌', () => {
+  it.each([409, 404])('reloads and announces a %i validation conflict', async (status) => {
+    const calls = serveLaw([v2, v1])
+    server.use(http.post('*/api/tax/admin/law-versions/2/validate', () => {
+      serveLaw(status === 404 ? [v1] : [lawDraft({ ...v2, rowVersion: 22, rateCreditPct: 20 }), v1])
+      return conflict(status)
+    }))
+    const { user, form } = await openDraft(2)
+
+    await user.click(within(form).getByRole('button', { name: '검증' }))
+
+    await waitFor(() => expect(calls.list).toBe(1))
+    expect(await screen.findByRole('alert')).toHaveTextContent('다른 곳에서 바뀌어 새로 불러왔습니다.')
+    if (status === 404) {
+      expect(screen.getByRole('region', { name: /2026년 귀속 v1 · 적용/ })).toBeInTheDocument()
+    } else {
+      const reloaded = screen.getByRole('region', { name: /2026년 귀속 v2 · 초안/ })
+      expect(field(reloaded, '비율 (%)', '신용카드 공제율')).toHaveValue('20')
+    }
   })
 })
 
@@ -238,13 +262,17 @@ describe('LawVersionList — 초안 삭제', () => {
     await user.click(within(dialog).getByRole('button', { name: '삭제' }))
 
     await waitFor(() => expect(within(list).getAllByRole('listitem')).toHaveLength(2))
+    await waitFor(() => expect(document.activeElement).toBe(within(list).getByRole('heading', { name: '2026년 버전' })))
     expect(new URL(url).search).toBe('?rowVersion=31')
     expect(screen.getByRole('region', { name: /2026년 귀속 v2 · 초안/ })).toBeInTheDocument()
   })
 
   it.each([409, 404])('reloads and explains a %i draft delete', async (status) => {
     const calls = serveLaw([v3, v1])
-    server.use(http.delete('*/api/tax/admin/law-versions/3', () => conflict(status)))
+    server.use(http.delete('*/api/tax/admin/law-versions/3', () => {
+      if (status === 404) serveLaw([v1])
+      return conflict(status)
+    }))
     const { user } = renderTaxLaw()
 
     const list = await screen.findByRole('region', { name: '2026년 버전' })
@@ -252,7 +280,9 @@ describe('LawVersionList — 초안 삭제', () => {
     const dialog = await screen.findByRole('dialog')
     await user.click(within(dialog).getByRole('button', { name: '삭제' }))
 
-    expect(await within(dialog).findByRole('alert')).toHaveTextContent('새로 불러온 내용을 확인한 뒤 다시 시도해 주세요.')
-    await waitFor(() => expect(calls.list).toBe(2))
+    if (status === 409) await waitFor(() => expect(calls.list).toBe(2))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(screen.getByRole('alert')).toHaveTextContent('다른 곳에서 바뀌어 새로 불러왔습니다.')
+    if (status === 404) await waitFor(() => expect(within(list).queryByRole('button', { name: /^v3 · / })).not.toBeInTheDocument())
   })
 })

@@ -10,7 +10,7 @@ export function LawDetailHeading({ version }: { version: LawVersion }) {
   return (
     <div className={inputs.rowInfo}>
       <div className={inputs.titleWithHelp}>
-        <h2 id="law-detail-title">{version.taxYear}년 귀속 v{version.versionNo} · {version.status === 'DRAFT' ? '초안' : '적용 · 읽기 전용'}</h2>
+        <h2 id="law-detail-title" tabIndex={-1}>{version.taxYear}년 귀속 v{version.versionNo} · {version.status === 'DRAFT' ? '초안' : '적용 · 읽기 전용'}</h2>
         <HelpButton title="세법 수치">
           총급여가 급여구간 경계 금액 이하이면 "경계 이하", 넘으면 "경계 초과"의 기본한도와 추가한도 상한을 씁니다. 추가한도 상한은 기본한도를 넘은 전통시장·대중교통·문화체육 공제액을 더 인정하는 최대 금액입니다. 문화체육 공제율은 경계 이하에만 적용됩니다(계산 알고리즘에 고정). 자녀등 조건이 없는 연도는 세 단계에 같은 값을 넣습니다.
         </HelpButton>

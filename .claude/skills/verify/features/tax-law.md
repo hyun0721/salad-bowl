@@ -4,8 +4,8 @@
 
 ## Sub-features
 
-- `law-menu` adds the third sub-link `연도별 세법 관리` under `소득공제` in the sidebar, for service admins only. On narrow screens a service admin sees the in-page `소득공제 메뉴` with `입력자료` and `세법 관리`; members see no in-page menu.
-- `law-forbidden` shows `권한 없음`, `이 화면은 서비스 관리자만 볼 수 있습니다.`, and the link `입력자료로 가기` to a member who opens `/tax/law`. The page sends no admin request then. A 403 from the server (for example after the admin flag is revoked) shows the same screen.
+- `law-menu` adds the second sub-link (third after PR 7) `연도별 세법 관리` under `소득공제` in the sidebar, for service admins only. On narrow screens a service admin sees the in-page `소득공제 메뉴` with `입력자료` and `세법 관리`; members see no in-page menu.
+- `law-forbidden` shows `권한 없음`, `이 화면은 서비스 관리자만 볼 수 있습니다.`, and the link `입력자료로 가기` to a member who opens `/tax/law`. The page sends no admin request then. A 403 from the version list (for example after the admin flag is revoked) shows the same screen.
 - `law-list` shows `YYYY년 버전` with `현재 적용 vN · 초안 n개` (or `적용 버전 없음(회원 화면은 "세법 준비 중")`), and one row per version: `vN · 초안 | 적용 | 현재 적용`, then `작성 <nickname> · YYYY-MM-DD HH:mm` for drafts or `적용 <nickname> · …` for applied versions. `[새 초안 만들기]` stays enabled while drafts exist. Each draft row has `[삭제]` on the right; applied rows have none.
 - `law-detail` opens the newest version by default; clicking a row opens it. The heading reads `YYYY년 귀속 vN · 초안` or `… · 적용 · 읽기 전용`, with `계산 알고리즘 버전 1 (고정)` and the creation and apply history. `세법 수치 도움말` explains the salary bracket and the extra limit.
 - `law-edit` (drafts) has groups `비율 (%)` (6 rates), `급여구간 (원)`, `기본한도 · 경계 이하 (원)` and `기본한도 · 경계 초과 (원)` (`자녀등 0명`, `자녀등 1명`, `자녀등 2명 이상`), `추가한도 상한 (원)`, and `근거·적용 대상 기간` (법령명, 조문, 근거 URL, two dates, `메모 (선택)`). `[초안 저장]` saves the whole draft. While there are unsaved changes, `[검증]` and `[적용]` are disabled and the bottom line says why.
@@ -25,7 +25,7 @@ Preconditions:
 - Baseline seed. `verify@example.test` is a service admin and the `YYYY` law (this Korean year) is applied as v1 with the 2026 values. `verify2@example.test` is a regular member.
 
 - **Member.** Log in as `verify2@example.test`. At `desktop`, the sidebar reads 홈, 소득공제, 입력자료, 대시보드, … with no `연도별 세법 관리`. At `mobile`, `소득공제` shows no `소득공제 메뉴`. Type `/tax/law`: `권한 없음` shows, and the network panel has no `/api/tax/admin/` request. `입력자료로 가기` opens `/tax/inputs`.
-- **Admin menu.** Log in as `verify@example.test`. At `desktop` the sidebar has `연도별 세법 관리` third under `소득공제`; clicking it shows `h1` `연도별 세법 관리` and marks the link `aria-current="page"`. At `mobile` and at 320×700, the in-page menu reads `입력자료 | 세법 관리`, the header title stays `소득공제`, and switching keeps focus on the tapped link.
+- **Admin menu.** Log in as `verify@example.test`. At `desktop` the sidebar has `연도별 세법 관리` as the second sub-link (third after PR 7) under `소득공제`; clicking it shows `h1` `연도별 세법 관리` and marks the link `aria-current="page"`. At `mobile` and at 320×700, the in-page menu reads `입력자료 | 세법 관리`, the header title stays `소득공제`, and switching keeps focus on the tapped link.
 - **List and read-only v1.** The list reads `현재 적용 v1 · 초안 0개`. v1 shows as text with `적용된 버전은 고칠 수 없습니다. 바꾸려면 새 초안을 만듭니다.`, no inputs, and no `[삭제]`.
 - **Drafts.** Click `[새 초안 만들기]` twice: v2 and v3 appear as drafts copied from v1, and the button stays enabled. Change `신용카드 공제율` in v3: `[검증]` and `[적용]` turn off with the reason line. Save, then reload the page and confirm the value stayed.
 - **Validate.** In v3, set `문화체육 공제율` to 130, clear `기본한도 · 경계 초과 (원)` › `자녀등 1명`, save, and press `[검증]`: the alert lists `문화체육 공제율: 0~100 사이여야 합니다` and `기본한도 · 경계 초과 · 자녀등 1명: 값을 입력해야 합니다`. Restore the values (30, ₩ 2,750,000), save, validate again: `검증 통과`.
@@ -37,8 +37,8 @@ Preconditions:
 
 ## Gotchas
 
-- The admin flag comes from `/me` at sign-in, so the menu changes only after a reload. The server checks every request, so a revoked admin sees `권한 없음` on the next list request.
+- The admin flag comes from `/me` at sign-in, so the menu changes only after a reload. The server checks every request: a revoked admin sees `권한 없음` on the next list request (page reload, year change, or reload after apply/delete); save and apply requests before that are rejected with an authorization error.
 - Validate and apply use the saved draft, not the unsaved form. That is why both turn off while the form has changes.
-- A 409 or 404 on save keeps the input and shows `[다시 불러오기]`; on validate, delete, or apply the list reloads at once, the open form reopens with the new values, and a line `다른 곳에서 바뀌어 새로 불러왔습니다.` shows above the list (delete and validate also keep their own error text in the dialog).
+- A 409 or 404 on save keeps the input and shows `[다시 불러오기]`. On validate, apply, or delete, the list reloads and the line `다른 곳에서 바뀌어 새로 불러왔습니다.` appears above it. Validate and apply reopen an existing draft form with the new values; if that draft was deleted, the next available version is selected. Delete closes its confirmation dialog.
 - Applying changes what every member's tax screens use. Restore by relaunching the stack for a clean DB; applied versions cannot be deleted.
 - The year select offers last, this and next Korean year only, the same as the inputs page.

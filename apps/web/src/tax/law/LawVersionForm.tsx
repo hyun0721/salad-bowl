@@ -66,13 +66,13 @@ const RATES = [
 ] as const
 const TIERS = ['자녀등 0명', '자녀등 1명', '자녀등 2명 이상']
 
-type Props = { version: LawVersion; onReload: (showNotice?: boolean) => void }
+type Props = { version: LawVersion; onReload: (showNotice?: boolean) => void; onApplied: () => void }
 
 /**
  * 초안 편집(TAX-62~64). 연 시점(또는 마지막 저장)의 값과 rowVersion으로 저장하고, 다른 곳에서 바뀌었으면 서버가 409로 막는다.
  * 검증·적용은 저장된 값으로 하므로 저장하지 않은 변경이 있으면 끈다.
  */
-export default function LawVersionForm({ version, onReload }: Props) {
+export default function LawVersionForm({ version, onReload, onApplied }: Props) {
   const client = useQueryClient()
   const [base, setBase] = useState(version)
   const [values, setValues] = useState(() => toForm(version))
@@ -92,7 +92,7 @@ export default function LawVersionForm({ version, onReload }: Props) {
   const validate = useMutation({
     mutationFn: () => taxLawApi.validate(base.id),
     onSuccess: (result) => setChecked(result.errors),
-    onError: (error) => { if (isStale(error)) onReload() },
+    onError: (error) => { if (isStale(error)) onReload(true) },
   })
   const busy = save.isPending || validate.isPending
 
@@ -163,13 +163,13 @@ export default function LawVersionForm({ version, onReload }: Props) {
           </div>
         </div>
       </form>
-      {applying && <ApplyDialog version={base} onClose={() => setApplying(false)} onReload={() => onReload(true)} />}
+      {applying && <ApplyDialog version={base} onClose={() => setApplying(false)} onReload={() => onReload(true)} onApplied={onApplied} />}
     </section>
   )
 }
 
 /** 적용 확인(TAX-61·72). 적용하면 상태가 바뀌어 이 화면은 읽기 전용 보기로 바뀐다. */
-function ApplyDialog({ version, onClose, onReload }: { version: LawVersion; onClose: () => void; onReload: () => void }) {
+function ApplyDialog({ version, onClose, onReload, onApplied }: { version: LawVersion; onClose: () => void; onReload: () => void; onApplied: () => void }) {
   const client = useQueryClient()
   const year = version.taxYear
   const apply = useMutation({
@@ -177,6 +177,7 @@ function ApplyDialog({ version, onClose, onReload }: { version: LawVersion; onCl
     onSuccess: (applied) => {
       onClose()
       putVersion(client, applied)
+      onApplied()
       // 이 연도의 회원용 현재 적용 세법과, 세법이 없던 내 연도 기록(적용 때 서버가 이 버전을 붙인다)을 다시 읽는다.
       void client.invalidateQueries({ queryKey: taxKeys.currentLaw(year) })
       void client.invalidateQueries({ queryKey: taxKeys.year(year) })

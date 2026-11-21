@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router'
 import { ApiError } from '../../api/errors'
 import { menuLabel } from '../../app/menu'
@@ -35,15 +35,22 @@ export default function TaxLawPage() {
   // [다시 불러오기]: 목록을 새로 받은 뒤 편집 중인 초안을 새 값으로 다시 연다.
   const [reloads, setReloads] = useState(0)
   const [reloadNoticeYear, setReloadNoticeYear] = useState<number | null>(null)
+  const [focusTarget, setFocusTarget] = useState<{ target: 'detail' | 'list'; serial: number } | null>(null)
+  const focusedSerial = useRef(0)
   const reload = (showNotice = false) => void client.invalidateQueries({ queryKey: taxLawKeys.list(year) }).then(() => {
     setReloadNoticeYear(showNotice ? year : null)
     setReloads((n) => n + 1)
   })
 
-  if (!admin || (list.error instanceof ApiError && list.error.status === 403)) return <NoPermission title={title} />
   const versions = list.data ?? []
   // 고른 버전이 목록에 없으면(연도를 바꿨거나 지워짐) 가장 최근 번호를 연다.
   const selected = versions.find((v) => v.id === selectedId) ?? versions[0]
+  useEffect(() => {
+    if (!focusTarget || focusedSerial.current === focusTarget.serial || (focusTarget.target === 'detail' && selected?.status !== 'APPLIED')) return
+    document.getElementById(focusTarget.target === 'detail' ? 'law-detail-title' : 'law-versions-title')?.focus()
+    focusedSerial.current = focusTarget.serial
+  }, [focusTarget, selected?.status])
+  if (!admin || (list.error instanceof ApiError && list.error.status === 403)) return <NoPermission title={title} />
   return (
     <div className={inputs.page}>
       <TaxHeader title={title} note="모든 회원의 계산에 쓰는 기준 · 서비스 관리자 전용" />
@@ -60,8 +67,8 @@ export default function TaxLawPage() {
       )}
       {list.isSuccess && (
         <div className={styles.columns}>
-          <LawVersionList year={year} versions={versions} selectedId={selected?.id} onSelect={(id) => { setSelectedId(id); setReloadNoticeYear(null) }} />
-          {selected?.status === 'DRAFT' && <LawVersionForm key={`${selected.id}:${reloads}`} version={selected} onReload={reload} />}
+          <LawVersionList year={year} versions={versions} selectedId={selected?.id} onSelect={(id) => { setSelectedId(id); setReloadNoticeYear(null) }} onReload={reload} onDeleted={() => { setReloadNoticeYear(null); setFocusTarget((current) => ({ target: 'list', serial: (current?.serial ?? 0) + 1 })) }} />
+          {selected?.status === 'DRAFT' && <LawVersionForm key={`${selected.id}:${reloads}`} version={selected} onReload={reload} onApplied={() => { setReloadNoticeYear(null); setFocusTarget((current) => ({ target: 'detail', serial: (current?.serial ?? 0) + 1 })) }} />}
           {selected?.status === 'APPLIED' && <LawVersionFacts version={selected} />}
         </div>
       )}

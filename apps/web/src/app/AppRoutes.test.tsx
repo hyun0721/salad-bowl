@@ -109,7 +109,7 @@ describe('AppRoutes', () => {
     expect(screen.queryByRole('link', { name: /세법 관리/ })).not.toBeInTheDocument()
   })
 
-  it('shows 연도별 세법 관리 third under 소득공제 to a service admin only and opens it', async () => {
+  it('shows 연도별 세법 관리 second under 소득공제 to a service admin only and opens it', async () => {
     mockViewport(false)
     signedIn([], admin)
     serveTax(null)
