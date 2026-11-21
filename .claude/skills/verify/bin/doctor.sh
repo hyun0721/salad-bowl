@@ -12,9 +12,15 @@ done
 check "port $API_PORT owned by api pid" "lsof -a -p $(cat "$STATE/api.pid" 2>/dev/null || echo 0) -iTCP:$API_PORT -sTCP:LISTEN"
 check "port $WEB_PORT owned by web pid" "lsof -a -p $(cat "$STATE/web.pid" 2>/dev/null || echo 0) -iTCP:$WEB_PORT -sTCP:LISTEN"
 check "health UP through web proxy" "curl -sf $WEB/api/actuator/health | grep -q UP"
-for email in "$SEED_EMAIL" "$SEED_EMAIL2" "$SEED_EMAIL3" "$SEED_EMAIL4"; do
+for email in "$SEED_EMAIL" "$SEED_EMAIL2" "$SEED_EMAIL3" "$SEED_EMAIL4" "$SEED_EMAIL5"; do
   check "seed login $email" "curl -sf -H 'Content-Type: application/json' -d '{\"email\":\"$email\",\"password\":\"$SEED_PASSWORD\"}' $WEB/api/auth/login"
 done
+
+tax_year=$(TZ=Asia/Seoul date +%Y)
+token=$(curl -sf -H 'Content-Type: application/json' -d "{\"email\":\"$SEED_EMAIL\",\"password\":\"$SEED_PASSWORD\"}" "$WEB/api/auth/login" \
+  | python3 -c 'import json,sys; print(json.load(sys.stdin)["accessToken"])' 2>/dev/null)
+check "applied tax law $tax_year" "curl -sf -H 'Authorization: Bearer $token' '$WEB/api/tax/law-versions/current?year=$tax_year'"
+check "seed tax record $tax_year" "curl -sf -H 'Authorization: Bearer $token' '$WEB/api/tax/years/$tax_year'"
 
 echo "build: $(git -C "$ROOT" rev-parse --short HEAD)$(git -C "$ROOT" diff --quiet || echo '+dirty')"
 exit $ok

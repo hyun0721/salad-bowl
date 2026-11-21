@@ -9,6 +9,8 @@ import { setAccessToken } from '../api/client'
 import { AuthProvider } from '../auth/AuthProvider'
 import { mockViewport } from '../test/mockViewport'
 import { server } from '../test/server'
+import { serveTax, yearView } from '../test/taxFixtures'
+import { seoulYear } from '../tax/TaxYearProvider'
 import AppRoutes from './AppRoutes'
 
 const me = { userId: 1, email: 'me@test.com', nickname: '나' }
@@ -81,10 +83,42 @@ describe('AppRoutes', () => {
     renderApp('/')
     const nav = await screen.findByRole('navigation', { name: '주 메뉴' })
     expect(within(nav).getAllByRole('link').map((l) => l.textContent))
-      .toEqual(['홈', '대시보드', '대분류', '소분류', '거래 목록', '그룹 관리'])
+      .toEqual(['홈', '소득공제', '입력자료', '대시보드', '대분류', '소분류', '거래 목록', '그룹 관리'])
     expect(within(nav).getByRole('link', { name: '대분류' })).toHaveAttribute('href', '/dashboard/major')
     expect(within(nav).getByRole('link', { name: '소분류' })).toHaveAttribute('href', '/dashboard/minor')
     expect(within(nav).getByRole('link', { name: '대시보드' })).not.toHaveAttribute('aria-current')
+  })
+
+  it('opens 소득공제 at its inputs screen with the sub-link marked and no law admin link', async () => {
+    signedIn([])
+    server.use(
+      http.get('*/api/tax/years/:year', () => HttpResponse.json({ code: 'NOT_FOUND', message: 'x' }, { status: 404 })),
+      http.get('*/api/tax/law-versions/current', () => HttpResponse.json({ code: 'NOT_FOUND', message: 'x' }, { status: 404 })),
+    )
+    renderApp('/')
+    const user = userEvent.setup()
+
+    const nav = await screen.findByRole('navigation', { name: '주 메뉴' })
+    await user.click(within(nav).getByRole('link', { name: '소득공제' }))
+
+    expect(await screen.findByRole('heading', { level: 1, name: '소득공제' })).toBeInTheDocument()
+    expect(within(nav).getByRole('link', { name: '입력자료' })).toHaveAttribute('aria-current', 'page')
+    expect(within(nav).getByRole('link', { name: '소득공제' })).toHaveAttribute('aria-current', 'true')
+    expect(screen.queryByRole('link', { name: /세법 관리/ })).not.toBeInTheDocument()
+  })
+
+  it('does not carry the dashboard month into the tax sub-link', async () => {
+    mockViewport(false)
+    signedIn([{ groupId: 10, name: '우리집', myRole: 'ADMIN', memberCount: 3 }])
+    server.use(
+      http.get('*/api/groups/10/summary', () => HttpResponse.json({ month: '2026-08', income: 0, expense: 0, byCategory: [], byMember: [] })),
+      http.get('*/api/groups/10/summary/trend', () => HttpResponse.json({ months: [], categories: [] })),
+    )
+    renderApp('/dashboard/major?month=2026-08')
+
+    const nav = await screen.findByRole('navigation', { name: '주 메뉴' })
+    expect(within(nav).getByRole('link', { name: '대분류' })).toHaveAttribute('href', '/dashboard/major?month=2026-08')
+    expect(within(nav).getByRole('link', { name: '입력자료' })).toHaveAttribute('href', '/tax/inputs')
   })
 
   it('marks only the current dashboard sub-link as the page', async () => {
@@ -304,6 +338,58 @@ describe('AppRoutes', () => {
     expect(await screen.findByRole('button', { name: /그룹/ })).toHaveTextContent('B의 그룹')
   })
 
+  it('clears tax data on logout and never shows it to the next member or keeps it in browser storage', async () => {
+    const year = seoulYear(new Date())
+    signedIn([])
+    serveTax(yearView({ taxYear: year, totalSalary: 52_340_000 }))
+    server.use(http.post('*/api/auth/logout', () => new HttpResponse(null, { status: 204 })))
+    const client = renderApp('/tax/inputs')
+    const user = userEvent.setup()
+
+    expect(await screen.findByText('₩ 52,340,000')).toBeInTheDocument()
+    const stored = JSON.stringify({ ...window.localStorage }) + JSON.stringify({ ...window.sessionStorage })
+    expect(stored).not.toMatch(/52,?340,?000/)
+
+    await user.click(screen.getByRole('button', { name: '로그아웃' }))
+    await screen.findByRole('button', { name: '로그인' })
+    expect(client.getQueryData(['tax', 'year', year])).toBeUndefined()
+
+    server.use(
+      http.post('*/api/auth/login', () => HttpResponse.json({ accessToken: 'b1' })),
+      http.get('*/api/me', () => HttpResponse.json({ userId: 2, email: 'b@test.com', nickname: '비' })),
+      http.get('*/api/tax/years/:year', async () => {
+        await delay(300)
+        return HttpResponse.json({ code: 'NOT_FOUND', message: 'x' }, { status: 404 })
+      }),
+    )
+    await user.type(screen.getByLabelText('이메일'), 'b@test.com')
+    await user.type(screen.getByLabelText('비밀번호'), 'password1')
+    await user.click(screen.getByRole('button', { name: '로그인' }))
+    await user.click(await screen.findByRole('link', { name: '소득공제' }))
+
+    expect(await screen.findByText('입력자료 불러오는 중')).toBeInTheDocument()
+    expect(screen.queryByText('₩ 52,340,000')).not.toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: `${year}년 귀속 기록이 없습니다` })).toBeInTheDocument()
+  })
+
+  it('keeps the same tax data without a new request when the header group changes', async () => {
+    signedIn([
+      { groupId: 10, name: '우리집', myRole: 'ADMIN', memberCount: 3 },
+      { groupId: 20, name: '커플 가계부', myRole: 'MEMBER', memberCount: 2 },
+    ])
+    const calls = serveTax(yearView({ taxYear: seoulYear(new Date()) }))
+    renderApp('/tax/inputs')
+    const user = userEvent.setup()
+
+    expect(await screen.findByText('₩ 50,000,000')).toBeInTheDocument()
+    await user.click(await screen.findByRole('button', { name: /그룹/ }))
+    await user.click(screen.getByRole('option', { name: '커플 가계부' }))
+
+    expect(screen.getByRole('button', { name: /그룹/ })).toHaveTextContent('커플 가계부')
+    expect(screen.getByText('₩ 50,000,000')).toBeInTheDocument()
+    expect(calls.year).toBe(1)
+  })
+
   it('returns to the invite page after logging in', async () => {
     server.use(
       http.post('*/api/auth/refresh', () => HttpResponse.json({ code: 'INVALID_TOKEN', message: 'x' }, { status: 401 })),
@@ -422,7 +508,7 @@ describe('AppRoutes on a narrow screen', () => {
     const navs = await screen.findAllByRole('navigation', { name: '주 메뉴' })
     expect(navs).toHaveLength(1)
     const names = within(navs[0]).getAllByRole('link').map((link) => link.textContent)
-    expect(names).toEqual(['홈', '대시보드', '거래', '그룹'])
+    expect(names).toEqual(['홈', '소득공제', '대시보드', '거래', '그룹'])
     expect(within(navs[0]).getByRole('link', { name: '홈' })).toHaveAttribute('aria-current', 'page')
     // 닉네임과 로그아웃은 상단 바에 없고 계정 시트 안에 있다.
     expect(screen.queryByRole('button', { name: '로그아웃' })).not.toBeInTheDocument()

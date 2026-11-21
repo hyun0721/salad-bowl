@@ -50,3 +50,37 @@ describe('DateTimePicker', () => {
     spies.forEach((spy) => spy.mockRestore())
   })
 })
+
+describe('DateTimePicker with day granularity', () => {
+  function DayPicker({ onValue, onSubmit }: { onValue: (v: string) => void; onSubmit: () => void }) {
+    const [value, setValue] = useState('')
+    return (
+      <form onSubmit={(e) => { e.preventDefault(); onSubmit() }}>
+        <DateTimePicker label="기준일" granularity="day" minValue="2026-01-01" maxValue="2026-12-31" isRequired
+          value={value} onChange={(v) => { setValue(v); onValue(v) }} />
+        <button type="submit">저장</button>
+      </form>
+    )
+  }
+
+  it('reports YYYY-MM-DD and blocks a date outside the allowed range', async () => {
+    const user = userEvent.setup()
+    const onValue = vi.fn()
+    const onSubmit = vi.fn()
+    render(<I18nProvider locale="ko-KR"><DayPicker onValue={onValue} onSubmit={onSubmit} /></I18nProvider>)
+    const group = screen.getByRole('group', { name: '기준일' })
+    expect(within(group).getAllByRole('spinbutton')).toHaveLength(3)
+
+    await user.click(within(group).getAllByRole('spinbutton')[0])
+    await user.keyboard('20251231')
+    expect(onValue).toHaveBeenLastCalledWith('2025-12-31')
+    await user.click(screen.getByRole('button', { name: '저장' }))
+    expect(onSubmit).not.toHaveBeenCalled()
+
+    await user.click(within(group).getAllByRole('spinbutton')[0])
+    await user.keyboard('2026')
+    expect(onValue).toHaveBeenLastCalledWith('2026-12-31')
+    await user.click(screen.getByRole('button', { name: '저장' }))
+    expect(onSubmit).toHaveBeenCalledOnce()
+  })
+})

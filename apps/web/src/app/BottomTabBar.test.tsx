@@ -14,16 +14,22 @@ function renderAt(path: string) {
 }
 
 describe('BottomTabBar', () => {
-  it('shows four short-named links', () => {
+  it('shows five short-named links with 소득공제 second', () => {
     const nav = renderAt('/')
     const names = within(nav).getAllByRole('link').map((link) => link.textContent)
-    expect(names).toEqual(['홈', '대시보드', '거래', '그룹'])
+    expect(names).toEqual(['홈', '소득공제', '대시보드', '거래', '그룹'])
+    expect(within(nav).getByRole('link', { name: '소득공제' })).toHaveAttribute('href', '/tax')
+  })
+
+  it('marks 소득공제 on its sub-screens', () => {
+    const nav = renderAt('/tax/inputs')
+    expect(within(nav).getByRole('link', { name: '소득공제' })).toHaveAttribute('aria-current', 'page')
   })
 
   it('marks only the current screen', () => {
     const nav = renderAt('/transactions')
     expect(within(nav).getByRole('link', { name: '거래' })).toHaveAttribute('aria-current', 'page')
-    for (const name of ['홈', '대시보드', '그룹']) {
+    for (const name of ['홈', '소득공제', '대시보드', '그룹']) {
       expect(within(nav).getByRole('link', { name })).not.toHaveAttribute('aria-current')
     }
   })

@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { Button, Dialog, DialogTrigger, Popover } from 'react-aria-components'
-import ui from '../common/ui.module.css'
-import styles from './GroupsPage.module.css'
+import ui from './ui.module.css'
+import styles from './HelpButton.module.css'
 
-export default function GroupHelp({ title, children }: { title: string; children: string }) {
+/** 제목 옆 `?` 버튼으로 여는 짧은 보충 설명. 다시 누르기·바깥 누르기·닫기·Esc로 닫는다. 접근성 이름은 `<title> 도움말`. */
+export default function HelpButton({ title, children }: { title: string; children: string }) {
   const [open, setOpen] = useState(false)
   const trigger = useRef<HTMLButtonElement>(null)
   const popover = useRef<HTMLElement>(null)

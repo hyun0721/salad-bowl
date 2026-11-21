@@ -13,6 +13,7 @@ type Props = {
   maxLength?: number
   minLength?: number
   autoComplete?: string
+  inputMode?: 'numeric'
   isReadOnly?: boolean
   isDisabled?: boolean
   description?: string
@@ -20,11 +21,11 @@ type Props = {
 }
 
 /** 보이는 라벨, 설명, 브라우저 검증 오류 자리를 같은 모양으로 둔 한 줄 입력칸. */
-export default function TextField({ label, description, className, onFocus, placeholder, ...rest }: Props) {
+export default function TextField({ label, description, className, onFocus, placeholder, inputMode, ...rest }: Props) {
   return (
     <AriaTextField {...rest} validationBehavior="native" className={[styles.field, className].filter(Boolean).join(' ')}>
       <Label className={styles.label}>{label}</Label>
-      <Input placeholder={placeholder} className={styles.input} onFocus={onFocus} />
+      <Input placeholder={placeholder} inputMode={inputMode} className={styles.input} onFocus={onFocus} />
       {description && <Text slot="description" className={styles.description}>{description}</Text>}
       <FieldError className={styles.error} />
     </AriaTextField>

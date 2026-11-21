@@ -9,6 +9,8 @@ export type MenuItem = {
 // 사이드바는 label, 좁은 화면의 하단 탭은 shortLabel을 쓴다.
 export const MENU: MenuItem[] = [
   { to: '/', label: '홈', shortLabel: '홈', icon: 'home', end: true },
+  { to: '/tax', label: '소득공제', shortLabel: '소득공제', icon: 'calculator', end: false,
+    children: [{ to: '/tax/inputs', label: '입력자료' }] },
   { to: '/dashboard', label: '대시보드', shortLabel: '대시보드', icon: 'dashboard', end: false,
     children: [{ to: '/dashboard/major', label: '대분류' }, { to: '/dashboard/minor', label: '소분류' }] },
   { to: '/transactions', label: '거래 목록', shortLabel: '거래', icon: 'receipt', end: false },

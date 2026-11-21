@@ -15,14 +15,16 @@ type FrameProps = {
   closeOnOutsideClick?: boolean
   fullHeight?: boolean
   wide?: boolean
+  /** 좁은 화면에서도 아래 시트가 아니라 가운데 창으로 연다(소득공제 창, TAX-76). */
+  centered?: boolean
   pinnedHeader?: boolean
   headerAction?: ReactNode
   children: (opts: { close: () => void }) => ReactNode
 }
 
-/** 넓은 화면은 가운데 모달, 좁은 화면은 아래에서 올라오는 시트. 포커스 가두기·Esc·복귀는 RAC가 맡는다. */
+/** 넓은 화면은 가운데 모달, 좁은 화면은 아래에서 올라오는 시트(centered면 가운데 모달). 포커스 가두기·Esc·복귀는 RAC가 맡는다. */
 export function DialogFrame(props: FrameProps) {
-  const { isOpen, onOpenChange, title, closeDisabled = false, closeOnOutsideClick = false, fullHeight = false, wide = false, pinnedHeader = false, headerAction, children } = props
+  const { isOpen, onOpenChange, title, closeDisabled = false, closeOnOutsideClick = false, fullHeight = false, wide = false, centered = false, pinnedHeader = false, headerAction, children } = props
   const narrow = useNarrowWhileOpen(isOpen)
   useDialogHistory(isOpen, closeDisabled, onOpenChange)
 
@@ -40,23 +42,25 @@ export function DialogFrame(props: FrameProps) {
   const sheetClass = fullHeight ? `${styles.modalSheet} ${styles.fullSheet}` : styles.modalSheet
   const modalClass = wide ? `${styles.modal} ${styles.wide}` : styles.modal
   const pinned = pinnedHeader ? ` ${styles.pinned}` : ''
+  const sheet = narrow && !centered
+  const backdropClass = sheet ? styles.sheetBackdrop : narrow ? `${styles.backdrop} ${styles.centeredNarrow}` : styles.backdrop
   return (
     <ModalOverlay isOpen={isOpen} onOpenChange={onOpenChange} isDismissable={closeOnOutsideClick && !closeDisabled}
-      isKeyboardDismissDisabled={closeDisabled} className={narrow ? styles.sheetBackdrop : styles.backdrop}>
-      <Modal ref={narrow ? revealFocusedField : undefined} className={(narrow ? sheetClass : modalClass) + pinned}>
+      isKeyboardDismissDisabled={closeDisabled} className={backdropClass}>
+      <Modal ref={narrow ? revealFocusedField : undefined} className={(sheet ? sheetClass : modalClass) + pinned}>
         <AriaDialog className={`${styles.content} ${styles.typography}`}>{({ close }) => body(close)}</AriaDialog>
       </Modal>
     </ModalOverlay>
   )
 }
 
-type Props = { title: string; onClose: () => void; closeDisabled?: boolean; children: ReactNode }
+type Props = { title: string; onClose: () => void; closeDisabled?: boolean; centered?: boolean; children: ReactNode }
 
 /** 화면이 조건부로 그려서 여닫는 대화상자. 기존 Modal과 사용법이 같다. */
-export default function Dialog({ title, onClose, closeDisabled = false, children }: Props) {
+export default function Dialog({ title, onClose, closeDisabled = false, centered, children }: Props) {
   return (
     <DialogFrame isOpen onOpenChange={(open) => { if (!open && !closeDisabled) onClose() }}
-      title={title} closeDisabled={closeDisabled}
+      title={title} closeDisabled={closeDisabled} centered={centered}
       headerAction={<button type="button" className={`${ui.button} ${ui.iconButton} ${ui.ghost}`} aria-label="닫기" disabled={closeDisabled} onClick={onClose}><Icon name="x" /></button>}>
       {() => children}
     </DialogFrame>

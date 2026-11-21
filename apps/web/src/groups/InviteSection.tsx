@@ -7,7 +7,7 @@ import TextField from '../common/TextField'
 import ui from '../common/ui.module.css'
 import styles from './GroupsPage.module.css'
 import { useGroupMutations } from './useGroupMutations'
-import GroupHelp from './GroupHelp'
+import HelpButton from '../common/HelpButton'
 
 const MAX_MEMBERS = 6
 
@@ -33,7 +33,7 @@ export default function InviteSection({ groupId, memberCount }: { groupId: numbe
       <div className={styles.actionRow}>
         <div className={styles.titleWithHelp}>
           <h3 id="invite-title" className={styles.subTitle}>초대 링크</h3>
-          <GroupHelp title="초대 링크">링크는 7일간 유효합니다. 받은 사람은 로그인하거나 가입한 뒤 합류할 수 있습니다.</GroupHelp>
+          <HelpButton title="초대 링크">링크는 7일간 유효합니다. 받은 사람은 로그인하거나 가입한 뒤 합류할 수 있습니다.</HelpButton>
         </div>
         <button type="button" className={ui.button} disabled={full || createInvite.isPending}
           onClick={() => { setCopied(null); createInvite.mutate(groupId) }}>

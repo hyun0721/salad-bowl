@@ -54,7 +54,7 @@
 - 웹은 입력자료(PR 5) → 세법 관리(PR 6) → 분석(PR 7) 순이다. 분석 화면이 나가기 전에 운영자가 화면으로 2026 귀속 세법을 등록할 수 있어야 "세법 준비 중"만 보이는 기간이 없다.
 - PR 5~7은 병합할 때마다 운영에 보인다. PR 5 병합 뒤 PR 7 병합 전까지 회원은 입력자료 화면만 본다(중간 노출을 받아들이는 것이 이 계획의 기본값이다. "알려진 제약" 참고).
 
-**PR 5~7의 Task 상세는 그 PR에 착수할 때 컨트롤러가 채운다(PR 2는 2026-11-14에, PR 3은 2026-11-16에, PR 4는 2026-11-17에 채웠다).** 뒤 PR의 코드는 앞 PR 결과(실제 엔티티·응답 필드 이름)에 의존하기 때문이다. 이 문서에는 PR 5~7의 Task 목록·파일·인터페이스·테스트 대상·검증 명령까지 적었다. PR 1~4는 실행 가능한 상세까지 적었다.
+**PR 5~7의 Task 상세는 그 PR에 착수할 때 컨트롤러가 채운다(PR 2는 2026-11-14에, PR 3은 2026-11-16에, PR 4는 2026-11-17에, PR 5는 2026-11-20에 채웠다).** 뒤 PR의 코드는 앞 PR 결과(실제 엔티티·응답 필드 이름)에 의존하기 때문이다. 이 문서에는 PR 6·7의 Task 목록·파일·인터페이스·테스트 대상·검증 명령까지 적었다. PR 1~5는 실행 가능한 상세까지 적었다.
 
 ## 요구사항 추적표
 
@@ -8393,67 +8393,3005 @@ git commit -m "feat(api): 소득공제 분석 조회 API" -m "Co-Authored-By: Co
 
 # PR 5 — 소득공제 메뉴와 입력자료 화면
 
-**이 PR에 착수할 때 컨트롤러가 Task 상세를 채운다.** 화면 PR이다(375px 이전·이후 캡처).
+> **에이전트 모델 배치(2026-11-20, Claude Fable 5.2 사용 종료 이후):** 구현은 Codex(`codex-collab` 3장 표: 공용 부품·설계 판단이 큰 Task는 `gpt-6-astra`, 일반 화면은 `gpt-6-sol`, 문서는 `gpt-6-luna`), Task 리뷰는 Claude Sonnet 5.5(`review-task`), 브랜치 최종 리뷰와 Task 상세 계획 작성은 Claude Opus 5.5(`review-final`·`controller`), 위험 영역이 바뀌면 Codex `gpt-6-astra` xhigh 반론 리뷰. 아래 Task의 "리뷰" 칸은 이 배치를 따른다. 모든 Agent 호출은 `model`을 명시한다.
 
-브랜치 예: `feat/tax-inputs`. 검증: `cd apps/web && npm run typecheck && npm test && npm run lint && npm run build` + verify 스킬.
+화면 PR이다(375px 이전·이후 캡처). 브랜치 예: `feat/tax-inputs-web`(최신 `origin/main`에서 만든 worktree). PR 제목 예: `feat(web): 소득공제 메뉴와 입력자료 화면`.
 
-웹 설계
+검증: `cd apps/web && npm run typecheck && npm test && npm run lint && npm run build` + verify 스킬. API는 바꾸지 않는다(PR 1~4의 API만 부른다).
 
-- 라우트(모두 기존 `RequireAuth > GroupProvider > AppLayout` 아래): `/tax`(진입: 이 PR에서는 `/tax/inputs`로 보냄, PR 7에서 TAX-68 규칙), `/tax/inputs`. PR 6이 `/tax/law`, PR 7이 `/tax/analysis`를 더한다.
-- 메뉴: `MENU`의 두 번째에 `{ to: '/tax', label: '소득공제', shortLabel: '소득공제', … children: [{ to: '/tax/inputs', label: '입력자료' }] }`. `children` 항목에 `adminOnly?: boolean`을 두고 `AppLayout`이 `me.serviceAdmin`으로 거른다(PR 6에서 사용). 하단 탭은 5칸이 된다(AC-25).
-- 좁은 화면의 하위 화면 전환은 화면 안 탭 `TaxTabs`(링크 nav, `dashboard/DashboardMenu.tsx`와 같은 방식).
-- 선택 연도: `TaxYearProvider`(React 상태, 메모리만). 로그인 레이아웃 안에 두어 로그아웃하면 사라진다. 기억한 값이 없으면 올해. 브라우저 저장소에 두지 않는다.
-- 쿼리 키: `['tax', 'year', year]`, `['tax', 'law', 'current', year]`. `GET /tax/years/{year}`의 404는 "연도 기록 없음" 화면 상태다.
-- 화면은 `useGroups()`를 쓰지 않는다. 머리에 "개인 자료 · 그룹과 무관"을 적는다(TAX-13).
+이 PR의 코드와 테스트는 계획을 쓸 때 저장소 밖 임시 복사본(`7e647af` 위 계획 커밋 `4aecc38` 기준)에서 Task 순서대로 실행해 확인했다(2026-11-20). Task마다 테스트만 먼저 넣어 실패를 보고(5.1: 새 5건 중 3건, 5.2: 7건과 새 파일 2개, 5.3: 12건, 5.4: 12건, 5.5: 5건 실패) 구현을 넣은 뒤 통과를 봤고, 마지막에 `typecheck`·`lint`(새 경고 없음)·`build`와 전체 `vitest run --maxWorkers=4`(85파일 684건 통과)를 돌렸다. 아래 코드 블록을 Task 순서대로 넣으면 그 상태와 같아지는 것도 확인했다. 브라우저 화면은 띄워 보지 않았다(PR 마무리의 verify에서 본다).
+
+경로 줄임: 코드 블록 위 줄에 `<경로>` 전체(새 파일·통째 교체) 또는 `git apply`(기존 파일 고침, 저장소 루트에서 실행)를 적었다. 줄 번호가 어긋나면 내용을 보고 손으로 넣는다.
+
+## 웹 설계
+
+- 라우트(모두 기존 `RequireAuth > GroupProvider > TaxYearProvider > AppLayout` 아래): `/tax`는 `/tax/inputs`로 보낸다(`<Navigate replace>`; PR 7에서 TAX-68 규칙으로 바꾼다), `/tax/inputs`는 `TaxInputsPage`(lazy). PR 6이 `/tax/law`, PR 7이 `/tax/analysis`를 더한다.
+- 메뉴: `MENU`의 두 번째에 `{ to: '/tax', label: '소득공제', shortLabel: '소득공제', icon: 'calculator', end: false, children: [{ to: '/tax/inputs', label: '입력자료' }] }`. 하단 탭은 5칸(홈·소득공제·대시보드·거래·그룹, AC-25). 회원·관리자 모두 하위 메뉴는 `입력자료` 하나다. 세법 관리 메뉴는 PR 6이 넣는다.
+- 사이드바 하위 링크: 지금 `AppLayout`은 대시보드 안에서 **모든** 하위 링크에 `?month=`를 붙이고 `replace`한다. 소득공제 하위 링크가 대시보드 주소의 `?month=`를 가져가지 않도록 대시보드 메뉴에만 적용한다(Task 5.2).
+- 선택 연도: `TaxYearProvider`(React 상태, 메모리만). 로그인 레이아웃(`AppLayout` 바깥, `GroupProvider` 안)에 두어 메뉴를 옮겨도 유지되고 로그아웃하면 사라진다. 처음 값과 선택지는 한국 시각 기준 올해·전년도·다음 해이고 로그인 동안 고정이다. 브라우저 저장소에 두지 않는다(TAX-07).
+- 쿼리 키: `['tax', 'year', year]`, `['tax', 'law', 'current', year]`. `isGroupScopedKey`가 보지 않는 머리말이다. `GET /tax/years/{year}`와 `GET /tax/law-versions/current`의 404는 `taxApi`가 `null`로 바꿔 "없음" 상태가 되고 오류로 남지 않는다. 현재 적용 세법은 연도 기록이 없을 때만 읽는다(만들 때 기억될 버전의 `childTiersApply`와 "세법 준비 중" 판단). 기록이 있으면 기록의 `lawVersion`을 쓴다.
+- 쓰기: `TaxYearView`를 돌려주는 저장은 응답으로 캐시를 바꾼다(`useTaxSave`). 카드 자료 삭제(204)는 연도를 다시 읽고, 연도 삭제(204)는 캐시를 `null`로 둔다. 합계·빈 칸 수는 서버 값을 쓴다.
+- `rowVersion`: 응답에서 받은 값을 그대로 돌려보낸다. 입력 창은 연 시점의 값과 버전을 `useState`로 잡아 두고 저장한다(그 사이 캐시가 바뀌어도 오래된 버전으로 보내 서버가 409로 막게).
+- 동시 수정·삭제(409, 404): 입력 창은 입력을 남긴 채 "다른 곳에서 수정되거나 삭제됐습니다. 저장하지 않았습니다."와 [다시 불러오기]를 보이고, 누르면 연도를 다시 읽고 창을 닫는다(`SaveError`). 입력이 없는 동작(카드 삭제 확인, 연도 삭제 확인, 행의 [빈 칸 0원으로 채우기])은 바로 다시 읽고 "…새로 불러온 내용을 확인한 뒤 다시 시도해 주세요."를 보인다(`actionError`). 그 밖의 실패는 `errorMessage` 문구와 "입력한 값은 그대로 있습니다."(통신 오류 포함).
+- 창: 입력·확인 창은 모두 `Dialog`/`ConfirmDialog`의 `centered`(Task 5.1)다. 창 안의 `Select`·기준일 달력은 기존 동작(좁은 화면 시트)을 둔다.
+- 화면은 `useGroups()`를 쓰지 않는다. 머리에 "개인 자료 · 그룹과 무관"을 적는다(TAX-13). 좁은 화면 안 탭(`TaxTabs`)은 하위 화면이 둘이 되는 PR 7에서 만든다.
+- 글자: 화면 뿌리(`inputs.module.css`의 `.page`)에서 `--text-base`·`--text-sm`·`--text-label`을 15px·13px·13px로 다시 가리켜 UI 표준의 크기를 맞춘다(창의 `Overlay.module.css` `typography`와 같은 방식, 이 화면 안에서만). 카드 제목 16px, 섹션 안 버튼 14px.
+- 배치: 각 카드·행은 `.split`(왼쪽 정보는 `flex: 1 1 12rem`로 줄바꿈, 오른쪽 `.actions`는 `margin-left: auto`)으로 정보 왼쪽·조작 오른쪽을 지킨다. 넓은 화면(1100px 이상)은 자료(기본정보·신용·체크·현금영수증) | 연도 합계표 2단, 그보다 좁으면 차례로 쌓는다. 연도 기록 삭제는 맨 아래 전체 폭.
+
+## 계획 초안에서 달라진 점 (2026-11-20)
+
+- `TaxTabs.tsx`·`TaxIndexRedirect.tsx`를 만들지 않는다. 하위 화면이 하나뿐이라 좁은 화면 안 탭은 탭 하나짜리가 되고, `/tax` 진입은 한 줄 `<Navigate>`면 된다. PR 7 Task 7.1이 둘을 새로 만든다(7.1의 "Modify"는 "Create"로 읽는다).
+- `MenuItem.children[].adminOnly`, `AppLayout`의 관리자 거르기, `Me.serviceAdmin`, `testMe.serviceAdmin`을 PR 5에서 넣지 않는다. 쓰는 곳이 PR 6(세법 관리 메뉴)뿐이다. PR 6 Task 6.1이 넣는다.
+- 로그아웃·다른 회원·브라우저 저장소·그룹 전환 테스트는 입력자료 화면이 생기는 Task 5.3으로 옮겼다(5.2에는 화면 내용이 없다).
+- 기준일 입력: 날짜만 받는 공용 부품이 없어 `common/DateTimePicker`에 `granularity="day"`·`minValue`·`maxValue`를 더한다(기본값은 그대로, 기존 사용처 불변). 연도 밖 날짜는 필드 오류로 제출을 막는다.
+- 자녀등 수는 `MoneyField`가 아니라 RAC `NumberField`(0~99, 라벨 옆 `HelpButton` 때문에 `aria-labelledby`)다.
+- 8칸·4칸 입력은 표가 아니라 소비구분별 `fieldset` 묶음 + 2열 격자(`AmountGrid`)다. 375px 창 폭에서 `MoneyField`(원 단위 표시 포함)가 두 칸 들어가고 가로 스크롤이 없다. 행·열 머리는 `legend`와 칸 라벨이다.
+- 연도 합계표의 12칸은 서버 `totals` 그대로이고, 행 합계(소비구분 "계")·열 합계·총합계와 카드 행의 "합계"는 그 칸들을 더한 표시용 값이다(아래 "결정이 필요한 점" 2).
+- `verify` 시드에 그룹 없는 계정 `verify5@example.test`(그룹없음)를 더한다. 지금 시드 4계정은 모두 그룹 멤버다(`verify4`도 공개만 끈 멤버).
+- `ui-standards.md`가 `groups/GroupHelp.tsx`를 가리키는 문장을 Task 5.1에서 `common/HelpButton.tsx`로 고친다.
+- 계획 초안의 테스트 유틸 이름 `renderApp`은 공용 유틸이 아니라 `app/AppRoutes.test.tsx` 안의 지역 함수다. 화면 테스트는 `test/renderPage.tsx`의 `renderPage`를 감싼 `test/taxFixtures.tsx`의 `renderTaxInputs`를 쓴다.
+
+## 결정이 필요한 점 (기본값으로 썼다)
+
+1. **`TaxTabs`·`TaxIndexRedirect`·`adminOnly`·`Me.serviceAdmin`은 쓰는 PR(6·7)에서 만든다.** 다른 선택: 계획 초안대로 PR 5에서 미리 만든다(쓰지 않는 코드가 한동안 운영에 나간다).
+2. **표시용 합계는 웹이 더한다.** 연도 합계표의 12칸과 빈 칸 수·`hasInputs`·`asOfDateMismatch`는 서버 값이고 자료에서 다시 더하지 않는다. 행·열·총합계와 카드 한 건의 합계는 화면에 보이는 칸을 더한 정수 합(최대 약 3×10^13, JS 안전 정수 이내)이다. 다른 선택: 합계 행·열과 카드 합계를 빼고 12칸만 보인다(와이어프레임의 "계"·합계 열이 없어진다).
+3. **409·404의 두 흐름.** 입력 창은 입력을 남기고 [다시 불러오기]를 누르면 새 값을 읽고 창을 닫는다(같은 창에서 새 버전으로 다시 저장하면 다른 곳의 변경을 말없이 덮을 수 있어서다). 입력이 없는 확인·채우기 동작은 바로 다시 읽고 다시 시도하게 한다. 다른 선택: 모든 경우 창을 유지한 채 자동으로 다시 읽고 새 버전으로 저장하게 한다.
+4. **기준일 입력은 `DateTimePicker`를 넓혀 쓴다**(공용 부품 변경, Task 5.4를 `gpt-6-astra`로). 다른 선택: `common/DatePicker.tsx`를 새로 만든다(달력 마크업 중복).
+5. **새 자료의 기준일 기본값은 이미 넣은 자료의 기준일**(마지막 카드, 없으면 현금영수증, 둘 다 없으면 빈 값)이다. 기준일 불일치(TAX-27)를 줄이려는 미리 채우기이고 바꿀 수 있다. 다른 선택: 늘 빈 값.
+6. **[4칸 0원으로 채우기]는 4칸을 0으로 채운 현금영수증 입력 창을 연다.** 기준일이 필수라 누르자마자 저장할 수 없다. 다른 선택: 마지막 카드 기준일로 바로 저장한다(사용자가 기준일을 보지 못한다).
+7. **카드 자료 50건 상한을 화면에서 미리 막는다**([신용·체크 자료 추가]를 끄고 이유를 적는다). 서버 400은 그대로 남는다.
+8. **연도 선택지는 로그인 동안 고정된 3개다.** 범위를 벗어난 기존 기록(예: 2028년의 2026 기록)은 서버가 허용하지만 화면에서 고를 수 없다. 연도 목록 API가 없어서이며 후속 과제로 둔다.
+9. **넓은 화면 2단은 1100px 이상.** 821~1099px에서 2단이면 연도 합계표 5열이 칸보다 넓어진다. 표는 아주 큰 금액·320px에 대비해 표 안에서만 가로로 움직일 수 있다(페이지는 넘치지 않는다).
+10. **좁은 화면의 가운데 창 안쪽 여백은 16px**(아래 시트와 같은 값). 320px에서 8칸 입력의 두 칸 폭을 확보하려는 것이다.
+11. **연도 합계표 안 금액은 ₩ 기호를 뺀다**(표 제목에 "단위 원"). 375px에서 세 결제수단 열이 들어가게 하려는 것이며 가림 문자도 `•••••`만 보인다. 기본정보 총급여·카드 행 합계는 `₩`를 둔다.
+12. **verify 시드:** 소유자 `verify@example.test`를 SQL로 서비스 관리자로 지정하고, 한국 시각 기준 올해 귀속 세법을 2026 귀속 값으로 초안 생성·적용하고, 소유자에게 와이어프레임 합성값(총급여 5천만, A카드 9,600,000 · B카드 7,600,000 · 현금영수증 600,000, 지출계획 총 2,400,000)을 넣는다. 그룹 없는 `verify5`는 가입만 한다.
+
+---
 
 ### Task 5.1: `Dialog` 가운데 창 선택지와 도움말 부품 공용화 (TAX-76, UI 표준)
 
-**담당:** Codex `gpt-6-astra` / `medium` (`write`), 태그 `impl-web-common`. 리뷰: Claude Fable 5.2.
+**담당:** Codex `gpt-6-astra` / `medium` (`write`, 공용 부품), 태그 `impl-web-common`. 리뷰: Claude Sonnet 5.5 (`review-task`).
 
-- 배경: 현재 `common/Dialog.tsx`의 `DialogFrame`은 좁은 화면에서 아래에서 올라오는 시트(`styles.modalSheet`)로 그린다. PRD D26·AC-44의 "가운데 창"을 만족하려면 선택지가 필요하다("알려진 제약" 1번, 2026-11-13 확정).
-- Files: Modify `apps/web/src/common/Dialog.tsx`, `Overlay.module.css`, `Dialog.test.tsx`. 도움말: Create `common/HelpButton.tsx`(+ 스타일은 `common/ui.module.css` 또는 새 `HelpButton.module.css`로 `GroupsPage.module.css`의 `helpButton`·`helpPopover`·`helpContent`를 옮김), Delete `groups/GroupHelp.tsx`, Modify 그 import 사용처와 테스트.
-- Interfaces — Produces: `Dialog`와 `DialogFrame`에 `centered?: boolean`(기본 false, 기존 화면 동작 불변). true면 좁은 화면에서도 `styles.backdrop`·`styles.modal`을 쓰고, `AriaDialog`의 `styles.content`·`styles.typography`는 그대로 둔다. `HelpButton({ title, children })` — `GroupHelp`와 같은 props·동작.
-- 테스트 대상(AC-44): 좁은 폭(`mockViewport(true)`)에서 `centered`면 시트 클래스가 아니라 가운데 창 클래스이고 `typography` 클래스가 남음, `centered`가 없으면 기존대로 시트. 그룹 화면의 기존 도움말 테스트가 `HelpButton`으로 바꾼 뒤에도 그대로 통과. 긴 내용이 창 안에서 스크롤되는지는 verify에서 본다.
+**Files:**
+- Modify: `apps/web/src/common/Dialog.tsx`, `Overlay.module.css`, `ConfirmDialog.tsx`
+- Create: `apps/web/src/common/HelpButton.tsx`(`groups/GroupHelp.tsx`를 옮김), `common/HelpButton.module.css`(`groups/GroupsPage.module.css`의 `helpButton`·`helpPopover`·`helpContent`를 옮김)
+- Delete: `apps/web/src/groups/GroupHelp.tsx`
+- Modify: `apps/web/src/groups/InviteSection.tsx`, `GroupSettings.tsx`, `BanList.tsx`(import만), `groups/GroupsPage.module.css`(옮긴 6줄 삭제), `docs/ui-standards.md:173`
+- Test: `apps/web/src/common/Dialog.test.tsx`, `ConfirmDialog.test.tsx`. 그룹 도움말은 기존 `groups/GroupsPage.test.tsx`가 그대로 덮는다.
+
+**Interfaces:**
+- Consumes: RAC `ModalOverlay`가 주는 `--visual-viewport-height`(기존 시트와 같다), `revealFocusedField`.
+- Produces: `DialogFrame`의 `centered?: boolean`(기본 false), `Dialog({ title, onClose, closeDisabled?, centered?, children })`, `ConfirmDialog`의 `centered?: boolean`. `centered`면 좁은 화면에서도 `styles.backdrop` + `styles.centeredNarrow`와 `styles.modal`을 쓰고, `AriaDialog`의 `content`·`typography`는 그대로다. 좁은 화면이면 `centered`여도 `revealFocusedField`로 포커스한 입력란을 키보드 위로 다시 보인다. `HelpButton({ title, children: string })` default export — `GroupHelp`와 같은 props·동작·스타일, 접근성 이름 `<title> 도움말`.
+
+- [ ] **Step 1: 실패하는 테스트 작성** — 두 테스트 파일 끝에 더한다.
+
+`git apply`:
+
+```diff
+diff --git a/apps/web/src/common/ConfirmDialog.test.tsx b/apps/web/src/common/ConfirmDialog.test.tsx
+index 2aca1b1..78a9b5e 100644
+--- a/apps/web/src/common/ConfirmDialog.test.tsx
++++ b/apps/web/src/common/ConfirmDialog.test.tsx
+@@ -1,6 +1,7 @@
+ import { act, render, screen, waitFor, within } from '@testing-library/react'
+ import userEvent from '@testing-library/user-event'
+ import { describe, expect, it, vi } from 'vitest'
++import { mockViewport } from '../test/mockViewport'
+ import ConfirmDialog from './ConfirmDialog'
+ 
+ function renderConfirm(props: Partial<Parameters<typeof ConfirmDialog>[0]> = {}) {
+@@ -93,3 +94,12 @@ describe('ConfirmDialog', () => {
+     expect(screen.getByRole('button', { name: '짝꿍 내보내기 확인' })).toBeInTheDocument()
+   })
+ })
++
++it('opens as a centered modal on a narrow screen when centered', async () => {
++  mockViewport(true)
++  const { user } = renderConfirm({ centered: true })
++
++  await user.click(screen.getByRole('button', { name: '그룹 나가기' }))
++
++  expect(screen.getByRole('dialog', { name: '그룹 나가기' }).parentElement).toHaveClass('modal')
++})
+diff --git a/apps/web/src/common/Dialog.test.tsx b/apps/web/src/common/Dialog.test.tsx
+index c290d9f..4264bc6 100644
+--- a/apps/web/src/common/Dialog.test.tsx
++++ b/apps/web/src/common/Dialog.test.tsx
+@@ -237,3 +237,42 @@ describe('DialogFrame when the sheet resizes', () => {
+     expect(observe).not.toHaveBeenCalled()
+   })
+ })
++
++describe('centered dialogs', () => {
++  it('opens a centered modal on a narrow screen and keeps the shared typography', () => {
++    mockViewport(true)
++    render(<DialogFrame isOpen onOpenChange={() => {}} title="기본정보" centered>{() => <p>본문</p>}</DialogFrame>)
++
++    const dialog = screen.getByRole('dialog', { name: '기본정보' })
++    expect(dialog).toHaveClass('content', 'typography')
++    expect(dialog.parentElement).toHaveClass('modal')
++    expect(dialog.parentElement).not.toHaveClass('modalSheet')
++    expect(dialog.parentElement!.parentElement).toHaveClass('backdrop', 'centeredNarrow')
++  })
++
++  it('still opens a bottom sheet on a narrow screen without centered', () => {
++    mockViewport(true)
++    render(<DialogFrame isOpen onOpenChange={() => {}} title="그룹 만들기">{() => <p>본문</p>}</DialogFrame>)
++
++    expect(screen.getByRole('dialog', { name: '그룹 만들기' }).parentElement).toHaveClass('modalSheet')
++  })
++
++  it('keeps the wide-screen modal unchanged when centered', () => {
++    mockViewport(false)
++    render(<DialogFrame isOpen onOpenChange={() => {}} title="기본정보" centered>{() => <p>본문</p>}</DialogFrame>)
++
++    const modal = screen.getByRole('dialog', { name: '기본정보' }).parentElement!
++    expect(modal).toHaveClass('modal')
++    expect(modal.parentElement).not.toHaveClass('centeredNarrow')
++  })
++
++  it('passes centered through Dialog and still reveals the focused input above the keyboard', () => {
++    mockViewport(true)
++    const { observe } = mockResizeObserver()
++    render(<Dialog title="자료 편집" onClose={vi.fn()} centered><label>카드사명<input /></label></Dialog>)
++
++    const modal = screen.getByRole('dialog', { name: '자료 편집' }).parentElement
++    expect(modal).toHaveClass('modal')
++    expect(observe).toHaveBeenCalledWith(modal)
++  })
++})
+```
+
+- [ ] **Step 2: 실패 확인**
+
+Run: `cd apps/web && npx vitest run src/common/Dialog.test.tsx src/common/ConfirmDialog.test.tsx`
+Expected: 3건 FAIL(`opens a centered modal on a narrow screen…`, `passes centered through Dialog…`, `opens as a centered modal on a narrow screen when centered` — 부모가 `modalSheet`). 새 테스트 가운데 시트 유지·넓은 화면 2건과 기존 22건은 PASS(27건 중 24건).
+
+- [ ] **Step 3: `centered` 구현**
+
+`git apply`:
+
+```diff
+diff --git a/apps/web/src/common/ConfirmDialog.tsx b/apps/web/src/common/ConfirmDialog.tsx
+index 0170c25..85ae4d5 100644
+--- a/apps/web/src/common/ConfirmDialog.tsx
++++ b/apps/web/src/common/ConfirmDialog.tsx
+@@ -16,6 +16,7 @@ type Props = {
+   error: string | null
+   onConfirm: (close: () => void) => void
+   onOpen?: () => void
++  centered?: boolean
+ }
+ 
+ /**
+@@ -23,7 +24,7 @@ type Props = {
+  * 트리거는 RAC Button이라 Safari처럼 누를 때 포커스를 주지 않는 브라우저에서도 닫힌 뒤 트리거로 돌아온다.
+  */
+ export default function ConfirmDialog(props: Props) {
+-  const { triggerLabel, triggerAriaLabel, triggerIcon, title, description, confirmLabel, confirmAriaLabel, isPending, error, onConfirm, onOpen } = props
++  const { triggerLabel, triggerAriaLabel, triggerIcon, title, description, confirmLabel, confirmAriaLabel, isPending, error, onConfirm, onOpen, centered } = props
+   const [open, setOpen] = useState(false)
+   // 실행 중 닫기 막기는 closeDisabled와 버튼 비활성이 맡는다. 여기서 isPending을 보면
+   // mutate의 onSuccess(리렌더 전, isPending이 아직 true)에서 부른 close가 막힌다.
+@@ -34,7 +35,7 @@ export default function ConfirmDialog(props: Props) {
+         onPress={() => { onOpen?.(); setOpen(true) }}>
+         {triggerIcon && <Icon name={triggerIcon} size={18} />}{triggerLabel}
+       </Button>
+-      <DialogFrame isOpen={open} onOpenChange={setOpen} title={title} closeDisabled={isPending} closeOnOutsideClick>
++      <DialogFrame isOpen={open} onOpenChange={setOpen} title={title} closeDisabled={isPending} closeOnOutsideClick centered={centered}>
+         {() => (
+           <>
+             <p>{description}</p>
+diff --git a/apps/web/src/common/Dialog.tsx b/apps/web/src/common/Dialog.tsx
+index 5f71898..0afe111 100644
+--- a/apps/web/src/common/Dialog.tsx
++++ b/apps/web/src/common/Dialog.tsx
+@@ -15,14 +15,16 @@ type FrameProps = {
+   closeOnOutsideClick?: boolean
+   fullHeight?: boolean
+   wide?: boolean
++  /** 좁은 화면에서도 아래 시트가 아니라 가운데 창으로 연다(소득공제 창, TAX-76). */
++  centered?: boolean
+   pinnedHeader?: boolean
+   headerAction?: ReactNode
+   children: (opts: { close: () => void }) => ReactNode
+ }
+ 
+-/** 넓은 화면은 가운데 모달, 좁은 화면은 아래에서 올라오는 시트. 포커스 가두기·Esc·복귀는 RAC가 맡는다. */
++/** 넓은 화면은 가운데 모달, 좁은 화면은 아래에서 올라오는 시트(centered면 가운데 모달). 포커스 가두기·Esc·복귀는 RAC가 맡는다. */
+ export function DialogFrame(props: FrameProps) {
+-  const { isOpen, onOpenChange, title, closeDisabled = false, closeOnOutsideClick = false, fullHeight = false, wide = false, pinnedHeader = false, headerAction, children } = props
++  const { isOpen, onOpenChange, title, closeDisabled = false, closeOnOutsideClick = false, fullHeight = false, wide = false, centered = false, pinnedHeader = false, headerAction, children } = props
+   const narrow = useNarrowWhileOpen(isOpen)
+   useDialogHistory(isOpen, closeDisabled, onOpenChange)
+ 
+@@ -40,23 +42,25 @@ export function DialogFrame(props: FrameProps) {
+   const sheetClass = fullHeight ? `${styles.modalSheet} ${styles.fullSheet}` : styles.modalSheet
+   const modalClass = wide ? `${styles.modal} ${styles.wide}` : styles.modal
+   const pinned = pinnedHeader ? ` ${styles.pinned}` : ''
++  const sheet = narrow && !centered
++  const backdropClass = sheet ? styles.sheetBackdrop : narrow ? `${styles.backdrop} ${styles.centeredNarrow}` : styles.backdrop
+   return (
+     <ModalOverlay isOpen={isOpen} onOpenChange={onOpenChange} isDismissable={closeOnOutsideClick && !closeDisabled}
+-      isKeyboardDismissDisabled={closeDisabled} className={narrow ? styles.sheetBackdrop : styles.backdrop}>
+-      <Modal ref={narrow ? revealFocusedField : undefined} className={(narrow ? sheetClass : modalClass) + pinned}>
++      isKeyboardDismissDisabled={closeDisabled} className={backdropClass}>
++      <Modal ref={narrow ? revealFocusedField : undefined} className={(sheet ? sheetClass : modalClass) + pinned}>
+         <AriaDialog className={`${styles.content} ${styles.typography}`}>{({ close }) => body(close)}</AriaDialog>
+       </Modal>
+     </ModalOverlay>
+   )
+ }
+ 
+-type Props = { title: string; onClose: () => void; closeDisabled?: boolean; children: ReactNode }
++type Props = { title: string; onClose: () => void; closeDisabled?: boolean; centered?: boolean; children: ReactNode }
+ 
+ /** 화면이 조건부로 그려서 여닫는 대화상자. 기존 Modal과 사용법이 같다. */
+-export default function Dialog({ title, onClose, closeDisabled = false, children }: Props) {
++export default function Dialog({ title, onClose, closeDisabled = false, centered, children }: Props) {
+   return (
+     <DialogFrame isOpen onOpenChange={(open) => { if (!open && !closeDisabled) onClose() }}
+-      title={title} closeDisabled={closeDisabled}
++      title={title} closeDisabled={closeDisabled} centered={centered}
+       headerAction={<button type="button" className={`${ui.button} ${ui.iconButton} ${ui.ghost}`} aria-label="닫기" disabled={closeDisabled} onClick={onClose}><Icon name="x" /></button>}>
+       {() => children}
+     </DialogFrame>
+diff --git a/apps/web/src/common/Overlay.module.css b/apps/web/src/common/Overlay.module.css
+index ef3a3e6..f88925c 100644
+--- a/apps/web/src/common/Overlay.module.css
++++ b/apps/web/src/common/Overlay.module.css
+@@ -23,6 +23,9 @@
+ .backdrop { position: fixed; inset: 0; z-index: 10; display: flex; align-items: center; justify-content: center; padding: var(--space-6) max(16px, env(safe-area-inset-left, 0px)); background: var(--overlay); }
+ .modal { width: 100%; max-width: 560px; max-height: 100%; overflow: auto; background: var(--surface-000); border-radius: var(--radius-lg); }
+ .wide { max-width: 880px; }
++/* 좁은 화면의 가운데 창: 시트처럼 화면 키보드 위 높이에서 가운데에 둔다(RAC가 --visual-viewport-height를 준다). */
++.centeredNarrow { inset: 0 0 auto; height: var(--visual-viewport-height); z-index: 20; padding: var(--space-4) max(16px, env(safe-area-inset-right, 0px)) var(--space-4) max(16px, env(safe-area-inset-left, 0px)); }
++.centeredNarrow .content { padding: var(--space-4); }
+ .content { display: flex; flex-direction: column; gap: var(--space-6); padding: var(--space-6); outline: none; }
+ /* 선택 시트의 .title에는 안쪽 여백이 있어 일반 창 제목은 별도 클래스로 쓴다. */
+ .dialogTitle { margin: 0; font-size: var(--text-xl); line-height: 1.5; min-width: 0; overflow-wrap: anywhere; }
+```
+
+- [ ] **Step 4: 도움말 부품 옮기기** — `git rm apps/web/src/groups/GroupHelp.tsx` 뒤 아래 두 파일을 만든다(내용은 옮긴 것이고 import 경로·이름·주석만 다르다).
+
+삭제: `apps/web/src/groups/GroupHelp.tsx`
+
+`apps/web/src/common/HelpButton.tsx` 전체:
+
+```tsx
+import { useEffect, useRef, useState } from 'react'
+import { Button, Dialog, DialogTrigger, Popover } from 'react-aria-components'
+import ui from './ui.module.css'
+import styles from './HelpButton.module.css'
+
+/** 제목 옆 `?` 버튼으로 여는 짧은 보충 설명. 다시 누르기·바깥 누르기·닫기·Esc로 닫는다. 접근성 이름은 `<title> 도움말`. */
+export default function HelpButton({ title, children }: { title: string; children: string }) {
+  const [open, setOpen] = useState(false)
+  const trigger = useRef<HTMLButtonElement>(null)
+  const popover = useRef<HTMLElement>(null)
+  useEffect(() => {
+    if (!open) return
+    // RAC의 비모달 팝오버는 포커스를 받지 않는 바깥 영역을 눌러도 닫히지 않는다.
+    const dismiss = (event: PointerEvent) => {
+      if (event.target instanceof Node && !trigger.current?.contains(event.target) && !popover.current?.contains(event.target)) setOpen(false)
+    }
+    document.addEventListener('pointerdown', dismiss)
+    return () => document.removeEventListener('pointerdown', dismiss)
+  }, [open])
+  return (
+    <DialogTrigger isOpen={open} onOpenChange={setOpen}>
+      <Button ref={trigger} aria-label={`${title} 도움말`} className={`${ui.button} ${ui.iconButton} ${ui.ghost} ${styles.helpButton}`}>
+        <span aria-hidden="true">?</span>
+      </Button>
+      <Popover ref={popover} isNonModal placement="bottom start" offset={4} className={styles.helpPopover}
+        shouldCloseOnInteractOutside={(element) => !trigger.current?.contains(element)}>
+        <Dialog aria-label={`${title} 도움말`} className={styles.helpContent}>
+          <p>{children}</p>
+          <Button slot="close" className={ui.button}>닫기</Button>
+        </Dialog>
+      </Popover>
+    </DialogTrigger>
+  )
+}
+```
+
+`apps/web/src/common/HelpButton.module.css` 전체:
+
+```css
+.helpButton { flex: none; color: var(--ink-muted); }
+.helpButton span { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border: 1px solid currentColor; border-radius: 50%; font-size: var(--text-sm); }
+.helpPopover { width: min(280px, calc(100vw - 32px)); max-height: var(--available-height); overflow: auto; overscroll-behavior: contain; background: var(--surface-000); border: 1px solid var(--line); border-radius: var(--radius-sm); box-shadow: 0 4px 16px var(--overlay); }
+.helpContent { padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); outline: none; font-size: var(--text-lg); line-height: 1.5; }
+.helpContent p { margin: 0; overflow-wrap: anywhere; }
+.helpContent > button { align-self: flex-end; font-size: var(--text-card-action); }
+```
+
+그룹 화면 import와 스타일, UI 표준 문장:
+
+`git apply`:
+
+```diff
+diff --git a/apps/web/src/groups/BanList.tsx b/apps/web/src/groups/BanList.tsx
+index 82142d6..68afb3c 100644
+--- a/apps/web/src/groups/BanList.tsx
++++ b/apps/web/src/groups/BanList.tsx
+@@ -7,7 +7,7 @@ import { groupsApi } from './groupsApi'
+ import styles from './GroupsPage.module.css'
+ import { useGroupMutations } from './useGroupMutations'
+ import Icon from '../common/Icon'
+-import GroupHelp from './GroupHelp'
++import HelpButton from '../common/HelpButton'
+ 
+ export default function BanList({ groupId }: { groupId: number }) {
+   const bans = useQuery({ queryKey: ['bans', groupId], queryFn: () => groupsApi.bans(groupId) })
+@@ -17,7 +17,7 @@ export default function BanList({ groupId }: { groupId: number }) {
+     <section aria-labelledby="bans-title" className={ui.stack}>
+       <div className={styles.titleWithHelp}>
+         <h3 id="bans-title" className={styles.subTitle}>차단 목록</h3>
+-        <GroupHelp title="차단 목록">내보낸 멤버는 다시 합류할 수 없습니다. 차단을 해제하면 다시 초대할 수 있습니다.</GroupHelp>
++        <HelpButton title="차단 목록">내보낸 멤버는 다시 합류할 수 없습니다. 차단을 해제하면 다시 초대할 수 있습니다.</HelpButton>
+       </div>
+       {bans.isPending && <SkeletonRegion><ul className={styles.memberList}>
+         {[0, 1].map((i) => <li key={i} className={styles.member}>
+diff --git a/apps/web/src/groups/GroupSettings.tsx b/apps/web/src/groups/GroupSettings.tsx
+index b0a8c14..14f6f75 100644
+--- a/apps/web/src/groups/GroupSettings.tsx
++++ b/apps/web/src/groups/GroupSettings.tsx
+@@ -5,7 +5,7 @@ import { errorMessage } from '../common/errorMessage'
+ import ui from '../common/ui.module.css'
+ import TextField from '../common/TextField'
+ import field from '../common/Field.module.css'
+-import GroupHelp from './GroupHelp'
++import HelpButton from '../common/HelpButton'
+ import styles from './GroupsPage.module.css'
+ import { toast } from '../common/Toast'
+ import { useGroupMutations } from './useGroupMutations'
+@@ -36,7 +36,7 @@ export function ShareToggle({ groupId, enabled }: { groupId: number; enabled: bo
+         <div className={styles.settingCopy}>
+           <div className={styles.titleWithHelp}>
+             <label id={`${shareId}-label`} htmlFor={shareId}>내 거래 그룹 공개</label>
+-            <GroupHelp title="내 거래 그룹 공개">끄면 그룹 대시보드와 그룹 거래에서 내 거래가 제외됩니다. 숨긴 거래는 공개해도 보이지 않습니다.</GroupHelp>
++            <HelpButton title="내 거래 그룹 공개">끄면 그룹 대시보드와 그룹 거래에서 내 거래가 제외됩니다. 숨긴 거래는 공개해도 보이지 않습니다.</HelpButton>
+           </div>
+           <Text slot="description" className={ui.muted}>이 그룹에 내 거래를 공유해요.</Text>
+         </div>
+diff --git a/apps/web/src/groups/GroupsPage.module.css b/apps/web/src/groups/GroupsPage.module.css
+index 8243e9e..3c7e59b 100644
+--- a/apps/web/src/groups/GroupsPage.module.css
++++ b/apps/web/src/groups/GroupsPage.module.css
+@@ -36,10 +36,4 @@
+ .titleWithHelp > :first-child { min-width: 0; overflow-wrap: anywhere; }
+ .settingCopy { min-width: 0; display: flex; flex-direction: column; }
+ .shareButton { justify-content: center; min-width: 44px; }
+-.helpButton { flex: none; color: var(--ink-muted); }
+-.helpButton span { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border: 1px solid currentColor; border-radius: 50%; font-size: var(--text-sm); }
+-.helpPopover { width: min(280px, calc(100vw - 32px)); max-height: var(--available-height); overflow: auto; overscroll-behavior: contain; background: var(--surface-000); border: 1px solid var(--line); border-radius: var(--radius-sm); box-shadow: 0 4px 16px var(--overlay); }
+-.helpContent { padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); outline: none; font-size: var(--text-lg); line-height: 1.5; }
+-.helpContent p { margin: 0; overflow-wrap: anywhere; }
+-.helpContent > button { align-self: flex-end; font-size: var(--text-card-action); }
+ .detail h2 { overflow-wrap: anywhere; }
+diff --git a/apps/web/src/groups/InviteSection.tsx b/apps/web/src/groups/InviteSection.tsx
+index 9a5bb19..471ce4a 100644
+--- a/apps/web/src/groups/InviteSection.tsx
++++ b/apps/web/src/groups/InviteSection.tsx
+@@ -7,7 +7,7 @@ import TextField from '../common/TextField'
+ import ui from '../common/ui.module.css'
+ import styles from './GroupsPage.module.css'
+ import { useGroupMutations } from './useGroupMutations'
+-import GroupHelp from './GroupHelp'
++import HelpButton from '../common/HelpButton'
+ 
+ const MAX_MEMBERS = 6
+ 
+@@ -33,7 +33,7 @@ export default function InviteSection({ groupId, memberCount }: { groupId: numbe
+       <div className={styles.actionRow}>
+         <div className={styles.titleWithHelp}>
+           <h3 id="invite-title" className={styles.subTitle}>초대 링크</h3>
+-          <GroupHelp title="초대 링크">링크는 7일간 유효합니다. 받은 사람은 로그인하거나 가입한 뒤 합류할 수 있습니다.</GroupHelp>
++          <HelpButton title="초대 링크">링크는 7일간 유효합니다. 받은 사람은 로그인하거나 가입한 뒤 합류할 수 있습니다.</HelpButton>
+         </div>
+         <button type="button" className={ui.button} disabled={full || createInvite.isPending}
+           onClick={() => { setCopied(null); createInvite.mutate(groupId) }}>
+diff --git a/docs/ui-standards.md b/docs/ui-standards.md
+index 7006a56..565ffb2 100644
+--- a/docs/ui-standards.md
++++ b/docs/ui-standards.md
+@@ -170,7 +170,7 @@ Salad Bowl의 새 화면과 UI 수정에 적용하는 공통 기준이다.
+ 
+ 그룹 관리에 먼저 적용했다. 이름 변경·초대 생성·복사·나가기의 우측 정렬,
+ 좌측 설명·우측 공개 토글, 세 종류의 도움말이 기준 사례다.
+-현재 도움말 구현은 `apps/web/src/groups/GroupHelp.tsx`이며 아직 공용 부품은 아니다.
++도움말은 공용 부품 `apps/web/src/common/HelpButton.tsx`를 쓴다(그룹 관리·소득공제).
+ 
+ 다른 화면이 모두 이 표준을 충족한다고 보지는 않는다. 새 UI와 수정하는 영역부터 적용하고,
+ 화면별 의미나 권한·데이터 처리 동작을 배치 통일만을 위해 바꾸지 않는다.
+```
+
+- [ ] **Step 5: 통과 확인**
+
+Run: `cd apps/web && npx vitest run src/common/Dialog.test.tsx src/common/ConfirmDialog.test.tsx && npx vitest run src/groups && npx tsc -b`
+Expected: 27 passed, 18 passed(그룹 도움말 테스트 포함), 타입 오류 없음.
+
+- [ ] **Step 6: 커밋(컨트롤러)** — Codex는 커밋하지 않는다. 컨트롤러가 보고와 diff를 확인한 뒤 커밋한다.
+
+```bash
+git add -A apps/web/src/common apps/web/src/groups docs/ui-standards.md
+git commit -m "feat(web): Dialog에 가운데 창 선택지를 두고 도움말 부품을 공용화" -m "Co-Authored-By: Codex (gpt-6-astra) <noreply@openai.com>"
+```
 
 ### Task 5.2: 메뉴·라우트·선택 연도·API 모듈과 캐시 규칙 (TAX-03, 07, 10, 12, 13, 19, 68 일부)
 
-**담당:** Codex `gpt-6-sol` / `medium` (`write`), 태그 `impl-web`. 리뷰: Claude Fable 5.2.
+**담당:** Codex `gpt-6-sol` / `medium` (`write`), 태그 `impl-web`. 리뷰: Claude Sonnet 5.5 (`review-task`).
 
-- Files: Create `apps/web/src/tax/taxApi.ts`, `TaxYearProvider.tsx`, `TaxTabs.tsx`, `TaxHeader.tsx`, `TaxIndexRedirect.tsx`와 각 테스트. Modify `app/menu.ts`, `app/AppRoutes.tsx`, `app/AppLayout.tsx`(하위 메뉴 `adminOnly` 거르기, 소득공제 하위 링크), `auth/authApi.ts`(`Me.serviceAdmin`), `common/Icon.tsx`(메뉴 아이콘), `test/renderPage.tsx`(`testMe.serviceAdmin`), `app/BottomTabBar.test.tsx`, `app/AppRoutes.test.tsx`, `api/queryClient.test.ts`.
-- Interfaces — Produces: `taxApi.year(year)`, `saveBasicInfo`, `deleteYear`, `addCard`, `saveCard`, `deleteCard`, `saveCashReceipt`, `currentLaw(year)`와 타입 `TaxYearView`(PR 3 응답과 같은 필드). `useTaxYear(): { year: number; setYear(year: number): void; choices: number[] }`(올해·전년도·다음 해).
-- 테스트 대상(AC-06, 25, 29 일부): 하단 탭 5칸·순서 홈·소득공제·대시보드·거래·그룹, 사이드바에 소득공제와 들여 쓴 하위 링크, 회원에게 세법 관리 링크가 없음, `isGroupScopedKey(['tax', 'year', 2026])`가 false이고 `tax` 쿼리의 404가 `['groups']`를 다시 부르지 않음, 로그아웃 뒤 `client.getQueryData(['tax', 'year', 2026])`가 undefined이고 다른 회원으로 로그인하면 이전 회원 값이 화면에 없음, 소득공제 화면을 쓴 뒤 `localStorage`·`sessionStorage`에 총급여·금액 문자열이 없음, 헤더의 그룹을 바꿔도 `tax` 요청이 다시 나가지 않고 내용이 같음.
+**Files:**
+- Create: `apps/web/src/tax/taxApi.ts`, `tax/TaxYearProvider.tsx`, `tax/TaxHeader.tsx`, `tax/inputs/TaxInputsPage.tsx`(머리만 있는 첫 판, Task 5.3이 통째로 바꾼다)
+- Modify: `apps/web/src/app/menu.ts`, `app/AppRoutes.tsx`, `app/AppLayout.tsx:92-93`, `common/Icon.tsx`(`history` 위에 `calculator`)
+- Test: `apps/web/src/tax/TaxHeader.test.tsx`, `tax/taxApi.test.ts`(생성), `app/BottomTabBar.test.tsx`, `app/AppRoutes.test.tsx`, `api/queryClient.test.ts`(수정)
 
-### Task 5.3: 입력자료 화면 — 연도 선택·기본정보·연도 기록 삭제 (TAX-20, 28, 31, 37)
+**Interfaces:**
+- Consumes: `apiFetch`(`api/client.ts`), `ApiError`, `PageHeader({ title, action })`, `Select({ label, items, selectedKey, onSelectionChange })`, `menuLabel('/tax')`.
+- Produces:
+  - `taxApi.year(year): Promise<TaxYearView | null>`(404 → null), `saveBasicInfo(year, BasicInfoInput)`, `deleteYear(year, rowVersion)`, `addCard(year, CardInput)`, `saveCard(year, cardId, CardInput)`, `deleteCard(year, cardId, rowVersion)`, `saveCashReceipt(year, CashInput)`, `currentLaw(year): Promise<CurrentLaw | null>`(404 → null). 타입 `TaxYearView`, `CardView`, `CashView`, `CardAmounts`, `CashAmounts`, `SpendingTotals`, `LawVersionRef`, `PlanView`, `PlanRow`, `CurrentLaw`, `BasicInfoInput`, `CardInput`, `CashInput`(PR 3 `TaxRecordDtos`와 같은 필드).
+  - `taxKeys.year(year)` = `['tax', 'year', year]`, `taxKeys.currentLaw(year)` = `['tax', 'law', 'current', year]`.
+  - `useTaxYearView(year)`(useQuery), `useTaxSave(year, save)`(성공하면 응답 `TaxYearView`로 캐시 교체), `isStale(error)`(409·404).
+  - `TaxYearProvider({ children, today? })`, `useTaxYear(): { year; setYear(year); choices: number[] }`, `seoulYear(now: Date): number`.
+  - `TaxHeader()` — 넓은 화면 `h1` "소득공제", 오른쪽 `귀속연도` 선택, "개인 자료 · 그룹과 무관".
+  - 아이콘 이름 `'calculator'`(Lucide `calculator`, lucide-static 1.61.0 경로. 리뷰어는 그 버전 SVG와 대조한다).
 
-**담당:** Codex `gpt-6-sol` / `medium` (`write`), 태그 `impl-web`. 리뷰: Claude Fable 5.2.
+- [ ] **Step 1: 실패하는 테스트 작성** — 새 테스트 파일 둘과 기존 테스트 고침.
 
-- Files: Create `tax/inputs/TaxInputsPage.tsx`, `BasicInfoDialog.tsx`, `DeleteYearDialog.tsx`, CSS, 테스트.
-- 테스트 대상(AC-30, 40, 32 일부): 연도 기록 없음 → 빈 상태와 [기본정보 입력], 총급여·근로기간(시작월 ≤ 종료월)·자녀등 수 저장, 자녀등 입력란은 현재 적용 세법의 `childTiersApply`일 때만 보이고 요건 3가지는 라벨 옆 `HelpButton`("자녀등 수 도움말")으로 열림, 근로기간이 전체가 아니면 "근로기간 확인 필요" 표시, 총급여는 "수입" 가림을 따르고 입력 중인 필드는 가리지 않음, 연도 기록 삭제 창의 [삭제]는 귀속연도를 똑같이 입력해야 켜지고 다시 열면 입력이 비어 있음, 세법 준비 중인 연도의 저장 가능 안내, 409면 "다른 곳에서 수정됨, 다시 불러오기", 통신 오류 때 입력값 유지.
+`apps/web/src/tax/TaxHeader.test.tsx` 전체:
 
-### Task 5.4: 카드 자료·현금영수증 자료 (TAX-21~25, 28, 29, 30)
+```tsx
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { I18nProvider } from 'react-aria-components'
+import { describe, expect, it } from 'vitest'
+import TaxHeader from './TaxHeader'
+import { seoulYear, TaxYearProvider, useTaxYear } from './TaxYearProvider'
 
-**담당:** Codex `gpt-6-sol` / `medium` (`write`), 태그 `impl-web`. 리뷰: Claude Fable 5.2.
+function Year() {
+  return <p>선택: {useTaxYear().year}</p>
+}
 
-- Files: Create `tax/inputs/CardStatementList.tsx`, `CardStatementDialog.tsx`, `CashReceiptSection.tsx`, `CashReceiptDialog.tsx`, `AmountGrid.tsx`(8칸·4칸 입력표), 테스트.
-- 테스트 대상(AC-14, 28, 33, 37, 40): 8칸(행 소비구분 4 × 열 신용카드/체크카드)·4칸 입력, 빈 칸과 0 구별·미완료 표시와 빈 칸 수, [빈 칸 0원으로 채우기], 같은 카드사명 두 건 저장되고 경고 없음, 결제수단 명칭이 신용카드·체크카드·현금영수증, "일반" 한 줄 안내와 상세 `HelpButton`, 카드사 행의 [편집]·[삭제]가 행 오른쪽 끝(긴 카드사명에서도), 음수·연도 밖 기준일은 필드 오류로 저장 안 함, 카드 자료 삭제는 입력 없이 확인 한 번, 현금영수증에는 삭제가 없고 편집만, 저장 409 안내, 모든 창이 `centered`.
+function renderHeader(today: Date) {
+  render(
+    <I18nProvider locale="ko-KR">
+      <TaxYearProvider today={today}><TaxHeader /><Year /></TaxYearProvider>
+    </I18nProvider>,
+  )
+  return userEvent.setup()
+}
 
-### Task 5.5: 연도 합계표·경고·금액 가림 (TAX-26, 27, 30, 31, 37)
+describe('seoulYear', () => {
+  it('reads the year in Korea, not in UTC', () => {
+    expect(seoulYear(new Date('2026-12-31T14:59:00Z'))).toBe(2026)
+    expect(seoulYear(new Date('2026-12-31T15:00:00Z'))).toBe(2027)
+  })
+})
 
-**담당:** Codex `gpt-6-sol` / `medium` (`write`), 태그 `impl-web`. 리뷰: Claude Fable 5.2.
+describe('TaxHeader', () => {
+  it('starts at this year, offers last, this and next year, and says the data is personal', async () => {
+    const user = renderHeader(new Date('2026-11-20T00:00:00+09:00'))
 
-- Files: Create `tax/inputs/YearTotalsTable.tsx`, 테스트. Modify `TaxInputsPage.tsx`.
-- 테스트 대상(AC-15, 31, 32): 합계표가 응답의 `totals` 12칸을 보여 줌(웹에서 다시 더하지 않는다), 375px 배치(행 합계 열 대신 소비구분 이름 아래 "계 n"), 미입력 경고·기준일 불일치 경고, 자료 없음이면 "—", 공제대상액이 "지출" 가림을 따름.
+    expect(screen.getByRole('heading', { level: 1, name: '소득공제' })).toBeInTheDocument()
+    expect(screen.getByText('개인 자료 · 그룹과 무관')).toBeInTheDocument()
+    expect(screen.getByText('선택: 2026')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /귀속연도/ }))
+    expect(screen.getAllByRole('option').map((option) => option.textContent)).toEqual(['2025년', '2026년', '2027년'])
+
+    await user.click(screen.getByRole('option', { name: '2025년' }))
+
+    expect(screen.getByText('선택: 2025')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /귀속연도/ })).toHaveTextContent('2025년')
+  })
+})
+```
+
+`apps/web/src/tax/taxApi.test.ts` 전체:
+
+```ts
+import { http, HttpResponse } from 'msw'
+import { describe, expect, it } from 'vitest'
+import { server } from '../test/server'
+import { taxApi } from './taxApi'
+
+describe('taxApi', () => {
+  it('reads a missing year record or law version as null', async () => {
+    server.use(
+      http.get('*/api/tax/years/2026', () => HttpResponse.json({ code: 'NOT_FOUND', message: 'x' }, { status: 404 })),
+      http.get('*/api/tax/law-versions/current', () => HttpResponse.json({ code: 'NOT_FOUND', message: 'x' }, { status: 404 })),
+    )
+
+    expect(await taxApi.year(2026)).toBeNull()
+    expect(await taxApi.currentLaw(2026)).toBeNull()
+  })
+
+  it('still throws other errors', async () => {
+    server.use(http.get('*/api/tax/years/2026', () => HttpResponse.json({ code: 'X', message: 'x' }, { status: 500 })))
+
+    await expect(taxApi.year(2026)).rejects.toMatchObject({ status: 500 })
+  })
+
+  it('sends the row version it was given unchanged when deleting', async () => {
+    const urls: string[] = []
+    server.use(
+      http.delete('*/api/tax/years/2026', ({ request }) => { urls.push(request.url); return new HttpResponse(null, { status: 204 }) }),
+      http.delete('*/api/tax/years/2026/cards/7', ({ request }) => { urls.push(request.url); return new HttpResponse(null, { status: 204 }) }),
+    )
+
+    await taxApi.deleteYear(2026, 9007199254740991)
+    await taxApi.deleteCard(2026, 7, 41)
+
+    expect(urls.map((url) => new URL(url).search)).toEqual(['?rowVersion=9007199254740991', '?rowVersion=41'])
+  })
+})
+```
+
+`git apply`:
+
+```diff
+diff --git a/apps/web/src/api/queryClient.test.ts b/apps/web/src/api/queryClient.test.ts
+index 031c88a..9b8ee93 100644
+--- a/apps/web/src/api/queryClient.test.ts
++++ b/apps/web/src/api/queryClient.test.ts
+@@ -27,6 +27,8 @@ describe('isGroupScopedKey', () => {
+     expect(isGroupScopedKey(['categories'])).toBe(false)
+     expect(isGroupScopedKey(['groups'])).toBe(false)
+     expect(isGroupScopedKey(['transactions', 'mine', '2026-10'])).toBe(false)
++    expect(isGroupScopedKey(['tax', 'year', 2026])).toBe(false)
++    expect(isGroupScopedKey(['tax', 'law', 'current', 2026])).toBe(false)
+   })
+ })
+ 
+@@ -43,6 +45,18 @@ describe('createQueryClient', () => {
+     expect(client.getQueryState(['groups'])?.isInvalidated).toBe(true)
+   })
+ 
++  it('leaves the group list alone when a tax query is not found', async () => {
++    const client = createQueryClient()
++    client.setQueryData(['groups'], [])
++
++    await client.prefetchQuery({
++      queryKey: ['tax', 'year', 2026],
++      queryFn: () => Promise.reject(new ApiError(404, 'NOT_FOUND', 'x')),
++    })
++
++    expect(client.getQueryState(['groups'])?.isInvalidated).toBe(false)
++  })
++
+   it('leaves the group list alone for other errors', async () => {
+     const client = createQueryClient()
+     client.setQueryData(['groups'], [])
+diff --git a/apps/web/src/app/AppRoutes.test.tsx b/apps/web/src/app/AppRoutes.test.tsx
+index 8be0abf..6843044 100644
+--- a/apps/web/src/app/AppRoutes.test.tsx
++++ b/apps/web/src/app/AppRoutes.test.tsx
+@@ -81,12 +81,44 @@ describe('AppRoutes', () => {
+     renderApp('/')
+     const nav = await screen.findByRole('navigation', { name: '주 메뉴' })
+     expect(within(nav).getAllByRole('link').map((l) => l.textContent))
+-      .toEqual(['홈', '대시보드', '대분류', '소분류', '거래 목록', '그룹 관리'])
++      .toEqual(['홈', '소득공제', '입력자료', '대시보드', '대분류', '소분류', '거래 목록', '그룹 관리'])
+     expect(within(nav).getByRole('link', { name: '대분류' })).toHaveAttribute('href', '/dashboard/major')
+     expect(within(nav).getByRole('link', { name: '소분류' })).toHaveAttribute('href', '/dashboard/minor')
+     expect(within(nav).getByRole('link', { name: '대시보드' })).not.toHaveAttribute('aria-current')
+   })
+ 
++  it('opens 소득공제 at its inputs screen with the sub-link marked and no law admin link', async () => {
++    signedIn([])
++    server.use(
++      http.get('*/api/tax/years/:year', () => HttpResponse.json({ code: 'NOT_FOUND', message: 'x' }, { status: 404 })),
++      http.get('*/api/tax/law-versions/current', () => HttpResponse.json({ code: 'NOT_FOUND', message: 'x' }, { status: 404 })),
++    )
++    renderApp('/')
++    const user = userEvent.setup()
++
++    const nav = await screen.findByRole('navigation', { name: '주 메뉴' })
++    await user.click(within(nav).getByRole('link', { name: '소득공제' }))
++
++    expect(await screen.findByRole('heading', { level: 1, name: '소득공제' })).toBeInTheDocument()
++    expect(within(nav).getByRole('link', { name: '입력자료' })).toHaveAttribute('aria-current', 'page')
++    expect(within(nav).getByRole('link', { name: '소득공제' })).toHaveAttribute('aria-current', 'true')
++    expect(screen.queryByRole('link', { name: /세법 관리/ })).not.toBeInTheDocument()
++  })
++
++  it('does not carry the dashboard month into the tax sub-link', async () => {
++    mockViewport(false)
++    signedIn([{ groupId: 10, name: '우리집', myRole: 'ADMIN', memberCount: 3 }])
++    server.use(
++      http.get('*/api/groups/10/summary', () => HttpResponse.json({ month: '2026-08', income: 0, expense: 0, byCategory: [], byMember: [] })),
++      http.get('*/api/groups/10/summary/trend', () => HttpResponse.json({ months: [], categories: [] })),
++    )
++    renderApp('/dashboard/major?month=2026-08')
++
++    const nav = await screen.findByRole('navigation', { name: '주 메뉴' })
++    expect(within(nav).getByRole('link', { name: '대분류' })).toHaveAttribute('href', '/dashboard/major?month=2026-08')
++    expect(within(nav).getByRole('link', { name: '입력자료' })).toHaveAttribute('href', '/tax/inputs')
++  })
++
+   it('marks only the current dashboard sub-link as the page', async () => {
+     mockViewport(false)
+     signedIn([{ groupId: 10, name: '우리집', myRole: 'ADMIN', memberCount: 3 }])
+@@ -422,7 +454,7 @@ describe('AppRoutes on a narrow screen', () => {
+     const navs = await screen.findAllByRole('navigation', { name: '주 메뉴' })
+     expect(navs).toHaveLength(1)
+     const names = within(navs[0]).getAllByRole('link').map((link) => link.textContent)
+-    expect(names).toEqual(['홈', '대시보드', '거래', '그룹'])
++    expect(names).toEqual(['홈', '소득공제', '대시보드', '거래', '그룹'])
+     expect(within(navs[0]).getByRole('link', { name: '홈' })).toHaveAttribute('aria-current', 'page')
+     // 닉네임과 로그아웃은 상단 바에 없고 계정 시트 안에 있다.
+     expect(screen.queryByRole('button', { name: '로그아웃' })).not.toBeInTheDocument()
+diff --git a/apps/web/src/app/BottomTabBar.test.tsx b/apps/web/src/app/BottomTabBar.test.tsx
+index 0563903..24f53e3 100644
+--- a/apps/web/src/app/BottomTabBar.test.tsx
++++ b/apps/web/src/app/BottomTabBar.test.tsx
+@@ -14,16 +14,22 @@ function renderAt(path: string) {
+ }
+ 
+ describe('BottomTabBar', () => {
+-  it('shows four short-named links', () => {
++  it('shows five short-named links with 소득공제 second', () => {
+     const nav = renderAt('/')
+     const names = within(nav).getAllByRole('link').map((link) => link.textContent)
+-    expect(names).toEqual(['홈', '대시보드', '거래', '그룹'])
++    expect(names).toEqual(['홈', '소득공제', '대시보드', '거래', '그룹'])
++    expect(within(nav).getByRole('link', { name: '소득공제' })).toHaveAttribute('href', '/tax')
++  })
++
++  it('marks 소득공제 on its sub-screens', () => {
++    const nav = renderAt('/tax/inputs')
++    expect(within(nav).getByRole('link', { name: '소득공제' })).toHaveAttribute('aria-current', 'page')
+   })
+ 
+   it('marks only the current screen', () => {
+     const nav = renderAt('/transactions')
+     expect(within(nav).getByRole('link', { name: '거래' })).toHaveAttribute('aria-current', 'page')
+-    for (const name of ['홈', '대시보드', '그룹']) {
++    for (const name of ['홈', '소득공제', '대시보드', '그룹']) {
+       expect(within(nav).getByRole('link', { name })).not.toHaveAttribute('aria-current')
+     }
+   })
+```
+
+- [ ] **Step 2: 실패 확인**
+
+Run: `cd apps/web && npx vitest run src/app/BottomTabBar.test.tsx src/app/AppRoutes.test.tsx src/api/queryClient.test.ts src/tax`
+Expected: `src/tax/TaxHeader.test.tsx`·`src/tax/taxApi.test.ts`는 `Failed to resolve import "./TaxHeader"`·`"./taxApi"`로 파일째 FAIL. 나머지에서 7건 FAIL(하단 탭 3건, 사이드바 목록·소득공제 진입·`?month=`·좁은 화면 탭 4건), 38건 PASS(`queryClient`의 새 2건은 지금도 통과하는 회귀 방지).
+
+- [ ] **Step 3: API 모듈**
+
+`apps/web/src/tax/taxApi.ts` 전체:
+
+```ts
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { apiFetch } from '../api/client'
+import { ApiError } from '../api/errors'
+
+// PR 3 응답(TaxRecordDtos)과 같은 모양. 금액은 원 단위 정수, null은 미입력이다.
+// rowVersion은 서버가 주는 불투명한 값(JS 안전 정수 이하)이다. 받은 값을 그대로 돌려보내고 계산하지 않는다.
+export type CardAmounts = {
+  creditGeneral: number | null; creditMarket: number | null; creditTransit: number | null; creditCulture: number | null
+  debitGeneral: number | null; debitMarket: number | null; debitTransit: number | null; debitCulture: number | null
+}
+export type CashAmounts = { general: number | null; market: number | null; transit: number | null; culture: number | null }
+export type CardView = { id: number; rowVersion: number; issuerName: string; asOfDate: string; memo: string | null; amounts: CardAmounts; blankCount: number }
+export type CashView = { rowVersion: number; asOfDate: string; memo: string | null; amounts: CashAmounts; blankCount: number }
+export type PlanRow = { creditFixed: number; debitFixed: number; flexible: number }
+export type PlanView = { rowVersion: number; general: PlanRow; market: PlanRow; transit: PlanRow; culture: PlanRow }
+export type LawVersionRef = { id: number; versionNo: number; appliedAt: string; childTiersApply: boolean }
+/** 연도 합계표 12칸. 서버가 그 연도 자료를 더한 값이고 웹은 자료에서 다시 더하지 않는다. */
+export type SpendingTotals = Record<keyof CardAmounts | 'cashGeneral' | 'cashMarket' | 'cashTransit' | 'cashCulture', number>
+export type TaxYearView = {
+  taxYear: number; rowVersion: number; totalSalary: number; workStartMonth: number; workEndMonth: number; childCount: number
+  lawVersion: LawVersionRef | null; newerLawVersion: boolean; cards: CardView[]; cashReceipt: CashView | null; plan: PlanView | null
+  totals: SpendingTotals; blankCount: number; hasInputs: boolean; asOfDateMismatch: boolean
+}
+/** 회원용 현재 적용 세법(`GET /tax/law-versions/current`) 가운데 화면이 쓰는 칸. */
+export type CurrentLaw = { id: number; taxYear: number; versionNo: number; appliedAt: string; childTiersApply: boolean }
+
+export type BasicInfoInput = { totalSalary: number; workStartMonth: number; workEndMonth: number; childCount: number; rowVersion?: number }
+export type CardInput = { issuerName: string; asOfDate: string; memo: string | null; amounts: CardAmounts; rowVersion?: number }
+export type CashInput = { asOfDate: string; memo: string | null; amounts: CashAmounts; rowVersion?: number }
+
+const yearPath = (year: number) => `/tax/years/${year}`
+
+/** 404는 "없음"(연도 기록 없음, 적용 세법 없음)이라 null로 돌려준다. 그룹 쿼리처럼 그룹 목록을 다시 부르지 않는다. */
+async function orNull<T>(request: Promise<T>): Promise<T | null> {
+  try {
+    return await request
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) return null
+    throw error
+  }
+}
+
+export const taxApi = {
+  year: (year: number) => orNull(apiFetch<TaxYearView>(yearPath(year))),
+  /** rowVersion이 없으면 연도 기록을 만들고(201), 있으면 기본정보를 고친다(200). */
+  saveBasicInfo: (year: number, body: BasicInfoInput) => apiFetch<TaxYearView>(yearPath(year), { method: 'PUT', json: body }),
+  deleteYear: (year: number, rowVersion: number) => apiFetch<void>(`${yearPath(year)}?rowVersion=${rowVersion}`, { method: 'DELETE' }),
+  addCard: (year: number, body: CardInput) => apiFetch<TaxYearView>(`${yearPath(year)}/cards`, { method: 'POST', json: body }),
+  saveCard: (year: number, cardId: number, body: CardInput) =>
+    apiFetch<TaxYearView>(`${yearPath(year)}/cards/${cardId}`, { method: 'PUT', json: body }),
+  deleteCard: (year: number, cardId: number, rowVersion: number) =>
+    apiFetch<void>(`${yearPath(year)}/cards/${cardId}?rowVersion=${rowVersion}`, { method: 'DELETE' }),
+  saveCashReceipt: (year: number, body: CashInput) => apiFetch<TaxYearView>(`${yearPath(year)}/cash-receipt`, { method: 'PUT', json: body }),
+  currentLaw: (year: number) => orNull(apiFetch<CurrentLaw>(`/tax/law-versions/current?year=${year}`)),
+}
+
+/** 소득공제 쿼리 키. 머리말 `tax`는 isGroupScopedKey가 보지 않고, 로그아웃 때 queryClient.clear()로 지워진다. */
+export const taxKeys = {
+  year: (year: number) => ['tax', 'year', year] as const,
+  currentLaw: (year: number) => ['tax', 'law', 'current', year] as const,
+}
+
+export function useTaxYearView(year: number) {
+  return useQuery({ queryKey: taxKeys.year(year), queryFn: () => taxApi.year(year) })
+}
+
+/** TaxYearView를 돌려주는 저장. 응답으로 캐시를 바꾼다(합계를 다시 계산하지 않는다). */
+export function useTaxSave<T>(year: number, save: (input: T) => Promise<TaxYearView>) {
+  const client = useQueryClient()
+  return useMutation({ mutationFn: save, onSuccess: (view) => client.setQueryData(taxKeys.year(year), view) })
+}
+
+/** 다른 곳에서 먼저 고쳤거나(409) 지운(404) 자료에 대한 저장. 새로 불러와야 다시 저장할 수 있다. */
+export function isStale(error: unknown): boolean {
+  return error instanceof ApiError && (error.status === 409 || error.status === 404)
+}
+```
+
+- [ ] **Step 4: 선택 연도와 머리**
+
+`apps/web/src/tax/TaxYearProvider.tsx` 전체:
+
+```tsx
+import { createContext, useContext, useState, type ReactNode } from 'react'
+
+const yearFormat = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Seoul', year: 'numeric' })
+
+/** 한국 시각 기준 올해. 서버가 연도 기록을 만들 수 있는 범위(올해·전년도·다음 해)와 같은 기준이다. */
+// oxlint-disable-next-line react/only-export-components
+export function seoulYear(now: Date): number {
+  return Number(yearFormat.format(now))
+}
+
+type TaxYear = { year: number; setYear: (year: number) => void; choices: number[] }
+const TaxYearContext = createContext<TaxYear | null>(null)
+
+/**
+ * 소득공제 화면이 기억하는 귀속연도. React 상태(메모리)에만 둔다(TAX-07).
+ * 로그인 레이아웃 안에 있어 로그아웃하면 사라지고, 새로 고치면 올해로 돌아간다.
+ */
+export function TaxYearProvider({ children, today }: { children: ReactNode; today?: Date }) {
+  // 선택지는 로그인 동안 고정한다. 자정을 넘겨 연도가 바뀌어도 새로 고칠 때까지 같은 3개다.
+  const [thisYear] = useState(() => seoulYear(today ?? new Date()))
+  const [year, setYear] = useState(thisYear)
+  return (
+    <TaxYearContext.Provider value={{ year, setYear, choices: [thisYear - 1, thisYear, thisYear + 1] }}>
+      {children}
+    </TaxYearContext.Provider>
+  )
+}
+
+// oxlint-disable-next-line react/only-export-components
+export function useTaxYear(): TaxYear {
+  const value = useContext(TaxYearContext)
+  if (!value) throw new Error('useTaxYear는 TaxYearProvider 안에서만 쓴다')
+  return value
+}
+```
+
+`apps/web/src/tax/TaxHeader.tsx` 전체:
+
+```tsx
+import { menuLabel } from '../app/menu'
+import PageHeader from '../common/PageHeader'
+import Select from '../common/Select'
+import ui from '../common/ui.module.css'
+import { useTaxYear } from './TaxYearProvider'
+
+/** 소득공제 화면 머리: 제목(넓은 화면), 오른쪽 귀속연도 선택, 개인 자료 표시(TAX-13). */
+export default function TaxHeader() {
+  const { year, setYear, choices } = useTaxYear()
+  return (
+    <>
+      <PageHeader title={menuLabel('/tax')} action={
+        <Select label="귀속연도" items={choices.map((y) => ({ id: y, label: `${y}년` }))}
+          selectedKey={year} onSelectionChange={(key) => { if (key != null) setYear(Number(key)) }} />
+      } />
+      <p className={ui.muted}>개인 자료 · 그룹과 무관</p>
+    </>
+  )
+}
+```
+
+`apps/web/src/tax/inputs/TaxInputsPage.tsx` 전체(첫 판):
+
+```tsx
+import ui from '../../common/ui.module.css'
+import { usePageTitle } from '../../common/usePageTitle'
+import TaxHeader from '../TaxHeader'
+
+/** 소득공제 › 입력자료. 내용은 Task 5.3~5.5에서 채운다. */
+export default function TaxInputsPage() {
+  usePageTitle('입력자료 · 소득공제')
+  return <div className={ui.stack}><TaxHeader /></div>
+}
+```
+
+- [ ] **Step 5: 아이콘·메뉴·라우트·사이드바 하위 링크**
+
+`git apply`:
+
+```diff
+diff --git a/apps/web/src/app/AppLayout.tsx b/apps/web/src/app/AppLayout.tsx
+index 7668233..74f3cc6 100644
+--- a/apps/web/src/app/AppLayout.tsx
++++ b/apps/web/src/app/AppLayout.tsx
+@@ -90,7 +90,8 @@ export default function AppLayout() {
+                 <Icon name={item.icon} />{item.label}
+               </NavLink>
+               {item.children?.map((child) => (
+-                <NavLink key={child.to} to={inDashboard ? child.to + location.search : child.to} replace={inDashboard}
++                <NavLink key={child.to} to={inDashboard && item.to === '/dashboard' ? child.to + location.search : child.to}
++                  replace={inDashboard && item.to === '/dashboard'}
+                   className={({ isActive }) => `${styles.link} ${styles.subLink}${isActive ? ` ${styles.active}` : ''}`}>
+                   {child.label}
+                 </NavLink>
+diff --git a/apps/web/src/app/AppRoutes.tsx b/apps/web/src/app/AppRoutes.tsx
+index bab5e1b..c06bc31 100644
+--- a/apps/web/src/app/AppRoutes.tsx
++++ b/apps/web/src/app/AppRoutes.tsx
+@@ -8,12 +8,14 @@ import ClearCacheOnSignOut from './ClearCacheOnSignOut'
+ import PageLoading from './PageLoading'
+ import PublicOnly from './PublicOnly'
+ import RequireAuth from './RequireAuth'
++import { TaxYearProvider } from '../tax/TaxYearProvider'
+ 
+ const LoginPage = lazy(() => import('../auth/LoginPage'))
+ const InvitePage = lazy(() => import('../invite/InvitePage'))
+ const DashboardPage = lazy(() => import('../dashboard/DashboardPage'))
+ const TransactionsPage = lazy(() => import('../transactions/TransactionsPage'))
+ const GroupsPage = lazy(() => import('../groups/GroupsPage'))
++const TaxInputsPage = lazy(() => import('../tax/inputs/TaxInputsPage'))
+ 
+ /** 옛 업로드 주소. 홈의 월별 등록 현황이 ?month=를 받아 그 달 창을 연다. */
+ function UploadRedirect() {
+@@ -28,8 +30,11 @@ export default function AppRoutes() {
+         <Routes>
+           <Route path="/login" element={<PublicOnly><LoginPage /></PublicOnly>} />
+           <Route path="/invite/:token" element={<RequireAuth><InvitePage /></RequireAuth>} />
+-          <Route element={<RequireAuth><GroupProvider><AppLayout /></GroupProvider></RequireAuth>}>
++          <Route element={<RequireAuth><GroupProvider><TaxYearProvider><AppLayout /></TaxYearProvider></GroupProvider></RequireAuth>}>
+             <Route index element={<HomePage />} />
++            {/* PR 7에서 TAX-68(자료가 있으면 분석) 규칙으로 바꾼다. */}
++            <Route path="tax" element={<Navigate to="/tax/inputs" replace />} />
++            <Route path="tax/inputs" element={<TaxInputsPage />} />
+             <Route path="dashboard/:level?/:view?" element={<DashboardPage />} />
+             <Route path="transactions" element={<TransactionsPage />} />
+             <Route path="upload" element={<UploadRedirect />} />
+diff --git a/apps/web/src/app/menu.ts b/apps/web/src/app/menu.ts
+index 835d6b9..2f78e63 100644
+--- a/apps/web/src/app/menu.ts
++++ b/apps/web/src/app/menu.ts
+@@ -9,6 +9,8 @@ export type MenuItem = {
+ // 사이드바는 label, 좁은 화면의 하단 탭은 shortLabel을 쓴다.
+ export const MENU: MenuItem[] = [
+   { to: '/', label: '홈', shortLabel: '홈', icon: 'home', end: true },
++  { to: '/tax', label: '소득공제', shortLabel: '소득공제', icon: 'calculator', end: false,
++    children: [{ to: '/tax/inputs', label: '입력자료' }] },
+   { to: '/dashboard', label: '대시보드', shortLabel: '대시보드', icon: 'dashboard', end: false,
+     children: [{ to: '/dashboard/major', label: '대분류' }, { to: '/dashboard/minor', label: '소분류' }] },
+   { to: '/transactions', label: '거래 목록', shortLabel: '거래', icon: 'receipt', end: false },
+diff --git a/apps/web/src/common/Icon.tsx b/apps/web/src/common/Icon.tsx
+index 286e329..ce714da 100644
+--- a/apps/web/src/common/Icon.tsx
++++ b/apps/web/src/common/Icon.tsx
+@@ -128,6 +128,7 @@ const ICONS = {
+       <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+     </>
+   ),
++  calculator: <><rect width="16" height="20" x="4" y="2" rx="2" /><line x1="8" x2="16" y1="6" y2="6" /><line x1="16" x2="16" y1="14" y2="18" /><path d="M16 10h.01" /><path d="M12 10h.01" /><path d="M8 10h.01" /><path d="M12 14h.01" /><path d="M8 14h.01" /><path d="M12 18h.01" /><path d="M8 18h.01" /></>,
+   history: <><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /><path d="M3 3v5h5" /><path d="M12 7v5l4 2" /></>,
+   // 도메인: 뱅크샐러드 엑셀 올리기. 시트 문서 오른쪽 아래에 올리기 화살표를 둔다.
+   'sheet-upload': (
+```
+
+- [ ] **Step 6: 통과 확인**
+
+Run: `cd apps/web && npx vitest run src/app/BottomTabBar.test.tsx src/app/AppRoutes.test.tsx src/api/queryClient.test.ts src/tax && npx tsc -b && npx oxlint`
+Expected: 5파일 50 passed, 타입 오류 없음, `src/tax`에 lint 경고 없음.
+
+- [ ] **Step 7: 커밋(컨트롤러)**
+
+```bash
+git add apps/web/src/tax apps/web/src/app apps/web/src/api/queryClient.test.ts apps/web/src/common/Icon.tsx
+git commit -m "feat(web): 소득공제 메뉴와 선택 연도·API 모듈을 더함" -m "Co-Authored-By: Codex (gpt-6-sol) <noreply@openai.com>"
+```
+
+### Task 5.3: 입력자료 화면 — 연도 선택·기본정보·연도 기록 삭제와 캐시 테스트 (TAX-01, 07, 13, 20, 28, 29, 31, 37, AC-02·06·30·32·33·40·44)
+
+**담당:** Codex `gpt-6-sol` / `medium` (`write`), 태그 `impl-web`. 리뷰: Claude Sonnet 5.5 (`review-task`).
+
+**Files:**
+- Create: `apps/web/src/tax/inputs/BasicInfoDialog.tsx`, `DeleteYearDialog.tsx`, `SaveError.tsx`, `inputs.module.css`
+- Modify (전체 교체): `apps/web/src/tax/inputs/TaxInputsPage.tsx`
+- Create (테스트 지원): `apps/web/src/test/taxFixtures.tsx`
+- Test: `apps/web/src/tax/inputs/TaxInputsPage.test.tsx`(생성), `app/AppRoutes.test.tsx`(수정: 로그아웃·다른 회원·저장소·그룹 전환)
+
+**Interfaces:**
+- Consumes: Task 5.2의 `useTaxYear`, `useTaxYearView`, `useTaxSave`, `isStale`, `taxApi`, `taxKeys`, `TaxHeader`. Task 5.1의 `Dialog`(`centered`), `HelpButton`. `MoneyField({ label, value, onChange, isRequired, minValue })`, `Select`(`variant="field"`), `TextField`, `useAmountFormatter('income')`, `toast`, `errorMessage`.
+- Produces:
+  - `BasicInfoDialog({ year, view: TaxYearView | null, childTiersApply: boolean, onClose })` — `view`가 null이면 `rowVersion` 없이 만든다.
+  - `DeleteYearDialog({ view: TaxYearView, onClose })` — 귀속연도를 똑같이 입력해야 [삭제], `?rowVersion=`은 `view.rowVersion` 그대로.
+  - `SaveError({ error, year, onReload })` — 입력 창의 저장 실패 문구와 [다시 불러오기].
+  - `inputs.module.css` 클래스: `page`, `split`, `actions`, `titleWithHelp`, `facts`, `amount`, `note`, `empty`, `months`, `labelRow`, `fieldError`. Task 5.4가 화면 뿌리 글자 토큰과 `list`·`rowInfo`·`name`·`gridTitle`·`amountGroup`을 더해 통째로 바꾼다.
+  - 테스트 지원 `taxToday`, `yearView(overrides)`, `cardView(overrides)`, `law2026`, `serveTax(view | null, law | null = law2026): { year: number }`(GET 횟수), `renderTaxInputs({ groups? })`(`AmountMaskProvider` + `TaxYearProvider today={taxToday}` + `renderPage`).
+  - 화면 구조(5.4·5.5가 넣을 자리): 머리 → 불러오는 중·오류 → "세법 준비 중" → 빈 상태 또는 [기본정보 카드 …] → 연도 기록 삭제 카드.
+
+- [ ] **Step 1: 실패하는 테스트 작성** — 테스트 지원 파일, 화면 테스트, 앱 테스트 추가. 금액은 모두 합성값이다.
+
+`apps/web/src/test/taxFixtures.tsx` 전체:
+
+```tsx
+import { http, HttpResponse } from 'msw'
+import { AmountMaskProvider } from '../common/AmountMask'
+import TaxInputsPage from '../tax/inputs/TaxInputsPage'
+import type { CardView, CurrentLaw, TaxYearView } from '../tax/taxApi'
+import { TaxYearProvider } from '../tax/TaxYearProvider'
+import { renderPage } from './renderPage'
+import { server } from './server'
+
+// 소득공제 화면 테스트용 합성값. 실제 급여·카드 금액이 아니다.
+export const taxToday = new Date('2026-11-20T09:00:00+09:00')
+
+const zeroTotals = {
+  creditGeneral: 0, creditMarket: 0, creditTransit: 0, creditCulture: 0,
+  debitGeneral: 0, debitMarket: 0, debitTransit: 0, debitCulture: 0,
+  cashGeneral: 0, cashMarket: 0, cashTransit: 0, cashCulture: 0,
+}
+
+export function yearView(overrides: Partial<TaxYearView> = {}): TaxYearView {
+  return {
+    taxYear: 2026, rowVersion: 777, totalSalary: 50_000_000, workStartMonth: 1, workEndMonth: 12, childCount: 0,
+    lawVersion: { id: 1, versionNo: 1, appliedAt: '2026-01-02T00:00:00Z', childTiersApply: true }, newerLawVersion: false,
+    cards: [], cashReceipt: null, plan: null, totals: zeroTotals, blankCount: 4, hasInputs: false, asOfDateMismatch: false,
+    ...overrides,
+  }
+}
+
+export function cardView(overrides: Partial<CardView> = {}): CardView {
+  return {
+    id: 7, rowVersion: 3, issuerName: 'A카드', asOfDate: '2026-10-31', memo: '주 사용 카드',
+    amounts: {
+      creditGeneral: 9_000_000, creditMarket: 300_000, creditTransit: 200_000, creditCulture: 100_000,
+      debitGeneral: 0, debitMarket: 0, debitTransit: 0, debitCulture: 0,
+    },
+    blankCount: 0,
+    ...overrides,
+  }
+}
+
+export const law2026: CurrentLaw = { id: 1, taxYear: 2026, versionNo: 1, appliedAt: '2026-01-02T00:00:00Z', childTiersApply: true }
+
+const notFound = () => HttpResponse.json({ code: 'NOT_FOUND', message: 'not found' }, { status: 404 })
+
+/** GET 연도 기록과 현재 적용 세법. null이면 404(없음)다. 연도 기록 GET 횟수를 센다. */
+export function serveTax(view: TaxYearView | null, law: CurrentLaw | null = law2026) {
+  const calls = { year: 0 }
+  server.use(
+    http.get('*/api/tax/years/:year', () => {
+      calls.year++
+      return view ? HttpResponse.json(view) : notFound()
+    }),
+    http.get('*/api/tax/law-versions/current', () => (law ? HttpResponse.json(law) : notFound())),
+  )
+  return calls
+}
+
+export function renderTaxInputs(options: { groups?: unknown[] } = {}) {
+  return renderPage(
+    <AmountMaskProvider><TaxYearProvider today={taxToday}><TaxInputsPage /></TaxYearProvider></AmountMaskProvider>,
+    options,
+  )
+}
+```
+
+`apps/web/src/tax/inputs/TaxInputsPage.test.tsx` 전체:
+
+```tsx
+import { screen, waitFor, within } from '@testing-library/react'
+import { http, HttpResponse } from 'msw'
+import { beforeEach, describe, expect, it } from 'vitest'
+import { mockViewport } from '../../test/mockViewport'
+import { server } from '../../test/server'
+import { renderTaxInputs, serveTax, yearView } from '../../test/taxFixtures'
+
+beforeEach(() => {
+  try { localStorage.clear() } catch { /* storage may be unavailable */ }
+})
+
+describe('TaxInputsPage — 기본정보와 연도 기록', () => {
+  it('creates the year record from the empty state in a centered dialog, without any group', async () => {
+    mockViewport(true)
+    serveTax(null)
+    let body: unknown
+    server.use(http.put('*/api/tax/years/2026', async ({ request }) => {
+      body = await request.json()
+      return HttpResponse.json(yearView({ childCount: 2 }), { status: 201 })
+    }))
+    const { user } = renderTaxInputs({ groups: [] })
+
+    expect(await screen.findByRole('heading', { name: '2026년 귀속 기록이 없습니다' })).toBeInTheDocument()
+    expect(screen.getByText('개인 자료 · 그룹과 무관')).toBeInTheDocument()
+    expect(screen.queryByText(/세법은 준비 중입니다/)).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '기본정보 입력' }))
+
+    const dialog = await screen.findByRole('dialog', { name: '2026년 귀속 기본정보' })
+    expect(dialog.parentElement).toHaveClass('modal')
+    await user.type(within(dialog).getByLabelText('예상 총급여'), '50000000')
+    await user.clear(within(dialog).getByLabelText('자녀등 수'))
+    await user.type(within(dialog).getByLabelText('자녀등 수'), '2')
+    await user.click(within(dialog).getByRole('button', { name: '저장' }))
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(body).toEqual({ totalSalary: 50_000_000, workStartMonth: 1, workEndMonth: 12, childCount: 2 })
+    const basic = screen.getByRole('region', { name: '기본정보' })
+    expect(basic).toHaveTextContent('₩ 50,000,000')
+    expect(basic).toHaveTextContent('1월 ~ 12월')
+    expect(basic).toHaveTextContent('2명')
+  })
+
+  it('explains the child rules in a help popover without closing the dialog or changing the value', async () => {
+    serveTax(null)
+    const { user } = renderTaxInputs()
+    await user.click(await screen.findByRole('button', { name: '기본정보 입력' }))
+    const dialog = await screen.findByRole('dialog', { name: '2026년 귀속 기본정보' })
+    const help = within(dialog).getByRole('button', { name: '자녀등 수 도움말' })
+
+    expect(screen.queryByText(/직계비속/)).not.toBeInTheDocument()
+    await user.click(help)
+    expect(await screen.findByRole('dialog', { name: '자녀등 수 도움말' })).toHaveTextContent('20세 이하')
+    await user.keyboard('{Escape}')
+
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: '자녀등 수 도움말' })).not.toBeInTheDocument())
+    expect(screen.getByRole('dialog', { name: '2026년 귀속 기본정보' })).toBeInTheDocument()
+    await waitFor(() => expect(help).toHaveFocus())
+    expect(within(dialog).getByLabelText('자녀등 수')).toHaveValue('0')
+  })
+
+  it('hides the child count and says the law is not ready when the year has no applied law', async () => {
+    serveTax(null, null)
+    const { user } = renderTaxInputs()
+
+    expect(await screen.findByText('2026년 귀속 세법은 준비 중입니다. 자료는 저장되며, 분석은 세법이 등록된 뒤 볼 수 있습니다.')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '기본정보 입력' }))
+
+    const dialog = await screen.findByRole('dialog', { name: '2026년 귀속 기본정보' })
+    expect(within(dialog).queryByLabelText('자녀등 수')).not.toBeInTheDocument()
+  })
+
+  it('edits the basic info with the row version it received and blocks a start month after the end month', async () => {
+    serveTax(yearView({ rowVersion: 9_007_199_254_740_991 }))
+    const bodies: unknown[] = []
+    server.use(http.put('*/api/tax/years/2026', async ({ request }) => {
+      bodies.push(await request.json())
+      return HttpResponse.json(yearView({ workStartMonth: 4, rowVersion: 12 }))
+    }))
+    const { user } = renderTaxInputs()
+
+    await user.click(await screen.findByRole('button', { name: '기본정보 수정' }))
+    const dialog = await screen.findByRole('dialog', { name: '2026년 귀속 기본정보' })
+    expect(within(dialog).getByLabelText('예상 총급여')).toHaveValue('50,000,000')
+    await user.click(within(dialog).getByRole('button', { name: /종료월/ }))
+    await user.click(screen.getByRole('option', { name: '3월' }))
+    await user.click(within(dialog).getByRole('button', { name: /시작월/ }))
+    await user.click(screen.getByRole('option', { name: '4월' }))
+
+    expect(within(dialog).getByRole('alert')).toHaveTextContent('시작월이 종료월보다 늦습니다.')
+    expect(within(dialog).getByRole('button', { name: '저장' })).toBeDisabled()
+    await user.click(within(dialog).getByRole('button', { name: /종료월/ }))
+    await user.click(screen.getByRole('option', { name: '12월' }))
+    await user.click(within(dialog).getByRole('button', { name: '저장' }))
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(bodies).toEqual([{ totalSalary: 50_000_000, workStartMonth: 4, workEndMonth: 12, childCount: 0, rowVersion: 9_007_199_254_740_991 }])
+    expect(screen.getByRole('region', { name: '기본정보' })).toHaveTextContent('4월 ~ 12월근로기간 확인 필요')
+  })
+
+  it('stops a stale save, keeps the input and reloads on request', async () => {
+    serveTax(yearView())
+    server.use(http.put('*/api/tax/years/2026', () => HttpResponse.json({ code: 'CONFLICT', message: 'x' }, { status: 409 })))
+    const { user } = renderTaxInputs()
+
+    await user.click(await screen.findByRole('button', { name: '기본정보 수정' }))
+    const dialog = await screen.findByRole('dialog', { name: '2026년 귀속 기본정보' })
+    const salary = within(dialog).getByLabelText('예상 총급여')
+    await user.clear(salary)
+    await user.type(salary, '61000000')
+    await user.click(within(dialog).getByRole('button', { name: '저장' }))
+
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('다른 곳에서 수정되거나 삭제됐습니다. 저장하지 않았습니다.')
+    expect(salary).toHaveValue('61,000,000')
+    serveTax(yearView({ totalSalary: 70_000_000, rowVersion: 900 }))
+    await user.click(within(dialog).getByRole('button', { name: '다시 불러오기' }))
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(await screen.findByText('₩ 70,000,000')).toBeInTheDocument()
+  })
+
+  it('keeps the input when the server cannot be reached', async () => {
+    serveTax(yearView())
+    server.use(http.put('*/api/tax/years/2026', () => HttpResponse.error()))
+    const { user } = renderTaxInputs()
+
+    await user.click(await screen.findByRole('button', { name: '기본정보 수정' }))
+    const dialog = await screen.findByRole('dialog', { name: '2026년 귀속 기본정보' })
+    await user.click(within(dialog).getByRole('button', { name: '저장' }))
+
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('서버에 연결하지 못했습니다. 잠시 후 다시 시도해 주세요. 입력한 값은 그대로 있습니다.')
+    expect(within(dialog).getByLabelText('예상 총급여')).toHaveValue('50,000,000')
+  })
+
+  it('masks the salary with the income setting but never the field being edited', async () => {
+    localStorage.setItem('saladbowl.amountMask', JSON.stringify({ INCOME: true }))
+    serveTax(yearView())
+    const { user } = renderTaxInputs()
+
+    const basic = await screen.findByRole('region', { name: '기본정보' })
+    expect(basic).toHaveTextContent('₩ •••••')
+    expect(basic).not.toHaveTextContent('50,000,000')
+    await user.click(screen.getByRole('button', { name: '기본정보 수정' }))
+    expect(within(await screen.findByRole('dialog')).getByLabelText('예상 총급여')).toHaveValue('50,000,000')
+  })
+
+  it('shows the salary when only the expense setting is masked', async () => {
+    localStorage.setItem('saladbowl.amountMask', JSON.stringify({ EXPENSE: true }))
+    serveTax(yearView())
+    renderTaxInputs()
+
+    expect(await screen.findByRole('region', { name: '기본정보' })).toHaveTextContent('₩ 50,000,000')
+  })
+
+  it('deletes the year only after the exact year is typed, starting empty each time', async () => {
+    mockViewport(true)
+    serveTax(yearView())
+    let url = ''
+    server.use(http.delete('*/api/tax/years/2026', ({ request }) => {
+      url = request.url
+      return new HttpResponse(null, { status: 204 })
+    }))
+    const { user } = renderTaxInputs()
+
+    await user.click(await screen.findByRole('button', { name: '2026년 기록 삭제' }))
+    let dialog = await screen.findByRole('dialog', { name: '2026년 기록을 삭제할까요?' })
+    expect(dialog.parentElement).toHaveClass('modal')
+    expect(dialog).toHaveTextContent('기본정보, 신용·체크 자료 0건, 현금영수증 자료, 지출계획이 모두 지워집니다')
+    const confirm = () => within(dialog).getByRole('button', { name: '삭제' })
+    expect(confirm()).toBeDisabled()
+    await user.type(within(dialog).getByLabelText('확인을 위해 귀속연도 2026을 입력하세요'), '2025')
+    expect(confirm()).toBeDisabled()
+    await user.click(within(dialog).getByRole('button', { name: '취소' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+
+    serveTax(null)
+    await user.click(screen.getByRole('button', { name: '2026년 기록 삭제' }))
+    dialog = await screen.findByRole('dialog', { name: '2026년 기록을 삭제할까요?' })
+    const input = within(dialog).getByLabelText('확인을 위해 귀속연도 2026을 입력하세요')
+    expect(input).toHaveValue('')
+    await user.type(input, '2026')
+    await user.click(confirm())
+
+    expect(await screen.findByRole('heading', { name: '2026년 귀속 기록이 없습니다' })).toBeInTheDocument()
+    expect(new URL(url).search).toBe('?rowVersion=777')
+  })
+
+  it('tells a failed load apart and retries it', async () => {
+    let fail = true
+    server.use(
+      http.get('*/api/tax/years/:year', () => (fail
+        ? HttpResponse.json({ code: 'X', message: 'x' }, { status: 500 })
+        : HttpResponse.json(yearView()))),
+    )
+    const { user } = renderTaxInputs()
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('입력자료를 불러오지 못했습니다.')
+    fail = false
+    await user.click(screen.getByRole('button', { name: '다시 시도' }))
+
+    expect(await screen.findByRole('region', { name: '기본정보' })).toBeInTheDocument()
+  })
+})
+```
+
+`git apply`:
+
+```diff
+diff --git a/apps/web/src/app/AppRoutes.test.tsx b/apps/web/src/app/AppRoutes.test.tsx
+index 6843044..b1c008a 100644
+--- a/apps/web/src/app/AppRoutes.test.tsx
++++ b/apps/web/src/app/AppRoutes.test.tsx
+@@ -9,6 +9,8 @@ import { setAccessToken } from '../api/client'
+ import { AuthProvider } from '../auth/AuthProvider'
+ import { mockViewport } from '../test/mockViewport'
+ import { server } from '../test/server'
++import { serveTax, yearView } from '../test/taxFixtures'
++import { seoulYear } from '../tax/TaxYearProvider'
+ import AppRoutes from './AppRoutes'
+ 
+ const me = { userId: 1, email: 'me@test.com', nickname: '나' }
+@@ -336,6 +338,58 @@ describe('AppRoutes', () => {
+     expect(await screen.findByRole('button', { name: /그룹/ })).toHaveTextContent('B의 그룹')
+   })
+ 
++  it('clears tax data on logout and never shows it to the next member or keeps it in browser storage', async () => {
++    const year = seoulYear(new Date())
++    signedIn([])
++    serveTax(yearView({ taxYear: year, totalSalary: 52_340_000 }))
++    server.use(http.post('*/api/auth/logout', () => new HttpResponse(null, { status: 204 })))
++    const client = renderApp('/tax/inputs')
++    const user = userEvent.setup()
++
++    expect(await screen.findByText('₩ 52,340,000')).toBeInTheDocument()
++    const stored = JSON.stringify({ ...window.localStorage }) + JSON.stringify({ ...window.sessionStorage })
++    expect(stored).not.toMatch(/52,?340,?000/)
++
++    await user.click(screen.getByRole('button', { name: '로그아웃' }))
++    await screen.findByRole('button', { name: '로그인' })
++    expect(client.getQueryData(['tax', 'year', year])).toBeUndefined()
++
++    server.use(
++      http.post('*/api/auth/login', () => HttpResponse.json({ accessToken: 'b1' })),
++      http.get('*/api/me', () => HttpResponse.json({ userId: 2, email: 'b@test.com', nickname: '비' })),
++      http.get('*/api/tax/years/:year', async () => {
++        await delay(300)
++        return HttpResponse.json({ code: 'NOT_FOUND', message: 'x' }, { status: 404 })
++      }),
++    )
++    await user.type(screen.getByLabelText('이메일'), 'b@test.com')
++    await user.type(screen.getByLabelText('비밀번호'), 'password1')
++    await user.click(screen.getByRole('button', { name: '로그인' }))
++    await user.click(await screen.findByRole('link', { name: '소득공제' }))
++
++    expect(await screen.findByText('입력자료 불러오는 중')).toBeInTheDocument()
++    expect(screen.queryByText('₩ 52,340,000')).not.toBeInTheDocument()
++    expect(await screen.findByRole('heading', { name: `${year}년 귀속 기록이 없습니다` })).toBeInTheDocument()
++  })
++
++  it('keeps the same tax data without a new request when the header group changes', async () => {
++    signedIn([
++      { groupId: 10, name: '우리집', myRole: 'ADMIN', memberCount: 3 },
++      { groupId: 20, name: '커플 가계부', myRole: 'MEMBER', memberCount: 2 },
++    ])
++    const calls = serveTax(yearView({ taxYear: seoulYear(new Date()) }))
++    renderApp('/tax/inputs')
++    const user = userEvent.setup()
++
++    expect(await screen.findByText('₩ 50,000,000')).toBeInTheDocument()
++    await user.click(await screen.findByRole('button', { name: /그룹/ }))
++    await user.click(screen.getByRole('option', { name: '커플 가계부' }))
++
++    expect(screen.getByRole('button', { name: /그룹/ })).toHaveTextContent('커플 가계부')
++    expect(screen.getByText('₩ 50,000,000')).toBeInTheDocument()
++    expect(calls.year).toBe(1)
++  })
++
+   it('returns to the invite page after logging in', async () => {
+     server.use(
+       http.post('*/api/auth/refresh', () => HttpResponse.json({ code: 'INVALID_TOKEN', message: 'x' }, { status: 401 })),
+```
+
+- [ ] **Step 2: 실패 확인**
+
+Run: `cd apps/web && npx vitest run src/tax/inputs src/app/AppRoutes.test.tsx`
+Expected: 12건 FAIL(화면 10건 — `Unable to find role="heading" and name "2026년 귀속 기록이 없습니다"` 등, 앱 2건 — `₩ 52,340,000`·`₩ 50,000,000`을 찾지 못함), 32건 PASS.
+
+- [ ] **Step 3: 화면 스타일**
+
+`apps/web/src/tax/inputs/inputs.module.css` 전체(5.3 판, Task 5.4가 통째로 바꾸고 5.5가 덧붙인다):
+
+```css
+/* 소득공제 입력자료 화면과 창. 글자 크기는 UI 표준(카드 제목 16px, 내용·금액 15px, 실행 버튼 14px, 보조 13px)을 이 모듈 안에서만 정한다. */
+.page { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
+.page h2 { margin: 0; font-size: var(--text-xl); line-height: 1.5; }
+.page section button { font-size: var(--text-card-action); }
+.page section p { margin: 0; }
+
+/* 정보는 왼쪽, 조작은 오른쪽 끝. 줄이 바뀌어도 조작은 오른쪽에 남고 긴 이름이 밀어내지 않는다. */
+.split { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2) var(--space-3); }
+.split > :first-child { flex: 1 1 12rem; min-width: 0; overflow-wrap: anywhere; }
+.actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-2); margin-left: auto; }
+.titleWithHelp { display: flex; align-items: center; gap: var(--space-1); min-width: 0; }
+.titleWithHelp > :first-child { min-width: 0; overflow-wrap: anywhere; }
+
+.facts { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--space-1) var(--space-4); margin: 0; font-size: var(--text-lg); line-height: 1.5; }
+.facts dt { color: var(--ink-muted); font-size: var(--text-md); }
+.facts dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.amount { font-variant-numeric: tabular-nums; }
+.note { margin-left: var(--space-2); color: var(--pending); font-size: var(--text-md); }
+.empty { align-items: flex-start; }
+
+/* 창 */
+.months { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); margin: 0; padding: 0; border: 0; min-width: 0; }
+.months legend { padding: 0; margin-bottom: var(--space-1); font-size: var(--text-md); font-weight: 500; color: var(--ink-muted); }
+.labelRow { display: flex; align-items: center; gap: var(--space-1); }
+.fieldError { margin: 0; color: var(--danger); font-size: var(--text-md); }
+```
+
+- [ ] **Step 4: 저장 실패 문구**
+
+`apps/web/src/tax/inputs/SaveError.tsx` 전체:
+
+```tsx
+import { useQueryClient } from '@tanstack/react-query'
+import { errorMessage } from '../../common/errorMessage'
+import ui from '../../common/ui.module.css'
+import { isStale, taxKeys } from '../taxApi'
+import styles from './inputs.module.css'
+
+type Props = { error: unknown; year: number; onReload: () => void }
+
+/**
+ * 입력 창의 저장 실패. 다른 곳에서 먼저 고쳤으면(409·404) 입력을 남긴 채 알리고, [다시 불러오기]를 누르면 새 값을 받고 창을 닫는다.
+ * 그 밖의 실패는 입력을 그대로 두고 다시 저장하게 한다.
+ */
+export default function SaveError({ error, year, onReload }: Props) {
+  const client = useQueryClient()
+  if (!error) return null
+  if (!isStale(error)) return <p role="alert" className={ui.alert}>{errorMessage(error)} 입력한 값은 그대로 있습니다.</p>
+  return (
+    <div className={styles.split}>
+      <p role="alert" className={ui.alert}>다른 곳에서 수정되거나 삭제됐습니다. 저장하지 않았습니다.</p>
+      <button type="button" className={ui.button}
+        onClick={() => { void client.invalidateQueries({ queryKey: taxKeys.year(year) }); onReload() }}>다시 불러오기</button>
+    </div>
+  )
+}
+```
+
+- [ ] **Step 5: 기본정보 창과 연도 기록 삭제 창**
+
+`apps/web/src/tax/inputs/BasicInfoDialog.tsx` 전체:
+
+```tsx
+import { useId, useState, type FormEvent } from 'react'
+import { FieldError, Input, NumberField } from 'react-aria-components'
+import Dialog from '../../common/Dialog'
+import fields from '../../common/Field.module.css'
+import HelpButton from '../../common/HelpButton'
+import MoneyField from '../../common/MoneyField'
+import Select from '../../common/Select'
+import ui from '../../common/ui.module.css'
+import { taxApi, useTaxSave, type BasicInfoInput, type TaxYearView } from '../taxApi'
+import SaveError from './SaveError'
+import styles from './inputs.module.css'
+
+type Props = { year: number; view: TaxYearView | null; childTiersApply: boolean; onClose: () => void }
+
+const MONTHS = Array.from({ length: 12 }, (_, i) => ({ id: i + 1, label: `${i + 1}월` }))
+
+/** 기본정보 만들기·수정. view가 null이면 이 연도 기록을 새로 만든다(rowVersion 없이 PUT). */
+export default function BasicInfoDialog({ year, view, childTiersApply, onClose }: Props) {
+  // 연 시점의 값과 버전으로 저장한다. 그 사이 다른 곳에서 바뀌면 서버가 409로 막는다.
+  const [salary, setSalary] = useState<number | null>(view?.totalSalary ?? null)
+  const [start, setStart] = useState(view?.workStartMonth ?? 1)
+  const [end, setEnd] = useState(view?.workEndMonth ?? 12)
+  const [childCount, setChildCount] = useState(view?.childCount ?? 0)
+  const [rowVersion] = useState(view?.rowVersion)
+  const save = useTaxSave(year, (body: BasicInfoInput) => taxApi.saveBasicInfo(year, body))
+  const childLabel = useId()
+  const monthError = start > end
+
+  function onSubmit(event: FormEvent) {
+    event.preventDefault()
+    if (salary == null || monthError) return
+    const body: BasicInfoInput = { totalSalary: salary, workStartMonth: start, workEndMonth: end, childCount }
+    save.mutate(rowVersion === undefined ? body : { ...body, rowVersion }, { onSuccess: onClose })
+  }
+
+  return (
+    <Dialog title={`${year}년 귀속 기본정보`} onClose={onClose} closeDisabled={save.isPending} centered>
+      <form className={ui.stack} onSubmit={onSubmit}>
+        <SaveError error={save.error} year={year} onReload={onClose} />
+        <div className={ui.stack}>
+          <MoneyField label="예상 총급여" value={salary} onChange={setSalary} isRequired minValue={1} />
+          <p className={ui.muted}>비과세 소득을 뺀 연간 총급여</p>
+        </div>
+        <fieldset className={styles.months}>
+          <legend>근로기간</legend>
+          <Select label="시작월" variant="field" items={MONTHS} selectedKey={start}
+            onSelectionChange={(key) => { if (key != null) setStart(Number(key)) }} />
+          <Select label="종료월" variant="field" items={MONTHS} selectedKey={end}
+            onSelectionChange={(key) => { if (key != null) setEnd(Number(key)) }} />
+        </fieldset>
+        {monthError && <p role="alert" className={styles.fieldError}>시작월이 종료월보다 늦습니다.</p>}
+        <p className={ui.muted}>중도 입사·퇴사한 해는 근로기간에 쓴 금액만 입력합니다.</p>
+        {childTiersApply && (
+          <div className={fields.field}>
+            <div className={styles.labelRow}>
+              <span id={childLabel} className={fields.label}>자녀등 수</span>
+              <HelpButton title="자녀등 수">
+                직계비속 가운데 ① 소득금액 100만원 이하(근로소득만 있으면 총급여 500만원 이하) ② 20세 이하(장애인은 나이와 관계없음) ③ 다른 사람의 기본공제를 받지 않는 사람의 수입니다.
+              </HelpButton>
+            </div>
+            <NumberField aria-labelledby={childLabel} value={childCount} minValue={0} maxValue={99}
+              onChange={(v) => setChildCount(Number.isNaN(v) ? 0 : v)} formatOptions={{ maximumFractionDigits: 0 }}
+              validationBehavior="native" isWheelDisabled className={fields.field}>
+              <Input className={fields.input} />
+              <FieldError className={fields.error} />
+            </NumberField>
+          </div>
+        )}
+        <div className={ui.confirmActions}>
+          <button type="button" className={ui.button} disabled={save.isPending} onClick={onClose}>취소</button>
+          <button type="submit" className={`${ui.button} ${ui.primary} ${ui.cta}`} disabled={save.isPending || monthError}>저장</button>
+        </div>
+      </form>
+    </Dialog>
+  )
+}
+```
+
+`apps/web/src/tax/inputs/DeleteYearDialog.tsx` 전체(5.3 판, Task 5.4가 오류 문구를 `actionError`로 바꾼다):
+
+```tsx
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useState } from 'react'
+import Dialog from '../../common/Dialog'
+import { errorMessage } from '../../common/errorMessage'
+import TextField from '../../common/TextField'
+import { toast } from '../../common/Toast'
+import ui from '../../common/ui.module.css'
+import { isStale, taxApi, taxKeys, type TaxYearView } from '../taxApi'
+
+/** 연도 기록 삭제 확인(D22). 귀속연도 4자리를 똑같이 입력해야 [삭제]가 켜진다. 닫으면 입력이 사라진다(창을 조건부로 그린다). */
+export default function DeleteYearDialog({ view, onClose }: { view: TaxYearView; onClose: () => void }) {
+  const year = view.taxYear
+  const client = useQueryClient()
+  const [typed, setTyped] = useState('')
+  const remove = useMutation({
+    mutationFn: () => taxApi.deleteYear(year, view.rowVersion),
+    onSuccess: () => {
+      client.setQueryData(taxKeys.year(year), null)
+      toast(`${year}년 기록을 삭제했습니다.`)
+      onClose()
+    },
+    // 다른 곳에서 바뀌었으면 새로 불러온다. 지울 범위 문장도 새 값으로 바뀐다.
+    onError: (error) => { if (isStale(error)) void client.invalidateQueries({ queryKey: taxKeys.year(year) }) },
+  })
+
+  return (
+    <Dialog title={`${year}년 기록을 삭제할까요?`} onClose={onClose} closeDisabled={remove.isPending} centered>
+      <p>{year}년 귀속의 기본정보, 신용·체크 자료 {view.cards.length}건, 현금영수증 자료, 지출계획이 모두 지워집니다. 다른 연도의 기록은 남습니다. 복구할 수 없습니다.</p>
+      {remove.error && (
+        <p role="alert" className={ui.alert}>
+          {isStale(remove.error) ? '다른 곳에서 수정되거나 삭제됐습니다. 새로 불러온 내용을 확인한 뒤 다시 시도해 주세요.' : errorMessage(remove.error)}
+        </p>
+      )}
+      <TextField label={`확인을 위해 귀속연도 ${year}을 입력하세요`} value={typed} onChange={setTyped} autoComplete="off" />
+      <div className={ui.confirmActions}>
+        <button type="button" className={ui.button} disabled={remove.isPending} onClick={onClose}>취소</button>
+        <button type="button" className={`${ui.button} ${ui.dangerFill} ${ui.cta}`}
+          disabled={typed !== String(year) || remove.isPending} onClick={() => remove.mutate()}>삭제</button>
+      </div>
+    </Dialog>
+  )
+}
+```
+
+- [ ] **Step 6: 화면**
+
+`apps/web/src/tax/inputs/TaxInputsPage.tsx` 전체(통째로 교체):
+
+```tsx
+import { useQuery } from '@tanstack/react-query'
+import { useState } from 'react'
+import { useAmountFormatter } from '../../common/AmountMask'
+import Icon from '../../common/Icon'
+import Skeleton, { SkeletonRegion } from '../../common/Skeleton'
+import ui from '../../common/ui.module.css'
+import { usePageTitle } from '../../common/usePageTitle'
+import TaxHeader from '../TaxHeader'
+import { useTaxYear } from '../TaxYearProvider'
+import { taxApi, taxKeys, useTaxYearView, type TaxYearView } from '../taxApi'
+import BasicInfoDialog from './BasicInfoDialog'
+import DeleteYearDialog from './DeleteYearDialog'
+import styles from './inputs.module.css'
+
+/** 소득공제 › 입력자료. 선택 연도의 기록 하나를 보여 주고 고친다. 그룹과 무관하다(useGroups를 쓰지 않는다). */
+export default function TaxInputsPage() {
+  usePageTitle('입력자료 · 소득공제')
+  const { year } = useTaxYear()
+  const record = useTaxYearView(year)
+  const view = record.data
+  // 기록이 없을 때만 만들 때 기억될 현재 적용 세법을 읽는다. 기록이 있으면 기록이 기억한 버전을 쓴다(TAX-66).
+  const law = useQuery({ queryKey: taxKeys.currentLaw(year), queryFn: () => taxApi.currentLaw(year), enabled: view === null })
+  const [editing, setEditing] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const lawPending = view ? view.lawVersion === null : view === null && law.data === null
+  const childTiersApply = (view ? view.lawVersion?.childTiersApply : law.data?.childTiersApply) ?? false
+
+  return (
+    <div className={styles.page}>
+      <TaxHeader />
+      {record.isPending && (
+        <SkeletonRegion label="입력자료 불러오는 중"><Skeleton height={160} radius="var(--radius-md)" /></SkeletonRegion>
+      )}
+      {record.isError && (
+        <div className={styles.split}>
+          <p role="alert" className={ui.alert}>입력자료를 불러오지 못했습니다.</p>
+          <button type="button" className={ui.button} onClick={() => void record.refetch()}><Icon name="refresh-cw" size={18} />다시 시도</button>
+        </div>
+      )}
+      {lawPending && <p className={ui.status}>{year}년 귀속 세법은 준비 중입니다. 자료는 저장되며, 분석은 세법이 등록된 뒤 볼 수 있습니다.</p>}
+      {view === null && (
+        <section aria-labelledby="tax-empty-title" className={`${ui.card} ${styles.empty}`}>
+          <h2 id="tax-empty-title">{year}년 귀속 기록이 없습니다</h2>
+          <p>기본정보(예상 총급여·근로기간)를 입력하면 이 연도의 기록이 만들어집니다.</p>
+          <button type="button" className={`${ui.button} ${ui.primary}`} disabled={law.isPending} onClick={() => setEditing(true)}>기본정보 입력</button>
+        </section>
+      )}
+      {view && (
+        <>
+          <BasicInfoCard view={view} onEdit={() => setEditing(true)} />
+          <section aria-label="연도 기록 삭제" className={`${ui.card} ${styles.split}`}>
+            <p>이 연도의 기본정보·입력자료·금액·지출계획을 모두 지웁니다.</p>
+            <button type="button" className={`${ui.button} ${ui.danger}`} onClick={() => setDeleting(true)}>{year}년 기록 삭제</button>
+          </section>
+        </>
+      )}
+      {editing && view !== undefined && (
+        <BasicInfoDialog year={year} view={view} childTiersApply={childTiersApply} onClose={() => setEditing(false)} />
+      )}
+      {deleting && view && <DeleteYearDialog view={view} onClose={() => setDeleting(false)} />}
+    </div>
+  )
+}
+
+function BasicInfoCard({ view, onEdit }: { view: TaxYearView; onEdit: () => void }) {
+  const income = useAmountFormatter('income')
+  const fullYear = view.workStartMonth === 1 && view.workEndMonth === 12
+  return (
+    <section aria-labelledby="tax-basic-title" className={ui.card}>
+      <div className={styles.split}>
+        <h2 id="tax-basic-title">기본정보</h2>
+        <button type="button" className={ui.button} aria-label="기본정보 수정" onClick={onEdit}>수정</button>
+      </div>
+      <dl className={styles.facts}>
+        <dt>예상 총급여</dt>
+        <dd className={styles.amount}>{income(view.totalSalary)}</dd>
+        <dt>근로기간</dt>
+        <dd>{view.workStartMonth}월 ~ {view.workEndMonth}월{!fullYear && <span className={styles.note}>근로기간 확인 필요</span>}</dd>
+        {view.lawVersion?.childTiersApply && <><dt>자녀등 수</dt><dd>{view.childCount}명</dd></>}
+      </dl>
+    </section>
+  )
+}
+```
+
+- [ ] **Step 7: 통과 확인**
+
+Run: `cd apps/web && npx vitest run src/tax/inputs src/app/AppRoutes.test.tsx && npx tsc -b && npx oxlint`
+Expected: 2파일 44 passed, 타입 오류 없음, 새 lint 경고 없음.
+
+- [ ] **Step 8: 커밋(컨트롤러)**
+
+```bash
+git add apps/web/src/tax apps/web/src/test/taxFixtures.tsx apps/web/src/app/AppRoutes.test.tsx
+git commit -m "feat(web): 소득공제 입력자료 화면에 기본정보와 연도 기록 삭제를 둠" -m "Co-Authored-By: Codex (gpt-6-sol) <noreply@openai.com>"
+```
+
+### Task 5.4: 신용·체크 자료와 현금영수증 자료 (TAX-21~25, 28, 29, 30, AC-14·28·33·37·40·44)
+
+**담당:** Codex `gpt-6-astra` / `medium` (`write`, 공용 `DateTimePicker`를 넓힌다), 태그 `impl-web-common`. 리뷰: Claude Sonnet 5.5 (`review-task`).
+
+**Files:**
+- Create: `apps/web/src/tax/inputs/amounts.ts`, `AmountGrid.tsx`, `CardStatementDialog.tsx`, `CardStatementList.tsx`, `CashReceiptDialog.tsx`, `CashReceiptSection.tsx`
+- Modify: `apps/web/src/common/DateTimePicker.tsx`(`granularity`·`minValue`·`maxValue`), `tax/taxApi.ts`(`actionError`), `tax/inputs/DeleteYearDialog.tsx`, `tax/inputs/TaxInputsPage.tsx`
+- Modify (전체 교체): `apps/web/src/tax/inputs/inputs.module.css`
+- Test: `apps/web/src/tax/inputs/CardStatementList.test.tsx`, `CashReceiptSection.test.tsx`(생성), `common/DateTimePicker.test.tsx`(수정)
+
+**Interfaces:**
+- Consumes: Task 5.3의 `SaveError`, `inputs.module.css`, `renderTaxInputs`·`serveTax`·`yearView`·`cardView`. Task 5.1의 `ConfirmDialog`(`centered`), `HelpButton`. `MoneyField`(`minValue={0}`), `TextField`(`maxLength`), `useAmountFormatter('expense')`.
+- Produces:
+  - `DateTimePicker`의 `granularity?: 'minute' | 'day'`(기본 `'minute'`), `minValue?`·`maxValue?`(`YYYY-MM-DD`). `'day'`면 `YYYY-MM-DD`로 주고받고 범위 밖은 필드 오류로 제출을 막는다.
+  - `amounts.ts`: `CATEGORIES`(`['General','일반'] …`), `CARD_GROUPS`, `CASH_GROUPS`, `EMPTY_CARD`, `EMPTY_CASH`, `fillBlanks(values)`, `countBlanks(values)`, `sumAmounts(values)`, 타입 `AmountGroup<K>`.
+  - `AmountGrid<K>({ groups, values, onChange })` — 묶음 `fieldset` × 칸 `MoneyField`, "일반" 한 줄 안내와 `공제대상액 도움말`, 빈 칸 수와 [빈 칸 0원으로 채우기].
+  - `CardStatementList({ view, defaultAsOfDate })`, `CardStatementDialog({ year, card: CardView | null, defaultAsOfDate, onClose })`, `CashReceiptSection({ view, defaultAsOfDate })`, `CashReceiptDialog({ year, cash: CashView | null, zeros: boolean, defaultAsOfDate, onClose })`.
+  - `taxApi.ts`의 `actionError(error): string`.
+  - 접근성 이름: 카드 행 `<카드사명> 자료 편집`·`<카드사명> 자료 삭제`, 현금영수증 `현금영수증 자료 입력`·`현금영수증 자료 편집`.
+
+- [ ] **Step 1: 실패하는 테스트 작성**
+
+`apps/web/src/tax/inputs/CardStatementList.test.tsx` 전체:
+
+```tsx
+import { screen, waitFor, within } from '@testing-library/react'
+import type { UserEvent } from '@testing-library/user-event'
+import { http, HttpResponse } from 'msw'
+import { describe, expect, it } from 'vitest'
+import { mockViewport } from '../../test/mockViewport'
+import { server } from '../../test/server'
+import { cardView, renderTaxInputs, serveTax, yearView } from '../../test/taxFixtures'
+
+const CATEGORIES = ['일반', '전통시장', '대중교통', '문화체육']
+
+function cell(dialog: HTMLElement, category: string, method: string) {
+  return within(within(dialog).getByRole('group', { name: category })).getByLabelText(method)
+}
+
+async function typeDate(user: UserEvent, dialog: HTMLElement, digits: string) {
+  const group = within(dialog).getByRole('group', { name: '기준일' })
+  await user.click(within(group).getAllByRole('spinbutton')[0])
+  await user.keyboard(digits)
+}
+
+describe('신용·체크 자료', () => {
+  it('adds a card in a centered dialog with 4 categories × credit/debit and tells blank from 0', async () => {
+    mockViewport(true)
+    serveTax(yearView())
+    let body: unknown
+    server.use(http.post('*/api/tax/years/2026/cards', async ({ request }) => {
+      body = await request.json()
+      return HttpResponse.json(yearView({ cards: [cardView({ blankCount: 0 })], hasInputs: true }), { status: 201 })
+    }))
+    const { user } = renderTaxInputs()
+
+    const section = await screen.findByRole('region', { name: '신용·체크 자료' })
+    expect(section).toHaveTextContent('등록한 신용·체크 자료가 없습니다.')
+    await user.click(within(section).getByRole('button', { name: '신용·체크 자료 추가' }))
+    const dialog = await screen.findByRole('dialog', { name: '신용·체크 자료 추가' })
+    expect(dialog.parentElement).toHaveClass('modal')
+    expect(within(dialog).getAllByRole('group').map((g) => g.getAttribute('aria-label') ?? g.querySelector('legend')?.textContent))
+      .toEqual(expect.arrayContaining(CATEGORIES))
+    expect(dialog).toHaveTextContent('"일반"은 전통시장·대중교통·문화체육을 뺀 금액입니다.')
+    expect(dialog).not.toHaveTextContent('직불')
+
+    await user.type(within(dialog).getByLabelText('카드사명'), '  A카드  ')
+    await typeDate(user, dialog, '20261031')
+    await user.type(within(dialog).getByLabelText('메모 (선택)'), '주 사용 카드')
+    await user.type(cell(dialog, '일반', '신용카드'), '9000000')
+    await user.type(cell(dialog, '일반', '체크카드'), '0')
+    await user.tab()
+    expect(dialog).toHaveTextContent('빈 칸 6개 · 빈 칸이 있으면 미완료로 저장됩니다.')
+    await user.click(within(dialog).getByRole('button', { name: '저장' }))
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(body).toEqual({
+      issuerName: 'A카드', asOfDate: '2026-10-31', memo: '주 사용 카드',
+      amounts: {
+        creditGeneral: 9_000_000, creditMarket: null, creditTransit: null, creditCulture: null,
+        debitGeneral: 0, debitMarket: null, debitTransit: null, debitCulture: null,
+      },
+    })
+    const row = within(section).getByRole('listitem')
+    expect(row).toHaveTextContent('A카드')
+    expect(row).toHaveTextContent('완료')
+    expect(row).toHaveTextContent('기준일 2026-10-31 · 합계 ₩ 9,600,000 · 주 사용 카드')
+  })
+
+  it('fills the blanks with 0 in the dialog', async () => {
+    serveTax(yearView())
+    const { user } = renderTaxInputs()
+
+    await user.click(await screen.findByRole('button', { name: '신용·체크 자료 추가' }))
+    const dialog = await screen.findByRole('dialog', { name: '신용·체크 자료 추가' })
+    await user.click(within(dialog).getByRole('button', { name: '빈 칸 0원으로 채우기' }))
+
+    for (const category of CATEGORIES) {
+      expect(cell(dialog, category, '신용카드')).toHaveValue('0')
+      expect(cell(dialog, category, '체크카드')).toHaveValue('0')
+    }
+    expect(dialog).toHaveTextContent('빈 칸 없음')
+    expect(within(dialog).getByRole('button', { name: '빈 칸 0원으로 채우기' })).toBeDisabled()
+  })
+
+  it('saves a second card with the same issuer name without a warning', async () => {
+    serveTax(yearView({ cards: [cardView()], hasInputs: true }))
+    let posted = 0
+    server.use(http.post('*/api/tax/years/2026/cards', () => {
+      posted++
+      return HttpResponse.json(yearView({ cards: [cardView(), cardView({ id: 8 })], hasInputs: true }), { status: 201 })
+    }))
+    const { user } = renderTaxInputs()
+
+    await user.click(await screen.findByRole('button', { name: '신용·체크 자료 추가' }))
+    const dialog = await screen.findByRole('dialog', { name: '신용·체크 자료 추가' })
+    expect(within(dialog).getByRole('group', { name: '기준일' })).toHaveTextContent('2026')
+    await user.type(within(dialog).getByLabelText('카드사명'), 'A카드')
+    await user.click(within(dialog).getByRole('button', { name: '빈 칸 0원으로 채우기' }))
+    await user.click(within(dialog).getByRole('button', { name: '저장' }))
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(posted).toBe(1)
+    expect(screen.getAllByRole('listitem')).toHaveLength(2)
+    expect(screen.queryByText(/중복|이미 있/)).not.toBeInTheDocument()
+  })
+
+  it('does not save a negative amount or a date outside the year', async () => {
+    serveTax(yearView())
+    let posted = 0
+    server.use(http.post('*/api/tax/years/2026/cards', () => { posted++; return HttpResponse.json(yearView(), { status: 201 }) }))
+    const { user } = renderTaxInputs()
+
+    await user.click(await screen.findByRole('button', { name: '신용·체크 자료 추가' }))
+    const dialog = await screen.findByRole('dialog', { name: '신용·체크 자료 추가' })
+    await user.type(within(dialog).getByLabelText('카드사명'), 'B카드')
+    await typeDate(user, dialog, '20251231')
+    await user.type(cell(dialog, '일반', '신용카드'), '-5')
+    await user.tab()
+    await user.click(within(dialog).getByRole('button', { name: '저장' }))
+
+    expect(await within(dialog).findByText('0원 이상 입력하세요')).toBeInTheDocument()
+    expect(within(dialog).getByRole('group', { name: '기준일' }).closest('[data-invalid]')).not.toBeNull()
+    expect(posted).toBe(0)
+  })
+
+  it('shows an incomplete card with its blank count and fills the blanks from the row', async () => {
+    const incomplete = cardView({
+      rowVersion: 41,
+      amounts: { ...cardView().amounts, debitMarket: null, debitTransit: null, debitCulture: null },
+      blankCount: 3,
+    })
+    serveTax(yearView({ cards: [incomplete], hasInputs: true }))
+    let body: unknown
+    server.use(http.put('*/api/tax/years/2026/cards/7', async ({ request }) => {
+      body = await request.json()
+      return HttpResponse.json(yearView({ cards: [cardView()], hasInputs: true }))
+    }))
+    const { user } = renderTaxInputs()
+
+    const row = await screen.findByRole('listitem')
+    expect(row).toHaveTextContent('미완료 · 빈 칸 3개')
+    await user.click(within(row).getByRole('button', { name: '빈 칸 0원으로 채우기' }))
+
+    await waitFor(() => expect(screen.getByRole('listitem')).toHaveTextContent('완료'))
+    expect(screen.getByRole('listitem')).not.toHaveTextContent('미완료')
+    expect(body).toEqual({
+      issuerName: 'A카드', asOfDate: '2026-10-31', memo: '주 사용 카드',
+      amounts: { ...cardView().amounts, debitMarket: 0, debitTransit: 0, debitCulture: 0 },
+      rowVersion: 41,
+    })
+  })
+
+  it('keeps edit and delete in the row action area even with a long issuer name', async () => {
+    const longName = '아주긴카드사이름'.repeat(5)
+    serveTax(yearView({ cards: [cardView({ issuerName: longName })], hasInputs: true }))
+    renderTaxInputs()
+
+    const row = await screen.findByRole('listitem')
+    const actions = row.lastElementChild as HTMLElement
+    expect(actions).toHaveClass('actions')
+    expect(within(actions).getByRole('button', { name: `${longName} 자료 편집` })).toBeInTheDocument()
+    expect(within(actions).getByRole('button', { name: `${longName} 자료 삭제` })).toBeInTheDocument()
+    expect(within(row.firstElementChild as HTMLElement).getByText(longName)).toBeInTheDocument()
+  })
+
+  it('deletes a card after one confirmation and reloads the year', async () => {
+    mockViewport(true)
+    serveTax(yearView({ cards: [cardView({ rowVersion: 5 })], hasInputs: true }))
+    let url = ''
+    server.use(http.delete('*/api/tax/years/2026/cards/7', ({ request }) => {
+      url = request.url
+      serveTax(yearView())
+      return new HttpResponse(null, { status: 204 })
+    }))
+    const { user } = renderTaxInputs()
+
+    await user.click(await screen.findByRole('button', { name: 'A카드 자료 삭제' }))
+    const dialog = await screen.findByRole('dialog', { name: 'A카드 자료를 삭제할까요?' })
+    expect(dialog.parentElement).toHaveClass('modal')
+    expect(within(dialog).queryByRole('textbox')).not.toBeInTheDocument()
+    await user.click(within(dialog).getByRole('button', { name: '삭제' }))
+
+    expect(await screen.findByText('등록한 신용·체크 자료가 없습니다.')).toBeInTheDocument()
+    expect(new URL(url).search).toBe('?rowVersion=5')
+  })
+
+  it('stops a stale card save and keeps the input', async () => {
+    serveTax(yearView({ cards: [cardView()], hasInputs: true }))
+    server.use(http.put('*/api/tax/years/2026/cards/7', () => HttpResponse.json({ code: 'CONFLICT', message: 'x' }, { status: 409 })))
+    const { user } = renderTaxInputs()
+
+    await user.click(await screen.findByRole('button', { name: 'A카드 자료 편집' }))
+    const dialog = await screen.findByRole('dialog', { name: 'A카드 자료 편집' })
+    await user.clear(cell(dialog, '일반', '신용카드'))
+    await user.type(cell(dialog, '일반', '신용카드'), '9500000')
+    await user.click(within(dialog).getByRole('button', { name: '저장' }))
+
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('다른 곳에서 수정되거나 삭제됐습니다. 저장하지 않았습니다.')
+    expect(cell(dialog, '일반', '신용카드')).toHaveValue('9,500,000')
+    expect(within(dialog).getByRole('button', { name: '다시 불러오기' })).toBeInTheDocument()
+  })
+
+  it('stops adding at 50 cards and says why', async () => {
+    serveTax(yearView({ cards: Array.from({ length: 50 }, (_, i) => cardView({ id: i + 1, issuerName: `카드${i + 1}` })), hasInputs: true }))
+    renderTaxInputs()
+
+    expect(await screen.findByRole('button', { name: '신용·체크 자료 추가' })).toBeDisabled()
+    expect(screen.getByText('신용·체크 자료는 연도마다 50건까지 등록할 수 있습니다.')).toBeInTheDocument()
+  })
+})
+```
+
+`apps/web/src/tax/inputs/CashReceiptSection.test.tsx` 전체:
+
+```tsx
+import { screen, waitFor, within } from '@testing-library/react'
+import { http, HttpResponse } from 'msw'
+import { describe, expect, it } from 'vitest'
+import { mockViewport } from '../../test/mockViewport'
+import { server } from '../../test/server'
+import { cardView, renderTaxInputs, serveTax, yearView } from '../../test/taxFixtures'
+
+const zeros = { general: 0, market: 0, transit: 0, culture: 0 }
+
+describe('현금영수증 자료', () => {
+  it('starts as 4 blank cells and fills them with 0 through the centered dialog, with no delete anywhere', async () => {
+    mockViewport(true)
+    serveTax(yearView({ cards: [cardView({ asOfDate: '2026-09-30' })], hasInputs: true }))
+    let body: unknown
+    server.use(http.put('*/api/tax/years/2026/cash-receipt', async ({ request }) => {
+      body = await request.json()
+      return HttpResponse.json(yearView({
+        cards: [cardView({ asOfDate: '2026-09-30' })], hasInputs: true,
+        cashReceipt: { rowVersion: 55, asOfDate: '2026-09-30', memo: null, amounts: zeros, blankCount: 0 },
+      }))
+    }))
+    const { user } = renderTaxInputs()
+
+    const section = await screen.findByRole('region', { name: '현금영수증 자료' })
+    expect(section).toHaveTextContent('미완료 · 4칸 빔')
+    expect(within(section).getAllByRole('button').map((b) => b.textContent)).toEqual(['입력', '4칸 0원으로 채우기'])
+    await user.click(within(section).getByRole('button', { name: '4칸 0원으로 채우기' }))
+
+    const dialog = await screen.findByRole('dialog', { name: '2026년 현금영수증 자료' })
+    expect(dialog.parentElement).toHaveClass('modal')
+    const group = within(dialog).getByRole('group', { name: '현금영수증' })
+    expect(['일반', '전통시장', '대중교통', '문화체육'].map((label) => within(group).getByLabelText(label))).toHaveLength(4)
+    expect(within(group).getByLabelText('일반')).toHaveValue('0')
+    await user.click(within(dialog).getByRole('button', { name: '저장' }))
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(body).toEqual({ asOfDate: '2026-09-30', memo: null, amounts: zeros })
+    expect(section).toHaveTextContent('완료')
+    expect(section).not.toHaveTextContent('미완료')
+    expect(within(section).getAllByRole('button').map((b) => b.textContent)).toEqual(['편집'])
+    expect(screen.queryByRole('button', { name: /현금영수증.*삭제/ })).not.toBeInTheDocument()
+  })
+
+  it('edits the cash receipt with the row version it received', async () => {
+    serveTax(yearView({ cashReceipt: { rowVersion: 55, asOfDate: '2026-10-31', memo: '연말정산 대비', amounts: zeros, blankCount: 0 }, hasInputs: true }))
+    let body: unknown
+    server.use(http.put('*/api/tax/years/2026/cash-receipt', async ({ request }) => {
+      body = await request.json()
+      return HttpResponse.json(yearView())
+    }))
+    const { user } = renderTaxInputs()
+
+    await user.click(await screen.findByRole('button', { name: '현금영수증 자료 편집' }))
+    const dialog = await screen.findByRole('dialog', { name: '2026년 현금영수증 자료' })
+    await user.clear(within(dialog).getByLabelText('일반'))
+    await user.type(within(dialog).getByLabelText('일반'), '500000')
+    await user.click(within(dialog).getByRole('button', { name: '저장' }))
+
+    await waitFor(() => expect(body).toEqual({
+      asOfDate: '2026-10-31', memo: '연말정산 대비', amounts: { ...zeros, general: 500_000 }, rowVersion: 55,
+    }))
+  })
+})
+```
+
+`git apply`:
+
+```diff
+diff --git a/apps/web/src/common/DateTimePicker.test.tsx b/apps/web/src/common/DateTimePicker.test.tsx
+index 7090d4b..c2d5910 100644
+--- a/apps/web/src/common/DateTimePicker.test.tsx
++++ b/apps/web/src/common/DateTimePicker.test.tsx
+@@ -50,3 +50,37 @@ describe('DateTimePicker', () => {
+     spies.forEach((spy) => spy.mockRestore())
+   })
+ })
++
++describe('DateTimePicker with day granularity', () => {
++  function DayPicker({ onValue, onSubmit }: { onValue: (v: string) => void; onSubmit: () => void }) {
++    const [value, setValue] = useState('')
++    return (
++      <form onSubmit={(e) => { e.preventDefault(); onSubmit() }}>
++        <DateTimePicker label="기준일" granularity="day" minValue="2026-01-01" maxValue="2026-12-31" isRequired
++          value={value} onChange={(v) => { setValue(v); onValue(v) }} />
++        <button type="submit">저장</button>
++      </form>
++    )
++  }
++
++  it('reports YYYY-MM-DD and blocks a date outside the allowed range', async () => {
++    const user = userEvent.setup()
++    const onValue = vi.fn()
++    const onSubmit = vi.fn()
++    render(<I18nProvider locale="ko-KR"><DayPicker onValue={onValue} onSubmit={onSubmit} /></I18nProvider>)
++    const group = screen.getByRole('group', { name: '기준일' })
++    expect(within(group).getAllByRole('spinbutton')).toHaveLength(3)
++
++    await user.click(within(group).getAllByRole('spinbutton')[0])
++    await user.keyboard('20251231')
++    expect(onValue).toHaveBeenLastCalledWith('2025-12-31')
++    await user.click(screen.getByRole('button', { name: '저장' }))
++    expect(onSubmit).not.toHaveBeenCalled()
++
++    await user.click(within(group).getAllByRole('spinbutton')[0])
++    await user.keyboard('2026')
++    expect(onValue).toHaveBeenLastCalledWith('2026-12-31')
++    await user.click(screen.getByRole('button', { name: '저장' }))
++    expect(onSubmit).toHaveBeenCalledOnce()
++  })
++})
+```
+
+- [ ] **Step 2: 실패 확인**
+
+Run: `cd apps/web && npx vitest run src/tax/inputs/CardStatementList.test.tsx src/tax/inputs/CashReceiptSection.test.tsx src/common/DateTimePicker.test.tsx`
+Expected: 12건 FAIL(카드 9건 — `Unable to find role="region" and name "신용·체크 자료"` 등, 현금영수증 2건, 날짜만 받는 `DateTimePicker` 1건 — spinbutton이 5개), 기존 `DateTimePicker` 3건 PASS.
+
+- [ ] **Step 3: 날짜만 받는 기준일 입력** — 기본값은 그대로라 거래 입력 화면은 바뀌지 않는다.
+
+`git apply`:
+
+```diff
+diff --git a/apps/web/src/common/DateTimePicker.tsx b/apps/web/src/common/DateTimePicker.tsx
+index e434809..640e8e0 100644
+--- a/apps/web/src/common/DateTimePicker.tsx
++++ b/apps/web/src/common/DateTimePicker.tsx
+@@ -1,5 +1,5 @@
+ import { useState } from 'react'
+-import { parseDateTime, type CalendarDateTime } from '@internationalized/date'
++import { parseDate, parseDateTime, type DateValue } from '@internationalized/date'
+ import {
+   Button, Calendar, CalendarCell, CalendarGrid, DateInput, DatePicker, DateSegment,
+   FieldError, Group, Heading, Label,
+@@ -10,24 +10,30 @@ import { useNarrowWhileOpen } from './useMediaQuery'
+ import fields from './Field.module.css'
+ import styles from './DateTimePicker.module.css'
+ 
+-type Props = { label: string; value: string; onChange: (value: string) => void; isRequired?: boolean }
++type Props = {
++  label: string; value: string; onChange: (value: string) => void; isRequired?: boolean
++  /** 'day'면 연·월·일만 받고 YYYY-MM-DD로 주고받는다. minValue·maxValue(YYYY-MM-DD) 밖이면 필드 오류로 제출을 막는다. */
++  granularity?: 'minute' | 'day'; minValue?: string; maxValue?: string
++}
+ 
+-function toValue(text: string): CalendarDateTime | null {
++function toValue(text: string, day: boolean): DateValue | null {
+   if (!text) return null
+   try {
+-    return parseDateTime(text)
++    return day ? parseDate(text) : parseDateTime(text)
+   } catch {
+     return null
+   }
+ }
+ 
+ /** 연·월·일·시·분을 칸별로 입력하거나 달력에서 고른다. API에는 지금처럼 YYYY-MM-DDTHH:mm으로 보낸다. */
+-export default function DateTimePicker({ label, value, onChange, isRequired }: Props) {
++export default function DateTimePicker({ label, value, onChange, isRequired, granularity = 'minute', minValue, maxValue }: Props) {
+   const [open, setOpen] = useState(false)
+   const mobile = useNarrowWhileOpen(open)
++  const day = granularity === 'day'
+   return (
+-    <DatePicker value={toValue(value)} onChange={(v) => onChange(v ? v.toString().slice(0, 16) : '')}
+-      granularity="minute" hourCycle={24} isRequired={isRequired} validationBehavior="native"
++    <DatePicker value={toValue(value, day)} onChange={(v) => onChange(v ? v.toString().slice(0, day ? 10 : 16) : '')}
++      granularity={granularity} hourCycle={24} isRequired={isRequired} validationBehavior="native"
++      minValue={minValue ? parseDate(minValue) : undefined} maxValue={maxValue ? parseDate(maxValue) : undefined}
+       onOpenChange={setOpen} className={fields.field}>
+       <Label className={fields.label}>{label}</Label>
+       <Group className={styles.group}>
+```
+
+- [ ] **Step 4: 금액 칸 정의와 입력표**
+
+`apps/web/src/tax/inputs/amounts.ts` 전체:
+
+```ts
+import type { CardAmounts, CashAmounts } from '../taxApi'
+
+export type AmountGroup<K extends string> = { legend: string; fields: { key: K; label: string }[] }
+
+/** 소비구분. 응답 칸 이름의 뒷부분(creditGeneral, cashGeneral …)과 화면 이름. */
+export const CATEGORIES = [['General', '일반'], ['Market', '전통시장'], ['Transit', '대중교통'], ['Culture', '문화체육']] as const
+
+/** 신용·체크 자료 8칸: 소비구분 4묶음 × (신용카드, 체크카드). */
+export const CARD_GROUPS: AmountGroup<keyof CardAmounts>[] = CATEGORIES.map(([key, label]) => ({
+  legend: label,
+  fields: [{ key: `credit${key}`, label: '신용카드' }, { key: `debit${key}`, label: '체크카드' }],
+}))
+
+/** 현금영수증 자료 4칸: 한 묶음 안의 소비구분 4칸. */
+export const CASH_GROUPS: AmountGroup<keyof CashAmounts>[] = [{
+  legend: '현금영수증',
+  fields: [{ key: 'general', label: '일반' }, { key: 'market', label: '전통시장' }, { key: 'transit', label: '대중교통' }, { key: 'culture', label: '문화체육' }],
+}]
+
+export const EMPTY_CARD: CardAmounts = {
+  creditGeneral: null, creditMarket: null, creditTransit: null, creditCulture: null,
+  debitGeneral: null, debitMarket: null, debitTransit: null, debitCulture: null,
+}
+export const EMPTY_CASH: CashAmounts = { general: null, market: null, transit: null, culture: null }
+
+/** 빈 칸(모름)만 0(없음)으로 바꾼다. 입력한 값은 그대로 둔다. */
+export function fillBlanks<T extends Record<string, number | null>>(values: T): T {
+  return Object.fromEntries(Object.entries(values).map(([key, value]) => [key, value ?? 0])) as T
+}
+
+export function countBlanks(values: Record<string, number | null>): number {
+  return Object.values(values).filter((value) => value == null).length
+}
+
+/** 자료 한 건의 표시용 합계. 빈 칸은 0으로 더한다(서버 연도 합계표와 같은 규칙). */
+export function sumAmounts(values: Record<string, number | null>): number {
+  return Object.values(values).reduce<number>((sum, value) => sum + (value ?? 0), 0)
+}
+```
+
+`apps/web/src/tax/inputs/AmountGrid.tsx` 전체:
+
+```tsx
+import HelpButton from '../../common/HelpButton'
+import MoneyField from '../../common/MoneyField'
+import ui from '../../common/ui.module.css'
+import { countBlanks, fillBlanks, type AmountGroup } from './amounts'
+import styles from './inputs.module.css'
+
+type Props<K extends string> = {
+  groups: AmountGroup<K>[]
+  values: Record<K, number | null>
+  onChange: (values: Record<K, number | null>) => void
+}
+
+/**
+ * 공제대상액 입력표. 묶음(fieldset)마다 2열로 놓아 375px에서도 가로 스크롤이 없다.
+ * 빈 칸은 null(모름)로 두고 0(없음)과 구별한다(TAX-24).
+ */
+export default function AmountGrid<K extends string>({ groups, values, onChange }: Props<K>) {
+  const blanks = countBlanks(values)
+  return (
+    <div className={ui.stack}>
+      <div className={styles.titleWithHelp}>
+        <p className={styles.gridTitle}>공제대상액 (원)</p>
+        <HelpButton title="공제대상액">
+          카드사 명세서나 국세청 자료의 1월 1일부터 기준일까지 누계를 적습니다. 전체 사용액에서 전통시장·대중교통·문화체육 사용액을 뺀 나머지를 일반에 적고, 취소·환불이 반영된 금액을 그대로 씁니다. 이전 값에 더하지 않고 새 누계로 덮어씁니다.
+        </HelpButton>
+      </div>
+      <p className={ui.muted}>"일반"은 전통시장·대중교통·문화체육을 뺀 금액입니다. 빈 칸은 "모름", 0은 "없음"입니다.</p>
+      {groups.map((group) => (
+        <fieldset key={group.legend} className={styles.amountGroup}>
+          <legend>{group.legend}</legend>
+          {group.fields.map((field) => (
+            <MoneyField key={field.key} label={field.label} value={values[field.key]} minValue={0}
+              onChange={(value) => onChange({ ...values, [field.key]: value })} />
+          ))}
+        </fieldset>
+      ))}
+      <div className={styles.split}>
+        <p className={ui.muted}>{blanks > 0 ? `빈 칸 ${blanks}개 · 빈 칸이 있으면 미완료로 저장됩니다.` : '빈 칸 없음'}</p>
+        <button type="button" className={ui.button} disabled={blanks === 0} onClick={() => onChange(fillBlanks(values))}>
+          빈 칸 0원으로 채우기
+        </button>
+      </div>
+    </div>
+  )
+}
+```
+
+- [ ] **Step 5: 확인·채우기 동작의 실패 문구** — `taxApi.ts`에 `actionError`를 더하고 연도 삭제 창이 쓴다.
+
+`git apply`:
+
+```diff
+diff --git a/apps/web/src/tax/inputs/DeleteYearDialog.tsx b/apps/web/src/tax/inputs/DeleteYearDialog.tsx
+index e63725f..cf6eb7c 100644
+--- a/apps/web/src/tax/inputs/DeleteYearDialog.tsx
++++ b/apps/web/src/tax/inputs/DeleteYearDialog.tsx
+@@ -1,11 +1,10 @@
+ import { useMutation, useQueryClient } from '@tanstack/react-query'
+ import { useState } from 'react'
+ import Dialog from '../../common/Dialog'
+-import { errorMessage } from '../../common/errorMessage'
+ import TextField from '../../common/TextField'
+ import { toast } from '../../common/Toast'
+ import ui from '../../common/ui.module.css'
+-import { isStale, taxApi, taxKeys, type TaxYearView } from '../taxApi'
++import { actionError, isStale, taxApi, taxKeys, type TaxYearView } from '../taxApi'
+ 
+ /** 연도 기록 삭제 확인(D22). 귀속연도 4자리를 똑같이 입력해야 [삭제]가 켜진다. 닫으면 입력이 사라진다(창을 조건부로 그린다). */
+ export default function DeleteYearDialog({ view, onClose }: { view: TaxYearView; onClose: () => void }) {
+@@ -26,11 +25,7 @@ export default function DeleteYearDialog({ view, onClose }: { view: TaxYearView;
+   return (
+     <Dialog title={`${year}년 기록을 삭제할까요?`} onClose={onClose} closeDisabled={remove.isPending} centered>
+       <p>{year}년 귀속의 기본정보, 신용·체크 자료 {view.cards.length}건, 현금영수증 자료, 지출계획이 모두 지워집니다. 다른 연도의 기록은 남습니다. 복구할 수 없습니다.</p>
+-      {remove.error && (
+-        <p role="alert" className={ui.alert}>
+-          {isStale(remove.error) ? '다른 곳에서 수정되거나 삭제됐습니다. 새로 불러온 내용을 확인한 뒤 다시 시도해 주세요.' : errorMessage(remove.error)}
+-        </p>
+-      )}
++      {remove.error && <p role="alert" className={ui.alert}>{actionError(remove.error)}</p>}
+       <TextField label={`확인을 위해 귀속연도 ${year}을 입력하세요`} value={typed} onChange={setTyped} autoComplete="off" />
+       <div className={ui.confirmActions}>
+         <button type="button" className={ui.button} disabled={remove.isPending} onClick={onClose}>취소</button>
+diff --git a/apps/web/src/tax/taxApi.ts b/apps/web/src/tax/taxApi.ts
+index 29d9c3d..d7c5e6c 100644
+--- a/apps/web/src/tax/taxApi.ts
++++ b/apps/web/src/tax/taxApi.ts
+@@ -1,6 +1,7 @@
+ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+ import { apiFetch } from '../api/client'
+ import { ApiError } from '../api/errors'
++import { errorMessage } from '../common/errorMessage'
+ 
+ // PR 3 응답(TaxRecordDtos)과 같은 모양. 금액은 원 단위 정수, null은 미입력이다.
+ // rowVersion은 서버가 주는 불투명한 값(JS 안전 정수 이하)이다. 받은 값을 그대로 돌려보내고 계산하지 않는다.
+@@ -74,3 +75,8 @@ export function useTaxSave<T>(year: number, save: (input: T) => Promise<TaxYearV
+ export function isStale(error: unknown): boolean {
+   return error instanceof ApiError && (error.status === 409 || error.status === 404)
+ }
++
++/** 확인·채우기처럼 입력이 없는 동작의 실패 문구. 다른 곳에서 바뀌었으면 호출한 쪽이 새로 불러온다. */
++export function actionError(error: unknown): string {
++  return isStale(error) ? '다른 곳에서 수정되거나 삭제됐습니다. 새로 불러온 내용을 확인한 뒤 다시 시도해 주세요.' : errorMessage(error)
++}
+```
+
+- [ ] **Step 6: 신용·체크 자료**
+
+`apps/web/src/tax/inputs/CardStatementDialog.tsx` 전체:
+
+```tsx
+import { useState, type FormEvent } from 'react'
+import DateTimePicker from '../../common/DateTimePicker'
+import Dialog from '../../common/Dialog'
+import TextField from '../../common/TextField'
+import ui from '../../common/ui.module.css'
+import { taxApi, useTaxSave, type CardAmounts, type CardInput, type CardView } from '../taxApi'
+import AmountGrid from './AmountGrid'
+import { CARD_GROUPS, EMPTY_CARD } from './amounts'
+import SaveError from './SaveError'
+
+type Props = { year: number; card: CardView | null; defaultAsOfDate: string; onClose: () => void }
+
+/** 신용·체크 자료 추가(card가 null)·편집. 같은 카드사명을 다시 써도 막지 않는다(TAX-22). */
+export default function CardStatementDialog({ year, card, defaultAsOfDate, onClose }: Props) {
+  const [issuerName, setIssuerName] = useState(card?.issuerName ?? '')
+  const [asOfDate, setAsOfDate] = useState(card?.asOfDate ?? defaultAsOfDate)
+  const [memo, setMemo] = useState(card?.memo ?? '')
+  const [amounts, setAmounts] = useState<CardAmounts>(card?.amounts ?? EMPTY_CARD)
+  const [rowVersion] = useState(card?.rowVersion)
+  const save = useTaxSave(year, (body: CardInput) => (card ? taxApi.saveCard(year, card.id, { ...body, rowVersion }) : taxApi.addCard(year, body)))
+
+  function onSubmit(event: FormEvent) {
+    event.preventDefault()
+    save.mutate({ issuerName: issuerName.trim(), asOfDate, memo: memo.trim() || null, amounts }, { onSuccess: onClose })
+  }
+
+  return (
+    <Dialog title={card ? `${card.issuerName} 자료 편집` : '신용·체크 자료 추가'} onClose={onClose} closeDisabled={save.isPending} centered>
+      <form className={ui.stack} onSubmit={onSubmit}>
+        <SaveError error={save.error} year={year} onReload={onClose} />
+        <TextField label="카드사명" value={issuerName} onChange={setIssuerName} isRequired maxLength={50} />
+        <div className={ui.stack}>
+          <DateTimePicker label="기준일" granularity="day" minValue={`${year}-01-01`} maxValue={`${year}-12-31`}
+            value={asOfDate} onChange={setAsOfDate} isRequired />
+          <p className={ui.muted}>1월 1일부터 기준일까지의 누계를 적습니다.</p>
+        </div>
+        <TextField label="메모 (선택)" value={memo} onChange={setMemo} maxLength={200} />
+        <AmountGrid groups={CARD_GROUPS} values={amounts} onChange={setAmounts} />
+        <div className={ui.confirmActions}>
+          <button type="button" className={ui.button} disabled={save.isPending} onClick={onClose}>취소</button>
+          <button type="submit" className={`${ui.button} ${ui.primary} ${ui.cta}`} disabled={save.isPending}>저장</button>
+        </div>
+      </form>
+    </Dialog>
+  )
+}
+```
+
+`apps/web/src/tax/inputs/CardStatementList.tsx` 전체:
+
+```tsx
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useState } from 'react'
+import { useAmountFormatter } from '../../common/AmountMask'
+import ConfirmDialog from '../../common/ConfirmDialog'
+import HelpButton from '../../common/HelpButton'
+import Icon from '../../common/Icon'
+import ui from '../../common/ui.module.css'
+import { actionError, isStale, taxApi, taxKeys, useTaxSave, type CardView, type TaxYearView } from '../taxApi'
+import { fillBlanks, sumAmounts } from './amounts'
+import CardStatementDialog from './CardStatementDialog'
+import styles from './inputs.module.css'
+
+/** 서버의 연도 기록당 카드 자료 상한(PR 3). 넘으면 서버가 400을 준다. */
+const MAX_CARDS = 50
+
+type Props = { view: TaxYearView; defaultAsOfDate: string }
+
+/** 신용·체크 자료 목록. 카드사마다 한 건이다. */
+export default function CardStatementList({ view, defaultAsOfDate }: Props) {
+  const [editing, setEditing] = useState<CardView | 'new' | null>(null)
+  const full = view.cards.length >= MAX_CARDS
+  return (
+    <section aria-labelledby="tax-cards-title" className={ui.card}>
+      <div className={styles.split}>
+        <div className={styles.titleWithHelp}>
+          <h2 id="tax-cards-title">신용·체크 자료</h2>
+          <HelpButton title="신용·체크 자료">카드사마다 1월 1일부터 기준일까지의 누계를 한 건씩 등록합니다. 같은 카드사명을 다시 등록해도 됩니다.</HelpButton>
+        </div>
+        <button type="button" className={ui.button} disabled={full} onClick={() => setEditing('new')}>
+          <Icon name="plus" size={18} />신용·체크 자료 추가
+        </button>
+      </div>
+      {full && <p className={ui.muted}>신용·체크 자료는 연도마다 {MAX_CARDS}건까지 등록할 수 있습니다.</p>}
+      {view.cards.length === 0 ? (
+        <p className={ui.status}>등록한 신용·체크 자료가 없습니다.</p>
+      ) : (
+        <ul className={styles.list}>
+          {view.cards.map((card) => <CardRow key={card.id} year={view.taxYear} card={card} onEdit={() => setEditing(card)} />)}
+        </ul>
+      )}
+      {editing && (
+        <CardStatementDialog year={view.taxYear} card={editing === 'new' ? null : editing} defaultAsOfDate={defaultAsOfDate}
+          onClose={() => setEditing(null)} />
+      )}
+    </section>
+  )
+}
+
+function CardRow({ year, card, onEdit }: { year: number; card: CardView; onEdit: () => void }) {
+  const expense = useAmountFormatter('expense')
+  const client = useQueryClient()
+  const reload = () => client.invalidateQueries({ queryKey: taxKeys.year(year) })
+  const fill = useTaxSave(year, () => taxApi.saveCard(year, card.id, {
+    issuerName: card.issuerName, asOfDate: card.asOfDate, memo: card.memo, amounts: fillBlanks(card.amounts), rowVersion: card.rowVersion,
+  }))
+  // 삭제는 204라 연도를 다시 읽는다. 다른 곳에서 바뀌었어도 새로 불러와 최신 목록을 보인다.
+  const remove = useMutation({
+    mutationFn: () => taxApi.deleteCard(year, card.id, card.rowVersion),
+    onSuccess: () => reload(),
+    onError: (error) => { if (isStale(error)) void reload() },
+  })
+  return (
+    <li className={styles.split}>
+      <div className={styles.rowInfo}>
+        <p className={styles.name}>{card.issuerName}</p>
+        <p className={card.blankCount > 0 ? styles.note : ui.muted}>{card.blankCount > 0 ? `미완료 · 빈 칸 ${card.blankCount}개` : '완료'}</p>
+        <p className={ui.muted}>기준일 {card.asOfDate} · 합계 {expense(sumAmounts(card.amounts))}{card.memo && ` · ${card.memo}`}</p>
+        {fill.error && <p role="alert" className={ui.alert}>{actionError(fill.error)}</p>}
+      </div>
+      <div className={styles.actions}>
+        {card.blankCount > 0 && (
+          <button type="button" className={ui.button} disabled={fill.isPending}
+            onClick={() => fill.mutate(undefined, { onError: (error) => { if (isStale(error)) void reload() } })}>빈 칸 0원으로 채우기</button>
+        )}
+        <button type="button" className={ui.button} aria-label={`${card.issuerName} 자료 편집`} onClick={onEdit}>편집</button>
+        <ConfirmDialog centered triggerLabel="삭제" triggerAriaLabel={`${card.issuerName} 자료 삭제`}
+          title={`${card.issuerName} 자료를 삭제할까요?`} description="이 자료의 금액 8칸이 지워지고 연도 합계표에서 빠집니다. 복구할 수 없습니다."
+          confirmLabel="삭제" isPending={remove.isPending} error={remove.error ? actionError(remove.error) : null}
+          onOpen={() => remove.reset()} onConfirm={(close) => remove.mutate(undefined, { onSuccess: close })} />
+      </div>
+    </li>
+  )
+}
+```
+
+- [ ] **Step 7: 현금영수증 자료**
+
+`apps/web/src/tax/inputs/CashReceiptDialog.tsx` 전체:
+
+```tsx
+import { useState, type FormEvent } from 'react'
+import DateTimePicker from '../../common/DateTimePicker'
+import Dialog from '../../common/Dialog'
+import TextField from '../../common/TextField'
+import ui from '../../common/ui.module.css'
+import { taxApi, useTaxSave, type CashAmounts, type CashInput, type CashView } from '../taxApi'
+import AmountGrid from './AmountGrid'
+import { CASH_GROUPS, EMPTY_CASH, fillBlanks } from './amounts'
+import SaveError from './SaveError'
+
+type Props = { year: number; cash: CashView | null; zeros: boolean; defaultAsOfDate: string; onClose: () => void }
+
+/** 현금영수증 자료(연도에 1건) 입력·편집. 삭제는 없다(D19). zeros면 4칸을 0으로 채운 채 연다. */
+export default function CashReceiptDialog({ year, cash, zeros, defaultAsOfDate, onClose }: Props) {
+  const [asOfDate, setAsOfDate] = useState(cash?.asOfDate ?? defaultAsOfDate)
+  const [memo, setMemo] = useState(cash?.memo ?? '')
+  const [amounts, setAmounts] = useState<CashAmounts>(cash?.amounts ?? (zeros ? fillBlanks(EMPTY_CASH) : EMPTY_CASH))
+  const [rowVersion] = useState(cash?.rowVersion)
+  const save = useTaxSave(year, (body: CashInput) => taxApi.saveCashReceipt(year, body))
+
+  function onSubmit(event: FormEvent) {
+    event.preventDefault()
+    const body: CashInput = { asOfDate, memo: memo.trim() || null, amounts }
+    save.mutate(rowVersion === undefined ? body : { ...body, rowVersion }, { onSuccess: onClose })
+  }
+
+  return (
+    <Dialog title={`${year}년 현금영수증 자료`} onClose={onClose} closeDisabled={save.isPending} centered>
+      <form className={ui.stack} onSubmit={onSubmit}>
+        <SaveError error={save.error} year={year} onReload={onClose} />
+        <div className={ui.stack}>
+          <DateTimePicker label="기준일" granularity="day" minValue={`${year}-01-01`} maxValue={`${year}-12-31`}
+            value={asOfDate} onChange={setAsOfDate} isRequired />
+          <p className={ui.muted}>1월 1일부터 기준일까지의 누계를 적습니다.</p>
+        </div>
+        <TextField label="메모 (선택)" value={memo} onChange={setMemo} maxLength={200} />
+        <AmountGrid groups={CASH_GROUPS} values={amounts} onChange={setAmounts} />
+        <div className={ui.confirmActions}>
+          <button type="button" className={ui.button} disabled={save.isPending} onClick={onClose}>취소</button>
+          <button type="submit" className={`${ui.button} ${ui.primary} ${ui.cta}`} disabled={save.isPending}>저장</button>
+        </div>
+      </form>
+    </Dialog>
+  )
+}
+```
+
+`apps/web/src/tax/inputs/CashReceiptSection.tsx` 전체:
+
+```tsx
+import { useState } from 'react'
+import { useAmountFormatter } from '../../common/AmountMask'
+import ui from '../../common/ui.module.css'
+import type { TaxYearView } from '../taxApi'
+import { sumAmounts } from './amounts'
+import CashReceiptDialog from './CashReceiptDialog'
+import styles from './inputs.module.css'
+
+/** 현금영수증 자료(연도에 1건). 한 번도 입력하지 않았으면 4칸이 빈 미완료다(TAX-24). 삭제는 없다(D19). */
+export default function CashReceiptSection({ view, defaultAsOfDate }: { view: TaxYearView; defaultAsOfDate: string }) {
+  const [open, setOpen] = useState<'edit' | 'zeros' | null>(null)
+  const expense = useAmountFormatter('expense')
+  const cash = view.cashReceipt
+  const status = !cash ? '미완료 · 4칸 빔' : cash.blankCount > 0 ? `미완료 · 빈 칸 ${cash.blankCount}개` : '완료'
+  return (
+    <section aria-labelledby="tax-cash-title" className={ui.card}>
+      <div className={styles.split}>
+        <div className={styles.rowInfo}>
+          <h2 id="tax-cash-title">현금영수증 자료</h2>
+          <p className={cash && cash.blankCount === 0 ? ui.muted : styles.note}>{status}</p>
+          {cash ? (
+            <p className={ui.muted}>기준일 {cash.asOfDate} · 합계 {expense(sumAmounts(cash.amounts))}{cash.memo && ` · ${cash.memo}`}</p>
+          ) : (
+            <p className={ui.muted}>아직 입력하지 않았습니다. 현금영수증을 쓰지 않았다면 0원으로 채웁니다.</p>
+          )}
+        </div>
+        <div className={styles.actions}>
+          <button type="button" className={ui.button} aria-label={cash ? '현금영수증 자료 편집' : '현금영수증 자료 입력'}
+            onClick={() => setOpen('edit')}>{cash ? '편집' : '입력'}</button>
+          {!cash && <button type="button" className={ui.button} onClick={() => setOpen('zeros')}>4칸 0원으로 채우기</button>}
+        </div>
+      </div>
+      {open && (
+        <CashReceiptDialog year={view.taxYear} cash={cash} zeros={open === 'zeros'} defaultAsOfDate={defaultAsOfDate}
+          onClose={() => setOpen(null)} />
+      )}
+    </section>
+  )
+}
+```
+
+- [ ] **Step 8: 화면에 넣고 스타일 정리** — 스타일은 통째로 바꾼다(화면 뿌리 글자 토큰, 목록 행).
+
+`git apply`:
+
+```diff
+diff --git a/apps/web/src/tax/inputs/TaxInputsPage.tsx b/apps/web/src/tax/inputs/TaxInputsPage.tsx
+index 167aea2..483bb0b 100644
+--- a/apps/web/src/tax/inputs/TaxInputsPage.tsx
++++ b/apps/web/src/tax/inputs/TaxInputsPage.tsx
+@@ -9,6 +9,8 @@ import TaxHeader from '../TaxHeader'
+ import { useTaxYear } from '../TaxYearProvider'
+ import { taxApi, taxKeys, useTaxYearView, type TaxYearView } from '../taxApi'
+ import BasicInfoDialog from './BasicInfoDialog'
++import CardStatementList from './CardStatementList'
++import CashReceiptSection from './CashReceiptSection'
+ import DeleteYearDialog from './DeleteYearDialog'
+ import styles from './inputs.module.css'
+ 
+@@ -24,6 +26,8 @@ export default function TaxInputsPage() {
+   const [deleting, setDeleting] = useState(false)
+   const lawPending = view ? view.lawVersion === null : view === null && law.data === null
+   const childTiersApply = (view ? view.lawVersion?.childTiersApply : law.data?.childTiersApply) ?? false
++  // 새 자료의 기준일은 이미 넣은 자료의 것으로 미리 채워 기준일 불일치(TAX-27)를 줄인다. 바꿀 수 있다.
++  const defaultAsOfDate = view?.cards.at(-1)?.asOfDate ?? view?.cashReceipt?.asOfDate ?? ''
+ 
+   return (
+     <div className={styles.page}>
+@@ -48,6 +52,8 @@ export default function TaxInputsPage() {
+       {view && (
+         <>
+           <BasicInfoCard view={view} onEdit={() => setEditing(true)} />
++          <CardStatementList view={view} defaultAsOfDate={defaultAsOfDate} />
++          <CashReceiptSection view={view} defaultAsOfDate={defaultAsOfDate} />
+           <section aria-label="연도 기록 삭제" className={`${ui.card} ${styles.split}`}>
+             <p>이 연도의 기본정보·입력자료·금액·지출계획을 모두 지웁니다.</p>
+             <button type="button" className={`${ui.button} ${ui.danger}`} onClick={() => setDeleting(true)}>{year}년 기록 삭제</button>
+```
+
+`apps/web/src/tax/inputs/inputs.module.css` 전체(5.4 판):
+
+```css
+/*
+ * 소득공제 입력자료 화면과 창. UI 표준의 글자(카드 제목 16px, 내용·금액·카드사명 15px, 실행 버튼 14px, 보조·라벨 13px)를
+ * 이 화면 뿌리(.page) 안에서만 정한다. 창은 Overlay.module.css의 typography를 그대로 쓴다.
+ */
+.page { --text-base: var(--text-lg); --text-sm: var(--text-md); --text-label: var(--text-md); display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; font-size: var(--text-base); line-height: 1.5; }
+.page h2 { margin: 0; font-size: var(--text-xl); line-height: 1.5; }
+.page p { margin: 0; }
+.page section button { font-size: var(--text-card-action); }
+
+/* 정보는 왼쪽, 조작은 오른쪽 끝. 줄이 바뀌어도 조작은 오른쪽에 남고 긴 이름이 버튼을 밀어내지 않는다. */
+.split { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2) var(--space-3); }
+.split > :first-child { flex: 1 1 12rem; min-width: 0; overflow-wrap: anywhere; }
+.actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-2); margin-left: auto; }
+.titleWithHelp { display: flex; align-items: center; gap: var(--space-1); min-width: 0; }
+.titleWithHelp > :first-child { min-width: 0; overflow-wrap: anywhere; }
+
+.facts { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--space-1) var(--space-4); margin: 0; }
+.facts dt { color: var(--ink-muted); font-size: var(--text-md); }
+.facts dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.amount { font-variant-numeric: tabular-nums; }
+.note { color: var(--pending); font-size: var(--text-md); }
+.facts .note { margin-left: var(--space-2); }
+.empty { align-items: flex-start; }
+
+.list { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
+.list > li { padding: var(--space-3) 0; border-top: 1px solid var(--line); }
+.rowInfo { display: flex; flex-direction: column; gap: 2px; }
+.name { font-weight: 500; }
+
+/* 창 */
+.months { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); margin: 0; padding: 0; border: 0; min-width: 0; }
+.months legend { padding: 0; margin-bottom: var(--space-1); font-size: var(--text-md); font-weight: 500; color: var(--ink-muted); }
+.labelRow { display: flex; align-items: center; gap: var(--space-1); }
+.fieldError { margin: 0; color: var(--danger); font-size: var(--text-md); }
+.gridTitle { margin: 0; font-size: var(--text-md); font-weight: 500; color: var(--ink-muted); }
+.amountGroup { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2) var(--space-3); margin: 0; padding: 0; border: 0; min-width: 0; }
+.amountGroup legend { padding: 0; margin-bottom: var(--space-1); font-weight: 500; }
+```
+
+- [ ] **Step 9: 통과 확인**
+
+Run: `cd apps/web && npx vitest run src/tax src/common/DateTimePicker.test.tsx src/transactions && npx tsc -b && npx oxlint`
+Expected: `src/tax`와 `DateTimePicker` 30 passed, `src/transactions`(거래 입력의 `DateTimePicker` 사용처) 10파일 127 passed, 타입 오류 없음, 새 lint 경고 없음.
+
+- [ ] **Step 10: 커밋(컨트롤러)**
+
+```bash
+git add apps/web/src/tax apps/web/src/common/DateTimePicker.tsx apps/web/src/common/DateTimePicker.test.tsx
+git commit -m "feat(web): 소득공제 신용·체크 자료와 현금영수증 자료 입력" -m "Co-Authored-By: Codex (gpt-6-astra) <noreply@openai.com>"
+```
+
+### Task 5.5: 연도 합계표·경고·금액 가림과 2단 배치 (TAX-26, 27, 30, 31, 37, AC-15·23·31·32)
+
+**담당:** Codex `gpt-6-sol` / `medium` (`write`), 태그 `impl-web`. 리뷰: Claude Sonnet 5.5 (`review-task`).
+
+**Files:**
+- Create: `apps/web/src/tax/inputs/YearTotalsTable.tsx`
+- Modify: `apps/web/src/tax/inputs/TaxInputsPage.tsx`, `inputs.module.css`(덧붙임)
+- Test: `apps/web/src/tax/inputs/YearTotalsTable.test.tsx`(생성)
+
+**Interfaces:**
+- Consumes: `TaxYearView.totals`(12칸), `blankCount`, `hasInputs`, `asOfDateMismatch`, `cards[].blankCount`·`asOfDate`, `cashReceipt`. Task 5.4의 `CATEGORIES`. `useAmountFormatter('expense')`.
+- Produces: `YearTotalsTable({ view })` — 표 이름 `<연도>년 귀속 자료의 합 · 단위 원`, 열 소비구분·신용카드·체크카드·현금영수증·합계(좁은 화면은 합계 열을 숨기고 행 머리 아래 `계 n`), 바닥 합계 행, 미입력·기준일 불일치 경고(`role="status"`), 자료 없음이면 모든 칸 `—`. `inputs.module.css`의 `columns`·`column`·`warning`·`tableScroll`·`totals`·`narrowOnly`·`wideOnly`.
+
+- [ ] **Step 1: 실패하는 테스트 작성** — 서버 합계를 카드 자료의 합과 일부러 다르게 두어, 화면이 자료를 다시 더하지 않는지 본다.
+
+`apps/web/src/tax/inputs/YearTotalsTable.test.tsx` 전체:
+
+```tsx
+import { screen, within } from '@testing-library/react'
+import { beforeEach, describe, expect, it } from 'vitest'
+import { cardView, renderTaxInputs, serveTax, yearView } from '../../test/taxFixtures'
+
+beforeEach(() => {
+  try { localStorage.clear() } catch { /* storage may be unavailable */ }
+})
+
+// 카드 자료의 합과 일부러 다르게 둔 서버 합계. 화면이 자료를 다시 더하지 않고 이 값을 그대로 보이는지 본다.
+const totals = {
+  creditGeneral: 14_000_000, creditMarket: 300_000, creditTransit: 200_000, creditCulture: 100_000,
+  debitGeneral: 2_000_000, debitMarket: 200_000, debitTransit: 300_000, debitCulture: 100_000,
+  cashGeneral: 500_000, cashMarket: 100_000, cashTransit: 0, cashCulture: 0,
+}
+const cash = { rowVersion: 9, asOfDate: '2026-10-31', memo: null, amounts: { general: 500_000, market: 100_000, transit: 0, culture: 0 }, blankCount: 0 }
+
+function rowCells(table: HTMLElement, name: string) {
+  const header = within(table).getByRole('rowheader', { name: new RegExp(`^${name}`) })
+  return within(header.closest('tr')!).getAllByRole('cell').map((cell) => cell.textContent)
+}
+
+describe('연도 합계표', () => {
+  it('shows the 12 server totals as given, with category and method totals', async () => {
+    serveTax(yearView({ cards: [cardView()], cashReceipt: cash, totals, blankCount: 0, hasInputs: true }))
+    renderTaxInputs()
+
+    const section = await screen.findByRole('region', { name: '연도 합계표' })
+    const table = within(section).getByRole('table', { name: '2026년 귀속 자료의 합 · 단위 원' })
+    expect(within(table).getAllByRole('columnheader').map((th) => th.textContent)).toEqual(['소비구분', '신용카드', '체크카드', '현금영수증', '합계'])
+    expect(rowCells(table, '일반')).toEqual(['14,000,000', '2,000,000', '500,000', '16,500,000'])
+    expect(rowCells(table, '전통시장')).toEqual(['300,000', '200,000', '100,000', '600,000'])
+    expect(rowCells(table, '합계')).toEqual(['14,600,000', '2,600,000', '600,000', '17,800,000'])
+    expect(within(table).getByRole('rowheader', { name: /^일반/ })).toHaveTextContent('일반계 16,500,000')
+    expect(section).not.toHaveTextContent('미입력 칸이 있습니다')
+    expect(section).not.toHaveTextContent('기준일이 서로 다릅니다')
+  })
+
+  it('shows a dash in every cell while the year has no inputs and lists the blank cells', async () => {
+    serveTax(yearView())
+    renderTaxInputs()
+
+    const section = await screen.findByRole('region', { name: '연도 합계표' })
+    expect(rowCells(within(section).getByRole('table'), '일반')).toEqual(['—', '—', '—', '—'])
+    expect(within(section).getByRole('status')).toHaveTextContent('미입력 칸이 있습니다(현금영수증 4칸).')
+  })
+
+  it('warns about blank cells and different as-of dates', async () => {
+    serveTax(yearView({
+      cards: [cardView(), cardView({ id: 8, issuerName: 'B카드', asOfDate: '2026-09-30', blankCount: 3 })],
+      cashReceipt: cash, totals, blankCount: 3, hasInputs: true, asOfDateMismatch: true,
+    }))
+    renderTaxInputs()
+
+    const section = await screen.findByRole('region', { name: '연도 합계표' })
+    const [blanks, dates] = within(section).getAllByRole('status')
+    expect(blanks).toHaveTextContent('미입력 칸이 있습니다(B카드 3칸). 아래 합계는 입력한 칸만 더한 값이며 분석은 확정값으로 보여 주지 않습니다.')
+    expect(dates).toHaveTextContent('자료의 기준일이 서로 다릅니다(A카드 2026-10-31, B카드 2026-09-30, 현금영수증 2026-10-31).')
+  })
+
+  it('masks the deductible amounts with the expense setting and leaves the salary alone', async () => {
+    localStorage.setItem('saladbowl.amountMask', JSON.stringify({ EXPENSE: true }))
+    serveTax(yearView({ cards: [cardView()], cashReceipt: cash, totals, blankCount: 0, hasInputs: true }))
+    renderTaxInputs()
+
+    const section = await screen.findByRole('region', { name: '연도 합계표' })
+    expect(rowCells(within(section).getByRole('table'), '일반')).toEqual(['•••••', '•••••', '•••••', '•••••'])
+    expect(screen.getByRole('region', { name: '신용·체크 자료' })).toHaveTextContent('합계 ₩ •••••')
+    expect(screen.getByRole('region', { name: '기본정보' })).toHaveTextContent('₩ 50,000,000')
+  })
+
+  it('shows the deductible amounts when only the income setting is masked', async () => {
+    localStorage.setItem('saladbowl.amountMask', JSON.stringify({ INCOME: true }))
+    serveTax(yearView({ cards: [cardView()], cashReceipt: cash, totals, blankCount: 0, hasInputs: true }))
+    renderTaxInputs()
+
+    const section = await screen.findByRole('region', { name: '연도 합계표' })
+    expect(rowCells(within(section).getByRole('table'), '일반')).toEqual(['14,000,000', '2,000,000', '500,000', '16,500,000'])
+  })
+})
+```
+
+- [ ] **Step 2: 실패 확인**
+
+Run: `cd apps/web && npx vitest run src/tax/inputs/YearTotalsTable.test.tsx`
+Expected: 5건 모두 FAIL — `Unable to find role="region" and name "연도 합계표"`.
+
+- [ ] **Step 3: 합계표**
+
+`apps/web/src/tax/inputs/YearTotalsTable.tsx` 전체:
+
+```tsx
+import { useAmountFormatter } from '../../common/AmountMask'
+import ui from '../../common/ui.module.css'
+import type { TaxYearView } from '../taxApi'
+import { CATEGORIES } from './amounts'
+import styles from './inputs.module.css'
+
+const METHODS = [['credit', '신용카드'], ['debit', '체크카드'], ['cash', '현금영수증']] as const
+type Method = (typeof METHODS)[number][0]
+type Category = (typeof CATEGORIES)[number][0]
+
+/**
+ * 연도 합계표(결제수단 3 × 소비구분 4). 12칸은 서버 totals 그대로 쓰고 자료에서 다시 더하지 않는다.
+ * 행·열 합계는 그 12칸을 더한 표시용 값이다. 좁은 화면은 합계 열 대신 소비구분 이름 아래 "계"를 둔다.
+ */
+export default function YearTotalsTable({ view }: { view: TaxYearView }) {
+  const format = useAmountFormatter('expense')
+  // 세 결제수단 열이 375px에 들어가도록 표 안에서는 ₩ 기호를 뺀다(단위는 표 제목에 적는다). 가린 값도 같다.
+  const amount = (value: number) => (view.hasInputs ? format(value).replace('₩ ', '') : '—')
+  const cell = (method: Method, category: Category) => view.totals[`${method}${category}`]
+  const categoryTotal = (category: Category) => METHODS.reduce((sum, [method]) => sum + cell(method, category), 0)
+  const methodTotal = (method: Method) => CATEGORIES.reduce((sum, [category]) => sum + cell(method, category), 0)
+  const cashBlanks = view.cashReceipt ? view.cashReceipt.blankCount : 4
+  const blanks = [
+    ...view.cards.filter((card) => card.blankCount > 0).map((card) => `${card.issuerName} ${card.blankCount}칸`),
+    ...(cashBlanks > 0 ? [`현금영수증 ${cashBlanks}칸`] : []),
+  ]
+  const dates = [
+    ...view.cards.map((card) => `${card.issuerName} ${card.asOfDate}`),
+    ...(view.cashReceipt ? [`현금영수증 ${view.cashReceipt.asOfDate}`] : []),
+  ]
+
+  return (
+    <section aria-labelledby="tax-totals-title" className={ui.card}>
+      <h2 id="tax-totals-title">연도 합계표</h2>
+      {view.blankCount > 0 && (
+        <p role="status" className={styles.warning}>
+          미입력 칸이 있습니다({blanks.join(', ')}). 아래 합계는 입력한 칸만 더한 값이며 분석은 확정값으로 보여 주지 않습니다.
+        </p>
+      )}
+      {view.asOfDateMismatch && (
+        <p role="status" className={styles.warning}>
+          자료의 기준일이 서로 다릅니다({dates.join(', ')}). 합계는 서로 다른 시점의 누계를 더한 값이며 분석에 "추정"이 붙습니다.
+        </p>
+      )}
+      <div className={styles.tableScroll}>
+        <table className={styles.totals}>
+          <caption>{view.taxYear}년 귀속 자료의 합 · 단위 원</caption>
+          <thead>
+            <tr>
+              <th scope="col">소비구분</th>
+              {METHODS.map(([method, label]) => <th key={method} scope="col">{label}</th>)}
+              <th scope="col" className={styles.wideOnly}>합계</th>
+            </tr>
+          </thead>
+          <tbody>
+            {CATEGORIES.map(([category, label]) => (
+              <tr key={category}>
+                <th scope="row">{label}<span className={styles.narrowOnly}>계 {amount(categoryTotal(category))}</span></th>
+                {METHODS.map(([method]) => <td key={method}>{amount(cell(method, category))}</td>)}
+                <td className={styles.wideOnly}>{amount(categoryTotal(category))}</td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr>
+              <th scope="row">합계</th>
+              {METHODS.map(([method]) => <td key={method}>{amount(methodTotal(method))}</td>)}
+              <td className={styles.wideOnly}>{amount(METHODS.reduce((sum, [method]) => sum + methodTotal(method), 0))}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </section>
+  )
+}
+```
+
+- [ ] **Step 4: 2단 배치와 표 스타일**
+
+`git apply`:
+
+```diff
+diff --git a/apps/web/src/tax/inputs/TaxInputsPage.tsx b/apps/web/src/tax/inputs/TaxInputsPage.tsx
+index 483bb0b..d8749b1 100644
+--- a/apps/web/src/tax/inputs/TaxInputsPage.tsx
++++ b/apps/web/src/tax/inputs/TaxInputsPage.tsx
+@@ -12,6 +12,7 @@ import BasicInfoDialog from './BasicInfoDialog'
+ import CardStatementList from './CardStatementList'
+ import CashReceiptSection from './CashReceiptSection'
+ import DeleteYearDialog from './DeleteYearDialog'
++import YearTotalsTable from './YearTotalsTable'
+ import styles from './inputs.module.css'
+ 
+ /** 소득공제 › 입력자료. 선택 연도의 기록 하나를 보여 주고 고친다. 그룹과 무관하다(useGroups를 쓰지 않는다). */
+@@ -51,9 +52,14 @@ export default function TaxInputsPage() {
+       )}
+       {view && (
+         <>
+-          <BasicInfoCard view={view} onEdit={() => setEditing(true)} />
+-          <CardStatementList view={view} defaultAsOfDate={defaultAsOfDate} />
+-          <CashReceiptSection view={view} defaultAsOfDate={defaultAsOfDate} />
++          <div className={styles.columns}>
++            <div className={styles.column}>
++              <BasicInfoCard view={view} onEdit={() => setEditing(true)} />
++              <CardStatementList view={view} defaultAsOfDate={defaultAsOfDate} />
++              <CashReceiptSection view={view} defaultAsOfDate={defaultAsOfDate} />
++            </div>
++            <YearTotalsTable view={view} />
++          </div>
+           <section aria-label="연도 기록 삭제" className={`${ui.card} ${styles.split}`}>
+             <p>이 연도의 기본정보·입력자료·금액·지출계획을 모두 지웁니다.</p>
+             <button type="button" className={`${ui.button} ${ui.danger}`} onClick={() => setDeleting(true)}>{year}년 기록 삭제</button>
+diff --git a/apps/web/src/tax/inputs/inputs.module.css b/apps/web/src/tax/inputs/inputs.module.css
+index 7d0ab3f..fcc2556 100644
+--- a/apps/web/src/tax/inputs/inputs.module.css
++++ b/apps/web/src/tax/inputs/inputs.module.css
+@@ -35,3 +35,26 @@
+ .gridTitle { margin: 0; font-size: var(--text-md); font-weight: 500; color: var(--ink-muted); }
+ .amountGroup { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2) var(--space-3); margin: 0; padding: 0; border: 0; min-width: 0; }
+ .amountGroup legend { padding: 0; margin-bottom: var(--space-1); font-weight: 500; }
++
++/* 넓은 화면(1100px 이상)은 자료(왼쪽) | 연도 합계표(오른쪽) 2단, 그보다 좁으면 차례로 쌓는다. */
++.columns { display: grid; gap: var(--space-3); align-items: start; min-width: 0; }
++.column { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
++@media (min-width: 1100px) {
++  .columns { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
++}
++
++.warning { padding: var(--space-3); border-radius: var(--radius-sm); background: var(--surface-100); color: var(--pending); font-size: var(--text-md); overflow-wrap: anywhere; }
++/* 표가 칸보다 넓어지는 예외(아주 큰 금액, 320px)에만 표 안에서 가로로 움직인다. 페이지는 넘치지 않는다. */
++.tableScroll { overflow-x: auto; min-width: 0; }
++.totals { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
++.totals caption { caption-side: top; padding-bottom: var(--space-2); text-align: left; font-size: var(--text-md); color: var(--ink-muted); }
++.totals th, .totals td { padding: var(--space-2) var(--space-1); border-bottom: 1px solid var(--line); }
++.totals td { text-align: right; white-space: nowrap; }
++.totals thead th { text-align: right; font-size: var(--text-md); font-weight: 500; color: var(--ink-muted); }
++.totals thead th:first-child, .totals tbody th, .totals tfoot th { text-align: left; font-weight: 500; }
++.totals tfoot th, .totals tfoot td { font-weight: 700; border-bottom: 0; }
++.narrowOnly { display: none; }
++@media (max-width: 820px) {
++  .narrowOnly { display: block; font-size: var(--text-md); font-weight: 400; color: var(--ink-muted); white-space: nowrap; }
++  .wideOnly { display: none; }
++}
+```
+
+- [ ] **Step 5: 통과와 웹 전체 확인**
+
+Run: `cd apps/web && npx vitest run src/tax && npm run typecheck && npm run lint && npm run build && npx vitest run --maxWorkers=4`
+Expected: `src/tax` 6파일 31 passed. typecheck 통과, lint는 기존 `imports/CoverageSection.tsx` 경고 1건 말고 새 경고 없음, build 통과(`TaxInputsPage` 청크가 따로 나뉜다), 전체 85파일 684 passed. 기본 병렬(`npm test`)은 이 기계에서 소득공제와 무관한 시간 의존 테스트(`AppRoutes`의 포커스·cold-start, 거래·대시보드 몇 건)가 실행마다 다르게 1~4건 실패했다(`4aecc38` 기준선에서도 같다). 실패하면 그 파일만 다시 돌려 통과를 확인하고 보고한다.
+
+- [ ] **Step 6: 커밋(컨트롤러)**
+
+```bash
+git add apps/web/src/tax/inputs
+git commit -m "feat(web): 소득공제 연도 합계표와 경고를 보임" -m "Co-Authored-By: Codex (gpt-6-sol) <noreply@openai.com>"
+```
 
 ### Task 5.6: verify 시드·검증 지도 (AC-02, AC-23)
 
-**담당:** Codex `gpt-6-luna` / `low` (`write`), 태그 `docs`. 리뷰: Claude Fable 5.2.
+**담당:** Codex `gpt-6-luna` / `low` (`write`), 태그 `docs`. 리뷰: Claude Sonnet 5.5 (`review-task`).
 
-- Files: Modify `.claude/skills/verify/bin/seed.sh`(검증 계정 하나를 SQL로 서비스 관리자 지정, 관리자 API로 2026 세법 초안 생성·적용, 회원 API로 합성 연도 기록·카드 자료 2건·현금영수증·지출계획 등록), `bin/doctor.sh`, `features/README.md`, `features/navigation.md`. Create `features/tax-inputs.md`.
-- 검증 여정: 375px와 데스크톱에서 메뉴 진입, 8칸·4칸 입력과 합계표에 가로 스크롤 없음(AC-23), 그룹 없는 계정(`verify4` 등)으로 등록·조회, 그룹 전환 뒤 같은 내용(AC-02), 창이 가운데(AC-44).
+**Files:**
+- Modify: `.claude/skills/verify/bin/env.sh`(그룹 없는 계정), `bin/seed.sh`, `bin/doctor.sh`, `SKILL.md`, `features/README.md`, `features/navigation.md`
+- Create: `.claude/skills/verify/features/tax-inputs.md`
+
+**Interfaces:**
+- Consumes: PR 2 관리자 API `POST /tax/admin/law-versions`·`PUT /{id}`·`POST /{id}/apply`(요청마다 DB의 `users.service_admin` 확인), PR 3 회원 API, 검증 DB 컨테이너 `salad-verify-pg`(DB·사용자 `saladbowl`).
+- Produces: `seed.sh` 출력 `SEEDED group=<id> tax_year=<YYYY>`. 계정 `verify5@example.test` / 그룹없음. `doctor.sh`의 `applied tax law YYYY`·`seed tax record YYYY` 확인.
+
+- [ ] **Step 1: 시드·점검 스크립트**
+
+`git apply`:
+
+```diff
+diff --git a/.claude/skills/verify/bin/doctor.sh b/.claude/skills/verify/bin/doctor.sh
+index 2848ec9..41188d0 100755
+--- a/.claude/skills/verify/bin/doctor.sh
++++ b/.claude/skills/verify/bin/doctor.sh
+@@ -12,9 +12,15 @@ done
+ check "port $API_PORT owned by api pid" "lsof -a -p $(cat "$STATE/api.pid" 2>/dev/null || echo 0) -iTCP:$API_PORT -sTCP:LISTEN"
+ check "port $WEB_PORT owned by web pid" "lsof -a -p $(cat "$STATE/web.pid" 2>/dev/null || echo 0) -iTCP:$WEB_PORT -sTCP:LISTEN"
+ check "health UP through web proxy" "curl -sf $WEB/api/actuator/health | grep -q UP"
+-for email in "$SEED_EMAIL" "$SEED_EMAIL2" "$SEED_EMAIL3" "$SEED_EMAIL4"; do
++for email in "$SEED_EMAIL" "$SEED_EMAIL2" "$SEED_EMAIL3" "$SEED_EMAIL4" "$SEED_EMAIL5"; do
+   check "seed login $email" "curl -sf -H 'Content-Type: application/json' -d '{\"email\":\"$email\",\"password\":\"$SEED_PASSWORD\"}' $WEB/api/auth/login"
+ done
+ 
++tax_year=$(TZ=Asia/Seoul date +%Y)
++token=$(curl -sf -H 'Content-Type: application/json' -d "{\"email\":\"$SEED_EMAIL\",\"password\":\"$SEED_PASSWORD\"}" "$WEB/api/auth/login" \
++  | python3 -c 'import json,sys; print(json.load(sys.stdin)["accessToken"])' 2>/dev/null)
++check "applied tax law $tax_year" "curl -sf -H 'Authorization: Bearer $token' '$WEB/api/tax/law-versions/current?year=$tax_year'"
++check "seed tax record $tax_year" "curl -sf -H 'Authorization: Bearer $token' '$WEB/api/tax/years/$tax_year'"
++
+ echo "build: $(git -C "$ROOT" rev-parse --short HEAD)$(git -C "$ROOT" diff --quiet || echo '+dirty')"
+ exit $ok
+diff --git a/.claude/skills/verify/bin/env.sh b/.claude/skills/verify/bin/env.sh
+index 0d0b4b2..05a7bbb 100755
+--- a/.claude/skills/verify/bin/env.sh
++++ b/.claude/skills/verify/bin/env.sh
+@@ -10,3 +10,5 @@ SEED_EMAIL=verify@example.test SEED_PASSWORD=verify-pass-1234 SEED_NICK=검증
+ SEED_EMAIL2=verify2@example.test SEED_NICK2=검증둘
+ SEED_EMAIL3=verify3@example.test SEED_NICK3=검증셋
+ SEED_EMAIL4=verify4@example.test SEED_NICK4=비공개러
++# 그룹에 들지 않은 계정(소득공제 TAX-03·AC-02 확인용). 가입만 한다.
++SEED_EMAIL5=verify5@example.test SEED_NICK5=그룹없음
+diff --git a/.claude/skills/verify/bin/seed.sh b/.claude/skills/verify/bin/seed.sh
+index 1b4d41f..ab652de 100755
+--- a/.claude/skills/verify/bin/seed.sh
++++ b/.claude/skills/verify/bin/seed.sh
+@@ -36,4 +36,37 @@ for member in owner second third private; do
+     echo
+   done
+ done
+-echo "SEEDED group=$gid"
++# 그룹 없는 계정: 가입만 한다.
++curl -sf -H "$json" -d "{\"email\":\"$SEED_EMAIL5\",\"password\":\"$SEED_PASSWORD\",\"nickname\":\"$SEED_NICK5\"}" "$WEB/api/auth/signup" >/dev/null
++
++# 소득공제: 소유자를 서비스 관리자로 지정하고(화면 없이 DB에서, PR 2), 올해 귀속 세법(2026 귀속 값)을 적용한 뒤
++# 소유자에게 합성 연도 기록을 넣는다. 금액은 와이어프레임 합성값과 같다(PR 7 확인 숫자의 전제).
++tax_year=$(TZ=Asia/Seoul date +%Y)
++docker exec "$PG_NAME" psql -U saladbowl -d saladbowl -qc "UPDATE users SET service_admin = true WHERE email = '$SEED_EMAIL'" >/dev/null
++field() { python3 -c "import json,sys; print(json.load(sys.stdin)[\"$1\"])"; }
++law=$(curl -sf -H "$auth" -H "$json" -d "{\"taxYear\":$tax_year}" "$WEB/api/tax/admin/law-versions")
++law_id=$(field id <<<"$law")
++law=$(curl -sf -X PUT -H "$auth" -H "$json" "$WEB/api/tax/admin/law-versions/$law_id" -d "{
++  \"rowVersion\":$(field rowVersion <<<"$law"), \"minSpendRatePct\":25, \"bracketBoundary\":70000000,
++  \"rateCreditPct\":15, \"rateDebitCashPct\":30, \"rateCulturePct\":30, \"rateMarketPct\":40, \"rateTransitPct\":40,
++  \"basicLimitLow\":[3000000,3500000,4000000], \"basicLimitHigh\":[2500000,2750000,3000000],
++  \"extraLimitLow\":3000000, \"extraLimitHigh\":2000000,
++  \"basisLawName\":\"조세특례제한법\", \"basisArticle\":\"제126조의2\", \"basisUrl\":\"https://www.law.go.kr\",
++  \"periodStart\":\"$tax_year-01-01\", \"periodEnd\":\"$tax_year-12-31\", \"memo\":\"검증용 합성 세법\"}")
++curl -sf -H "$auth" -H "$json" -d "{\"rowVersion\":$(field rowVersion <<<"$law")}" "$WEB/api/tax/admin/law-versions/$law_id/apply" >/dev/null
++tax="$WEB/api/tax/years/$tax_year"
++curl -sf -X PUT -H "$auth" -H "$json" -d '{"totalSalary":50000000,"workStartMonth":1,"workEndMonth":12,"childCount":0}' "$tax" >/dev/null
++curl -sf -H "$auth" -H "$json" "$tax/cards" -d "{\"issuerName\":\"A카드\",\"asOfDate\":\"$tax_year-06-30\",\"memo\":\"주 사용 카드\",
++  \"amounts\":{\"creditGeneral\":9000000,\"creditMarket\":300000,\"creditTransit\":200000,\"creditCulture\":100000,
++  \"debitGeneral\":0,\"debitMarket\":0,\"debitTransit\":0,\"debitCulture\":0}}" >/dev/null
++curl -sf -H "$auth" -H "$json" "$tax/cards" -d "{\"issuerName\":\"B카드\",\"asOfDate\":\"$tax_year-06-30\",
++  \"amounts\":{\"creditGeneral\":5000000,\"creditMarket\":0,\"creditTransit\":0,\"creditCulture\":0,
++  \"debitGeneral\":2000000,\"debitMarket\":200000,\"debitTransit\":300000,\"debitCulture\":100000}}" >/dev/null
++curl -sf -X PUT -H "$auth" -H "$json" "$tax/cash-receipt" \
++  -d "{\"asOfDate\":\"$tax_year-06-30\",\"amounts\":{\"general\":500000,\"market\":100000,\"transit\":0,\"culture\":0}}" >/dev/null
++curl -sf -X PUT -H "$auth" -H "$json" "$tax/plan" -d '{
++  "general":{"creditFixed":500000,"debitFixed":300000,"flexible":1200000},
++  "market":{"creditFixed":0,"debitFixed":100000,"flexible":100000},
++  "transit":{"creditFixed":100000,"debitFixed":0,"flexible":0},
++  "culture":{"creditFixed":0,"debitFixed":0,"flexible":100000}}' >/dev/null
++echo "SEEDED group=$gid tax_year=$tax_year"
+```
+
+- [ ] **Step 2: 검증 지도**
+
+`.claude/skills/verify/features/tax-inputs.md` 전체:
+
+```markdown
+# Tax deduction inputs
+
+소득공제 › 입력자료 (`/tax/inputs`, `h1` `소득공제` on wide screens) holds one member's record for one tax year: basic info (expected salary, work months, child count), card statements per issuer (8 amounts = 4 categories × 신용카드/체크카드), one cash-receipt statement (4 amounts), the server's year totals table, and deleting the year record. The data is personal: the header group does not change it, and members without a group can use it. Every input or confirm dialog opens as a centered dialog at every width, including 375px.
+
+## Sub-features
+
+- `tax-entry` opens `/tax`, which redirects to `/tax/inputs` (the analysis rule arrives with PR 7). The sidebar shows `소득공제` with the indented sub-link `입력자료`; narrow screens use the bottom tab `소득공제`.
+- `tax-year` uses the `귀속연도` select (last, this, next year in Korean time). The choice lives in memory only: reload or logout returns to this year.
+- `tax-basic` shows `기본정보` with `[수정]` (or `[기본정보 입력]` on an empty year). `근로기간 확인 필요` appears when the months are not 1–12. `자녀등 수` appears only when the record's law has child tiers; its rules open from the `자녀등 수 도움말` button.
+- `tax-cards` lists `신용·체크 자료` rows: issuer, `완료` or `미완료 · 빈 칸 n개`, `기준일 … · 합계 ₩ … · 메모`, and on the right `[빈 칸 0원으로 채우기]` (incomplete only), `[편집]`, `[삭제]`. Delete asks once. 50 rows per year at most.
+- `tax-cash` shows `현금영수증 자료`: `[입력]` and `[4칸 0원으로 채우기]` before the first save, `[편집]` after. There is no delete.
+- `tax-totals` shows `연도 합계표` from the server's 12 totals, the blank-cell and different-date warnings, and `—` when the year has no inputs. Narrow screens move the row total under the category name as `계 …`.
+- `tax-delete-year` deletes the whole year after the user types the exact year in `확인을 위해 귀속연도 YYYY을 입력하세요`.
+- `tax-mask` follows the amount mask: `수입` hides the salary, `지출` hides card totals and the totals table. Fields being edited never hide.
+
+## How to get to it (user POV)
+
+- Click `소득공제` in `navigation "주 메뉴"` (sidebar or bottom tab). On wide screens, `입력자료` under it opens the same page.
+
+## Driving it with the built-in browser
+
+Preconditions:
+
+- Baseline seed. `seed.sh` printed `SEEDED group=… tax_year=YYYY`. `verify@example.test` is a service admin, the `YYYY` law is applied with child tiers, and the owner's `YYYY` record has salary ₩ 50,000,000, A카드 (₩ 9,600,000), B카드 (₩ 7,600,000), cash ₩ 600,000, all dated `YYYY-06-30`. `verify5@example.test` (그룹없음) has no group and no record.
+
+- **Seeded record.** At `mobile` and `desktop`, open `소득공제`. The totals table reads 일반 14,000,000 / 2,000,000 / 500,000 and 합계 14,600,000 / 2,600,000 / 600,000 (17,800,000 on desktop). No warning shows. No page-level horizontal scroll at 375px and 320px (`resize_window` 320×700).
+- **Centered dialogs.** At `mobile`, open `기본정보 수정`, `A카드 자료 편집`, `현금영수증 자료 편집`, `A카드 자료 삭제`, and `YYYY년 기록 삭제`. Each dialog is centered with space above and below; none slides up from the bottom. The 8-cell grid shows two columns (신용카드, 체크카드) per category with no horizontal scroll.
+- **Blank vs 0.** Add a card `C카드` with only 일반 신용카드 filled. Its row reads `미완료 · 빈 칸 7개`, the totals card shows the blank warning, then `[빈 칸 0원으로 채우기]` on the row turns it into `완료`. Delete `C카드` (one confirmation) to restore.
+- **Long name.** Add a card whose name is 40 characters. At 375px and 320px the name wraps on the left and `[편집] [삭제]` stay right-aligned on the row. Delete it afterwards.
+- **Help.** In the 기본정보 dialog, tap `자녀등 수 도움말`, tap it again, tap outside, press Esc: the popover closes each time, focus returns to `?`, the dialog stays open, and the value does not change.
+- **Different dates.** Edit B카드 기준일 to `YYYY-05-31`. The totals card warns `자료의 기준일이 서로 다릅니다(…)`. Restore `YYYY-06-30`.
+- **No group.** Log out, log in as `verify5@example.test`, open `소득공제`, enter basic info, add one card, then switch nothing (there is no group) and reload: the same data shows. Then, as `verify@example.test`, change the header group and confirm the tax page shows the same numbers without reloading.
+- **Delete year.** As `verify5@example.test`, open `YYYY년 기록 삭제`: `삭제` stays disabled for an empty value and for the previous year, enables on the exact year, and the page returns to `YYYY년 귀속 기록이 없습니다`. Reopen the dialog before confirming once to see the input start empty.
+- **Mask.** Turn on the `수입` mask: the salary shows `₩ •••••` and totals stay visible. Turn on only `지출`: totals and card sums show `•••••`, the salary is visible. Turn masks off afterwards.
+
+## Gotchas
+
+- The seed year follows today's Korean date. The year select only offers last, this and next year; older records exist on the server but have no entry point.
+- `rowVersion` values are opaque sequence numbers, not counters. A 409 or 404 on save shows `다른 곳에서 수정되거나 삭제됐습니다. 저장하지 않았습니다.` with `[다시 불러오기]`, which closes the dialog and reloads the year.
+- Card rows sum their own 8 cells for display; the totals table uses the server's 12 totals, and its row and column totals add those 12 cells.
+- The page has no analysis yet. `/tax` always opens the inputs page until PR 7.
+```
+
+`git apply`:
+
+```diff
+diff --git a/.claude/skills/verify/SKILL.md b/.claude/skills/verify/SKILL.md
+index a945143..2e6a6ac 100644
+--- a/.claude/skills/verify/SKILL.md
++++ b/.claude/skills/verify/SKILL.md
+@@ -13,14 +13,15 @@ The user often has their own dev stack running on 5432/8080/5173. Never drive or
+ 
+ ```bash
+ .claude/skills/verify/bin/up.sh      # prints "READY http://localhost:15173"; first run builds the API jar (several minutes)
+-.claude/skills/verify/bin/seed.sh    # prints the import result JSON, then "SEEDED group=<id>"
++.claude/skills/verify/bin/seed.sh    # prints the import result JSON, then "SEEDED group=<id> tax_year=<YYYY>"
+ ```
+ 
+ `up.sh` refuses to start if any of the three ports is already in use. It starts a fresh Postgres container with no volume (`salad-verify-pg`), so every launch begins with an empty DB. Flyway migrates it when the API starts. Ready means `GET http://localhost:15173/api/actuator/health` returns `UP` through the Vite proxy. `seed.sh` only works on an empty DB: run it once per launch.
+ 
+ What the seed creates:
+-- Four accounts in `bin/env.sh`, sharing `SEED_PASSWORD`: verify@example.test / 검증러 (owner), verify2@example.test / 검증둘, verify3@example.test / 검증셋, verify4@example.test / 비공개러.
+-- All join 검증그룹 through invitations. First three share ON, 비공개러 explicitly OFF (membership defaults ON).
++- Five accounts in `bin/env.sh`, sharing `SEED_PASSWORD`: verify@example.test / 검증러 (owner), verify2@example.test / 검증둘, verify3@example.test / 검증셋, verify4@example.test / 비공개러, and verify5@example.test / 그룹없음 (no group, no data).
++- The owner is a service admin (set by SQL). This year's tax law (Korean time) is applied with 2026 values, and the owner has a synthetic tax record for this year: salary 50,000,000, A카드·B카드, cash receipt, and a spending plan (the wireframe numbers).
++- The first four join 검증그룹 through invitations. First three share ON, 비공개러 explicitly OFF (membership defaults ON).
+ - Previous 12 complete months, 45 expense majors × 24 minors, plus salary for each member. Monthly files keep each upload below the API's 92-day limit.
+ - 식비 신규 starts two months ago; 재등장 returns last month after missing months 2–4; 환불초과 is negative net spending two months ago. Private member adds 문화 공연 ₩ 990,000 monthly, excluded from group totals.
+ - `python3 -I .claude/skills/verify/bin/make_xlsx.py --expected` computes the relative-month reference in [features/seed-expected.json](features/seed-expected.json). Dashboard recipes use that reference.
+@@ -74,7 +75,7 @@ This kills only the pids in `$TMPDIR/salad-verify/*.pid` and removes the `salad-
+ |---|---|
+ | `bin/env.sh` | Shared ports, paths, and seed account. Sourced by the other scripts. |
+ | `bin/up.sh` | Fresh DB, then API jar, then Vite with `API_PROXY_TARGET`. Prints `READY`. |
+-| `bin/seed.sh` | Signup, group, share on, upload of fake xlsx made by `make_xlsx.py`. |
++| `bin/seed.sh` | Signup, group, share on, upload of fake xlsx made by `make_xlsx.py`, service admin, tax law and a tax record. |
+ | `bin/doctor.sh` | Read-only health checks. Exit code 0 means everything passed. |
+ | `bin/down.sh` | Tears down what this run started. Keeps evidence. |
+ | `bin/make_xlsx.py <out.xlsx>` | Writes a fake Banksalad export (sheet `가계부 내역`) for one selected month: `--member owner|second|third|private --back 1..12`. |
+diff --git a/.claude/skills/verify/features/README.md b/.claude/skills/verify/features/README.md
+index 0ab891e..e34ec31 100644
+--- a/.claude/skills/verify/features/README.md
++++ b/.claude/skills/verify/features/README.md
+@@ -33,3 +33,4 @@ Each feature file starts with an H1 title and one paragraph describing the user-
+ - [Group dashboard](./dashboard.md): sub-routes for 대분류·소분류 × 분포·추이, month in the address, totals with per-member dialog, category donut and trend.
+ - [Transactions](./transactions.md): my or group transaction list, search, detail, manual add.
+ - [Groups](./groups.md): create, rename, invite link, members, bans.
++- [Tax deduction inputs](./tax-inputs.md): 소득공제 › 입력자료 — basic info, card and cash-receipt statements, year totals, delete year.
+diff --git a/.claude/skills/verify/features/navigation.md b/.claude/skills/verify/features/navigation.md
+index 98ae35f..11023d4 100644
+--- a/.claude/skills/verify/features/navigation.md
++++ b/.claude/skills/verify/features/navigation.md
+@@ -4,9 +4,9 @@ Every signed-in page shares one shell. Wide screens get a left sidebar and a hea
+ 
+ ## Sub-features
+ 
+-- `nav-sidebar` shows four sidebar links on wide screens: 홈, 대시보드, 거래 목록, 그룹 관리. Under 대시보드 sit indented sub-links `대분류` (`/dashboard/major`) and `소분류` (`/dashboard/minor`). Inside the dashboard they replace history and keep `?month=`.
+-- `nav-tabs` shows four bottom tabs on narrow screens: 홈, 대시보드, 거래, 그룹. The tabs ignore the dashboard sub-links; the dashboard has its own `대시보드 메뉴` (see dashboard.md).
+-- `nav-active` marks the current page link with `aria-current="page"`. Home matches `/` exactly. Other links also match sub-paths, so on `/dashboard/major` both `대시보드` and `대분류` are highlighted. Only `대분류` gets `aria-current="page"`; the parent gets `aria-current="true"`.
++- `nav-sidebar` shows five sidebar links on wide screens: 홈, 소득공제, 대시보드, 거래 목록, 그룹 관리. Under 소득공제 sits the indented sub-link `입력자료` (`/tax/inputs`). Under 대시보드 sit indented sub-links `대분류` (`/dashboard/major`) and `소분류` (`/dashboard/minor`). Inside the dashboard the dashboard sub-links replace history and keep `?month=`; the 소득공제 sub-link never takes `?month=`.
++- `nav-tabs` shows five bottom tabs on narrow screens: 홈, 소득공제, 대시보드, 거래, 그룹. The tabs ignore sub-links; the dashboard has its own `대시보드 메뉴` (see dashboard.md). 소득공제 has one sub-screen for now and no in-page tabs.
++- `nav-active` marks the current page link with `aria-current="page"`. Home matches `/` exactly. Other links also match sub-paths, so on `/dashboard/major` both `대시보드` and `대분류` are highlighted. Only `대분류` gets `aria-current="page"`; the parent gets `aria-current="true"`. `/tax/inputs` works the same way for `소득공제` and `입력자료`.
+ - `nav-account` opens the account sheet with the nickname and logout (narrow screens).
+ - `nav-group` uses the header `그룹` select to change the group that group-scoped pages show.
+ 
+@@ -21,11 +21,11 @@ Preconditions:
+ 
+ - Baseline state, logged in, seed group `검증그룹` selected.
+ 
+-- **Wide links.** Use preset `desktop`, then reload. Run `find "주 메뉴"` and click each link. Each click changes the `h1` and moves `aria-current` to the clicked link. The link list reads 홈, 대시보드, 대분류, 소분류, 거래 목록, 그룹 관리.
+-- **Narrow tabs.** Use preset `mobile`, then reload. The same nav holds 4 tab links with the short labels. The sidebar is gone from the accessibility tree.
++- **Wide links.** Use preset `desktop`, then reload. Run `find "주 메뉴"` and click each link. Each click changes the `h1` and moves `aria-current` to the clicked link. The link list reads 홈, 소득공제, 입력자료, 대시보드, 대분류, 소분류, 거래 목록, 그룹 관리. No `세법 관리` link shows for a member.
++- **Narrow tabs.** Use preset `mobile`, then reload. The same nav holds 5 tab links with the short labels. The sidebar is gone from the accessibility tree.
+ - **Account sheet.** In `mobile`, click the button `계정`. A sheet titled `계정` shows `검증러` and a logout button.
+ 
+ ## Gotchas
+ 
+ - The layout is picked by a media query at render time, so resizing without a reload can leave the old layout up.
+-- The tab bar splits its width evenly by the number of tabs (four now). Adding a tab is a design change: check that the labels still fit at 375px.
++- The tab bar splits its width evenly by the number of tabs (five since 소득공제). Check that `소득공제` and `대시보드` still fit at 320px and 375px.
+```
+
+- [ ] **Step 3: 확인** — 스크립트 문법과 실제 시드를 본다(실제 실행은 PR 마무리의 verify에서 한다).
+
+Run: `bash -n .claude/skills/verify/bin/seed.sh && bash -n .claude/skills/verify/bin/doctor.sh`
+Expected: 출력 없음. 이어서 `up.sh` → `seed.sh`가 `SEEDED group=… tax_year=YYYY`를 출력하고 `doctor.sh`가 0으로 끝나야 한다(계획 작성 때는 문법만 확인했다).
+
+- [ ] **Step 4: 커밋(컨트롤러)**
+
+```bash
+git add .claude/skills/verify
+git commit -m "chore(verify): 소득공제 시드와 입력자료 검증 지도" -m "Co-Authored-By: Codex (gpt-6-luna) <noreply@openai.com>"
+```
 
 ### PR 5 마무리 (컨트롤러)
 
-- 웹 검증 4종, verify 375px·데스크톱, 이전·이후 캡처, "UI 표준 적용" 절의 검증 항목(320px, 긴 카드사명, 도움말 조작). 브랜치 최종 리뷰 Claude Fable 5.2 한 번. PR 본문에 "분석·지출계획은 뒤 PR"임을 적는다.
+1. **웹 검증 4종** — `cd apps/web && npm run typecheck && npm test && npm run lint && npm run build`. 시간 의존 테스트가 흔들리면 해당 파일만 다시 돌린 결과를 함께 적는다.
+2. **verify**(`.claude/skills/verify`, `features/tax-inputs.md`·`navigation.md`) — 375px(`mobile`)·320px(`resize_window` 320×700)·데스크톱에서:
+   - 메뉴 진입: 사이드바 `소득공제`/`입력자료`, 하단 탭 5칸(320px에서 라벨이 한 줄), `/tax` → `/tax/inputs`.
+   - 시드 기록의 기본정보·카드 2건·현금영수증·연도 합계표(일반 14,000,000 / 2,000,000 / 500,000, 합계 17,800,000). 페이지 가로 스크롤 없음(AC-23). 1100px 이상 2단, 그보다 좁으면 1단.
+   - 창 5종(기본정보, 카드 추가·편집, 현금영수증, 카드 삭제, 연도 삭제)이 375px·320px에서 가운데 창이고 아래에서 올라오지 않음(AC-44). 8칸 입력 두 칸이 320px에서 읽히는지(금액이 칸 안에서 잘리지 않는지), 긴 내용이 창 안에서 스크롤되는지, 창 안에서 키보드를 띄웠을 때 입력란이 가려지지 않는지(브라우저 확인, 실기기는 따로).
+   - 도움말 3종(`신용·체크 자료`, `공제대상액`, 창 안 `자녀등 수`): 누르기·다시 누르기·바깥 누르기·Esc·포커스 복귀, 창이 닫히지 않음, 값 불변.
+   - 긴 카드사명(40자)·긴 메모: 이름이 왼쪽에서 줄바꿈하고 [편집] [삭제]가 행 오른쪽 끝에 남음. 글자 확대에서도.
+   - 빈 칸과 0, 미완료 → [빈 칸 0원으로 채우기] → 완료, 기준일 불일치 경고, 금액 가림(수입·지출 각각).
+   - 그룹 없는 `verify5`로 등록·조회, 소유자로 헤더 그룹을 바꿔도 같은 내용(AC-02). 연도 삭제(정확한 연도 입력, 다시 열면 비어 있음).
+   - 빈 상태·로딩·오류(서버를 잠깐 멈추면 "입력자료를 불러오지 못했습니다"와 [다시 시도])·저장 중.
+   - PR용 375px 이전(`main`: 하단 탭 4칸의 홈)·이후(하단 탭 5칸, 입력자료 화면, 가운데 창 하나) 캡처를 `pr-assets` 브랜치 `pr-<번호>/`에 올린다. 화면은 시드 합성값만 쓴다.
+3. **브랜치 최종 리뷰 — Claude Opus 5.5 한 번**(`review-final`). 볼 항목:
+   - 계약: `rowVersion`을 응답에서 받은 값 그대로 보내는지(계산·+1 없음), 연도·카드 `DELETE`에 `?rowVersion=`이 늘 붙는지, 입력 창이 연 시점의 버전을 잡는지, 409·404 두 흐름이 입력을 잃지 않는지.
+   - 삭제: 연도 삭제 [삭제]가 정확한 귀속연도에서만 켜지는지, 지워지는 범위 문장, 카드 삭제는 확인 한 번, 현금영수증 삭제가 어디에도 없는지.
+   - 개인정보·캐시: `['tax', …]` 키, 로그아웃 뒤 캐시 비움, 다른 회원 화면에 이전 값 없음, 브라우저 저장소에 금액 없음, `useGroups()`를 쓰지 않음.
+   - 계산 복제 없음: 12칸 합계·빈 칸 수·`hasInputs`·`asOfDateMismatch`는 서버 값, 웹의 덧셈은 표시용 합계뿐("결정이 필요한 점" 2).
+   - 공용 부품 변경 범위: `Dialog`/`ConfirmDialog`의 `centered`, `DateTimePicker`의 `granularity`가 기본값에서 기존 화면을 바꾸지 않는지, `HelpButton` 이동 뒤 그룹 화면 불변.
+   - UI 표준: 정보 왼쪽·조작 오른쪽, 글자 토큰, 44px, 결제수단 명칭(신용카드·체크카드·현금영수증, "직불" 없음), "소비를 늘리라"는 문구 없음.
+4. **반론 리뷰(Codex 템플릿 F)는 하지 않는다.** 이유: 소유권·삭제·동시 수정의 판단은 모두 서버(PR 3, 반론 리뷰 완료)에 있고, 이 PR은 그 API를 부르며 받은 `rowVersion`을 그대로 넘길 뿐 권한·소유권·삭제 범위를 정하지 않는다. 화면이 새로 만드는 위험(로그아웃 캐시, 브라우저 저장소, 그룹 전환 노출)은 Task 5.3 테스트로 고정했다. 위 3의 삭제·계약 항목을 Opus 최종 리뷰의 필수 항목으로 두어 대신한다. 리뷰 중 서버 동작을 바꿔야 하는 문제가 나오면 그때 반론 리뷰 대상으로 올린다.
+5. **PR 본문** — 무엇: 메뉴 5칸·라우트·선택 연도(메모리), 입력자료 화면(기본정보·카드·현금영수증·합계표·연도 삭제), `Dialog`/`ConfirmDialog` `centered`, `HelpButton` 공용화, `DateTimePicker` 날짜 모드, verify 시드·지도, "계획 초안에서 달라진 점"과 "결정이 필요한 점"의 기본값, **분석·지출계획은 PR 7, 세법 관리 화면은 PR 6**이며 그 전까지 회원은 입력자료만 본다(알려진 제약 4). 확인: 웹 4종 결과와 흔들린 테스트, verify 375px·320px·데스크톱 결과와 이전·이후 캡처 표, 브라우저 확인과 실기기(iOS·Android 설치형 PWA) 미확인 구분. 리뷰: Task 리뷰(Sonnet 5.5) 6회와 최종 리뷰(Opus 5.5) 결과, 반론 리뷰를 하지 않은 이유. 참고: 이 계획, PRD, 와이어프레임. 맨 끝에 `## 소모값`(`python3 scripts/pr_usage.py`).
 
 ---
 
@@ -8465,7 +11403,7 @@ git commit -m "feat(api): 소득공제 분석 조회 API" -m "Co-Authored-By: Co
 
 ### Task 6.1: 관리자 메뉴 노출·권한 없음 화면·버전 목록 (TAX-06, 10, 11, 19, 67, 72)
 
-**담당:** Codex `gpt-6-sol` / `medium` (`write`), 태그 `impl-web`. 리뷰: Claude Fable 5.2.
+**담당:** Codex `gpt-6-sol` / `medium` (`write`), 태그 `impl-web`. 리뷰: Claude Sonnet 5.5.
 
 - Files: Create `tax/law/TaxLawPage.tsx`, `LawVersionList.tsx`, `tax/law/taxLawApi.ts`, 테스트. Modify `app/menu.ts`(`{ to: '/tax/law', label: '연도별 세법 관리', adminOnly: true }`), `app/AppRoutes.tsx`, `tax/TaxTabs.tsx`(관리자에게 세 번째 탭 "세법 관리").
 - 쿼리 키: `['tax', 'admin', 'law', year]`.
@@ -8473,20 +11411,20 @@ git commit -m "feat(api): 소득공제 분석 조회 API" -m "Co-Authored-By: Co
 
 ### Task 6.2: 초안 편집·검증·적용·삭제 (TAX-04, 60~64, 72, 76)
 
-**담당:** Codex `gpt-6-sol` / `medium` (`write`), 태그 `impl-web`. 리뷰: Claude Fable 5.2.
+**담당:** Codex `gpt-6-sol` / `medium` (`write`), 태그 `impl-web`. 리뷰: Claude Sonnet 5.5.
 
 - Files: Create `tax/law/LawVersionForm.tsx`, 테스트.
 - 테스트 대상(AC-21, 39, 44): 수치 입력(비율 6, 경계, 기본한도 2 × 3, 추가한도 2, 근거·기간·메모), 알고리즘 버전은 고정 표시, [초안 저장]·[검증](실패 목록 표시)·[적용](확인 창에 "다른 초안은 초안으로 남습니다"), 적용본은 모든 입력이 꺼진 읽기 전용이고 삭제 없음, 초안 삭제는 확인 한 번, 확인 창은 `centered`, 409·통신 오류 안내.
 
 ### Task 6.3: 검증 지도 (AC-23)
 
-**담당:** Codex `gpt-6-luna` / `low` (`write`), 태그 `docs`. 리뷰: Claude Fable 5.2.
+**담당:** Codex `gpt-6-luna` / `low` (`write`), 태그 `docs`. 리뷰: Claude Sonnet 5.5.
 
 - Files: Create `.claude/skills/verify/features/tax-law.md`. Modify `features/README.md`, `features/navigation.md`.
 
 ### PR 6 마무리 (컨트롤러)
 
-- 웹 검증 4종, verify(관리자 계정과 일반 계정 둘 다), 캡처, "UI 표준 적용" 절의 검증 항목, 브랜치 최종 리뷰 Claude Fable 5.2 한 번. 병합 뒤 운영자가 관리자 지정 SQL과 2026 귀속 세법 등록을 해야 한다는 점을 PR "참고"에 적는다.
+- 웹 검증 4종, verify(관리자 계정과 일반 계정 둘 다), 캡처, "UI 표준 적용" 절의 검증 항목, 브랜치 최종 리뷰 Claude Opus 5.5 한 번. 병합 뒤 운영자가 관리자 지정 SQL과 2026 귀속 세법 등록을 해야 한다는 점을 PR "참고"에 적는다.
 
 ---
 
@@ -8500,7 +11438,7 @@ git commit -m "feat(api): 소득공제 분석 조회 API" -m "Co-Authored-By: Co
 
 ### Task 7.1: 단계 화면 틀·진입 규칙·상태 알림 (TAX-10, 13, 27, 36, 38, 65, 66, 68, 73)
 
-**담당:** Codex `gpt-6-astra` / `medium` (`write`, 설계 판단이 큼), 태그 `impl-web-common`. 리뷰: Claude Fable 5.2.
+**담당:** Codex `gpt-6-astra` / `medium` (`write`, 설계 판단이 큼), 태그 `impl-web-common`. 리뷰: Claude Sonnet 5.5.
 
 - Files: Create `tax/analysis/TaxAnalysisPage.tsx`, `StepTabs.tsx`, 테스트. Modify `tax/TaxIndexRedirect.tsx`(TAX-68), `app/menu.ts`·`tax/TaxTabs.tsx`(하위 메뉴 "분석·지출계획"을 두 번째에), `app/AppRoutes.tsx`, `tax/taxApi.ts`(`analysis(year)`, `savePlan`, `refreshLawVersion`).
 - 쿼리 키: `['tax', 'analysis', year]`. 입력자료·지출계획 저장과 `refresh` 뒤 무효화한다.
@@ -8508,34 +11446,34 @@ git commit -m "feat(api): 소득공제 분석 조회 API" -m "Co-Authored-By: Co
 
 ### Task 7.2: ① 현황 (TAX-32~35, 37, 38, 43, 55, 71)
 
-**담당:** Codex `gpt-6-sol` / `medium` (`write`), 태그 `impl-web`. 리뷰: Claude Fable 5.2.
+**담당:** Codex `gpt-6-sol` / `medium` (`write`), 태그 `impl-web`. 리뷰: Claude Sonnet 5.5.
 
 - Files: Create `tax/analysis/StatusStep.tsx`, 테스트.
 - 테스트 대상(AC-16, 32, 38): 요약 4칸(소득공제액 "과세표준에서 빼는 금액 · 환급액 아님", 최저사용금액 달성, 기본한도 사용, 추가한도 사용), 소비구분별·결제수단별 사용 비율(분모 문장 명시, 소수 첫째 자리, 공제율·한도 사용률과 구별), 합계 0원이면 빈 차트, [계산 과정 보기]는 처음에 접혀 있고 펼치면 최저사용금액 차감 → 공제율 → 한도 순이며 마지막 금액 = 소득공제액, 최저사용금액 미달이면 0원과 남은 금액(권유 문구 없음), "참고: 한도까지 남은 공제 여유", 미완료·세법 준비 중이면 숫자 대신 안내, 금액은 "지출" 가림.
 
 ### Task 7.3: ② 지출계획 (TAX-29, 51, 70, 75)
 
-**담당:** Codex `gpt-6-sol` / `medium` (`write`), 태그 `impl-web`. 리뷰: Claude Fable 5.2.
+**담당:** Codex `gpt-6-sol` / `medium` (`write`), 태그 `impl-web`. 리뷰: Claude Sonnet 5.5.
 
 - Files: Create `tax/analysis/PlanStep.tsx`, 테스트.
 - 테스트 대상(AC-33, 36, 43): 소비구분 4행 × (신용카드 고정 / 체크카드·현금영수증 고정 / 바꿀 수 있음), 합계 자동, 고치기만 하면 저장 요청이 없고 ③이 그대로, [계산하기]를 누르면 저장하고 ③으로 넘어감, 다시 열면 저장 값, 미완료·세법 준비 중에도 입력은 열려 있고 [계산하기]는 저장만, 409면 "다른 곳에서 수정됨, 다시 불러오기", 375px에서 소비구분별 묶음으로 쌓임.
 
 ### Task 7.4: ③ 추천 (TAX-37, 50, 53, 54, 69, 75)
 
-**담당:** Codex `gpt-6-sol` / `medium` (`write`), 태그 `impl-web`. 리뷰: Claude Fable 5.2.
+**담당:** Codex `gpt-6-sol` / `medium` (`write`), 태그 `impl-web`. 리뷰: Claude Sonnet 5.5.
 
 - Files: Create `tax/analysis/RecommendStep.tsx`, `reasonText.ts`(이유 코드 → 문장), 테스트.
 - 테스트 대상(AC-17, 35, 43): "현재 계획: 지금까지의 결제수단 비율(신용 n% · 체크 n% · 현금 n%)" 한 줄(연도 전체 비율), 현재 계획과 추천 배분 표·총액 같음·연말 예상 소득공제액·차이(`formatSignedWon`)·이유·가정(총급여·세법 버전·자료 기준일, 카드 혜택 미고려), 차이 0이면 "차이 없음"과 이유, 미완료면 "자료를 완료하면 계산합니다"·빈 칸 수·[입력자료로 가기], 세법 준비 중이면 "세법 준비 중"만, 계획 미저장이면 ②로 가는 안내. 이유 문장은 응답의 코드·숫자에서만 만든다.
 
 ### Task 7.5: 검증 지도와 문서 마무리 (AC-02, AC-23)
 
-**담당:** Codex `gpt-6-luna` / `low` (`write`), 태그 `docs`. 리뷰: Claude Fable 5.2.
+**담당:** Codex `gpt-6-luna` / `low` (`write`), 태그 `docs`. 리뷰: Claude Sonnet 5.5.
 
 - Files: Create `.claude/skills/verify/features/tax-analysis.md`. Modify `features/README.md`, 저장소 `README.md`(주요 기능에 소득공제), `docs/backlog.md`(후속: 그룹 합산, 가계부 자동 합산, 미확인 법령 항목 D03·D08·D09 확인), `docs/superpowers/plans/2026-11-11-tax-planning/README.md` 진행표.
 
 ### PR 7 마무리 (컨트롤러)
 
-- 웹 검증 4종, verify 375px·데스크톱(와이어프레임 합성 숫자: 현황 1,475,000원, 현재 계획 1,997,272원, 추천 2,150,000원, 차이 +152,728원이 화면에 나오는지), 캡처, "UI 표준 적용" 절의 검증 항목, 브랜치 최종 리뷰 Claude Fable 5.2 한 번.
+- 웹 검증 4종, verify 375px·데스크톱(와이어프레임 합성 숫자: 현황 1,475,000원, 현재 계획 1,997,272원, 추천 2,150,000원, 차이 +152,728원이 화면에 나오는지), 캡처, "UI 표준 적용" 절의 검증 항목, 브랜치 최종 리뷰 Claude Opus 5.5 한 번.
 
 ---
 
@@ -8572,7 +11510,7 @@ git commit -m "feat(api): 소득공제 분석 조회 API" -m "Co-Authored-By: Co
 8. **해석 — 자녀등 입력란.** 세법 버전의 자녀등 단계별 기본한도가 서로 다를 때만 보인다(별도 설정값 없음). 적용 버전이 없는 연도는 입력란이 없고 0으로 저장한다.
 9. **해석 — 선택 연도 기억.** 메모리(React 상태)에만 둔다. 새로 고치면 올해로 돌아간다.
 10. PR 1 뒤 홈의 넓은 화면은 문서 순서(요약 → 등록 현황)와 보이는 순서(등록 현황 왼쪽)가 다르다. 와이어프레임이 정한 배치이고 키보드 순서는 문서 순서를 따른다.
-11. 계획의 PR 1 코드는 임시 복사본에서 테스트·typecheck·lint·build까지 확인했지만 화면은 띄워 보지 않았다. PR 2의 코드는 임시 복사본에서 `./gradlew test`(320건)까지 실행해 확인했다(2.2·2.3의 RED 컴파일 오류 문구는 실행하지 않고 적음). PR 3의 코드는 임시 복사본에서 Task 순서대로 실패 확인(3.1: 15건 중 13건, 3.2: 14건 중 13건, 3.3: 11건 중 9건 실패)과 `./gradlew cleanTest test`(3.3 뒤 369건)까지 실행해 확인했고, 계획에 실은 코드 블록을 차례로 넣으면 그 상태와 같아지는 것도 확인했다(2026-11-16, `2987768` 기준). PR 4의 코드는 임시 복사본에서 Task 순서대로 실패 확인(4.1: 10건 중 10건, 4.2: 16건 중 16건, 4.3: 7건 중 7건 실패)과 `./gradlew cleanTest test`(4.1 뒤 385건, 4.2 뒤 401건, 4.3 뒤 408건)까지 실행해 확인했다(2026-11-17, `f908524` 기준). `memoryTest`와 실제 서버 기동은 하지 않았다. PR 5~7의 설계는 실행해 보지 않았다.
+11. 계획의 PR 1 코드는 임시 복사본에서 테스트·typecheck·lint·build까지 확인했지만 화면은 띄워 보지 않았다. PR 2의 코드는 임시 복사본에서 `./gradlew test`(320건)까지 실행해 확인했다(2.2·2.3의 RED 컴파일 오류 문구는 실행하지 않고 적음). PR 3의 코드는 임시 복사본에서 Task 순서대로 실패 확인(3.1: 15건 중 13건, 3.2: 14건 중 13건, 3.3: 11건 중 9건 실패)과 `./gradlew cleanTest test`(3.3 뒤 369건)까지 실행해 확인했고, 계획에 실은 코드 블록을 차례로 넣으면 그 상태와 같아지는 것도 확인했다(2026-11-16, `2987768` 기준). PR 4의 코드는 임시 복사본에서 Task 순서대로 실패 확인(4.1: 10건 중 10건, 4.2: 16건 중 16건, 4.3: 7건 중 7건 실패)과 `./gradlew cleanTest test`(4.1 뒤 385건, 4.2 뒤 401건, 4.3 뒤 408건)까지 실행해 확인했다(2026-11-17, `f908524` 기준). `memoryTest`와 실제 서버 기동은 하지 않았다. PR 5의 웹 코드는 임시 복사본에서 Task 순서대로 실패 확인(5.1: 새 5건 중 3건, 5.2: 7건과 새 파일 2개, 5.3: 12건, 5.4: 12건, 5.5: 5건 실패)과 `typecheck`·`lint`·`build`·전체 `vitest run --maxWorkers=4`(85파일 684건)까지 실행했고, 계획의 코드 블록을 차례로 넣으면 그 상태와 같아지는 것도 확인했다(2026-11-20, `4aecc38` 기준). 화면과 verify 시드(`seed.sh`·`doctor.sh`는 `bash -n`만)는 실행하지 않았다. PR 6·7의 설계는 실행해 보지 않았다.
 12. 세법 수치와 7.1절 산식은 독립적인 세무 검증을 거치지 않았다(PRD 14장). D03(합산 기간)·D08(원 단위)·D09(귀속 시점)의 법령 기준은 미확인이고 임시 규칙이다. PR 4 착수 전 조문 대조(2026-11-17)에서 PRD와 다른 값은 없었다: 최저사용금액 25%, 공제율 15/30/30/40/40, 7천만원 경계, 차감액 3경우, 기본한도 300만·250만과 2026 귀속 자녀등 350만·400만 / 275만·300만, 추가한도 300만·200만이 국세청 안내(https://www.nts.go.kr/nts/cm/cntnts/cntntsView.do?mi=2469&cntntsId=7794)와 조문 열람 사이트(https://casenote.kr/법령/조세특례제한법/제126조의2)의 내용과 같다. 다만 국가법령정보센터 원문은 이번 도구로 읽지 못했고 두 자료 모두 요약 도구를 거쳐 읽었으며, 자녀등 한도는 국세청 안내에 없어 조문 열람 사이트와 2차 자료로만 확인했다. 상세는 PR 4 "조문 대조".
 13. 회원 탈퇴 기능이 없어 `ON DELETE CASCADE`에 따른 소득공제 자료 삭제는 검증 대상이 아니다(PRD 2장 비범위).
 14. 후속: 관리자 인가를 인터셉터에서 Spring Security 필터 체인으로 옮긴다. 현재는 지원하지 않는 HTTP 메서드의 405 응답으로 라우트 구조가 드러날 수 있다.

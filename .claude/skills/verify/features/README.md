@@ -33,3 +33,4 @@ Each feature file starts with an H1 title and one paragraph describing the user-
 - [Group dashboard](./dashboard.md): sub-routes for 대분류·소분류 × 분포·추이, month in the address, totals with per-member dialog, category donut and trend.
 - [Transactions](./transactions.md): my or group transaction list, search, detail, manual add.
 - [Groups](./groups.md): create, rename, invite link, members, bans.
+- [Tax deduction inputs](./tax-inputs.md): 소득공제 › 입력자료 — basic info, card and cash-receipt statements, year totals, delete year.

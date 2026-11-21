@@ -16,6 +16,7 @@ type Props = {
   error: string | null
   onConfirm: (close: () => void) => void
   onOpen?: () => void
+  centered?: boolean
 }
 
 /**
@@ -23,7 +24,7 @@ type Props = {
  * 트리거는 RAC Button이라 Safari처럼 누를 때 포커스를 주지 않는 브라우저에서도 닫힌 뒤 트리거로 돌아온다.
  */
 export default function ConfirmDialog(props: Props) {
-  const { triggerLabel, triggerAriaLabel, triggerIcon, title, description, confirmLabel, confirmAriaLabel, isPending, error, onConfirm, onOpen } = props
+  const { triggerLabel, triggerAriaLabel, triggerIcon, title, description, confirmLabel, confirmAriaLabel, isPending, error, onConfirm, onOpen, centered } = props
   const [open, setOpen] = useState(false)
   // 실행 중 닫기 막기는 closeDisabled와 버튼 비활성이 맡는다. 여기서 isPending을 보면
   // mutate의 onSuccess(리렌더 전, isPending이 아직 true)에서 부른 close가 막힌다.
@@ -34,7 +35,7 @@ export default function ConfirmDialog(props: Props) {
         onPress={() => { onOpen?.(); setOpen(true) }}>
         {triggerIcon && <Icon name={triggerIcon} size={18} />}{triggerLabel}
       </Button>
-      <DialogFrame isOpen={open} onOpenChange={setOpen} title={title} closeDisabled={isPending} closeOnOutsideClick>
+      <DialogFrame isOpen={open} onOpenChange={setOpen} title={title} closeDisabled={isPending} closeOnOutsideClick centered={centered}>
         {() => (
           <>
             <p>{description}</p>

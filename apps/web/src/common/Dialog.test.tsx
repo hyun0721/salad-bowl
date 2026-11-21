@@ -237,3 +237,42 @@ describe('DialogFrame when the sheet resizes', () => {
     expect(observe).not.toHaveBeenCalled()
   })
 })
+
+describe('centered dialogs', () => {
+  it('opens a centered modal on a narrow screen and keeps the shared typography', () => {
+    mockViewport(true)
+    render(<DialogFrame isOpen onOpenChange={() => {}} title="기본정보" centered>{() => <p>본문</p>}</DialogFrame>)
+
+    const dialog = screen.getByRole('dialog', { name: '기본정보' })
+    expect(dialog).toHaveClass('content', 'typography')
+    expect(dialog.parentElement).toHaveClass('modal')
+    expect(dialog.parentElement).not.toHaveClass('modalSheet')
+    expect(dialog.parentElement!.parentElement).toHaveClass('backdrop', 'centeredNarrow')
+  })
+
+  it('still opens a bottom sheet on a narrow screen without centered', () => {
+    mockViewport(true)
+    render(<DialogFrame isOpen onOpenChange={() => {}} title="그룹 만들기">{() => <p>본문</p>}</DialogFrame>)
+
+    expect(screen.getByRole('dialog', { name: '그룹 만들기' }).parentElement).toHaveClass('modalSheet')
+  })
+
+  it('keeps the wide-screen modal unchanged when centered', () => {
+    mockViewport(false)
+    render(<DialogFrame isOpen onOpenChange={() => {}} title="기본정보" centered>{() => <p>본문</p>}</DialogFrame>)
+
+    const modal = screen.getByRole('dialog', { name: '기본정보' }).parentElement!
+    expect(modal).toHaveClass('modal')
+    expect(modal.parentElement).not.toHaveClass('centeredNarrow')
+  })
+
+  it('passes centered through Dialog and still reveals the focused input above the keyboard', () => {
+    mockViewport(true)
+    const { observe } = mockResizeObserver()
+    render(<Dialog title="자료 편집" onClose={vi.fn()} centered><label>카드사명<input /></label></Dialog>)
+
+    const modal = screen.getByRole('dialog', { name: '자료 편집' }).parentElement
+    expect(modal).toHaveClass('modal')
+    expect(observe).toHaveBeenCalledWith(modal)
+  })
+})

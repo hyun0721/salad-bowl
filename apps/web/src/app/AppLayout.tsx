@@ -90,7 +90,8 @@ export default function AppLayout() {
                 <Icon name={item.icon} />{item.label}
               </NavLink>
               {item.children?.map((child) => (
-                <NavLink key={child.to} to={inDashboard ? child.to + location.search : child.to} replace={inDashboard}
+                <NavLink key={child.to} to={inDashboard && item.to === '/dashboard' ? child.to + location.search : child.to}
+                  replace={inDashboard && item.to === '/dashboard'}
                   className={({ isActive }) => `${styles.link} ${styles.subLink}${isActive ? ` ${styles.active}` : ''}`}>
                   {child.label}
                 </NavLink>
