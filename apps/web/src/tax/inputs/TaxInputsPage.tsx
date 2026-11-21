@@ -6,6 +6,7 @@ import Skeleton, { SkeletonRegion } from '../../common/Skeleton'
 import ui from '../../common/ui.module.css'
 import { usePageTitle } from '../../common/usePageTitle'
 import TaxHeader from '../TaxHeader'
+import TaxTabs from '../TaxTabs'
 import { useTaxYear } from '../TaxYearProvider'
 import { taxApi, taxKeys, useTaxYearView, type TaxYearView } from '../taxApi'
 import BasicInfoDialog from './BasicInfoDialog'
@@ -33,6 +34,7 @@ export default function TaxInputsPage() {
   return (
     <div className={styles.page}>
       <TaxHeader />
+      <TaxTabs />
       {record.isPending && (
         <SkeletonRegion label="입력자료 불러오는 중"><Skeleton height={160} radius="var(--radius-md)" /></SkeletonRegion>
       )}

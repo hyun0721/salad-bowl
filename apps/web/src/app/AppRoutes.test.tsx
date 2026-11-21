@@ -10,10 +10,12 @@ import { AuthProvider } from '../auth/AuthProvider'
 import { mockViewport } from '../test/mockViewport'
 import { server } from '../test/server'
 import { serveTax, yearView } from '../test/taxFixtures'
+import { lawVersion, serveLaw } from '../test/taxLawFixtures'
 import { seoulYear } from '../tax/TaxYearProvider'
 import AppRoutes from './AppRoutes'
 
-const me = { userId: 1, email: 'me@test.com', nickname: '나' }
+const me = { userId: 1, email: 'me@test.com', nickname: '나', serviceAdmin: false }
+const admin = { ...me, serviceAdmin: true }
 
 function renderApp(path: string) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -38,10 +40,10 @@ const homeHandlers = [
   http.get('*/api/imports', () => HttpResponse.json([])),
 ]
 
-function signedIn(groups: unknown[]) {
+function signedIn(groups: unknown[], profile = me) {
   server.use(
     http.post('*/api/auth/refresh', () => HttpResponse.json({ accessToken: 'a1' })),
-    http.get('*/api/me', () => HttpResponse.json(me)),
+    http.get('*/api/me', () => HttpResponse.json(profile)),
     http.get('*/api/groups', () => HttpResponse.json(groups)),
     ...homeHandlers,
   )
@@ -105,6 +107,33 @@ describe('AppRoutes', () => {
     expect(within(nav).getByRole('link', { name: '입력자료' })).toHaveAttribute('aria-current', 'page')
     expect(within(nav).getByRole('link', { name: '소득공제' })).toHaveAttribute('aria-current', 'true')
     expect(screen.queryByRole('link', { name: /세법 관리/ })).not.toBeInTheDocument()
+  })
+
+  it('shows 연도별 세법 관리 second under 소득공제 to a service admin only and opens it', async () => {
+    mockViewport(false)
+    signedIn([], admin)
+    serveTax(null)
+    serveLaw([lawVersion()])
+    renderApp('/tax/inputs')
+    const user = userEvent.setup()
+
+    const nav = await screen.findByRole('navigation', { name: '주 메뉴' })
+    expect(within(nav).getAllByRole('link').map((l) => l.textContent))
+      .toEqual(['홈', '소득공제', '입력자료', '연도별 세법 관리', '대시보드', '대분류', '소분류', '거래 목록', '그룹 관리'])
+    await user.click(within(nav).getByRole('link', { name: '연도별 세법 관리' }))
+
+    expect(await screen.findByRole('heading', { level: 1, name: '연도별 세법 관리' })).toBeInTheDocument()
+    expect(within(nav).getByRole('link', { name: '연도별 세법 관리' })).toHaveAttribute('aria-current', 'page')
+    expect(within(nav).getByRole('link', { name: '소득공제' })).toHaveAttribute('aria-current', 'true')
+  })
+
+  it('shows the no-permission screen to a member who types the law address', async () => {
+    signedIn([])
+    const calls = serveLaw([lawVersion()])
+    renderApp('/tax/law')
+
+    expect(await screen.findByRole('heading', { name: '권한 없음' })).toBeInTheDocument()
+    expect(calls.list).toBe(0)
   })
 
   it('does not carry the dashboard month into the tax sub-link', async () => {
@@ -525,6 +554,33 @@ describe('AppRoutes on a narrow screen', () => {
 
     expect(await within(screen.getByRole('banner')).findByRole('heading', { level: 1, name: '그룹 관리' })).toHaveFocus()
     expect(within(screen.getByRole('main')).queryByRole('heading', { level: 1 })).not.toBeInTheDocument()
+  })
+
+  it('gives a service admin in-page tabs 입력자료 · 세법 관리', async () => {
+    signedIn([], admin)
+    serveTax(null)
+    serveLaw([lawVersion()])
+    renderApp('/tax/inputs')
+    const user = userEvent.setup()
+
+    const tabs = await screen.findByRole('navigation', { name: '소득공제 메뉴' })
+    expect(within(tabs).getAllByRole('link').map((l) => l.textContent)).toEqual(['입력자료', '세법 관리'])
+    expect(within(tabs).getByRole('link', { name: '입력자료' })).toHaveAttribute('aria-current', 'page')
+    await user.click(within(tabs).getByRole('link', { name: '세법 관리' }))
+
+    expect(await screen.findByRole('region', { name: '2026년 버전' })).toBeInTheDocument()
+    expect(within(screen.getByRole('navigation', { name: '소득공제 메뉴' })).getByRole('link', { name: '세법 관리' }))
+      .toHaveAttribute('aria-current', 'page')
+    expect(within(screen.getByRole('banner')).getByRole('heading', { level: 1 })).toHaveTextContent('소득공제')
+  })
+
+  it('shows no in-page tax tabs to a member', async () => {
+    signedIn([])
+    serveTax(null)
+    renderApp('/tax/inputs')
+
+    expect(await screen.findByRole('heading', { name: /귀속 기록이 없습니다/ })).toBeInTheDocument()
+    expect(screen.queryByRole('navigation', { name: '소득공제 메뉴' })).not.toBeInTheDocument()
   })
 
   it('signs out from the account sheet', async () => {
