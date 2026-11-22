@@ -54,7 +54,7 @@
 - 웹은 입력자료(PR 5) → 세법 관리(PR 6) → 분석(PR 7) 순이다. 분석 화면이 나가기 전에 운영자가 화면으로 2026 귀속 세법을 등록할 수 있어야 "세법 준비 중"만 보이는 기간이 없다.
 - PR 5~7은 병합할 때마다 운영에 보인다. PR 5 병합 뒤 PR 7 병합 전까지 회원은 입력자료 화면만 본다(중간 노출을 받아들이는 것이 이 계획의 기본값이다. "알려진 제약" 참고).
 
-**PR 5~7의 Task 상세는 그 PR에 착수할 때 컨트롤러가 채운다(PR 2는 2026-11-14에, PR 3은 2026-11-16에, PR 4는 2026-11-17에, PR 5는 2026-11-20에, PR 6은 2026-11-21에 채웠다).** 뒤 PR의 코드는 앞 PR 결과(실제 엔티티·응답 필드 이름)에 의존하기 때문이다. 이 문서에는 PR 7의 Task 목록·파일·인터페이스·테스트 대상·검증 명령까지 적었다. PR 1~6은 실행 가능한 상세까지 적었다.
+**PR 5~7의 Task 상세는 그 PR에 착수할 때 컨트롤러가 채운다(PR 2는 2026-11-14에, PR 3은 2026-11-16에, PR 4는 2026-11-17에, PR 5는 2026-11-20에, PR 6과 PR 7은 2026-11-21에 채웠다).** 뒤 PR의 코드는 앞 PR 결과(실제 엔티티·응답 필드 이름)에 의존하기 때문이다. PR 1~7 모두 실행 가능한 상세까지 적었다.
 
 ## 요구사항 추적표
 
@@ -144,7 +144,7 @@ PRD의 요구사항 ID는 66개다(08, 09, 39, 47~49, 56~59는 PRD에 없는 번
 | `apps/web/src/tax/inputs/` (생성) | 입력자료 화면과 창 | 5 |
 | `apps/web/src/tax/law/` (생성) | 연도별 세법 관리 화면 | 6 |
 | `apps/web/src/tax/analysis/` (생성) | 분석·지출계획 단계 화면 | 7 |
-| `.claude/skills/verify/features/*.md`, `bin/seed.sh` (수정) | 검증 지도와 시드(서비스 관리자, 2026 세법, 합성 소득공제 자료) | 1, 5, 6, 7 |
+| `.claude/skills/verify/features/*.md`, `bin/seed.sh`, `bin/doctor.sh` (수정) | 검증 지도와 시드(서비스 관리자, 2026 세법, 합성 소득공제 자료), 시드 분석 결과 확인(PR 7) | 1, 5, 6, 7 |
 
 `apps/api/...`는 `apps/api/src/main/java/com/saladbowl/api/`와 `apps/api/src/main/resources/`를 줄인 것이다.
 
@@ -13066,50 +13066,2294 @@ Expected: 두 파일에서 링크·언급 각 1줄, H2 4개(`Sub-features`, `How
 
 # PR 7 — 분석·지출계획 화면
 
-① 결제수단 비율은 웹이 `totals`로 계산한다. 서버의 `methodShare`는 계획 저장 시에만 내려오므로 ①도 소수 첫째 자리 `HALF_UP`으로 반올림한다.
+> **에이전트 모델 배치(2026-11-21):** PR 5·6과 같다. 구현은 Codex(`codex-collab` 3장 표: 앱 셸·공용 저장 훅처럼 설계 판단이 큰 Task는 `gpt-6-astra`, 일반 화면은 `gpt-6-sol`, 문서는 `gpt-6-luna`), Task 리뷰는 Claude Sonnet 5.5(`review-task`), 브랜치 최종 리뷰와 Task 상세 계획 작성은 Claude Opus 5.5(`review-final`·`controller`). 모든 Agent 호출은 `model`을 명시한다.
 
-**이 PR에 착수할 때 컨트롤러가 Task 상세를 채운다.** 화면 PR이다.
+화면 PR이다(375px 이전·이후 캡처). 브랜치: `feat/tax-analysis-plan-web`(최신 `origin/main` `53c082a`에서 만든 worktree). PR 제목 예: `feat(web): 소득공제 분석·지출계획 화면`.
 
-브랜치 예: `feat/tax-analysis`. 검증: 웹 4종 + verify.
+검증: `cd apps/web && npm run typecheck && npm test && npm run lint && npm run build` + verify 스킬(소유자 `verify@example.test`, 그룹 없는 `verify5@example.test`). API는 바꾸지 않는다(PR 3의 `PUT …/plan`·`POST …/law-version/refresh`, PR 4의 `GET …/analysis`만 부른다).
 
-### Task 7.1: 단계 화면 틀·진입 규칙·상태 알림 (TAX-10, 13, 27, 36, 38, 65, 66, 68, 73)
+이 PR의 코드와 테스트는 계획을 쓸 때 저장소 밖 임시 복사본(`53c082a` 기준, 시작 시점 전체 87파일 729건)에서 Task 순서대로 실행해 확인했다(2026-11-21). Task마다 테스트만 먼저 넣어 실패를 보고(7.1: 테스트 지원 파일이 아직 없는 화면을 가져와 10파일이 파일째, 7.2: 새 10건, 7.3: 새 8건, 7.4: 새 9건과 `reasonText.test.ts` 파일째 실패) 구현을 넣은 뒤 통과를 봤고, 마지막에 `typecheck`·`lint`(새 경고 없음)·`build`와 전체 `vitest run --maxWorkers=4`(93파일 770건 통과)를 돌렸다. 7.5의 `doctor.sh` 새 줄은 `bash -n`과, `curl`을 가짜 함수로 바꾼 실행(READY·1,475,000·152,728 → OK, 미완료 응답 → FAIL)만 했다. 아래 코드 블록을 Task 순서대로 넣으면 그 상태와 같아지는 것도 다시 확인했다. 브라우저 화면은 띄워 보지 않았다(PR 마무리의 verify에서 본다).
 
-**담당:** Codex `gpt-6-astra` / `medium` (`write`, 설계 판단이 큼), 태그 `impl-web-common`. 리뷰: Claude Sonnet 5.5.
+경로 줄임: 코드 블록 위 줄에 `<경로>` 전체(새 파일) 또는 `git apply`(기존 파일 고침, 저장소 루트에서 실행)를 적었다. 줄 번호가 어긋나면 내용을 보고 손으로 넣는다.
 
-- Files: Create `tax/analysis/TaxAnalysisPage.tsx`, `StepTabs.tsx`, 테스트. Modify `tax/TaxIndexRedirect.tsx`(TAX-68), `app/menu.ts`·`tax/TaxTabs.tsx`(하위 메뉴 "분석·지출계획"을 두 번째에), `app/AppRoutes.tsx`, `tax/taxApi.ts`(`analysis(year)`, `savePlan`, `refreshLawVersion`).
-- 쿼리 키: `['tax', 'analysis', year]`. 입력자료·지출계획 저장과 `refresh` 뒤 무효화한다.
-- 테스트 대상(AC-34, 41, 30, 31, 19 화면): "소득공제"를 누르면 `hasInputs`인 연도는 `/tax/analysis` ① 현황, 연도 기록 없음·자료 없음이면 `/tax/inputs`, 기억한 연도가 없으면 올해 기준, 한 번에 한 단계만 보이고 단계 탭·[이전]·[다음]으로 이동, 처음은 ①, 데스크톱 1단 가운데·최대 폭 제한, 적용 세법(귀속연도·버전·적용일)·자료 기준일·예상 총급여 한 줄, "추정"과 이유·"근로기간 확인 필요"·"새 세법 버전 있음 + [새 버전으로 다시 계산]"(누르기 전 결과 유지), 연도 기록 없음이면 입력자료로 가는 안내, "개인 자료 · 그룹과 무관".
+## 웹 설계
 
-### Task 7.2: ① 현황 (TAX-32~35, 37, 38, 43, 55, 71)
+- 라우트: `/tax`는 `TaxIndexRedirect`, `/tax/analysis`는 `TaxAnalysisPage`(lazy). 다른 소득공제 화면처럼 `RequireAuth > GroupProvider > TaxYearProvider > AppLayout` 아래다.
+- 진입 규칙(TAX-68, AC-34): `TaxIndexRedirect`는 선택 연도(기억한 값이 없으면 한국 시각 기준 올해)의 `GET /tax/years/{year}`(`taxKeys.year`, 입력자료와 같은 캐시)를 읽어 `hasInputs`면 `/tax/analysis`, 기록 없음(404 → `null`)·자료 없음이면 `/tax/inputs`로 `replace` 이동한다. 미완료도 `hasInputs`다. 읽는 동안 `소득공제 불러오는 중` 뼈대, 실패하면 입력자료로 보낸다(그 화면이 오류와 [다시 시도]를 보인다).
+- 메뉴: `MENU`의 소득공제 `children` 두 번째에 `{ to: '/tax/analysis', label: '분석·지출계획' }`. 사이드바는 회원 `입력자료 · 분석·지출계획`, 관리자 `+ 연도별 세법 관리`(TAX-10). `TaxTabs`는 `MENU`에서 하위 화면을 읽으므로 고치지 않는다. 좁은 화면 안 탭은 회원 2개·관리자 3개가 된다(AC-29).
+- 쿼리 키: 분석 `['tax', 'analysis', year]`(`taxKeys.analysis`, 그룹 범위 키가 아니고 로그아웃 때 `queryClient.clear()`로 지워진다). 지출계획 값과 `rowVersion`은 분석 응답에 없으므로 같은 화면이 `taxKeys.year(year)`도 읽는다. 404는 `orNull`로 `null`("기록 없음")이다.
+- 무효화: `useTaxSave`의 `onSuccess`가 연도 캐시를 응답으로 바꾼 뒤 `taxKeys.analysis(year)` 무효화를 **기다린다**(promise를 돌려준다). 그래서 입력자료의 모든 저장·[빈 칸 0원으로 채우기], ②의 [계산하기], [새 버전으로 다시 계산] 뒤 분석이 다시 계산되고, [계산하기]는 새 분석을 받은 뒤 ③으로 넘어간다(지난 추천이 잠깐 보이지 않는다). 카드 자료·연도 삭제(204)와 세법 적용은 분석 화면이 떠 있지 않을 때 일어나므로, 분석 쿼리를 `gcTime: 0`으로 두어 화면을 떠나면 캐시에서 지우고 다시 열 때마다 새로 읽는다(지난 결과를 보이지 않는다).
+- 단계(TAX-73, AC-41): `StepTabs`가 공용 `common/Tabs`(RAC, 고른 패널만 그림)를 감싼다. 탭 `① 현황 | ② 지출계획 | ③ 추천`, 패널 아래 [이전](왼쪽)·[다음](오른쪽). 단계는 화면 상태(`useState`, 처음 `status`)이고 주소에 넣지 않는다. 단계가 바뀌면 고른 탭으로 포커스를 옮긴다. 단계 탭·[이전]·[다음]은 모든 폭에서 44px(공용 `.tab`의 40·42px보다 구체적인 `.steps [role='tab']`).
+- 지출계획 입력 상태: RAC는 고른 패널만 그리므로 ② 폼 상태를 ② 안에 두면 단계를 옮길 때 입력이 사라진다. 그래서 `usePlanEditor`(PlanStep.tsx)를 화면(`TaxAnalysisPage`)에서 부르고 ②는 그 값을 그리기만 한다. 고치기 시작한 시점의 `rowVersion`을 잡아 두고 저장한다(PR 5·6과 같은 방식, 그 사이 다른 곳의 저장은 409). 입력 상태는 연도 하나만 들고 있어, 다른 연도에서 고치기 시작하면 앞 연도의 저장하지 않은 입력은 버린다(연도를 바꿨다 돌아오기만 하면 남는다).
+- 화면 머리·공통 줄: `TaxHeader` 기본값(넓은 화면 `h1` "소득공제", "개인 자료 · 그룹과 무관", 귀속연도 선택). 그 아래 `적용 세법 YYYY년 귀속 vN · 적용일 YYYY-MM-DD · 자료 기준일 … · 예상 총급여 ₩ …` 한 줄(TAX-36), 상태 알림 `추정`(기준일 범위, TAX-27)·`근로기간 확인 필요`(연도 기록의 시작월~종료월, AC-30)·`새 세법 버전이 적용됐습니다` + [새 버전으로 다시 계산](누르기 전 결과 유지, TAX-66·AC-19). 적용일은 서울 기준 날짜다.
+- 상태별 표시(TAX-38·65·75): `READY`가 아니면 ①·③ 자리에 `PendingNotice` — `NO_INPUT`·`INCOMPLETE`는 "자료를 완료하면 계산합니다", 빈 칸 수, [입력자료로 가기], `LAW_PENDING`은 "세법 준비 중"만. ②는 모든 상태에서 열려 있고 [계산하기]는 저장만 한다. 연도 기록이 없으면 단계 없이 입력자료로 가는 안내만 보인다.
+- 계산은 서버다. 웹이 하는 산술은 표시용 비율(`percent`, 정수·BigInt로 소수 첫째 자리 HALF_UP — 서버 `methodShare`와 같은 규칙), 기본한도 남은 여유(`basicLimit − basicUsed`), 소비구분·결제수단·배분의 표시용 합(PR 4 "결정이 필요한 점" 5·8)뿐이다. 소득공제액·연말 예상·차이·이유는 응답 값 그대로다. 이유 문장은 `reasonText`가 코드·소비구분·금액과 같은 응답의 세법 수치로만 만든다.
+- 금액 가림: 공제대상액·공제액·차이는 `useAmountFormatter('expense')`(차이는 부호 포함), 총급여는 `'income'`. 퍼센트는 가리지 않는다. 입력 칸은 가리지 않는다(TAX-37).
+- 배치·글자: 화면 뿌리는 입력자료의 `inputs.module.css` `.page`(15px·13px 토큰)·`.split`·`.actions`·`.titleWithHelp`·`.empty`·`.tableScroll`에 `analysis.module.css` `.page`(폭 100%, 최대 720px, 가운데)를 더한다. 카드 제목 16px(`.page h2`), 요약 값 16px(`.big`), 보조 줄 13px(`.sub`·`.facts`·`.notice`·`ui.muted`), 섹션 버튼 14px(`.page section button`), 입력 16px(공용 `MoneyField`). `ui.card`는 세로 flex라 `.split`은 카드 안쪽 `div`에 둔다(PR 5 교훈). ② 묶음은 칸 최소 10rem 자동 열 수(375px에서 묶음마다 라벨 + 입력 3줄 + 합계, 넓으면 한 줄 3칸). ③ 표는 3열(바꿀 수 있는 금액 | 현재 계획 | 추천 배분)이고 칸 안에서 결제수단마다 한 줄이며, 넘칠 때만 표 안에서 가로로 움직인다.
+- 화면은 `useGroups()`를 쓰지 않는다.
 
-**담당:** Codex `gpt-6-sol` / `medium` (`write`), 태그 `impl-web`. 리뷰: Claude Sonnet 5.5.
+## 계획 초안에서 달라진 점 (2026-11-21)
 
-- Files: Create `tax/analysis/StatusStep.tsx`, 테스트.
-- 테스트 대상(AC-16, 32, 38): 요약 4칸(소득공제액 "과세표준에서 빼는 금액 · 환급액 아님", 최저사용금액 달성, 기본한도 사용, 추가한도 사용), 소비구분별·결제수단별 사용 비율(분모 문장 명시, 소수 첫째 자리, 공제율·한도 사용률과 구별), 합계 0원이면 빈 차트, [계산 과정 보기]는 처음에 접혀 있고 펼치면 최저사용금액 차감 → 공제율 → 한도 순이며 마지막 금액 = 소득공제액, 최저사용금액 미달이면 0원과 남은 금액(권유 문구 없음), "참고: 한도까지 남은 공제 여유", 미완료·세법 준비 중이면 숫자 대신 안내, 금액은 "지출" 가림.
+- `tax/TaxTabs.tsx`를 고치지 않는다. PR 6의 `TaxTabs`가 `MENU`의 `children`을 읽으므로 `menu.ts`에 항목만 더하면 회원 2개·관리자 3개가 된다(초안 7.1의 "Modify `TaxTabs.tsx`" 삭제).
+- `StepTabs.tsx`는 새 탭 부품이 아니라 공용 `common/Tabs`를 감싸 [이전]·[다음]과 포커스 이동만 더한다(UI 표준 "단계 탭은 공용 탭 구조").
+- Files를 더 나눴다: `format.ts`(소비구분 이름·표시용 비율·기준일·서울 날짜), `PendingNotice.tsx`(①·③ 공용 안내, 7.2), `analysis.module.css`, 테스트 지원 `test/taxFixtures.tsx`의 `analysisView`·`readyYearView`·`serveAnalysis`·`renderTaxAnalysis`. ②의 입력 상태는 `PlanStep.tsx`의 `usePlanEditor`로 화면이 들고 있다(위 "지출계획 입력 상태").
+- 공용 `useTaxSave`를 고친다(분석 무효화를 기다림). 입력자료 화면의 저장 동작은 그대로이고(분석 쿼리가 없으면 무효화가 바로 끝난다) 기존 테스트도 그대로 통과한다. `useTaxAnalysis`(`gcTime: 0`)를 더한다.
+- 진입 판정은 분석이 아니라 연도 기록(`hasInputs`)으로 한다. 입력자료와 같은 캐시를 써서 요청이 하나다.
+- 기존 테스트 5건이 바뀐다(`AppRoutes.test.tsx`): 사이드바 링크 목록 2건(`분석·지출계획` 추가), 관리자 화면 안 탭(3개), PR 6의 "회원에게 화면 안 탭 없음"은 "회원에게 2개"로 대체된다. 로그아웃 테스트는 소득공제 진입 뒤 처음 보이는 뼈대가 입력자료가 아니라 진입 판정의 `소득공제 불러오는 중`이다.
+- verify 시드는 바꾸지 않는다. PR 5 시드가 이미 와이어프레임 합성값(총급여 5천만, 연도 합계 17,800,000, 지출계획 2,400,000)을 넣는다. 대신 `bin/doctor.sh`에 그 결과(현황 1,475,000원, 차이 152,728원)를 확인하는 줄을 더한다. 미완료·세법 준비 중은 verify 여정에서 `verify5`로 화면에서 만든다.
+- 진행표(`2026-11-11-tax-planning/README.md`)는 이 계획 커밋이 "PR 6 #109 병합, PR 7 착수"로 고친다. Task 7.5에서 고치지 않고, PR 7 병합 뒤 컨트롤러가 "PR 7 #번호 병합"으로 고친다(앞 PR들과 같은 순서).
+- 와이어프레임의 "남은 기간 총액(고정 포함)" 행은 "합계"(바꿀 수 있는 금액의 합, 두 열이 같다)로 했다. 추천 응답의 `allocation`에는 고정액이 없다(PR 4 결정 5).
+- 와이어프레임 미달 예시의 "최저사용금액까지 3,200,000원"은 서버 정의(`remainingToThreshold` = 넘기는 최소 정수 원)로 3,200,001원이다. 화면은 응답 값을 그대로 쓴다.
 
-### Task 7.3: ② 지출계획 (TAX-29, 51, 70, 75)
+## 결정이 필요한 점 (기본값으로 썼다)
 
-**담당:** Codex `gpt-6-sol` / `medium` (`write`), 태그 `impl-web`. 리뷰: Claude Sonnet 5.5.
+1. **단계는 화면 상태다**(주소 `?step=` 없음). 새로 고치면 ①, 귀속연도를 바꿔도 지금 단계를 유지한다. 다른 선택: 주소에 단계를 넣어 새로 고침·뒤로 가기로 돌아온다(와이어프레임 "처음 열면 ①"과 충돌).
+2. **분석 결과는 화면을 떠나면 캐시에서 지운다**(`gcTime: 0`). 열 때마다 `분석 불러오는 중`이 잠깐 보이지만 지난 결과를 보이지 않는다. 다른 선택: 캐시를 두고 연도 기록을 바꾸는 모든 호출(삭제·세법 적용 포함)에서 분석을 무효화한다(호출 자리 5곳 이상).
+3. **② 입력은 단계를 옮겨도 남고, 다른 귀속연도에서 고치기 시작하면 앞 연도의 저장하지 않은 입력은 말없이 버린다.** 다른 선택: 저장하지 않은 변경이 있으면 연도를 바꿀 때 확인 창을 띄운다.
+4. **빈 칸이 있으면 [계산하기]를 끄고 이유를 적는다**(빈 칸을 0원으로 바꿔 보내지 않는다. 서버는 12칸 모두 필수다). 다른 선택: 빈 칸을 0원으로 보고 저장한다.
+5. **②의 409·404는 입력을 남기고 [다시 불러오기]**(연도 기록·분석을 다시 읽은 뒤 새 값으로 바꾼다). PR 5 결정 3·PR 6 결정 3과 같다.
+6. **사용 비율은 CSS 막대 + 표이고 `DonutChart`를 쓰지 않는다.** 항목이 3~4개뿐이고, ECharts 도넛은 금액 가림 처리(`AmountMaskChart`)가 따로 필요하다. 퍼센트는 가리지 않는다. 다른 선택: 대시보드의 `DonutChart`.
+7. **요약 4칸의 퍼센트(사용액 ÷ 최저사용금액, 기본·추가한도 사용률)는 와이어프레임대로 화면이 나눈다**(표시용, `percent`). 분모가 0이면 퍼센트를 빼고 `—`를 쓴다.
+8. **계산 과정 2단계는 "구분 금액 × 공제율"을 줄마다 쓰고, 곱한 값은 서버 합계(`beforeThresholdCut`)만 보인다.** 웹이 구분별 공제액을 따로 계산하지 않기 위해서다. 다른 선택: 서버가 구분별 공제액 5개를 더 내려 준다(API 변경).
+9. **③ 표는 바꿀 수 있는 금액이 있는 소비구분만 보이고, 추천 신용카드 금액이 현재 계획과 같으면 "현재 계획 그대로"다.** 차이가 0이면 표 없이 "차이 없음" 문장·연말 예상·이유만 보인다.
+10. **③의 연도 전체 비율 한 줄은 서버 `methodShare`, ①의 결제수단별 비율은 웹 `percent`다**(같은 규칙. ①은 지출계획이 없어도 보여야 해서 웹이 계산한다). 연도 합계가 0원이면 ③은 "지금까지 사용액이 없어 바꿀 수 있는 금액을 모두 신용카드로 둡니다."
+11. **이유 문장은 `reasonText`의 7개 문구다**(소비를 늘리라는 말 없음). 다른 문구가 필요하면 그 파일과 `reasonText.test.ts`만 고친다.
+12. **넓은 화면 최대 폭은 720px**(와이어프레임의 가정값). 헤더·화면 안 탭·공통 줄도 같은 폭 안에 둔다.
+13. **반론 리뷰(Codex 템플릿 F)는 하지 않는다**(아래 마무리 4).
 
-- Files: Create `tax/analysis/PlanStep.tsx`, 테스트.
-- 테스트 대상(AC-33, 36, 43): 소비구분 4행 × (신용카드 고정 / 체크카드·현금영수증 고정 / 바꿀 수 있음), 합계 자동, 고치기만 하면 저장 요청이 없고 ③이 그대로, [계산하기]를 누르면 저장하고 ③으로 넘어감, 다시 열면 저장 값, 미완료·세법 준비 중에도 입력은 열려 있고 [계산하기]는 저장만, 409면 "다른 곳에서 수정됨, 다시 불러오기", 375px에서 소비구분별 묶음으로 쌓임.
+---
 
-### Task 7.4: ③ 추천 (TAX-37, 50, 53, 54, 69, 75)
+### Task 7.1: 단계 화면 틀·진입 규칙·상태 알림 (TAX-10, 13, 27, 36, 65, 66, 68, 73, AC-19 화면, AC-29, AC-30, AC-31, AC-34, AC-41)
 
-**담당:** Codex `gpt-6-sol` / `medium` (`write`), 태그 `impl-web`. 리뷰: Claude Sonnet 5.5.
+**담당:** Codex `gpt-6-astra` / `medium` (`write`, 앱 셸·공용 `useTaxSave`·테스트 공용 부품), 태그 `impl-web-common`. 리뷰: Claude Sonnet 5.5 (`review-task`).
 
-- Files: Create `tax/analysis/RecommendStep.tsx`, `reasonText.ts`(이유 코드 → 문장), 테스트.
-- 테스트 대상(AC-17, 35, 43): "현재 계획: 지금까지의 결제수단 비율(신용 n% · 체크 n% · 현금 n%)" 한 줄(연도 전체 비율), 현재 계획과 추천 배분 표·총액 같음·연말 예상 소득공제액·차이(`formatSignedWon`)·이유·가정(총급여·세법 버전·자료 기준일, 카드 혜택 미고려), 차이 0이면 "차이 없음"과 이유, 미완료면 "자료를 완료하면 계산합니다"·빈 칸 수·[입력자료로 가기], 세법 준비 중이면 "세법 준비 중"만, 계획 미저장이면 ②로 가는 안내. 이유 문장은 응답의 코드·숫자에서만 만든다.
+**Files:**
+- Modify: `apps/web/src/app/menu.ts`, `apps/web/src/app/AppRoutes.tsx`, `apps/web/src/tax/taxApi.ts`, `apps/web/src/test/taxFixtures.tsx`
+- Create: `apps/web/src/tax/TaxIndexRedirect.tsx`, `apps/web/src/tax/analysis/format.ts`, `StepTabs.tsx`, `TaxAnalysisPage.tsx`, `analysis.module.css`
+- Test: `apps/web/src/tax/analysis/TaxAnalysisPage.test.tsx`·`format.test.ts`(새 파일), `apps/web/src/app/AppRoutes.test.tsx`(새 2건, 기존 5건 수정 — 그중 1건은 대체)
 
-### Task 7.5: 검증 지도와 문서 마무리 (AC-02, AC-23)
+**Interfaces:**
+- Consumes: `GET /tax/years/{year}/analysis`(PR 4 `TaxAnalysisView`, 404 = 기록 없음), `PUT /tax/years/{year}/plan`·`POST …/law-version/refresh`(PR 3, `TaxYearView`), `taxApi.year`·`useTaxYearView`·`orNull`·`isStale`·`actionError`(PR 5), `useTaxYear()`, `TaxHeader`·`TaxTabs`(PR 6), `common/Tabs`, `inputs.module.css`의 `.page`·`.split`·`.actions`·`.empty`.
+- Produces: 타입 `PlanInput`, `Category`, `AnalysisStatus`, `ByCategory<T>`, `LawRates`, `Deduction`, `ReasonCode`, `Reason`, `Recommendation`, `TaxAnalysisView`; `taxApi.analysis(year)`·`savePlan(year, body)`·`refreshLawVersion(year)`; `taxKeys.analysis(year)` = `['tax', 'analysis', year]`; `useTaxAnalysis(year)`(`gcTime: 0`); `useTaxSave`의 분석 무효화. `TaxIndexRedirect`(default). `format.ts`: `CATEGORY_LABEL`, `CATEGORY_KEYS`, `percent(part, whole): string | null`, `asOfText(min, max)`, `seoulDate(iso)`. `StepTabs({ step, onStepChange, children })`, `type Step = 'status' | 'plan' | 'recommend'`. `TaxAnalysisPage`(default) — 이 Task에서는 단계 패널이 비어 있고 7.2~7.4가 채운다. `analysis.module.css`의 `.page`·`.facts`·`.notice`·`.badge`·`.steps`·`.panel`·`.stepNav`·`.next`. 테스트 지원: `sampleTotals`, `samplePlan`, `readyYearView()`, `analysisView()`(READY, 와이어프레임 합성값), `serveAnalysis(analysis, view?)` → `{ analysis, year }` 요청 수, `renderTaxAnalysis()`.
 
-**담당:** Codex `gpt-6-luna` / `low` (`write`), 태그 `docs`. 리뷰: Claude Sonnet 5.5.
+- [ ] **Step 1: 실패하는 테스트 작성** — 테스트 지원 파일, 화면 테스트, 앱 테스트. 값은 모두 합성값이다.
 
-- Files: Create `.claude/skills/verify/features/tax-analysis.md`. Modify `features/README.md`, 저장소 `README.md`(주요 기능에 소득공제), `docs/backlog.md`(후속: 그룹 합산, 가계부 자동 합산, 미확인 법령 항목 D03·D08·D09 확인), `docs/superpowers/plans/2026-11-11-tax-planning/README.md` 진행표.
+`git apply`:
+
+```diff
+diff --git a/apps/web/src/test/taxFixtures.tsx b/apps/web/src/test/taxFixtures.tsx
+--- a/apps/web/src/test/taxFixtures.tsx
++++ b/apps/web/src/test/taxFixtures.tsx
+@@ -1,7 +1,8 @@
+ import { http, HttpResponse } from 'msw'
+ import { AmountMaskProvider } from '../common/AmountMask'
++import TaxAnalysisPage from '../tax/analysis/TaxAnalysisPage'
+ import TaxInputsPage from '../tax/inputs/TaxInputsPage'
+-import type { CardView, CurrentLaw, TaxYearView } from '../tax/taxApi'
++import type { CardView, CurrentLaw, PlanView, TaxAnalysisView, TaxYearView } from '../tax/taxApi'
+ import { TaxYearProvider } from '../tax/TaxYearProvider'
+ import { renderPage } from './renderPage'
+ import { server } from './server'
+@@ -59,3 +60,83 @@
+     options,
+   )
+ }
++
++// 분석 화면용. 와이어프레임 설명서 D절의 합성 입력(총급여 50,000,000, 합 17,800,000)과 그 손계산 결과다.
++export const sampleTotals = {
++  creditGeneral: 14_000_000, creditMarket: 300_000, creditTransit: 200_000, creditCulture: 100_000,
++  debitGeneral: 2_000_000, debitMarket: 200_000, debitTransit: 300_000, debitCulture: 100_000,
++  cashGeneral: 500_000, cashMarket: 100_000, cashTransit: 0, cashCulture: 0,
++}
++
++export const samplePlan: PlanView = {
++  rowVersion: 55,
++  general: { creditFixed: 500_000, debitFixed: 300_000, flexible: 1_200_000 },
++  market: { creditFixed: 0, debitFixed: 100_000, flexible: 100_000 },
++  transit: { creditFixed: 100_000, debitFixed: 0, flexible: 0 },
++  culture: { creditFixed: 0, debitFixed: 0, flexible: 100_000 },
++}
++
++/** 자료가 완료되고 지출계획이 저장된 연도 기록(분석 화면의 ②가 읽는다). */
++export function readyYearView(overrides: Partial<TaxYearView> = {}): TaxYearView {
++  return yearView({ totals: sampleTotals, plan: samplePlan, blankCount: 0, hasInputs: true, ...overrides })
++}
++
++/** READY 분석. 현황 1,475,000원, 현재 계획 1,997,272원, 추천 2,150,000원, 차이 152,728원. */
++export function analysisView(overrides: Partial<TaxAnalysisView> = {}): TaxAnalysisView {
++  return {
++    taxYear: 2026, status: 'READY', blankCount: 0, totals: sampleTotals, totalSalary: 50_000_000,
++    estimated: false, asOfDateMin: '2026-06-30', asOfDateMax: '2026-06-30', partialYear: false,
++    law: { id: 1, versionNo: 1, appliedAt: '2026-01-15T01:00:00Z', childTiersApply: true },
++    lawRates: { minSpendRatePct: 25, bracketBoundary: 70_000_000, rateCreditPct: 15, rateDebitCashPct: 30, rateCulturePct: 30, rateMarketPct: 40, rateTransitPct: 40 },
++    newerLawVersion: false, planSaved: true,
++    deduction: {
++      highBracket: false, credit: 14_000_000, debitCash: 2_500_000, culture: 200_000, market: 600_000, transit: 500_000,
++      total: 17_800_000, threshold: 12_500_000, thresholdReached: true, remainingToThreshold: 0,
++      beforeThresholdCut: 3_350_000, thresholdCut: 1_875_000, deductible: 1_475_000,
++      basicLimit: 3_000_000, basicUsed: 1_475_000, extraCap: 3_000_000, extraEligible: 500_000, extraUsed: 0, amount: 1_475_000,
++    },
++    recommendation: {
++      methodShare: { creditPct: 82.0, debitPct: 14.6, cashPct: 3.4 },
++      current: {
++        allocation: {
++          general: { credit: 1_018_183, debit: 145_454, cash: 36_363 }, market: { credit: 50_001, debit: 33_333, cash: 16_666 },
++          transit: { credit: 0, debit: 0, cash: 0 }, culture: { credit: 50_000, debit: 50_000, cash: 0 },
++        },
++        yearEndDeduction: 1_997_272,
++      },
++      recommended: {
++        allocation: {
++          general: { credit: 0, debitCash: 1_200_000 }, market: { credit: 50_001, debitCash: 49_999 },
++          transit: { credit: 0, debitCash: 0 }, culture: { credit: 50_000, debitCash: 50_000 },
++        },
++        yearEndDeduction: 2_150_000,
++      },
++      difference: 152_728,
++      reasons: [{ code: 'CREDIT_OVER_THRESHOLD', category: 'GENERAL', amount: 1_018_183 }],
++    },
++    ...overrides,
++  }
++}
++
++/** GET 분석과 GET 연도 기록. null이면 404(연도 기록 없음)다. 요청 횟수를 센다. */
++export function serveAnalysis(analysis: TaxAnalysisView | null, view: TaxYearView | null = analysis && readyYearView()) {
++  const calls = { analysis: 0, year: 0 }
++  server.use(
++    http.get('*/api/tax/years/:year/analysis', () => {
++      calls.analysis++
++      return analysis ? HttpResponse.json(analysis) : notFound()
++    }),
++    http.get('*/api/tax/years/:year', () => {
++      calls.year++
++      return view ? HttpResponse.json(view) : notFound()
++    }),
++  )
++  return calls
++}
++
++export function renderTaxAnalysis(options: { groups?: unknown[] } = {}) {
++  return renderPage(
++    <AmountMaskProvider><TaxYearProvider today={taxToday}><TaxAnalysisPage /></TaxYearProvider></AmountMaskProvider>,
++    { ...options, path: '/tax/analysis' },
++  )
++}
+diff --git a/apps/web/src/app/AppRoutes.test.tsx b/apps/web/src/app/AppRoutes.test.tsx
+--- a/apps/web/src/app/AppRoutes.test.tsx
++++ b/apps/web/src/app/AppRoutes.test.tsx
+@@ -9,7 +9,7 @@
+ import { AuthProvider } from '../auth/AuthProvider'
+ import { mockViewport } from '../test/mockViewport'
+ import { server } from '../test/server'
+-import { serveTax, yearView } from '../test/taxFixtures'
++import { analysisView, serveAnalysis, serveTax, yearView } from '../test/taxFixtures'
+ import { lawVersion, serveLaw } from '../test/taxLawFixtures'
+ import { seoulYear } from '../tax/TaxYearProvider'
+ import AppRoutes from './AppRoutes'
+@@ -85,7 +85,7 @@
+     renderApp('/')
+     const nav = await screen.findByRole('navigation', { name: '주 메뉴' })
+     expect(within(nav).getAllByRole('link').map((l) => l.textContent))
+-      .toEqual(['홈', '소득공제', '입력자료', '대시보드', '대분류', '소분류', '거래 목록', '그룹 관리'])
++      .toEqual(['홈', '소득공제', '입력자료', '분석·지출계획', '대시보드', '대분류', '소분류', '거래 목록', '그룹 관리'])
+     expect(within(nav).getByRole('link', { name: '대분류' })).toHaveAttribute('href', '/dashboard/major')
+     expect(within(nav).getByRole('link', { name: '소분류' })).toHaveAttribute('href', '/dashboard/minor')
+     expect(within(nav).getByRole('link', { name: '대시보드' })).not.toHaveAttribute('aria-current')
+@@ -109,8 +109,43 @@
+     expect(screen.queryByRole('link', { name: /세법 관리/ })).not.toBeInTheDocument()
+   })
+ 
+-  it('shows 연도별 세법 관리 second under 소득공제 to a service admin only and opens it', async () => {
++  it('opens 소득공제 at the analysis status step when the selected year has inputs', async () => {
+     mockViewport(false)
++    signedIn([])
++    serveAnalysis(analysisView({ taxYear: seoulYear(new Date()) }))
++    renderApp('/')
++    const user = userEvent.setup()
++
++    const nav = await screen.findByRole('navigation', { name: '주 메뉴' })
++    expect(within(nav).getAllByRole('link').map((l) => l.textContent))
++      .toEqual(['홈', '소득공제', '입력자료', '분석·지출계획', '대시보드', '대분류', '소분류', '거래 목록', '그룹 관리'])
++    await user.click(within(nav).getByRole('link', { name: '소득공제' }))
++
++    expect(await screen.findByRole('tab', { name: '① 현황' })).toHaveAttribute('aria-selected', 'true')
++    expect(within(nav).getByRole('link', { name: '분석·지출계획' })).toHaveAttribute('aria-current', 'page')
++  })
++
++  it('decides the 소득공제 entry by the remembered year', async () => {
++    mockViewport(false)
++    const year = seoulYear(new Date())
++    signedIn([])
++    server.use(
++      http.get('*/api/tax/years/:year', ({ params }) => HttpResponse.json(yearView({ taxYear: Number(params.year), hasInputs: Number(params.year) === year - 1 }))),
++      http.get('*/api/tax/years/:year/analysis', () => HttpResponse.json(analysisView({ taxYear: year - 1 }))),
++    )
++    renderApp('/tax')
++    const user = userEvent.setup()
++
++    expect(await screen.findByRole('region', { name: '기본정보' })).toBeInTheDocument()
++    await user.click(screen.getByRole('button', { name: /귀속연도/ }))
++    await user.click(screen.getByRole('option', { name: `${year - 1}년` }))
++    await user.click(within(screen.getByRole('navigation', { name: '주 메뉴' })).getByRole('link', { name: '소득공제' }))
++
++    expect(await screen.findByRole('tab', { name: '① 현황' })).toHaveAttribute('aria-selected', 'true')
++  })
++
++  it('shows 연도별 세법 관리 third under 소득공제 to a service admin only and opens it', async () => {
++    mockViewport(false)
+     signedIn([], admin)
+     serveTax(null)
+     serveLaw([lawVersion()])
+@@ -119,7 +154,7 @@
+ 
+     const nav = await screen.findByRole('navigation', { name: '주 메뉴' })
+     expect(within(nav).getAllByRole('link').map((l) => l.textContent))
+-      .toEqual(['홈', '소득공제', '입력자료', '연도별 세법 관리', '대시보드', '대분류', '소분류', '거래 목록', '그룹 관리'])
++      .toEqual(['홈', '소득공제', '입력자료', '분석·지출계획', '연도별 세법 관리', '대시보드', '대분류', '소분류', '거래 목록', '그룹 관리'])
+     await user.click(within(nav).getByRole('link', { name: '연도별 세법 관리' }))
+ 
+     expect(await screen.findByRole('heading', { level: 1, name: '연도별 세법 관리' })).toBeInTheDocument()
+@@ -396,7 +431,7 @@
+     await user.click(screen.getByRole('button', { name: '로그인' }))
+     await user.click(await screen.findByRole('link', { name: '소득공제' }))
+ 
+-    expect(await screen.findByText('입력자료 불러오는 중')).toBeInTheDocument()
++    expect(await screen.findByText('소득공제 불러오는 중')).toBeInTheDocument()
+     expect(screen.queryByText('₩ 52,340,000')).not.toBeInTheDocument()
+     expect(await screen.findByRole('heading', { name: `${year}년 귀속 기록이 없습니다` })).toBeInTheDocument()
+   })
+@@ -556,7 +591,7 @@
+     expect(within(screen.getByRole('main')).queryByRole('heading', { level: 1 })).not.toBeInTheDocument()
+   })
+ 
+-  it('gives a service admin in-page tabs 입력자료 · 세법 관리', async () => {
++  it('gives a service admin in-page tabs 입력자료 · 분석·지출계획 · 세법 관리', async () => {
+     signedIn([], admin)
+     serveTax(null)
+     serveLaw([lawVersion()])
+@@ -564,7 +599,7 @@
+     const user = userEvent.setup()
+ 
+     const tabs = await screen.findByRole('navigation', { name: '소득공제 메뉴' })
+-    expect(within(tabs).getAllByRole('link').map((l) => l.textContent)).toEqual(['입력자료', '세법 관리'])
++    expect(within(tabs).getAllByRole('link').map((l) => l.textContent)).toEqual(['입력자료', '분석·지출계획', '세법 관리'])
+     expect(within(tabs).getByRole('link', { name: '입력자료' })).toHaveAttribute('aria-current', 'page')
+     await user.click(within(tabs).getByRole('link', { name: '세법 관리' }))
+ 
+@@ -574,13 +609,19 @@
+     expect(within(screen.getByRole('banner')).getByRole('heading', { level: 1 })).toHaveTextContent('소득공제')
+   })
+ 
+-  it('shows no in-page tax tabs to a member', async () => {
++  it('gives a member in-page tabs 입력자료 · 분석·지출계획 and opens the analysis', async () => {
+     signedIn([])
+-    serveTax(null)
++    serveAnalysis(analysisView({ taxYear: seoulYear(new Date()) }))
+     renderApp('/tax/inputs')
++    const user = userEvent.setup()
+ 
+-    expect(await screen.findByRole('heading', { name: /귀속 기록이 없습니다/ })).toBeInTheDocument()
+-    expect(screen.queryByRole('navigation', { name: '소득공제 메뉴' })).not.toBeInTheDocument()
++    const tabs = await screen.findByRole('navigation', { name: '소득공제 메뉴' })
++    expect(within(tabs).getAllByRole('link').map((l) => l.textContent)).toEqual(['입력자료', '분석·지출계획'])
++    await user.click(within(tabs).getByRole('link', { name: '분석·지출계획' }))
++
++    expect(await screen.findByRole('tablist', { name: '분석 단계' })).toBeInTheDocument()
++    expect(within(screen.getByRole('navigation', { name: '소득공제 메뉴' })).getByRole('link', { name: '분석·지출계획' }))
++      .toHaveAttribute('aria-current', 'page')
+   })
+ 
+   it('signs out from the account sheet', async () => {
+```
+
+`apps/web/src/tax/analysis/format.test.ts` (새 파일):
+
+```ts
+import { describe, expect, it } from 'vitest'
+import { asOfText, percent, seoulDate } from './format'
+
+describe('analysis format', () => {
+  it('rounds a share half up to one decimal with integer arithmetic', () => {
+    expect(percent(14_600_000, 17_800_000)).toBe('82.0%')
+    expect(percent(2_600_000, 17_800_000)).toBe('14.6%')
+    expect(percent(600_000, 17_800_000)).toBe('3.4%')
+    // 0.15%는 부동소수점으로 0.1499…가 되어 toFixed(1)이면 0.1%다. 반올림(HALF_UP)이면 0.2%.
+    expect(percent(3, 2_000)).toBe('0.2%')
+    expect(percent(9_999_999_999_999, 9_999_999_999_999 * 12)).toBe('8.3%')
+    expect(percent(17_800_000, 12_500_000)).toBe('142.4%')
+    expect(percent(0, 17_800_000)).toBe('0.0%')
+    expect(percent(0, 0)).toBeNull()
+  })
+
+  it('writes one data date or the range of different dates', () => {
+    expect(asOfText('2026-06-30', '2026-06-30')).toBe('2026-06-30')
+    expect(asOfText('2026-05-31', '2026-06-30')).toBe('2026-05-31 ~ 2026-06-30')
+    expect(asOfText(null, null)).toBe('자료 없음')
+  })
+
+  it('reads the applied day in Korean time', () => {
+    expect(seoulDate('2026-01-15T01:00:00Z')).toBe('2026-01-15')
+    expect(seoulDate('2026-12-31T15:30:00Z')).toBe('2027-01-01')
+  })
+})
+```
+
+`apps/web/src/tax/analysis/TaxAnalysisPage.test.tsx` (새 파일):
+
+```tsx
+import { screen, waitFor, within } from '@testing-library/react'
+import { http, HttpResponse } from 'msw'
+import { beforeEach, describe, expect, it } from 'vitest'
+import { server } from '../../test/server'
+import { analysisView, readyYearView, renderTaxAnalysis, serveAnalysis } from '../../test/taxFixtures'
+
+beforeEach(() => {
+  try { localStorage.clear() } catch { /* storage may be unavailable */ }
+})
+
+const v2 = { id: 2, versionNo: 2, appliedAt: '2026-03-02T01:00:00Z', childTiersApply: true }
+
+describe('TaxAnalysisPage — 단계 틀과 상태 알림', () => {
+  it('shows one step at a time, starting at ①, and moves with the step tabs and 이전/다음', async () => {
+    serveAnalysis(analysisView())
+    const { user } = renderTaxAnalysis()
+
+    const steps = await screen.findByRole('tablist', { name: '분석 단계' })
+    expect(within(steps).getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['① 현황', '② 지출계획', '③ 추천'])
+    expect(screen.getByRole('tab', { name: '① 현황' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getAllByRole('tabpanel')).toHaveLength(1)
+    expect(screen.getByRole('tabpanel', { name: '① 현황' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '이전' })).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '다음' }))
+    expect(screen.getByRole('tab', { name: '② 지출계획' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('tab', { name: '② 지출계획' })).toHaveFocus()
+    expect(screen.getAllByRole('tabpanel')).toHaveLength(1)
+
+    await user.click(screen.getByRole('tab', { name: '③ 추천' }))
+    expect(screen.getByRole('tabpanel', { name: '③ 추천' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '다음' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '이전' }))
+    expect(screen.getByRole('tab', { name: '② 지출계획' })).toHaveAttribute('aria-selected', 'true')
+  })
+
+  it('shows the applied law, data date and salary in one line under the personal-data note', async () => {
+    serveAnalysis(analysisView())
+    renderTaxAnalysis()
+
+    expect(await screen.findByText(/^적용 세법/))
+      .toHaveTextContent('적용 세법 2026년 귀속 v1 · 적용일 2026-01-15 · 자료 기준일 2026-06-30 · 예상 총급여 ₩ 50,000,000')
+    expect(screen.getByText('개인 자료 · 그룹과 무관')).toBeInTheDocument()
+    expect(screen.queryByText(/자료의 기준일이 서로 다릅니다/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/근로기간이/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/새 세법 버전이 적용됐습니다/)).not.toBeInTheDocument()
+  })
+
+  it('marks an estimate with its reason and asks to check the work months', async () => {
+    serveAnalysis(analysisView({ estimated: true, asOfDateMin: '2026-05-31', partialYear: true }), readyYearView({ workStartMonth: 4 }))
+    renderTaxAnalysis()
+
+    expect(await screen.findByText(/^적용 세법/)).toHaveTextContent('자료 기준일 2026-05-31 ~ 2026-06-30')
+    expect(screen.getByText(/자료의 기준일이 서로 다릅니다/))
+      .toHaveTextContent('추정 자료의 기준일이 서로 다릅니다(2026-05-31 ~ 2026-06-30). 서로 다른 시점의 누계를 더한 추정입니다.')
+    expect(screen.getByText(/근로기간이/))
+      .toHaveTextContent('근로기간 확인 필요 근로기간이 4월~12월입니다. 근로기간에 쓴 금액만 입력했는지 확인하세요. 계산은 입력한 금액 그대로 합니다.')
+  })
+
+  it('says the law is not ready instead of a version', async () => {
+    serveAnalysis(analysisView({ status: 'LAW_PENDING', law: null, lawRates: null, deduction: null, recommendation: null }), readyYearView({ lawVersion: null }))
+    renderTaxAnalysis()
+
+    expect(await screen.findByText(/^적용 세법/)).toHaveTextContent('적용 세법 2026년 귀속 세법 준비 중 · 자료 기준일 2026-06-30')
+  })
+
+  it('keeps the old result until the member asks to recalculate with the newer law', async () => {
+    serveAnalysis(analysisView({ newerLawVersion: true }))
+    let refreshed = 0
+    server.use(http.post('*/api/tax/years/2026/law-version/refresh', () => {
+      refreshed++
+      serveAnalysis(analysisView({ law: v2 }), readyYearView({ lawVersion: v2 }))
+      return HttpResponse.json(readyYearView({ lawVersion: v2 }))
+    }))
+    const { user } = renderTaxAnalysis()
+
+    expect(await screen.findByText(/새 세법 버전이 적용됐습니다/)).toHaveTextContent('지금 결과는 v1 기준이며, 누르기 전에는 그대로입니다.')
+    expect(screen.getByText(/^적용 세법/)).toHaveTextContent('v1 · 적용일 2026-01-15')
+    expect(refreshed).toBe(0)
+    await user.click(screen.getByRole('button', { name: '새 버전으로 다시 계산' }))
+
+    await waitFor(() => expect(screen.getByText(/^적용 세법/)).toHaveTextContent('v2 · 적용일 2026-03-02'))
+    expect(refreshed).toBe(1)
+    expect(screen.queryByText(/새 세법 버전이 적용됐습니다/)).not.toBeInTheDocument()
+  })
+
+  it('guides a year without a record to the inputs page and shows no steps', async () => {
+    serveAnalysis(null)
+    renderTaxAnalysis()
+
+    expect(await screen.findByRole('heading', { name: '2026년 귀속 기록이 없습니다' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: '입력자료로 가기' })).toHaveAttribute('href', '/tax/inputs')
+    expect(screen.queryByRole('tablist')).not.toBeInTheDocument()
+  })
+
+  it('shows a retry when the analysis fails to load', async () => {
+    let fail = true
+    serveAnalysis(analysisView())
+    server.use(http.get('*/api/tax/years/:year/analysis', () => (fail
+      ? HttpResponse.json({ code: 'X', message: 'x' }, { status: 500 })
+      : HttpResponse.json(analysisView()))))
+    const { user } = renderTaxAnalysis()
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('분석을 불러오지 못했습니다.')
+    fail = false
+    await user.click(screen.getByRole('button', { name: '다시 시도' }))
+    expect(await screen.findByRole('tablist', { name: '분석 단계' })).toBeInTheDocument()
+  })
+})
+```
+
+- [ ] **Step 2: 실패 확인**
+
+Run: `cd apps/web && npx vitest run src/app/AppRoutes.test.tsx src/app/BottomTabBar.test.tsx src/tax`
+Expected: `Failed to resolve import "../tax/analysis/TaxAnalysisPage" from "src/test/taxFixtures.tsx"`로 테스트 지원 파일을 쓰는 9파일(`AppRoutes`, `taxApi`, 입력자료 4개, 세법 2개, 새 `TaxAnalysisPage`)이, `Failed to resolve import "./format"`으로 `format.test.ts`가 파일째 FAIL(10파일). `TaxHeader`·`BottomTabBar` 2파일 7건 PASS.
+
+- [ ] **Step 3: API 모듈·메뉴·라우트·진입 규칙**
+
+`git apply`:
+
+```diff
+diff --git a/apps/web/src/tax/taxApi.ts b/apps/web/src/tax/taxApi.ts
+--- a/apps/web/src/tax/taxApi.ts
++++ b/apps/web/src/tax/taxApi.ts
+@@ -28,7 +28,42 @@
+ export type BasicInfoInput = { totalSalary: number; workStartMonth: number; workEndMonth: number; childCount: number; rowVersion?: number }
+ export type CardInput = { issuerName: string; asOfDate: string; memo: string | null; amounts: CardAmounts; rowVersion?: number }
+ export type CashInput = { asOfDate: string; memo: string | null; amounts: CashAmounts; rowVersion?: number }
++export type PlanInput = { general: PlanRow; market: PlanRow; transit: PlanRow; culture: PlanRow; rowVersion?: number }
+ 
++// PR 4 분석 응답(TaxAnalysisView)과 같은 모양. 계산은 서버가 하고 웹은 그리기만 한다(TAX-44·46).
++export type Category = 'GENERAL' | 'MARKET' | 'TRANSIT' | 'CULTURE'
++export type AnalysisStatus = 'NO_INPUT' | 'INCOMPLETE' | 'LAW_PENDING' | 'READY'
++export type ByCategory<T> = { general: T; market: T; transit: T; culture: T }
++export type LawRates = {
++  minSpendRatePct: number; bracketBoundary: number
++  rateCreditPct: number; rateDebitCashPct: number; rateCulturePct: number; rateMarketPct: number; rateTransitPct: number
++}
++/** 소득공제액(amount)과 그 과정 값. 과정 값은 표시용으로 각각 원 미만을 버린 값이고 amount만 계산 결과다. */
++export type Deduction = {
++  highBracket: boolean; credit: number; debitCash: number; culture: number; market: number; transit: number; total: number
++  threshold: number; thresholdReached: boolean; remainingToThreshold: number; beforeThresholdCut: number; thresholdCut: number
++  deductible: number; basicLimit: number; basicUsed: number; extraCap: number; extraEligible: number; extraUsed: number; amount: number
++}
++export type ReasonCode = 'CREDIT_OVER_THRESHOLD' | 'CREDIT_RATE_HIGHER' | 'NO_FLEXIBLE_AMOUNT' | 'BELOW_THRESHOLD' | 'LIMIT_REACHED'
++  | 'METHOD_NEUTRAL' | 'ALREADY_BEST'
++export type Reason = { code: ReasonCode; category: Category | null; amount: number | null }
++/** allocation은 지출계획의 "바꿀 수 있는 금액"만 결제수단에 둔 금액이다(고정액 없음). */
++export type Recommendation = {
++  methodShare: { creditPct: number; debitPct: number; cashPct: number } | null
++  current: { allocation: ByCategory<{ credit: number; debit: number; cash: number }>; yearEndDeduction: number }
++  recommended: { allocation: ByCategory<{ credit: number; debitCash: number }>; yearEndDeduction: number }
++  difference: number; reasons: Reason[]
++}
++export type TaxAnalysisView = {
++  taxYear: number; status: AnalysisStatus; blankCount: number; totals: SpendingTotals; totalSalary: number
++  estimated: boolean; asOfDateMin: string | null; asOfDateMax: string | null; partialYear: boolean
++  law: LawVersionRef | null; lawRates: LawRates | null; newerLawVersion: boolean; planSaved: boolean
++  /** READY일 때만 있다. */
++  deduction: Deduction | null
++  /** READY이고 지출계획이 저장돼 있을 때만 있다. */
++  recommendation: Recommendation | null
++}
++
+ const yearPath = (year: number) => `/tax/years/${year}`
+ 
+ /** 404는 "없음"(연도 기록 없음, 적용 세법 없음)이라 null로 돌려준다. 그룹 쿼리처럼 그룹 목록을 다시 부르지 않는다. */
+@@ -53,22 +88,45 @@
+     apiFetch<void>(`${yearPath(year)}/cards/${cardId}?rowVersion=${rowVersion}`, { method: 'DELETE' }),
+   saveCashReceipt: (year: number, body: CashInput) => apiFetch<TaxYearView>(`${yearPath(year)}/cash-receipt`, { method: 'PUT', json: body }),
+   currentLaw: (year: number) => orNull(apiFetch<CurrentLaw>(`/tax/law-versions/current?year=${year}`)),
++  analysis: (year: number) => orNull(apiFetch<TaxAnalysisView>(`${yearPath(year)}/analysis`)),
++  /** rowVersion이 없으면 지출계획을 만들고, 있으면 고친다. 자료가 미완료여도 저장된다(TAX-75). */
++  savePlan: (year: number, body: PlanInput) => apiFetch<TaxYearView>(`${yearPath(year)}/plan`, { method: 'PUT', json: body }),
++  /** 연도 기록의 세법 버전을 그 연도의 현재 적용 버전으로 바꾼다(TAX-66). */
++  refreshLawVersion: (year: number) => apiFetch<TaxYearView>(`${yearPath(year)}/law-version/refresh`, { method: 'POST' }),
+ }
+ 
+ /** 소득공제 쿼리 키. 머리말 `tax`는 isGroupScopedKey가 보지 않고, 로그아웃 때 queryClient.clear()로 지워진다. */
+ export const taxKeys = {
+   year: (year: number) => ['tax', 'year', year] as const,
+   currentLaw: (year: number) => ['tax', 'law', 'current', year] as const,
++  analysis: (year: number) => ['tax', 'analysis', year] as const,
+ }
+ 
+ export function useTaxYearView(year: number) {
+   return useQuery({ queryKey: taxKeys.year(year), queryFn: () => taxApi.year(year) })
+ }
+ 
+-/** TaxYearView를 돌려주는 저장. 응답으로 캐시를 바꾼다(합계를 다시 계산하지 않는다). */
++/**
++ * 분석 결과. 연도 기록이 바뀌면 달라지므로 화면을 떠나면 캐시에 남기지 않는다(gcTime 0).
++ * 입력자료 화면에서 고친 뒤 돌아왔을 때 지난 결과를 잠깐이라도 보이지 않게 하려는 것이다.
++ */
++export function useTaxAnalysis(year: number) {
++  return useQuery({ queryKey: taxKeys.analysis(year), queryFn: () => taxApi.analysis(year), gcTime: 0 })
++}
++
++/**
++ * TaxYearView를 돌려주는 저장. 응답으로 캐시를 바꾸고(합계를 다시 계산하지 않는다) 분석을 다시 읽는다.
++ * 분석을 다 읽은 뒤에 저장이 끝나므로, 저장 뒤 옮겨 간 화면은 새 결과를 그린다.
++ */
+ export function useTaxSave<T>(year: number, save: (input: T) => Promise<TaxYearView>) {
+   const client = useQueryClient()
+-  return useMutation({ mutationFn: save, onSuccess: (view) => client.setQueryData(taxKeys.year(year), view) })
++  return useMutation({
++    mutationFn: save,
++    onSuccess: (view) => {
++      client.setQueryData(taxKeys.year(year), view)
++      return client.invalidateQueries({ queryKey: taxKeys.analysis(year) })
++    },
++  })
+ }
+ 
+ /** 다른 곳에서 먼저 고쳤거나(409) 지운(404) 자료에 대한 저장. 새로 불러와야 다시 저장할 수 있다. */
+diff --git a/apps/web/src/app/menu.ts b/apps/web/src/app/menu.ts
+--- a/apps/web/src/app/menu.ts
++++ b/apps/web/src/app/menu.ts
+@@ -15,6 +15,7 @@
+   { to: '/tax', label: '소득공제', shortLabel: '소득공제', icon: 'calculator', end: false,
+     children: [
+       { to: '/tax/inputs', label: '입력자료' },
++      { to: '/tax/analysis', label: '분석·지출계획' },
+       { to: '/tax/law', label: '연도별 세법 관리', shortLabel: '세법 관리', adminOnly: true },
+     ] },
+   { to: '/dashboard', label: '대시보드', shortLabel: '대시보드', icon: 'dashboard', end: false,
+diff --git a/apps/web/src/app/AppRoutes.tsx b/apps/web/src/app/AppRoutes.tsx
+--- a/apps/web/src/app/AppRoutes.tsx
++++ b/apps/web/src/app/AppRoutes.tsx
+@@ -8,6 +8,7 @@
+ import PageLoading from './PageLoading'
+ import PublicOnly from './PublicOnly'
+ import RequireAuth from './RequireAuth'
++import TaxIndexRedirect from '../tax/TaxIndexRedirect'
+ import { TaxYearProvider } from '../tax/TaxYearProvider'
+ 
+ const LoginPage = lazy(() => import('../auth/LoginPage'))
+@@ -17,6 +18,7 @@
+ const GroupsPage = lazy(() => import('../groups/GroupsPage'))
+ const TaxInputsPage = lazy(() => import('../tax/inputs/TaxInputsPage'))
+ const TaxLawPage = lazy(() => import('../tax/law/TaxLawPage'))
++const TaxAnalysisPage = lazy(() => import('../tax/analysis/TaxAnalysisPage'))
+ 
+ /** 옛 업로드 주소. 홈의 월별 등록 현황이 ?month=를 받아 그 달 창을 연다. */
+ function UploadRedirect() {
+@@ -33,9 +35,9 @@
+           <Route path="/invite/:token" element={<RequireAuth><InvitePage /></RequireAuth>} />
+           <Route element={<RequireAuth><GroupProvider><TaxYearProvider><AppLayout /></TaxYearProvider></GroupProvider></RequireAuth>}>
+             <Route index element={<HomePage />} />
+-            {/* PR 7에서 TAX-68(자료가 있으면 분석) 규칙으로 바꾼다. */}
+-            <Route path="tax" element={<Navigate to="/tax/inputs" replace />} />
++            <Route path="tax" element={<TaxIndexRedirect />} />
+             <Route path="tax/inputs" element={<TaxInputsPage />} />
++            <Route path="tax/analysis" element={<TaxAnalysisPage />} />
+             <Route path="tax/law" element={<TaxLawPage />} />
+             <Route path="dashboard/:level?/:view?" element={<DashboardPage />} />
+             <Route path="transactions" element={<TransactionsPage />} />
+```
+
+`apps/web/src/tax/TaxIndexRedirect.tsx` (새 파일):
+
+```tsx
+import { Navigate } from 'react-router'
+import Skeleton, { SkeletonRegion } from '../common/Skeleton'
+import { useTaxYear } from './TaxYearProvider'
+import { useTaxYearView } from './taxApi'
+
+/**
+ * "소득공제" 메뉴의 진입(TAX-68). 선택 연도(기억한 값이 없으면 올해)의 연도 기록에 입력자료가 1건 이상 있으면(미완료 포함)
+ * 분석·지출계획의 ① 현황, 연도 기록이 없거나 자료가 없으면 입력자료로 보낸다. 읽기에 실패하면 입력자료가 오류와 다시 시도를 보인다.
+ */
+export default function TaxIndexRedirect() {
+  const { year } = useTaxYear()
+  const record = useTaxYearView(year)
+  if (record.isPending) {
+    return <SkeletonRegion label="소득공제 불러오는 중"><Skeleton height={160} radius="var(--radius-md)" /></SkeletonRegion>
+  }
+  return <Navigate to={record.data?.hasInputs ? '/tax/analysis' : '/tax/inputs'} replace />
+}
+```
+
+- [ ] **Step 4: 표시 도우미·단계 탭·화면 틀**
+
+`apps/web/src/tax/analysis/format.ts` (새 파일):
+
+```ts
+import type { Category } from '../taxApi'
+
+/** 소비구분 이름. 응답의 category 값과 같은 순서(일반 → 전통시장 → 대중교통 → 문화체육)다. */
+export const CATEGORY_LABEL: Record<Category, string> = { GENERAL: '일반', MARKET: '전통시장', TRANSIT: '대중교통', CULTURE: '문화체육' }
+/** 응답의 ByCategory 키와 소비구분. */
+export const CATEGORY_KEYS = [['general', 'GENERAL'], ['market', 'MARKET'], ['transit', 'TRANSIT'], ['culture', 'CULTURE']] as const
+
+/**
+ * 표시용 비율(part ÷ whole × 100), 소수 첫째 자리 반올림(HALF_UP). 서버 methodShare와 같은 규칙이다.
+ * 금액은 최대 약 10^14원이라 Number 곱셈이 안전 정수를 넘을 수 있어 BigInt로 셈한다. whole이 0이면 null.
+ */
+export function percent(part: number, whole: number): string | null {
+  if (whole <= 0) return null
+  const tenths = (BigInt(part) * 2000n + BigInt(whole)) / (2n * BigInt(whole))
+  return `${tenths / 10n}.${tenths % 10n}%`
+}
+
+/** 자료 기준일. 서로 다르면 범위로 쓴다(TAX-27). */
+export function asOfText(min: string | null, max: string | null): string {
+  if (!min || !max) return '자료 없음'
+  return min === max ? min : `${min} ~ ${max}`
+}
+
+const seoulDay = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit' })
+
+/** 세법 적용 시각(UTC ISO) → 서울 기준 `YYYY-MM-DD`. */
+export function seoulDate(iso: string): string {
+  return seoulDay.format(new Date(iso))
+}
+```
+
+`apps/web/src/tax/analysis/analysis.module.css` (새 파일):
+
+```css
+/*
+ * 소득공제 분석·지출계획. 화면 뿌리 글자 토큰(15px·13px)과 .split·.actions·.empty는 입력자료의 inputs.module.css를 같이 쓴다.
+ * 모든 폭에서 1단(TAX-73)이고, 넓은 화면은 가운데에 두고 최대 폭을 720px로 제한한다.
+ */
+.page { width: 100%; max-width: 720px; margin-inline: auto; }
+.facts { color: var(--ink-muted); font-size: var(--text-md); overflow-wrap: anywhere; }
+.notice { color: var(--pending); font-size: var(--text-md); overflow-wrap: anywhere; }
+.badge { display: inline-block; margin-right: var(--space-1); padding: 0 var(--space-1); border: 1px solid currentColor; border-radius: var(--radius-sm); font-weight: 500; }
+
+/* 단계 탭과 [이전]·[다음]은 모든 폭에서 누르는 영역 44px. 공용 탭의 .tab(40·42px)보다 구체적으로 쓴다. */
+.steps [role='tab'] { min-height: 44px; }
+.panel { display: flex; flex-direction: column; gap: var(--space-3); padding-top: var(--space-3); }
+.stepNav { display: flex; gap: var(--space-2); }
+.stepNav button { min-height: 44px; font-size: var(--text-card-action); }
+.next { margin-left: auto; }
+```
+
+`apps/web/src/tax/analysis/StepTabs.tsx` (새 파일):
+
+```tsx
+import { useEffect, useRef, type ReactNode } from 'react'
+import Tabs from '../../common/Tabs'
+import ui from '../../common/ui.module.css'
+import styles from './analysis.module.css'
+
+export type Step = 'status' | 'plan' | 'recommend'
+const STEPS: { id: Step; label: string }[] = [
+  { id: 'status', label: '① 현황' }, { id: 'plan', label: '② 지출계획' }, { id: 'recommend', label: '③ 추천' },
+]
+
+type Props = { step: Step; onStepChange: (step: Step) => void; children: (step: Step) => ReactNode }
+
+/**
+ * 분석·지출계획의 단계(TAX-73). 모든 폭에서 고른 단계 하나만 그리고, 단계 탭이나 [이전]·[다음]으로 옮긴다.
+ * 단계가 바뀌면 고른 단계 탭으로 포커스를 옮겨 아래쪽 버튼을 누른 뒤에도 새 단계의 처음부터 읽게 한다.
+ */
+export default function StepTabs({ step, onStepChange, children }: Props) {
+  const box = useRef<HTMLDivElement>(null)
+  const shown = useRef(step)
+  useEffect(() => {
+    if (shown.current === step) return
+    shown.current = step
+    box.current?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]')?.focus()
+  }, [step])
+  const index = STEPS.findIndex((s) => s.id === step)
+  const prev = STEPS[index - 1]
+  const next = STEPS[index + 1]
+  return (
+    <div ref={box}>
+      <Tabs label="분석 단계" tabs={STEPS} selectedKey={step} onSelectionChange={(id) => onStepChange(id as Step)} className={styles.steps}>
+        {(id) => (
+          <div className={styles.panel}>
+            {children(id as Step)}
+            <div className={styles.stepNav}>
+              {prev && <button type="button" className={ui.button} onClick={() => onStepChange(prev.id)}>이전</button>}
+              {next && <button type="button" className={`${ui.button} ${styles.next}`} onClick={() => onStepChange(next.id)}>다음</button>}
+            </div>
+          </div>
+        )}
+      </Tabs>
+    </div>
+  )
+}
+```
+
+`apps/web/src/tax/analysis/TaxAnalysisPage.tsx` (새 파일):
+
+```tsx
+import { useQueryClient } from '@tanstack/react-query'
+import { useState } from 'react'
+import { Link } from 'react-router'
+import { useAmountFormatter } from '../../common/AmountMask'
+import Icon from '../../common/Icon'
+import Skeleton, { SkeletonRegion } from '../../common/Skeleton'
+import ui from '../../common/ui.module.css'
+import { usePageTitle } from '../../common/usePageTitle'
+import inputs from '../inputs/inputs.module.css'
+import TaxHeader from '../TaxHeader'
+import TaxTabs from '../TaxTabs'
+import { useTaxYear } from '../TaxYearProvider'
+import { actionError, isStale, taxApi, taxKeys, useTaxAnalysis, useTaxSave, useTaxYearView, type TaxAnalysisView, type TaxYearView } from '../taxApi'
+import { asOfText, seoulDate } from './format'
+import StepTabs, { type Step } from './StepTabs'
+import styles from './analysis.module.css'
+
+/**
+ * 소득공제 › 분석·지출계획. 서버가 계산한 분석(GET …/analysis)을 그리고, ②에서 지출계획을 저장한다.
+ * 지출계획 값과 rowVersion은 연도 기록(TaxYearView)에서 읽는다. 그룹과 무관하다(useGroups를 쓰지 않는다).
+ */
+export default function TaxAnalysisPage() {
+  usePageTitle('분석·지출계획 · 소득공제')
+  const { year } = useTaxYear()
+  const analysis = useTaxAnalysis(year)
+  const record = useTaxYearView(year)
+  const [step, setStep] = useState<Step>('status')
+  const result = analysis.data
+  const view = record.data
+
+  return (
+    <div className={`${inputs.page} ${styles.page}`}>
+      <TaxHeader />
+      <TaxTabs />
+      {analysis.isError || record.isError ? (
+        <div className={inputs.split}>
+          <p role="alert" className={ui.alert}>분석을 불러오지 못했습니다.</p>
+          <div className={inputs.actions}>
+            <button type="button" className={ui.button} onClick={() => { void analysis.refetch(); void record.refetch() }}>
+              <Icon name="refresh-cw" size={18} />다시 시도
+            </button>
+          </div>
+        </div>
+      ) : result === undefined || view === undefined ? (
+        <SkeletonRegion label="분석 불러오는 중"><Skeleton height={160} radius="var(--radius-md)" /></SkeletonRegion>
+      ) : result === null || view === null ? (
+        <NoRecord year={year} />
+      ) : (
+        <>
+          <Notices analysis={result} view={view} />
+          <StepTabs step={step} onStepChange={setStep}>
+            {() => null}
+          </StepTabs>
+        </>
+      )}
+    </div>
+  )
+}
+
+/** 단계 위 공통: 적용 세법·자료 기준일·예상 총급여 한 줄(TAX-36)과 상태 알림(새 세법 버전, 추정, 근로기간). */
+function Notices({ analysis: a, view }: { analysis: TaxAnalysisView; view: TaxYearView }) {
+  const income = useAmountFormatter('income')
+  const law = a.law ? `${a.taxYear}년 귀속 v${a.law.versionNo} · 적용일 ${seoulDate(a.law.appliedAt)}` : `${a.taxYear}년 귀속 세법 준비 중`
+  const asOf = asOfText(a.asOfDateMin, a.asOfDateMax)
+  return (
+    <>
+      <p className={styles.facts}>{`적용 세법 ${law} · 자료 기준일 ${asOf} · 예상 총급여 ${income(a.totalSalary)}`}</p>
+      {a.newerLawVersion && <NewerLaw year={a.taxYear} versionNo={a.law?.versionNo} />}
+      {a.estimated && (
+        <p className={styles.notice}>
+          <span className={styles.badge}>추정</span> 자료의 기준일이 서로 다릅니다({asOf}). 서로 다른 시점의 누계를 더한 추정입니다.
+        </p>
+      )}
+      {a.partialYear && (
+        <p className={styles.notice}>
+          <span className={styles.badge}>근로기간 확인 필요</span> 근로기간이 {view.workStartMonth}월~{view.workEndMonth}월입니다.
+          근로기간에 쓴 금액만 입력했는지 확인하세요. 계산은 입력한 금액 그대로 합니다.
+        </p>
+      )}
+    </>
+  )
+}
+
+/** 새 세법 버전 알림(TAX-66). 누르기 전에는 연도 기록이 기억한 버전의 결과를 그대로 보인다(AC-19). */
+function NewerLaw({ year, versionNo }: { year: number; versionNo: number | undefined }) {
+  const client = useQueryClient()
+  const refresh = useTaxSave(year, () => taxApi.refreshLawVersion(year))
+  return (
+    <>
+      <div className={inputs.split}>
+        <p className={styles.notice}>
+          새 세법 버전이 적용됐습니다.{versionNo !== undefined && ` 지금 결과는 v${versionNo} 기준이며, 누르기 전에는 그대로입니다.`}
+        </p>
+        <div className={inputs.actions}>
+          <button type="button" className={ui.button} disabled={refresh.isPending} onClick={() => refresh.mutate(undefined, {
+            // 성공하면 다시 읽은 분석에 이 알림이 없어 사라진다. 연도 기록이 다른 곳에서 지워졌으면 새로 읽어 "기록 없음"을 보인다.
+            onError: (error) => {
+              if (!isStale(error)) return
+              void client.invalidateQueries({ queryKey: taxKeys.year(year) })
+              void client.invalidateQueries({ queryKey: taxKeys.analysis(year) })
+            },
+          })}>새 버전으로 다시 계산</button>
+        </div>
+      </div>
+      {refresh.error && <p role="alert" className={ui.alert}>{actionError(refresh.error)}</p>}
+    </>
+  )
+}
+
+function NoRecord({ year }: { year: number }) {
+  return (
+    <section aria-labelledby="tax-analysis-empty-title" className={`${ui.card} ${inputs.empty}`}>
+      <h2 id="tax-analysis-empty-title">{year}년 귀속 기록이 없습니다</h2>
+      <p>분석과 지출계획은 연도 기록이 있어야 볼 수 있습니다. 입력자료에서 기본정보부터 입력하세요.</p>
+      <Link to="/tax/inputs" className={`${ui.button} ${ui.primary} ${ui.linkButton}`}>입력자료로 가기</Link>
+    </section>
+  )
+}
+```
+
+- [ ] **Step 5: 통과 확인**
+
+Run: `cd apps/web && npx vitest run src/app/AppRoutes.test.tsx src/app/BottomTabBar.test.tsx src/tax && npx tsc -b && npx oxlint src/tax src/app src/test`
+Expected: 12파일 127건 PASS(`AppRoutes` 38건, `TaxAnalysisPage` 7건, `format` 3건 포함), 타입 오류 없음, lint 경고 없음. 이 Task 뒤 단계 패널에는 [이전]·[다음]만 있다(내용은 7.2~7.4).
+
+- [ ] **Step 6: 커밋(컨트롤러)** — Codex는 커밋하지 않는다. 컨트롤러가 보고와 diff를 확인한 뒤 커밋한다.
+
+### Task 7.2: ① 현황 (TAX-32~35, 37, 38, 43, 55, 71, AC-16, AC-32, AC-38)
+
+**담당:** Codex `gpt-6-sol` / `medium` (`write`), 태그 `impl-web`. 리뷰: Claude Sonnet 5.5 (`review-task`).
+
+**Files:**
+- Create: `apps/web/src/tax/analysis/PendingNotice.tsx`, `StatusStep.tsx`
+- Modify: `apps/web/src/tax/analysis/TaxAnalysisPage.tsx`(① 패널), `analysis.module.css`(① 스타일 덧붙임)
+- Test: `apps/web/src/tax/analysis/StatusStep.test.tsx`(새 파일)
+
+**Interfaces:**
+- Consumes: 7.1의 `TaxAnalysisView`·`Deduction`·`LawRates`·`SpendingTotals`, `percent`, `analysisView()`·`readyYearView()`·`serveAnalysis()`·`renderTaxAnalysis()`, `inputs/amounts.ts`의 `CATEGORIES`, `useAmountFormatter('expense' | 'income')`, `formatWon`(세법 경계 금액).
+- Produces: `PendingNotice({ analysis })`(7.4가 다시 쓴다), `StatusStep({ analysis })`, `region "현재 요약"`, `[계산 과정 보기]`(`aria-controls="tax-calc-steps"`), CSS `.summary`·`.big`·`.sub`·`.inlineBadge`·`.shares`·`.bar`·`.calc`·`.calcTotal`.
+
+- [ ] **Step 1: 실패하는 테스트 작성**
+
+`apps/web/src/tax/analysis/StatusStep.test.tsx` (새 파일):
+
+```tsx
+import { screen, within } from '@testing-library/react'
+import { beforeEach, describe, expect, it } from 'vitest'
+import { analysisView, readyYearView, renderTaxAnalysis, serveAnalysis } from '../../test/taxFixtures'
+import type { Deduction, TaxAnalysisView } from '../taxApi'
+
+beforeEach(() => {
+  try { localStorage.clear() } catch { /* storage may be unavailable */ }
+})
+
+const zeroTotals = {
+  creditGeneral: 0, creditMarket: 0, creditTransit: 0, creditCulture: 0, debitGeneral: 0, debitMarket: 0, debitTransit: 0, debitCulture: 0,
+  cashGeneral: 0, cashMarket: 0, cashTransit: 0, cashCulture: 0,
+}
+
+/** 공제가 시작되지 않은 결과(합성값). 과정 값은 PR 4 계산기의 정의를 따른다. */
+function belowThreshold(total: number, deduction: Partial<Deduction> = {}): Partial<TaxAnalysisView> {
+  const base = analysisView().deduction!
+  return {
+    totals: { ...zeroTotals, creditGeneral: total },
+    deduction: {
+      ...base, credit: total, debitCash: 0, culture: 0, market: 0, transit: 0, total, thresholdReached: false,
+      remainingToThreshold: 12_500_001 - total, beforeThresholdCut: total * 15 / 100, thresholdCut: total * 15 / 100, deductible: 0,
+      basicUsed: 0, extraEligible: 0, extraUsed: 0, amount: 0, ...deduction,
+    },
+  }
+}
+
+async function status() {
+  return within(await screen.findByRole('tabpanel', { name: '① 현황' }))
+}
+
+describe('StatusStep — ① 현황', () => {
+  it('summarizes the deduction, threshold and limits, saying it is not a refund', async () => {
+    serveAnalysis(analysisView())
+    renderTaxAnalysis()
+    const step = await status()
+
+    const summary = step.getByRole('region', { name: '현재 요약' })
+    expect(summary).toHaveTextContent(/소득공제액\s*₩ 1,475,000\s*과세표준에서 빼는 금액 · 환급액 아님/)
+    expect(summary).toHaveTextContent(/최저사용금액\s*달성 · 142\.4%\s*₩ 17,800,000 \/ ₩ 12,500,000 \(총급여의 25%\)/)
+    expect(summary).toHaveTextContent(/기본한도 사용\s*49\.2%\s*₩ 1,475,000 \/ ₩ 3,000,000 \(공제액 기준\)/)
+    expect(summary).toHaveTextContent(/추가한도 사용\s*0\.0%\s*₩ 0 \/ ₩ 3,000,000 \(전통시장·대중교통·문화체육\)/)
+    expect(step.getByText(/^참고:/)).toHaveTextContent('참고: 기본한도까지 남은 공제 여유 ₩ 1,525,000')
+    expect(summary).not.toHaveTextContent('추정')
+  })
+
+  it('shows category and payment shares over the whole year total, named as such', async () => {
+    serveAnalysis(analysisView())
+    renderTaxAnalysis()
+    const step = await status()
+
+    expect(step.getByText(/^분모:/)).toHaveTextContent('분모: 2026년 전체 입력 공제대상액 ₩ 17,800,000(연도 합계표 12칸의 합). 공제율·한도 사용률과 다른 숫자입니다.')
+    const rows = (name: string) => within(step.getByRole('table', { name })).getAllByRole('row').map((row) => row.textContent)
+    expect(rows('소비구분별')).toEqual(['일반92.7%', '전통시장3.4%', '대중교통2.8%', '문화체육1.1%'])
+    expect(rows('결제수단별')).toEqual(['신용카드82.0%', '체크카드14.6%', '현금영수증3.4%'])
+  })
+
+  it('shows an empty chart state when the year total is 0', async () => {
+    serveAnalysis(analysisView({ ...belowThreshold(0), recommendation: null }))
+    renderTaxAnalysis()
+    const step = await status()
+
+    expect(step.getByText('입력 합계가 0원이라 비율을 계산하지 않습니다.')).toBeInTheDocument()
+    expect(step.queryByRole('table')).not.toBeInTheDocument()
+    expect(step.getByRole('region', { name: '현재 요약' })).toHaveTextContent(/최저사용금액\s*미달 · 0\.0%/)
+  })
+
+  it('states 0원 and the remaining amount below the threshold without urging more spending', async () => {
+    serveAnalysis(analysisView(belowThreshold(9_300_000)))
+    renderTaxAnalysis()
+    const step = await status()
+
+    const summary = step.getByRole('region', { name: '현재 요약' })
+    expect(summary).toHaveTextContent(/소득공제액\s*₩ 0/)
+    expect(summary).toHaveTextContent(/최저사용금액\s*미달 · 74\.4%/)
+    expect(summary).toHaveTextContent('최저사용금액까지 ₩ 3,200,001 남았습니다. 전체 사용액이 최저사용금액을 넘어야 공제가 시작됩니다.')
+    expect(screen.getByRole('tabpanel').textContent).not.toMatch(/더 쓰|늘리|쓰세요/)
+  })
+
+  it('keeps the calculation folded until asked, then shows threshold → rates → limits ending at the deduction', async () => {
+    serveAnalysis(analysisView())
+    const { user } = renderTaxAnalysis()
+    const step = await status()
+    const toggle = step.getByRole('button', { name: '계산 과정 보기' })
+
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    expect(step.queryByRole('heading', { name: /최저사용금액 차감/ })).not.toBeInTheDocument()
+    await user.click(toggle)
+
+    expect(toggle).toHaveAttribute('aria-expanded', 'true')
+    const calc = within(document.getElementById(toggle.getAttribute('aria-controls')!)!)
+    expect(calc.getAllByRole('heading', { level: 3 }).map((h) => h.textContent)).toEqual(['1. 최저사용금액 차감', '2. 공제율 적용', '3. 한도'])
+    expect(calc.getByText(/^최저사용금액 = 총급여/).parentElement).toHaveTextContent(/최저사용금액 = 총급여 ₩ 50,000,000 × 25%\s*₩ 12,500,000/)
+    expect(calc.getByText(/^차감액/).nextElementSibling).toHaveTextContent('− ₩ 1,875,000')
+    expect(calc.getAllByRole('listitem').map((li) => li.textContent)).toContain('신용카드 ₩ 14,000,000 × 15%')
+    expect(calc.getByText(/^공제 가능 금액/).nextElementSibling).toHaveTextContent('₩ 1,475,000')
+    expect(calc.getByText(/^추가 인정액/).nextElementSibling).toHaveTextContent('₩ 0')
+    const last = calc.getByText('소득공제액 = 기본한도 안에서 인정 + 추가 인정액').nextElementSibling
+    expect(last).toHaveTextContent('₩ 1,475,000')
+    expect(step.getByRole('region', { name: '현재 요약' })).toHaveTextContent(/소득공제액\s*₩ 1,475,000/)
+  })
+
+  it('stops the calculation at the threshold when it is not passed', async () => {
+    serveAnalysis(analysisView(belowThreshold(9_300_000)))
+    const { user } = renderTaxAnalysis()
+    const step = await status()
+    await user.click(step.getByRole('button', { name: '계산 과정 보기' }))
+
+    expect(step.getAllByRole('heading', { level: 3 }).map((h) => h.textContent)).toEqual(['1. 최저사용금액 차감'])
+    expect(step.getByText('전체 사용액이 최저사용금액 이하라 여기서 끝납니다. 소득공제액은 0원입니다.')).toBeInTheDocument()
+  })
+
+  it('marks an estimate on the deduction', async () => {
+    serveAnalysis(analysisView({ estimated: true, asOfDateMin: '2026-05-31' }))
+    renderTaxAnalysis()
+    const step = await status()
+
+    expect(step.getByRole('region', { name: '현재 요약' })).toHaveTextContent(/소득공제액\s*추정/)
+  })
+
+  it('shows the blank count and a way to the inputs instead of numbers while the data is incomplete', async () => {
+    serveAnalysis(analysisView({ status: 'INCOMPLETE', blankCount: 3, lawRates: null, deduction: null, recommendation: null }), readyYearView({ blankCount: 3 }))
+    renderTaxAnalysis()
+    const step = await status()
+
+    expect(step.getByRole('heading', { name: '자료를 완료하면 계산합니다' })).toBeInTheDocument()
+    expect(step.getByText(/^빈 칸 3개/)).toBeInTheDocument()
+    expect(step.getByRole('link', { name: '입력자료로 가기' })).toHaveAttribute('href', '/tax/inputs')
+    expect(step.queryByRole('region', { name: '현재 요약' })).not.toBeInTheDocument()
+    expect(step.queryByText(/₩/)).not.toBeInTheDocument()
+  })
+
+  it('shows only that the law is not ready when the data is complete', async () => {
+    serveAnalysis(analysisView({ status: 'LAW_PENDING', law: null, lawRates: null, deduction: null, recommendation: null }), readyYearView({ lawVersion: null }))
+    renderTaxAnalysis()
+    const step = await status()
+
+    expect(step.getByRole('heading', { name: '세법 준비 중' })).toBeInTheDocument()
+    expect(step.queryByText(/빈 칸/)).not.toBeInTheDocument()
+    expect(step.queryByRole('link', { name: '입력자료로 가기' })).not.toBeInTheDocument()
+  })
+
+  it('hides the deduction amounts under the 지출 mask and the salary under the 수입 mask', async () => {
+    localStorage.setItem('saladbowl.amountMask', JSON.stringify({ EXPENSE: true }))
+    serveAnalysis(analysisView())
+    renderTaxAnalysis()
+    const step = await status()
+
+    expect(step.getByRole('region', { name: '현재 요약' })).toHaveTextContent(/소득공제액\s*₩ •••••/)
+    expect(step.getByRole('region', { name: '현재 요약' })).not.toHaveTextContent('1,475,000')
+    expect(screen.getByText(/^적용 세법/)).toHaveTextContent('예상 총급여 ₩ 50,000,000')
+  })
+})
+```
+
+- [ ] **Step 2: 실패 확인**
+
+Run: `cd apps/web && npx vitest run src/tax/analysis`
+Expected: `StatusStep.test.tsx` 10건 모두 FAIL — ① 패널이 비어 `Unable to find … role "region" and name "현재 요약"`(4건)·`role "button" and name "계산 과정 보기"`(2건)·`text: /^분모:/`·`text: 입력 합계가 0원이라 …`·`role "heading" and name "자료를 완료하면 계산합니다"`·`"세법 준비 중"`(각 1건). `TaxAnalysisPage`·`format` 2파일 10건 PASS.
+
+- [ ] **Step 3: 안내·현황 부품**
+
+`apps/web/src/tax/analysis/PendingNotice.tsx` (새 파일):
+
+```tsx
+import { Link } from 'react-router'
+import ui from '../../common/ui.module.css'
+import inputs from '../inputs/inputs.module.css'
+import type { TaxAnalysisView } from '../taxApi'
+
+/**
+ * 계산 결과 대신 보이는 안내(TAX-38·65·75). ① 현황과 ③ 추천이 같이 쓴다.
+ * 자료가 없거나 미완료면 빈 칸 수와 [입력자료로 가기], 자료는 완료됐고 세법이 없으면 "세법 준비 중"만 보인다.
+ */
+export default function PendingNotice({ analysis }: { analysis: TaxAnalysisView }) {
+  if (analysis.status === 'LAW_PENDING') {
+    return (
+      <section className={`${ui.card} ${inputs.empty}`}>
+        <h2>세법 준비 중</h2>
+        <p>{analysis.taxYear}년 귀속 세법이 등록되면 계산합니다. 저장한 지출계획은 남습니다.</p>
+      </section>
+    )
+  }
+  return (
+    <section className={`${ui.card} ${inputs.empty}`}>
+      <h2>자료를 완료하면 계산합니다</h2>
+      <p>
+        빈 칸 {analysis.blankCount}개 · {analysis.status === 'NO_INPUT'
+          ? '신용·체크 자료나 현금영수증 자료를 먼저 입력하세요.'
+          : '사용액이 없는 칸은 0원으로 채웁니다.'}
+      </p>
+      <Link to="/tax/inputs" className={`${ui.button} ${ui.primary} ${ui.linkButton}`}>입력자료로 가기</Link>
+    </section>
+  )
+}
+```
+
+`apps/web/src/tax/analysis/StatusStep.tsx` (새 파일):
+
+```tsx
+import { useState } from 'react'
+import { useAmountFormatter } from '../../common/AmountMask'
+import { formatWon } from '../../common/format'
+import ui from '../../common/ui.module.css'
+import { CATEGORIES } from '../inputs/amounts'
+import inputs from '../inputs/inputs.module.css'
+import type { Deduction, LawRates, SpendingTotals, TaxAnalysisView } from '../taxApi'
+import { percent } from './format'
+import PendingNotice from './PendingNotice'
+import styles from './analysis.module.css'
+
+/**
+ * ① 현황(TAX-32~35, 43, 55, 71). 숫자는 서버 계산 결과이고, 비율·남은 여유만 화면이 그 값으로 나눈다·뺀다(표시용).
+ * 자료가 미완료이거나 세법이 없으면 숫자 대신 안내를 보인다(TAX-38).
+ */
+export default function StatusStep({ analysis }: { analysis: TaxAnalysisView }) {
+  const { deduction, lawRates } = analysis
+  if (analysis.status !== 'READY' || !deduction || !lawRates) return <PendingNotice analysis={analysis} />
+  return <Status analysis={analysis} d={deduction} rates={lawRates} />
+}
+
+function Status({ analysis: a, d, rates }: { analysis: TaxAnalysisView; d: Deduction; rates: LawRates }) {
+  const won = useAmountFormatter('expense')
+  const [open, setOpen] = useState(false)
+  const reached = percent(d.total, d.threshold)
+  return (
+    <>
+      <section aria-label="현재 요약" className={ui.card}>
+        <dl className={styles.summary}>
+          <div>
+            <dt>소득공제액{a.estimated && <span className={`${styles.badge} ${styles.inlineBadge}`}>추정</span>}</dt>
+            <dd className={styles.big}>{won(d.amount)}</dd>
+            <dd className={styles.sub}>과세표준에서 빼는 금액 · 환급액 아님</dd>
+          </div>
+          <div>
+            <dt>최저사용금액</dt>
+            <dd className={styles.big}>{d.thresholdReached ? '달성' : '미달'}{reached && ` · ${reached}`}</dd>
+            <dd className={styles.sub}>{won(d.total)} / {won(d.threshold)} (총급여의 {rates.minSpendRatePct}%)</dd>
+          </div>
+          <div>
+            <dt>기본한도 사용</dt>
+            <dd className={styles.big}>{percent(d.basicUsed, d.basicLimit) ?? '—'}</dd>
+            <dd className={styles.sub}>{won(d.basicUsed)} / {won(d.basicLimit)} (공제액 기준)</dd>
+          </div>
+          <div>
+            <dt>추가한도 사용</dt>
+            <dd className={styles.big}>{percent(d.extraUsed, d.extraCap) ?? '—'}</dd>
+            <dd className={styles.sub}>{won(d.extraUsed)} / {won(d.extraCap)} (전통시장·대중교통·문화체육)</dd>
+          </div>
+        </dl>
+        {!d.thresholdReached && (
+          <p className={ui.status}>최저사용금액까지 {won(d.remainingToThreshold)} 남았습니다. 전체 사용액이 최저사용금액을 넘어야 공제가 시작됩니다.</p>
+        )}
+      </section>
+      <Shares year={a.taxYear} totals={a.totals} total={d.total} />
+      <section aria-labelledby="tax-calc-title" className={ui.card}>
+        <div className={inputs.split}>
+          <h2 id="tax-calc-title">계산 과정</h2>
+          <button type="button" className={ui.button} aria-expanded={open} aria-controls="tax-calc-steps" onClick={() => setOpen(!open)}>
+            계산 과정 보기
+          </button>
+        </div>
+        <div id="tax-calc-steps" hidden={!open}>
+          <CalcSteps analysis={a} d={d} rates={rates} />
+        </div>
+      </section>
+      <p className={ui.muted}>참고: 기본한도까지 남은 공제 여유 {won(d.basicLimit - d.basicUsed)}</p>
+    </>
+  )
+}
+
+/** 사용 비율(TAX-32~34). 분모는 연도 합계표 12칸의 합이고, 공제율·한도 사용률과 다른 숫자임을 적는다. */
+function Shares({ year, totals: t, total }: { year: number; totals: SpendingTotals; total: number }) {
+  const won = useAmountFormatter('expense')
+  const byCategory = CATEGORIES.map(([key, label]) => [label, t[`credit${key}`] + t[`debit${key}`] + t[`cash${key}`]] as const)
+  const sum = (method: 'credit' | 'debit' | 'cash') => CATEGORIES.reduce((n, [key]) => n + t[`${method}${key}`], 0)
+  const byMethod = [['신용카드', sum('credit')], ['체크카드', sum('debit')], ['현금영수증', sum('cash')]] as const
+  return (
+    <section aria-labelledby="tax-share-title" className={ui.card}>
+      <h2 id="tax-share-title">사용 비율</h2>
+      <p className={ui.muted}>분모: {year}년 전체 입력 공제대상액 {won(total)}(연도 합계표 12칸의 합). 공제율·한도 사용률과 다른 숫자입니다.</p>
+      {total === 0 ? <p className={ui.status}>입력 합계가 0원이라 비율을 계산하지 않습니다.</p> : (
+        <>
+          <ShareTable caption="소비구분별" rows={byCategory} total={total} />
+          <ShareTable caption="결제수단별" rows={byMethod} total={total} />
+          <p className={ui.muted}>소수 첫째 자리에서 반올림해 합이 100.0%가 아닐 수 있습니다.</p>
+        </>
+      )}
+    </section>
+  )
+}
+
+function ShareTable({ caption, rows, total }: { caption: string; rows: readonly (readonly [string, number])[]; total: number }) {
+  return (
+    <table className={styles.shares}>
+      <caption>{caption}</caption>
+      <tbody>
+        {rows.map(([label, amount]) => {
+          const share = percent(amount, total) ?? '0.0%'
+          return (
+            <tr key={label}>
+              <th scope="row">{label}</th>
+              <td aria-hidden="true"><span className={styles.bar}><span style={{ width: share }} /></span></td>
+              <td>{share}</td>
+            </tr>
+          )
+        })}
+      </tbody>
+    </table>
+  )
+}
+
+/** [계산 과정 보기](TAX-71, D20). 최저사용금액 차감 → 공제율 적용 → 한도 순이고 마지막 금액은 소득공제액이다. 화면이 다시 계산하지 않는다. */
+function CalcSteps({ analysis: a, d, rates }: { analysis: TaxAnalysisView; d: Deduction; rates: LawRates }) {
+  const won = useAmountFormatter('expense')
+  const income = useAmountFormatter('income')
+  const parts: [string, number, number][] = [
+    ['신용카드', d.credit, rates.rateCreditPct],
+    ['체크카드·현금영수증', d.debitCash, rates.rateDebitCashPct],
+    ...(d.highBracket ? [] : [['문화체육', d.culture, rates.rateCulturePct] as [string, number, number]]),
+    ['전통시장', d.market, rates.rateMarketPct],
+    ['대중교통', d.transit, rates.rateTransitPct],
+  ]
+  return (
+    <div className={styles.calc}>
+      <ol>
+        <li>
+          <h3>1. 최저사용금액 차감</h3>
+          <dl>
+            <dt>최저사용금액 = 총급여 {income(a.totalSalary)} × {rates.minSpendRatePct}%</dt><dd>{won(d.threshold)}</dd>
+            <dt>전체 사용액(연도 합계표 12칸의 합)</dt><dd>{won(d.total)}</dd>
+            {d.thresholdReached && <>
+              <dt>차감액: 최저사용금액을 공제율이 낮은 사용분(신용카드 → 체크카드·현금영수증 → 문화체육 → 전통시장 → 대중교통)부터 채운 금액 × 공제율</dt>
+              <dd>− {won(d.thresholdCut)}</dd>
+            </>}
+          </dl>
+          {!d.thresholdReached && <p>전체 사용액이 최저사용금액 이하라 여기서 끝납니다. 소득공제액은 0원입니다.</p>}
+        </li>
+        {d.thresholdReached && <>
+          <li>
+            <h3>2. 공제율 적용</h3>
+            <ul>{parts.map(([label, amount, rate]) => <li key={label}>{label} {won(amount)} × {rate}%</li>)}</ul>
+            {d.highBracket && <p className={ui.muted}>총급여가 {formatWon(rates.bracketBoundary)}를 넘어 문화체육은 원래 결제수단의 일반으로 계산합니다.</p>}
+            <dl>
+              <dt>공제율을 곱한 합계</dt><dd>{won(d.beforeThresholdCut)}</dd>
+              <dt>공제 가능 금액 = 합계 − 차감액</dt><dd>{won(d.deductible)}</dd>
+            </dl>
+          </li>
+          <li>
+            <h3>3. 한도</h3>
+            <dl>
+              <dt>기본한도</dt><dd>{won(d.basicLimit)}</dd>
+              <dt>기본한도 안에서 인정</dt><dd>{won(d.basicUsed)}</dd>
+              <dt>추가 인정액(전통시장·대중교통·문화체육 공제액 {won(d.extraEligible)}, 상한 {won(d.extraCap)})</dt><dd>{won(d.extraUsed)}</dd>
+            </dl>
+          </li>
+        </>}
+      </ol>
+      <dl className={styles.calcTotal}>
+        <dt>소득공제액 = 기본한도 안에서 인정 + 추가 인정액</dt><dd>{won(d.amount)}</dd>
+      </dl>
+    </div>
+  )
+}
+```
+
+- [ ] **Step 4: 화면에 넣기와 스타일**
+
+`git apply`:
+
+```diff
+diff --git a/apps/web/src/tax/analysis/TaxAnalysisPage.tsx b/apps/web/src/tax/analysis/TaxAnalysisPage.tsx
+--- a/apps/web/src/tax/analysis/TaxAnalysisPage.tsx
++++ b/apps/web/src/tax/analysis/TaxAnalysisPage.tsx
+@@ -12,6 +12,7 @@
+ import { useTaxYear } from '../TaxYearProvider'
+ import { actionError, isStale, taxApi, taxKeys, useTaxAnalysis, useTaxSave, useTaxYearView, type TaxAnalysisView, type TaxYearView } from '../taxApi'
+ import { asOfText, seoulDate } from './format'
++import StatusStep from './StatusStep'
+ import StepTabs, { type Step } from './StepTabs'
+ import styles from './analysis.module.css'
+ 
+@@ -49,7 +50,7 @@
+         <>
+           <Notices analysis={result} view={view} />
+           <StepTabs step={step} onStepChange={setStep}>
+-            {() => null}
++            {(id) => (id === 'status' ? <StatusStep analysis={result} /> : null)}
+           </StepTabs>
+         </>
+       )}
+diff --git a/apps/web/src/tax/analysis/analysis.module.css b/apps/web/src/tax/analysis/analysis.module.css
+--- a/apps/web/src/tax/analysis/analysis.module.css
++++ b/apps/web/src/tax/analysis/analysis.module.css
+@@ -13,3 +13,27 @@
+ .stepNav { display: flex; gap: var(--space-2); }
+ .stepNav button { min-height: 44px; font-size: var(--text-card-action); }
+ .next { margin-left: auto; }
++
++/* ① 현황 */
++.inlineBadge { margin: 0 0 0 var(--space-1); }
++.summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 9.5rem), 1fr)); gap: var(--space-3); margin: 0; }
++.summary > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
++.summary dt { color: var(--ink-muted); font-size: var(--text-md); }
++.summary dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
++.big { font-size: var(--text-xl); font-weight: 700; font-variant-numeric: tabular-nums; }
++.sub { color: var(--ink-muted); font-size: var(--text-md); font-variant-numeric: tabular-nums; }
++.shares { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
++.shares caption { caption-side: top; padding-bottom: var(--space-1); text-align: left; font-weight: 500; }
++.shares th { width: 6.5rem; padding: var(--space-1) 0; text-align: left; font-weight: 400; }
++.shares td { padding: var(--space-1) 0 var(--space-1) var(--space-2); }
++.shares td:last-child { width: 4.5rem; text-align: right; white-space: nowrap; }
++.bar { display: block; height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; }
++.bar > span { display: block; height: 100%; background: var(--brand); }
++.calc { display: flex; flex-direction: column; gap: var(--space-3); }
++.calc ol { display: flex; flex-direction: column; gap: var(--space-3); margin: 0; padding: 0; list-style: none; }
++.calc h3 { margin: 0 0 var(--space-1); font-size: var(--text-lg); }
++.calc ul { margin: 0 0 var(--space-1); padding-left: var(--space-4); }
++.calc dl { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-1) var(--space-3); margin: 0; }
++.calc dt { min-width: 0; overflow-wrap: anywhere; }
++.calc dd { margin: 0; text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
++.calc .calcTotal { padding-top: var(--space-2); border-top: 1px solid var(--line); font-weight: 700; }
+```
+
+- [ ] **Step 5: 통과 확인**
+
+Run: `cd apps/web && npx vitest run src/tax/analysis && npx tsc -b && npx oxlint src/tax`
+Expected: 3파일 20건 PASS, 타입 오류 없음, lint 경고 없음.
+
+- [ ] **Step 6: 커밋(컨트롤러)**
+
+### Task 7.3: ② 지출계획 (TAX-29, 51, 70, 75, AC-33, AC-36, AC-43 일부)
+
+**담당:** Codex `gpt-6-sol` / `medium` (`write`), 태그 `impl-web`. 리뷰: Claude Sonnet 5.5 (`review-task`). 리뷰는 `rowVersion`을 고치기 시작한 시점에 잡는지, [계산하기] 말고는 저장 요청이 없는지, 409 뒤 입력이 남는지를 코드와 테스트로 본다.
+
+**Files:**
+- Create: `apps/web/src/tax/analysis/PlanStep.tsx`
+- Modify: `apps/web/src/tax/analysis/TaxAnalysisPage.tsx`(`usePlanEditor`와 ② 패널), `analysis.module.css`(② 스타일 덧붙임)
+- Test: `apps/web/src/tax/analysis/PlanStep.test.tsx`(새 파일)
+
+**Interfaces:**
+- Consumes: 7.1의 `taxApi.savePlan`·`useTaxSave`(분석 무효화를 기다림)·`taxKeys`·`isStale`·`PlanInput`·`PlanView`·`PlanRow`, `samplePlan`, 공용 `MoneyField`(`minValue={0}`)·`toast`·`errorMessage`.
+- Produces: `usePlanEditor(year, view, onSaved)` → `{ values, dirty, blank, saving, error, change, submit, reload }`(화면이 부르고 ②에 넘긴다), `PlanStep({ editor, ready })`, CSS `.planGroup`·`.planSum`·`.planTotal`.
+
+- [ ] **Step 1: 실패하는 테스트 작성**
+
+`apps/web/src/tax/analysis/PlanStep.test.tsx` (새 파일):
+
+```tsx
+import { screen, waitFor, within } from '@testing-library/react'
+import { http, HttpResponse } from 'msw'
+import { beforeEach, describe, expect, it } from 'vitest'
+import { server } from '../../test/server'
+import { analysisView, readyYearView, renderTaxAnalysis, samplePlan, serveAnalysis } from '../../test/taxFixtures'
+
+beforeEach(() => {
+  try { localStorage.clear() } catch { /* storage may be unavailable */ }
+})
+
+const savedBody = {
+  general: { creditFixed: 500_000, debitFixed: 300_000, flexible: 900_000 },
+  market: { creditFixed: 0, debitFixed: 100_000, flexible: 100_000 },
+  transit: { creditFixed: 100_000, debitFixed: 0, flexible: 0 },
+  culture: { creditFixed: 0, debitFixed: 0, flexible: 100_000 },
+}
+
+async function openPlan() {
+  const page = renderTaxAnalysis()
+  await page.user.click(await screen.findByRole('tab', { name: '② 지출계획' }))
+  const step = within(screen.getByRole('tabpanel', { name: '② 지출계획' }))
+  const field = (group: string, label: string) => within(step.getByRole('group', { name: group })).getByLabelText(label)
+  return { ...page, step, field }
+}
+
+describe('PlanStep — ② 지출계획', () => {
+  it('shows the saved plan as 4 category groups × 3 amounts with automatic sums', async () => {
+    serveAnalysis(analysisView())
+    const { step, field } = await openPlan()
+
+    // 금액 칸(RAC NumberField)도 group이라 fieldset만 고른다.
+    const groups = step.getAllByRole('group').filter((group) => group.tagName === 'FIELDSET')
+    expect(groups.map((group) => group.querySelector('legend')?.textContent)).toEqual(['일반', '전통시장', '대중교통', '문화체육'])
+    expect(within(step.getByRole('group', { name: '일반' })).getAllByRole('textbox')).toHaveLength(3)
+    expect(field('일반', '신용카드 고정')).toHaveValue('500,000')
+    expect(field('일반', '체크카드·현금영수증 고정')).toHaveValue('300,000')
+    expect(field('일반', '바꿀 수 있음')).toHaveValue('1,200,000')
+    expect(step.getByRole('group', { name: '일반' })).toHaveTextContent('합계 ₩ 2,000,000')
+    expect(step.getByText(/^총액/)).toHaveTextContent('총액 ₩ 2,400,000 (신용카드 고정 ₩ 600,000 · 체크카드·현금영수증 고정 ₩ 400,000 · 바꿀 수 있음 ₩ 1,400,000)')
+  })
+
+  it('does not save while editing and keeps the edits across steps', async () => {
+    const calls = serveAnalysis(analysisView())
+    let puts = 0
+    server.use(http.put('*/api/tax/years/2026/plan', () => { puts++; return HttpResponse.json(readyYearView()) }))
+    const { user, step, field } = await openPlan()
+
+    await user.clear(field('일반', '바꿀 수 있음'))
+    await user.type(field('일반', '바꿀 수 있음'), '900000')
+    await user.tab()
+    expect(step.getByText('저장하지 않은 변경이 있습니다. ③ 추천은 마지막으로 저장한 계획 기준입니다.')).toBeInTheDocument()
+    await user.click(screen.getByRole('tab', { name: '③ 추천' }))
+    await user.click(screen.getByRole('tab', { name: '② 지출계획' }))
+
+    const plan = within(screen.getByRole('tabpanel', { name: '② 지출계획' }))
+    expect(within(plan.getByRole('group', { name: '일반' })).getByLabelText('바꿀 수 있음')).toHaveValue('900,000')
+    expect(puts).toBe(0)
+    expect(calls.analysis).toBe(1)
+  })
+
+  it('saves on 계산하기 with the opened version, recalculates and moves to ③', async () => {
+    serveAnalysis(analysisView())
+    let body: unknown
+    let after: { analysis: number } | undefined
+    server.use(http.put('*/api/tax/years/2026/plan', async ({ request }) => {
+      body = await request.json()
+      const saved = readyYearView({ plan: { ...samplePlan, ...savedBody, rowVersion: 56 } })
+      after = serveAnalysis(analysisView(), saved)
+      return HttpResponse.json(saved)
+    }))
+    const { user, field } = await openPlan()
+
+    await user.clear(field('일반', '바꿀 수 있음'))
+    await user.type(field('일반', '바꿀 수 있음'), '900000')
+    await user.click(screen.getByRole('button', { name: '계산하기' }))
+
+    await waitFor(() => expect(screen.getByRole('tab', { name: '③ 추천' })).toHaveAttribute('aria-selected', 'true'))
+    expect(body).toEqual({ ...savedBody, rowVersion: 55 })
+    expect(after?.analysis).toBe(1)
+    expect(await screen.findByText('지출계획을 저장했습니다.')).toBeInTheDocument()
+    await user.click(screen.getByRole('tab', { name: '② 지출계획' }))
+    const plan = within(screen.getByRole('tabpanel', { name: '② 지출계획' }))
+    expect(within(plan.getByRole('group', { name: '일반' })).getByLabelText('바꿀 수 있음')).toHaveValue('900,000')
+    expect(plan.queryByText(/저장하지 않은 변경/)).not.toBeInTheDocument()
+  })
+
+  it('starts a first plan at 0원 and creates it without a version', async () => {
+    serveAnalysis(analysisView({ planSaved: false, recommendation: null }), readyYearView({ plan: null }))
+    let body: unknown
+    server.use(http.put('*/api/tax/years/2026/plan', async ({ request }) => {
+      body = await request.json()
+      return HttpResponse.json(readyYearView())
+    }))
+    const { user, field } = await openPlan()
+
+    expect(field('문화체육', '바꿀 수 있음')).toHaveValue('0')
+    await user.click(screen.getByRole('button', { name: '계산하기' }))
+
+    await waitFor(() => expect(body).toBeDefined())
+    expect(body).toEqual({
+      general: { creditFixed: 0, debitFixed: 0, flexible: 0 }, market: { creditFixed: 0, debitFixed: 0, flexible: 0 },
+      transit: { creditFixed: 0, debitFixed: 0, flexible: 0 }, culture: { creditFixed: 0, debitFixed: 0, flexible: 0 },
+    })
+  })
+
+  it('keeps the plan open while the data is incomplete and only saves it', async () => {
+    serveAnalysis(analysisView({ status: 'INCOMPLETE', blankCount: 3, lawRates: null, deduction: null, recommendation: null }), readyYearView({ blankCount: 3 }))
+    let puts = 0
+    server.use(http.put('*/api/tax/years/2026/plan', () => { puts++; return HttpResponse.json(readyYearView({ blankCount: 3 })) }))
+    const { user, step } = await openPlan()
+
+    expect(step.getByText('자료가 완료되지 않았거나 세법이 준비 중이라 [계산하기]는 지출계획을 저장만 합니다.')).toBeInTheDocument()
+    await user.click(step.getByRole('button', { name: '계산하기' }))
+
+    await waitFor(() => expect(screen.getByRole('tab', { name: '③ 추천' })).toHaveAttribute('aria-selected', 'true'))
+    expect(puts).toBe(1)
+  })
+
+  it('turns 계산하기 off with the reason while a cell is blank', async () => {
+    serveAnalysis(analysisView())
+    const { user, step, field } = await openPlan()
+
+    await user.clear(field('전통시장', '신용카드 고정'))
+    await user.tab()
+
+    expect(step.getByRole('button', { name: '계산하기' })).toBeDisabled()
+    expect(step.getByText('빈 칸이 있어 계산할 수 없습니다. 쓰지 않을 금액은 0원으로 적어 주세요.')).toBeInTheDocument()
+  })
+
+  it('keeps the edits on a conflict and reloads the newer plan on request', async () => {
+    serveAnalysis(analysisView())
+    server.use(http.put('*/api/tax/years/2026/plan', () => {
+      serveAnalysis(analysisView(), readyYearView({ plan: { ...samplePlan, general: { creditFixed: 700_000, debitFixed: 0, flexible: 0 }, rowVersion: 60 } }))
+      return HttpResponse.json({ code: 'CONFLICT', message: 'x' }, { status: 409 })
+    }))
+    const { user, step, field } = await openPlan()
+
+    await user.clear(field('일반', '바꿀 수 있음'))
+    await user.type(field('일반', '바꿀 수 있음'), '900000')
+    await user.click(step.getByRole('button', { name: '계산하기' }))
+
+    expect(await step.findByRole('alert')).toHaveTextContent('다른 곳에서 수정되거나 삭제됐습니다. 저장하지 않았습니다.')
+    expect(field('일반', '바꿀 수 있음')).toHaveValue('900,000')
+    expect(screen.getByRole('tab', { name: '② 지출계획' })).toHaveAttribute('aria-selected', 'true')
+    await user.click(step.getByRole('button', { name: '다시 불러오기' }))
+
+    await waitFor(() => expect(field('일반', '신용카드 고정')).toHaveValue('700,000'))
+    expect(field('일반', '바꿀 수 있음')).toHaveValue('0')
+    expect(step.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('keeps the edits and says so when saving fails for another reason', async () => {
+    serveAnalysis(analysisView())
+    server.use(http.put('*/api/tax/years/2026/plan', () => HttpResponse.json({ code: 'X', message: 'x' }, { status: 500 })))
+    const { user, step, field } = await openPlan()
+
+    await user.clear(field('일반', '바꿀 수 있음'))
+    await user.type(field('일반', '바꿀 수 있음'), '900000')
+    await user.click(step.getByRole('button', { name: '계산하기' }))
+
+    expect(await step.findByRole('alert')).toHaveTextContent('입력한 값은 그대로 있습니다.')
+    expect(field('일반', '바꿀 수 있음')).toHaveValue('900,000')
+  })
+})
+```
+
+- [ ] **Step 2: 실패 확인**
+
+Run: `cd apps/web && npx vitest run src/tax/analysis`
+Expected: `PlanStep.test.tsx` 8건 모두 FAIL — ② 패널이 비어 `Unable to find … role "group" and name "일반"`(4건)·`"전통시장"`·`"문화체육"`·`role "group"`·`text: 자료가 완료되지 않았거나 …`(각 1건). 나머지 3파일 20건 PASS.
+
+- [ ] **Step 3: 입력 상태 훅과 ② 화면**
+
+`apps/web/src/tax/analysis/PlanStep.tsx` (새 파일):
+
+```tsx
+import { useQueryClient } from '@tanstack/react-query'
+import { useState } from 'react'
+import { useAmountFormatter } from '../../common/AmountMask'
+import { errorMessage } from '../../common/errorMessage'
+import MoneyField from '../../common/MoneyField'
+import { toast } from '../../common/Toast'
+import ui from '../../common/ui.module.css'
+import inputs from '../inputs/inputs.module.css'
+import { isStale, taxApi, taxKeys, useTaxSave, type PlanInput, type PlanRow, type PlanView, type TaxYearView } from '../taxApi'
+import styles from './analysis.module.css'
+
+const ROWS = [['general', '일반'], ['market', '전통시장'], ['transit', '대중교통'], ['culture', '문화체육']] as const
+const FIELDS = [['creditFixed', '신용카드 고정'], ['debitFixed', '체크카드·현금영수증 고정'], ['flexible', '바꿀 수 있음']] as const
+type Row = (typeof ROWS)[number][0]
+type Field = (typeof FIELDS)[number][0]
+/** 입력 중인 지출계획. 비운 칸은 null이다(저장 전에 막는다). */
+type PlanForm = Record<Row, Record<Field, number | null>>
+
+function toForm(plan: PlanView | null): PlanForm {
+  const row = (key: Row) => (plan ? { ...plan[key] } : { creditFixed: 0, debitFixed: 0, flexible: 0 })
+  return { general: row('general'), market: row('market'), transit: row('transit'), culture: row('culture') }
+}
+
+const sum = (values: (number | null)[]) => values.reduce<number>((n, v) => n + (v ?? 0), 0)
+
+/**
+ * ② 지출계획의 입력 상태(TAX-51·70). 화면(TaxAnalysisPage)이 들고 있어 단계를 옮겨도 입력이 남는다.
+ * 처음 고친 시점의 rowVersion을 잡아 두고 저장하므로, 그 사이 다른 곳에서 저장했으면 서버가 409로 막는다(TAX-29).
+ * [계산하기]를 누를 때만 저장하고, 저장 응답과 다시 읽은 분석을 받은 뒤 onSaved를 부른다.
+ */
+// oxlint-disable-next-line react/only-export-components
+export function usePlanEditor(year: number, view: TaxYearView | null | undefined, onSaved: () => void) {
+  const client = useQueryClient()
+  const [edit, setEdit] = useState<{ year: number; values: PlanForm; rowVersion: number | undefined } | null>(null)
+  const [failedYear, setFailedYear] = useState<number | null>(null)
+  const save = useTaxSave(year, (body: PlanInput) => taxApi.savePlan(year, body))
+  const mine = edit?.year === year ? edit : null
+  const saved = toForm(view?.plan ?? null)
+  const values = mine?.values ?? saved
+  const rowVersion = mine ? mine.rowVersion : view?.plan?.rowVersion
+  return {
+    values,
+    dirty: mine !== null && JSON.stringify(mine.values) !== JSON.stringify(saved),
+    blank: ROWS.some(([row]) => FIELDS.some(([field]) => values[row][field] === null)),
+    saving: save.isPending,
+    error: failedYear === year ? save.error : null,
+    change: (next: PlanForm) => setEdit({ year, values: next, rowVersion }),
+    submit: () => {
+      setFailedYear(year)
+      // blank이면 버튼이 꺼져 여기 오지 않는다. 남은 칸은 모두 숫자다.
+      save.mutate({ ...(values as Record<Row, PlanRow>), rowVersion }, {
+        onSuccess: () => {
+          setEdit(null)
+          toast('지출계획을 저장했습니다.')
+          onSaved()
+        },
+      })
+    },
+    /** 409·404 뒤: 연도 기록과 분석을 새로 읽은 뒤 입력을 버리고 새 값을 보인다. */
+    reload: () => void Promise.all([
+      client.invalidateQueries({ queryKey: taxKeys.year(year) }),
+      client.invalidateQueries({ queryKey: taxKeys.analysis(year) }),
+    ]).then(() => {
+      setEdit(null)
+      save.reset()
+    }),
+  }
+}
+
+type Props = { editor: ReturnType<typeof usePlanEditor>; ready: boolean }
+
+/** ② 지출계획(TAX-51·70·75). 미완료·세법 준비 중에도 입력은 열려 있고 [계산하기]는 저장만 한다. */
+export default function PlanStep({ editor, ready }: Props) {
+  const won = useAmountFormatter('expense')
+  const { values, error } = editor
+  const column = (field: Field) => sum(ROWS.map(([row]) => values[row][field]))
+  return (
+    <section aria-labelledby="tax-plan-title" className={ui.card}>
+      <h2 id="tax-plan-title">남은 기간 지출계획</h2>
+      <p className={ui.muted}>
+        기준일 다음 날부터 12월 31일까지 쓸 공제대상액을 소비구분별로 적습니다. 결제수단이 정해진 금액과 바꿀 수 있는 금액을 나눠 적고,
+        공제 대상이 아닌 지출(보험료·공과금 등)은 적지 않습니다.
+      </p>
+      <form className={ui.stack} onSubmit={(event) => { event.preventDefault(); editor.submit() }}>
+        {ROWS.map(([row, label]) => (
+          <fieldset key={row} className={styles.planGroup}>
+            <legend>{label}</legend>
+            {FIELDS.map(([field, fieldLabel]) => (
+              <MoneyField key={field} label={fieldLabel} value={values[row][field]} minValue={0}
+                onChange={(value) => editor.change({ ...values, [row]: { ...values[row], [field]: value } })} />
+            ))}
+            <p className={styles.planSum}>합계 {won(sum(FIELDS.map(([field]) => values[row][field])))}</p>
+          </fieldset>
+        ))}
+        <p className={styles.planTotal}>
+          총액 {won(sum(FIELDS.map(([field]) => column(field))))} (신용카드 고정 {won(column('creditFixed'))} · 체크카드·현금영수증 고정 {won(column('debitFixed'))} · 바꿀 수 있음 {won(column('flexible'))})
+        </p>
+        {editor.dirty && <p className={ui.status}>저장하지 않은 변경이 있습니다. ③ 추천은 마지막으로 저장한 계획 기준입니다.</p>}
+        {error && (isStale(error) ? (
+          <div className={inputs.split}>
+            <p role="alert" className={ui.alert}>다른 곳에서 수정되거나 삭제됐습니다. 저장하지 않았습니다.</p>
+            <div className={inputs.actions}><button type="button" className={ui.button} onClick={editor.reload}>다시 불러오기</button></div>
+          </div>
+        ) : <p role="alert" className={ui.alert}>{errorMessage(error)} 입력한 값은 그대로 있습니다.</p>)}
+        <div className={inputs.split}>
+          <p className={ui.muted}>
+            {editor.blank ? '빈 칸이 있어 계산할 수 없습니다. 쓰지 않을 금액은 0원으로 적어 주세요.'
+              : ready ? '[계산하기]를 누르면 지출계획을 저장하고 추천을 다시 계산합니다. 입력하는 동안에는 다시 계산하지 않습니다.'
+                : '자료가 완료되지 않았거나 세법이 준비 중이라 [계산하기]는 지출계획을 저장만 합니다.'}
+          </p>
+          <div className={inputs.actions}>
+            <button type="submit" className={`${ui.button} ${ui.primary}`} disabled={editor.saving || editor.blank}>계산하기</button>
+          </div>
+        </div>
+      </form>
+    </section>
+  )
+}
+```
+
+`git apply`:
+
+```diff
+diff --git a/apps/web/src/tax/analysis/TaxAnalysisPage.tsx b/apps/web/src/tax/analysis/TaxAnalysisPage.tsx
+--- a/apps/web/src/tax/analysis/TaxAnalysisPage.tsx
++++ b/apps/web/src/tax/analysis/TaxAnalysisPage.tsx
+@@ -12,6 +12,7 @@
+ import { useTaxYear } from '../TaxYearProvider'
+ import { actionError, isStale, taxApi, taxKeys, useTaxAnalysis, useTaxSave, useTaxYearView, type TaxAnalysisView, type TaxYearView } from '../taxApi'
+ import { asOfText, seoulDate } from './format'
++import PlanStep, { usePlanEditor } from './PlanStep'
+ import StatusStep from './StatusStep'
+ import StepTabs, { type Step } from './StepTabs'
+ import styles from './analysis.module.css'
+@@ -28,6 +29,7 @@
+   const [step, setStep] = useState<Step>('status')
+   const result = analysis.data
+   const view = record.data
++  const plan = usePlanEditor(year, view, () => setStep('recommend'))
+ 
+   return (
+     <div className={`${inputs.page} ${styles.page}`}>
+@@ -50,7 +52,9 @@
+         <>
+           <Notices analysis={result} view={view} />
+           <StepTabs step={step} onStepChange={setStep}>
+-            {(id) => (id === 'status' ? <StatusStep analysis={result} /> : null)}
++            {(id) => (id === 'status' ? <StatusStep analysis={result} />
++              : id === 'plan' ? <PlanStep editor={plan} ready={result.status === 'READY'} />
++                : null)}
+           </StepTabs>
+         </>
+       )}
+diff --git a/apps/web/src/tax/analysis/analysis.module.css b/apps/web/src/tax/analysis/analysis.module.css
+--- a/apps/web/src/tax/analysis/analysis.module.css
++++ b/apps/web/src/tax/analysis/analysis.module.css
+@@ -37,3 +37,9 @@
+ .calc dt { min-width: 0; overflow-wrap: anywhere; }
+ .calc dd { margin: 0; text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+ .calc .calcTotal { padding-top: var(--space-2); border-top: 1px solid var(--line); font-weight: 700; }
++
++/* ② 지출계획. 칸이 10rem보다 좁으면(375px) 소비구분마다 라벨 + 입력 3줄 + 합계로 쌓고, 넓으면 한 줄에 3칸이다. */
++.planGroup { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr)); gap: var(--space-2) var(--space-3); margin: 0; padding: 0; border: 0; min-width: 0; }
++.planGroup legend { padding: 0; margin-bottom: var(--space-1); font-weight: 500; }
++.planSum { grid-column: 1 / -1; color: var(--ink-muted); font-size: var(--text-md); text-align: right; font-variant-numeric: tabular-nums; }
++.planTotal { font-weight: 700; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+```
+
+- [ ] **Step 4: 통과 확인**
+
+Run: `cd apps/web && npx vitest run src/tax && npx tsc -b && npx oxlint src/tax`
+Expected: `src/tax` 12파일 100건 PASS(`PlanStep` 8건 포함), 타입 오류 없음, lint 경고 없음(`usePlanEditor`는 `react/only-export-components` 예외 주석을 단다. `TaxYearProvider`와 같은 방식).
+
+- [ ] **Step 5: 커밋(컨트롤러)**
+
+### Task 7.4: ③ 추천 (TAX-37, 50, 53, 54, 69, 75, AC-17, AC-35 화면, AC-36, AC-43)
+
+**담당:** Codex `gpt-6-sol` / `medium` (`write`), 태그 `impl-web`. 리뷰: Claude Sonnet 5.5 (`review-task`).
+
+**Files:**
+- Create: `apps/web/src/tax/analysis/reasonText.ts`, `RecommendStep.tsx`
+- Modify: `apps/web/src/tax/analysis/TaxAnalysisPage.tsx`(③ 패널), `analysis.module.css`(③ 스타일 덧붙임)
+- Test: `apps/web/src/tax/analysis/reasonText.test.ts`·`RecommendStep.test.tsx`(새 파일)
+
+**Interfaces:**
+- Consumes: 7.1의 `Recommendation`·`Reason`·`Deduction`·`LawRates`, `CATEGORY_KEYS`·`CATEGORY_LABEL`·`asOfText`, 7.2의 `PendingNotice`, 공용 `HelpButton`, `useAmountFormatter('expense', true)`, `inputs.module.css`의 `.tableScroll`·`.titleWithHelp`.
+- Produces: `reasonText(reason, { deduction, rates, won }): string`, `RecommendStep({ analysis, onPlan })`, `추천 결과 도움말`, `region "이유"`·`region "가정"`, CSS `.allocation`·`.line`·`.subsection`·`.assumptions`.
+
+- [ ] **Step 1: 실패하는 테스트 작성**
+
+`apps/web/src/tax/analysis/reasonText.test.ts` (새 파일):
+
+```ts
+import { describe, expect, it } from 'vitest'
+import { formatWon } from '../../common/format'
+import { analysisView } from '../../test/taxFixtures'
+import { reasonText } from './reasonText'
+
+const { deduction, lawRates } = analysisView()
+const context = { deduction: deduction!, rates: lawRates!, won: formatWon }
+const high = { ...context, deduction: { ...deduction!, highBracket: true } }
+
+describe('reasonText', () => {
+  it('writes each reason only from the response codes and numbers', () => {
+    expect(reasonText({ code: 'CREDIT_OVER_THRESHOLD', category: 'GENERAL', amount: 1_018_183 }, context))
+      .toBe('일반: 현재 계획에서 신용카드로 쓸 금액(₩ 1,018,183)을 체크카드·현금영수증으로 옮깁니다. 최저사용금액(₩ 12,500,000)을 넘는 사용분에는 체크카드·현금영수증 공제율 30%가 신용카드 15%보다 높습니다.')
+    expect(reasonText({ code: 'CREDIT_RATE_HIGHER', category: 'CULTURE', amount: 50_000 }, { ...context, rates: { ...lawRates!, rateCreditPct: 35 } }))
+      .toBe('문화체육: 현재 계획에서 체크카드·현금영수증으로 쓸 금액(₩ 50,000)을 신용카드로 옮깁니다. 이 세법은 신용카드 공제율(35%)이 체크카드·현금영수증(30%)보다 높습니다.')
+    expect(reasonText({ code: 'NO_FLEXIBLE_AMOUNT', category: null, amount: null }, context))
+      .toBe('지출계획에 바꿀 수 있는 금액이 없어 결제수단을 바꿀 곳이 없습니다.')
+    expect(reasonText({ code: 'BELOW_THRESHOLD', category: null, amount: 700_001 }, context))
+      .toBe('현재 누계와 지출계획을 더해도 전체 사용액이 최저사용금액(₩ 12,500,000) 이하라 공제액이 0원입니다. 최저사용금액까지 ₩ 700,001 남았습니다.')
+    expect(reasonText({ code: 'LIMIT_REACHED', category: null, amount: null }, context))
+      .toBe('현재 계획으로 이미 공제 한도(기본한도와 추가한도)까지 공제됩니다.')
+    expect(reasonText({ code: 'METHOD_NEUTRAL', category: null, amount: null }, context))
+      .toBe('바꿀 수 있는 금액이 결제수단과 무관하게 공제율이 같은 소비구분(전통시장·대중교통·문화체육)에만 있습니다.')
+    expect(reasonText({ code: 'METHOD_NEUTRAL', category: null, amount: null }, high))
+      .toBe('바꿀 수 있는 금액이 결제수단과 무관하게 공제율이 같은 소비구분(전통시장·대중교통)에만 있습니다.')
+    expect(reasonText({ code: 'ALREADY_BEST', category: null, amount: null }, context))
+      .toBe('현재 계획보다 연말 예상 소득공제액이 큰 배분이 없습니다.')
+  })
+
+  it('follows the amount mask through the formatter it is given', () => {
+    expect(reasonText({ code: 'BELOW_THRESHOLD', category: null, amount: 700_001 }, { ...context, won: () => '₩ •••••' }))
+      .not.toMatch(/\d{3},\d{3}/)
+  })
+})
+```
+
+`apps/web/src/tax/analysis/RecommendStep.test.tsx` (새 파일):
+
+```tsx
+import { screen, waitFor, within } from '@testing-library/react'
+import { http, HttpResponse } from 'msw'
+import { beforeEach, describe, expect, it } from 'vitest'
+import { server } from '../../test/server'
+import { analysisView, readyYearView, renderTaxAnalysis, serveAnalysis } from '../../test/taxFixtures'
+
+beforeEach(() => {
+  try { localStorage.clear() } catch { /* storage may be unavailable */ }
+})
+
+const base = analysisView().recommendation!
+
+async function openRecommend() {
+  const page = renderTaxAnalysis()
+  await page.user.click(await screen.findByRole('tab', { name: '③ 추천' }))
+  return { ...page, step: within(screen.getByRole('tabpanel', { name: '③ 추천' })) }
+}
+
+const rowOf = (table: HTMLElement, header: string) => within(table).getByRole('rowheader', { name: header }).closest('tr')
+
+describe('RecommendStep — ③ 추천', () => {
+  it('compares the current plan with the recommendation, with the difference, reason and assumptions', async () => {
+    serveAnalysis(analysisView())
+    const { step } = await openRecommend()
+
+    expect(step.getByText(/^현재 계획:/)).toHaveTextContent('현재 계획: 지금까지의 결제수단 비율(신용 82.0% · 체크 14.6% · 현금 3.4%)')
+    const table = step.getByRole('table')
+    expect(rowOf(table, '일반 ₩ 1,200,000'))
+      .toHaveTextContent(/신용카드 ₩ 1,018,183\s*체크카드 ₩ 145,454\s*현금영수증 ₩ 36,363\s*신용카드 ₩ 0\s*체크카드·현금영수증 ₩ 1,200,000/)
+    expect(rowOf(table, '전통시장 ₩ 100,000')).toHaveTextContent(/신용카드 ₩ 50,001\s*체크카드 ₩ 33,333\s*현금영수증 ₩ 16,666\s*현재 계획 그대로/)
+    expect(rowOf(table, '문화체육 ₩ 100,000')).toHaveTextContent(/신용카드 ₩ 50,000\s*체크카드 ₩ 50,000\s*현재 계획 그대로/)
+    expect(within(table).queryByRole('rowheader', { name: /^대중교통/ })).not.toBeInTheDocument()
+    expect(rowOf(table, '합계')).toHaveTextContent(/합계\s*₩ 1,400,000\s*₩ 1,400,000/)
+    expect(rowOf(table, '연말 예상 소득공제액')).toHaveTextContent(/₩ 1,997,272\s*₩ 2,150,000/)
+    expect(rowOf(table, '현재 계획 대비 차이')).toHaveTextContent('+₩ 152,728')
+    expect(within(step.getByRole('region', { name: '이유' })).getAllByRole('listitem').map((li) => li.textContent))
+      .toEqual(['일반: 현재 계획에서 신용카드로 쓸 금액(₩ 1,018,183)을 체크카드·현금영수증으로 옮깁니다. 최저사용금액(₩ 12,500,000)을 넘는 사용분에는 체크카드·현금영수증 공제율 30%가 신용카드 15%보다 높습니다.'])
+    const assumptions = within(step.getByRole('region', { name: '가정' })).getAllByRole('listitem').map((li) => li.textContent)
+    expect(assumptions[0]).toBe('예상 총급여 ₩ 50,000,000 · 2026년 귀속 세법 v1 · 자료 기준일 2026-06-30')
+    expect(assumptions).toContain('카드 포인트·할인·연회비·전월실적은 고려하지 않습니다. 결과는 소득공제액이며 환급액이 아닙니다.')
+  })
+
+  it('says there is no difference and why, without the comparison table', async () => {
+    serveAnalysis(analysisView({ recommendation: {
+      ...base, recommended: { ...base.recommended, yearEndDeduction: 1_997_272 }, difference: 0,
+      reasons: [{ code: 'METHOD_NEUTRAL', category: null, amount: null }],
+    } }))
+    const { step } = await openRecommend()
+
+    expect(step.getByText(/결제수단을 바꿔도/)).toHaveTextContent('차이 없음 결제수단을 바꿔도 연말 예상 소득공제액(₩ 1,997,272)이 같습니다. 현재 계획을 유지합니다.')
+    expect(step.queryByRole('table')).not.toBeInTheDocument()
+    expect(within(step.getByRole('region', { name: '이유' })).getByRole('listitem'))
+      .toHaveTextContent('바꿀 수 있는 금액이 결제수단과 무관하게 공제율이 같은 소비구분(전통시장·대중교통·문화체육)에만 있습니다.')
+  })
+
+  it('explains the current plan when there is no spending yet', async () => {
+    serveAnalysis(analysisView({ recommendation: { ...base, methodShare: null } }))
+    const { step } = await openRecommend()
+
+    expect(step.getByText(/^현재 계획:/)).toHaveTextContent('현재 계획: 지금까지 사용액이 없어 바꿀 수 있는 금액을 모두 신용카드로 둡니다.')
+  })
+
+  it('explains why 체크카드 and 현금영수증 are one group in a help popover', async () => {
+    serveAnalysis(analysisView())
+    const { user, step } = await openRecommend()
+
+    await user.click(step.getByRole('button', { name: '추천 결과 도움말' }))
+    expect(await screen.findByRole('dialog', { name: '추천 결과 도움말' })).toHaveTextContent('공제율이 같아')
+  })
+
+  it('shows the blank count and a way to the inputs while the data is incomplete', async () => {
+    serveAnalysis(analysisView({ status: 'INCOMPLETE', blankCount: 3, lawRates: null, deduction: null, recommendation: null }), readyYearView({ blankCount: 3 }))
+    const { step } = await openRecommend()
+
+    expect(step.getByRole('heading', { name: '자료를 완료하면 계산합니다' })).toBeInTheDocument()
+    expect(step.getByText(/^빈 칸 3개/)).toBeInTheDocument()
+    expect(step.getByRole('link', { name: '입력자료로 가기' })).toHaveAttribute('href', '/tax/inputs')
+  })
+
+  it('shows only 세법 준비 중 when the law is not ready', async () => {
+    serveAnalysis(analysisView({ status: 'LAW_PENDING', law: null, lawRates: null, deduction: null, recommendation: null }), readyYearView({ lawVersion: null }))
+    const { step } = await openRecommend()
+
+    expect(step.getByRole('heading', { name: '세법 준비 중' })).toBeInTheDocument()
+    expect(step.queryByText(/빈 칸/)).not.toBeInTheDocument()
+    expect(step.queryByRole('link')).not.toBeInTheDocument()
+  })
+
+  it('sends a year without a saved plan to ②', async () => {
+    serveAnalysis(analysisView({ planSaved: false, recommendation: null }), readyYearView({ plan: null }))
+    const { user, step } = await openRecommend()
+
+    expect(step.getByRole('heading', { name: '지출계획을 저장하면 추천을 계산합니다' })).toBeInTheDocument()
+    await user.click(step.getByRole('button', { name: '② 지출계획으로 가기' }))
+    expect(screen.getByRole('tab', { name: '② 지출계획' })).toHaveAttribute('aria-selected', 'true')
+  })
+
+  it('keeps the recommendation of the saved plan until 계산하기, then shows the new one', async () => {
+    serveAnalysis(analysisView())
+    server.use(http.put('*/api/tax/years/2026/plan', () => {
+      serveAnalysis(analysisView({ recommendation: { ...base, recommended: { ...base.recommended, yearEndDeduction: 2_100_000 }, difference: 102_728 } }))
+      return HttpResponse.json(readyYearView())
+    }))
+    const { user, step } = await openRecommend()
+    expect(rowOf(step.getByRole('table'), '현재 계획 대비 차이')).toHaveTextContent('+₩ 152,728')
+
+    await user.click(screen.getByRole('tab', { name: '② 지출계획' }))
+    const plan = within(screen.getByRole('tabpanel', { name: '② 지출계획' }))
+    const flexible = within(plan.getByRole('group', { name: '일반' })).getByLabelText('바꿀 수 있음')
+    await user.clear(flexible)
+    await user.type(flexible, '1000000')
+    await user.click(screen.getByRole('tab', { name: '③ 추천' }))
+    const after = within(screen.getByRole('tabpanel', { name: '③ 추천' }))
+    expect(rowOf(after.getByRole('table'), '현재 계획 대비 차이')).toHaveTextContent('+₩ 152,728')
+
+    await user.click(screen.getByRole('tab', { name: '② 지출계획' }))
+    await user.click(screen.getByRole('button', { name: '계산하기' }))
+    await waitFor(() => expect(screen.getByRole('tab', { name: '③ 추천' })).toHaveAttribute('aria-selected', 'true'))
+    const updated = within(screen.getByRole('tabpanel', { name: '③ 추천' }))
+    expect(rowOf(updated.getByRole('table'), '현재 계획 대비 차이')).toHaveTextContent('+₩ 102,728')
+  })
+
+  it('hides the amounts and the difference under the 지출 mask', async () => {
+    localStorage.setItem('saladbowl.amountMask', JSON.stringify({ EXPENSE: true }))
+    serveAnalysis(analysisView())
+    const { step } = await openRecommend()
+
+    expect(rowOf(step.getByRole('table'), '현재 계획 대비 차이')).toHaveTextContent('+₩ •••••')
+    expect(step.getByRole('table')).not.toHaveTextContent('2,150,000')
+    expect(step.getByText(/^현재 계획:/)).toHaveTextContent('신용 82.0%')
+  })
+})
+```
+
+- [ ] **Step 2: 실패 확인**
+
+Run: `cd apps/web && npx vitest run src/tax/analysis`
+Expected: `RecommendStep.test.tsx` 9건 모두 FAIL(③ 패널이 비어 `Unable to find … text: /^현재 계획:/`·`role "table"`(각 2건)·`role "heading" and name "자료를 완료하면 계산합니다"`·`"세법 준비 중"`·`"지출계획을 저장하면 추천을 계산합니다"` 등), `reasonText.test.ts`는 `Failed to resolve import "./reasonText"`로 파일째 FAIL. 나머지 4파일 28건 PASS.
+
+- [ ] **Step 3: 이유 문장과 ③ 화면**
+
+`apps/web/src/tax/analysis/reasonText.ts` (새 파일):
+
+```ts
+import type { Deduction, LawRates, Reason } from '../taxApi'
+import { CATEGORY_LABEL } from './format'
+
+type Context = { deduction: Deduction; rates: LawRates; won: (amount: number) => string }
+
+/**
+ * 추천 이유 코드 → 문장(TAX-53·54). 응답의 코드·소비구분·금액과 같은 응답의 세법 수치만 쓰고 화면이 다시 계산하지 않는다.
+ * 금액은 넘겨받은 formatter로 써서 금액 가림을 따른다. 소비를 늘리라는 말을 쓰지 않는다.
+ */
+export function reasonText({ code, category, amount }: Reason, { deduction: d, rates, won }: Context): string {
+  const name = category ? CATEGORY_LABEL[category] : ''
+  const money = amount === null ? '' : won(amount)
+  switch (code) {
+    case 'CREDIT_OVER_THRESHOLD':
+      return `${name}: 현재 계획에서 신용카드로 쓸 금액(${money})을 체크카드·현금영수증으로 옮깁니다. `
+        + `최저사용금액(${won(d.threshold)})을 넘는 사용분에는 체크카드·현금영수증 공제율 ${rates.rateDebitCashPct}%가 신용카드 ${rates.rateCreditPct}%보다 높습니다.`
+    case 'CREDIT_RATE_HIGHER':
+      return `${name}: 현재 계획에서 체크카드·현금영수증으로 쓸 금액(${money})을 신용카드로 옮깁니다. `
+        + `이 세법은 신용카드 공제율(${rates.rateCreditPct}%)이 체크카드·현금영수증(${rates.rateDebitCashPct}%)보다 높습니다.`
+    case 'NO_FLEXIBLE_AMOUNT':
+      return '지출계획에 바꿀 수 있는 금액이 없어 결제수단을 바꿀 곳이 없습니다.'
+    case 'BELOW_THRESHOLD':
+      return `현재 누계와 지출계획을 더해도 전체 사용액이 최저사용금액(${won(d.threshold)}) 이하라 공제액이 0원입니다. 최저사용금액까지 ${money} 남았습니다.`
+    case 'LIMIT_REACHED':
+      return '현재 계획으로 이미 공제 한도(기본한도와 추가한도)까지 공제됩니다.'
+    case 'METHOD_NEUTRAL':
+      return `바꿀 수 있는 금액이 결제수단과 무관하게 공제율이 같은 소비구분(${d.highBracket ? '전통시장·대중교통' : '전통시장·대중교통·문화체육'})에만 있습니다.`
+    case 'ALREADY_BEST':
+      return '현재 계획보다 연말 예상 소득공제액이 큰 배분이 없습니다.'
+  }
+}
+```
+
+`apps/web/src/tax/analysis/RecommendStep.tsx` (새 파일):
+
+```tsx
+import { useAmountFormatter } from '../../common/AmountMask'
+import HelpButton from '../../common/HelpButton'
+import ui from '../../common/ui.module.css'
+import inputs from '../inputs/inputs.module.css'
+import type { Deduction, LawRates, Recommendation, TaxAnalysisView } from '../taxApi'
+import { asOfText, CATEGORY_KEYS, CATEGORY_LABEL } from './format'
+import PendingNotice from './PendingNotice'
+import { reasonText } from './reasonText'
+import styles from './analysis.module.css'
+
+type Props = { analysis: TaxAnalysisView; onPlan: () => void }
+
+/**
+ * ③ 추천(TAX-50·53·54·69). 마지막으로 저장한 지출계획 기준의 서버 결과를 그린다.
+ * 자료가 미완료이거나 세법이 없으면 안내만 보이고(TAX-75), 계획이 없으면 ②로 보낸다.
+ */
+export default function RecommendStep({ analysis, onPlan }: Props) {
+  const { deduction, lawRates, recommendation } = analysis
+  if (analysis.status !== 'READY' || !deduction || !lawRates) return <PendingNotice analysis={analysis} />
+  if (!recommendation) {
+    return (
+      <section className={`${ui.card} ${inputs.empty}`}>
+        <h2>지출계획을 저장하면 추천을 계산합니다</h2>
+        <p>② 지출계획에 남은 기간의 예상 공제대상액을 적고 [계산하기]를 누르세요.</p>
+        <button type="button" className={`${ui.button} ${ui.primary}`} onClick={onPlan}>② 지출계획으로 가기</button>
+      </section>
+    )
+  }
+  return <Result analysis={analysis} d={deduction} rates={lawRates} r={recommendation} />
+}
+
+function Result({ analysis: a, d, rates, r }: { analysis: TaxAnalysisView; d: Deduction; rates: LawRates; r: Recommendation }) {
+  const won = useAmountFormatter('expense')
+  const signed = useAmountFormatter('expense', true)
+  const income = useAmountFormatter('income')
+  const share = r.methodShare
+  // 바꿀 수 있는 금액이 없는 소비구분은 표에서 뺀다. 소비구분 금액은 현재 계획 세 칸의 합(= 추천 두 칸의 합)이다.
+  const rows = CATEGORY_KEYS.map(([key, code]) => ({ key, label: CATEGORY_LABEL[code], now: r.current.allocation[key], best: r.recommended.allocation[key] }))
+    .filter((row) => row.now.credit + row.now.debit + row.now.cash > 0)
+  const asOf = asOfText(a.asOfDateMin, a.asOfDateMax)
+  return (
+    <section aria-labelledby="tax-reco-title" className={ui.card}>
+      <div className={inputs.titleWithHelp}>
+        <h2 id="tax-reco-title">추천 결과</h2>
+        <HelpButton title="추천 결과">
+          체크카드와 현금영수증은 공제율이 같아 추천에서는 한 묶음으로 다룹니다. 어느 쪽으로 써도 연말 예상 소득공제액이 같습니다.
+        </HelpButton>
+      </div>
+      <p>
+        {share
+          ? `현재 계획: 지금까지의 결제수단 비율(신용 ${share.creditPct.toFixed(1)}% · 체크 ${share.debitPct.toFixed(1)}% · 현금 ${share.cashPct.toFixed(1)}%)`
+          : '현재 계획: 지금까지 사용액이 없어 바꿀 수 있는 금액을 모두 신용카드로 둡니다.'}
+      </p>
+      <p className={ui.muted}>연도 전체 비율입니다. 표의 현재 계획 금액은 소비구분마다 그 소비구분의 지금까지 비율로 나눈 값이라 이 비율과 다를 수 있습니다.</p>
+      {r.difference > 0 ? (
+        <div className={inputs.tableScroll}>
+          <table className={styles.allocation}>
+            <caption>남은 기간 바꿀 수 있는 금액의 배분과 연말 예상 소득공제액(현재 누계 + 지출계획)</caption>
+            <thead><tr><th scope="col">바꿀 수 있는 금액</th><th scope="col">현재 계획</th><th scope="col">추천 배분</th></tr></thead>
+            <tbody>
+              {rows.map(({ key, label, now, best }) => (
+                <tr key={key}>
+                  <th scope="row">{label} {won(now.credit + now.debit + now.cash)}</th>
+                  <td>
+                    {([['신용카드', now.credit], ['체크카드', now.debit], ['현금영수증', now.cash]] as const)
+                      .filter(([, amount]) => amount > 0).map(([method, amount]) => <span key={method} className={styles.line}>{method} {won(amount)}</span>)}
+                  </td>
+                  <td>
+                    {best.credit === now.credit ? '현재 계획 그대로' : <>
+                      <span className={styles.line}>신용카드 {won(best.credit)}</span>
+                      <span className={styles.line}>체크카드·현금영수증 {won(best.debitCash)}</span>
+                    </>}
+                  </td>
+                </tr>
+              ))}
+              <tr>
+                <th scope="row">합계</th>
+                <td>{won(rows.reduce((n, { now }) => n + now.credit + now.debit + now.cash, 0))}</td>
+                <td>{won(rows.reduce((n, { best }) => n + best.credit + best.debitCash, 0))}</td>
+              </tr>
+            </tbody>
+            <tfoot>
+              <tr><th scope="row">연말 예상 소득공제액</th><td>{won(r.current.yearEndDeduction)}</td><td>{won(r.recommended.yearEndDeduction)}</td></tr>
+              <tr><th scope="row">현재 계획 대비 차이</th><td colSpan={2}>{signed(r.difference)}</td></tr>
+            </tfoot>
+          </table>
+        </div>
+      ) : (
+        <p>
+          <span className={styles.badge}>차이 없음</span> 결제수단을 바꿔도 연말 예상 소득공제액({won(r.current.yearEndDeduction)})이 같습니다. 현재 계획을 유지합니다.
+        </p>
+      )}
+      <section aria-labelledby="tax-reco-reasons" className={styles.subsection}>
+        <h3 id="tax-reco-reasons">이유</h3>
+        <ul>{r.reasons.map((reason) => <li key={`${reason.code}:${reason.category}`}>{reasonText(reason, { deduction: d, rates, won })}</li>)}</ul>
+      </section>
+      <section aria-labelledby="tax-reco-assumptions" className={styles.subsection}>
+        <h3 id="tax-reco-assumptions">가정</h3>
+        <ul className={styles.assumptions}>
+          <li>{`예상 총급여 ${income(a.totalSalary)} · ${a.taxYear}년 귀속 세법 v${a.law?.versionNo} · 자료 기준일 ${a.estimated ? `${asOf}(서로 다름, 추정)` : asOf}`}</li>
+          <li>현재 계획은 바꿀 수 있는 금액을 소비구분마다 지금까지의 결제수단 비율로 나눈 것입니다. 원 미만은 내리고 남는 원은 신용카드에 더합니다.</li>
+          <li>남은 기간 총액과 소비구분별 금액은 그대로 두고, 바꿀 수 있는 금액의 결제수단만 비교했습니다.</li>
+          <li>카드 포인트·할인·연회비·전월실적은 고려하지 않습니다. 결과는 소득공제액이며 환급액이 아닙니다.</li>
+        </ul>
+      </section>
+    </section>
+  )
+}
+```
+
+`git apply`:
+
+```diff
+diff --git a/apps/web/src/tax/analysis/TaxAnalysisPage.tsx b/apps/web/src/tax/analysis/TaxAnalysisPage.tsx
+--- a/apps/web/src/tax/analysis/TaxAnalysisPage.tsx
++++ b/apps/web/src/tax/analysis/TaxAnalysisPage.tsx
+@@ -13,6 +13,7 @@
+ import { actionError, isStale, taxApi, taxKeys, useTaxAnalysis, useTaxSave, useTaxYearView, type TaxAnalysisView, type TaxYearView } from '../taxApi'
+ import { asOfText, seoulDate } from './format'
+ import PlanStep, { usePlanEditor } from './PlanStep'
++import RecommendStep from './RecommendStep'
+ import StatusStep from './StatusStep'
+ import StepTabs, { type Step } from './StepTabs'
+ import styles from './analysis.module.css'
+@@ -54,7 +55,7 @@
+           <StepTabs step={step} onStepChange={setStep}>
+             {(id) => (id === 'status' ? <StatusStep analysis={result} />
+               : id === 'plan' ? <PlanStep editor={plan} ready={result.status === 'READY'} />
+-                : null)}
++                : <RecommendStep analysis={result} onPlan={() => setStep('plan')} />)}
+           </StepTabs>
+         </>
+       )}
+diff --git a/apps/web/src/tax/analysis/analysis.module.css b/apps/web/src/tax/analysis/analysis.module.css
+--- a/apps/web/src/tax/analysis/analysis.module.css
++++ b/apps/web/src/tax/analysis/analysis.module.css
+@@ -43,3 +43,16 @@
+ .planGroup legend { padding: 0; margin-bottom: var(--space-1); font-weight: 500; }
+ .planSum { grid-column: 1 / -1; color: var(--ink-muted); font-size: var(--text-md); text-align: right; font-variant-numeric: tabular-nums; }
+ .planTotal { font-weight: 700; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
++
++/* ③ 추천. 표 칸 안에서 결제수단마다 한 줄씩 쓴다. 아주 큰 금액·320px에만 표 안에서 가로로 움직인다(inputs .tableScroll). */
++.allocation { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
++.allocation caption { caption-side: top; padding-bottom: var(--space-2); text-align: left; color: var(--ink-muted); font-size: var(--text-md); }
++.allocation th, .allocation td { padding: var(--space-2) var(--space-1); border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; overflow-wrap: anywhere; }
++.allocation thead th { color: var(--ink-muted); font-size: var(--text-md); font-weight: 500; }
++.allocation tbody th, .allocation tfoot th { font-weight: 500; }
++.allocation tfoot th, .allocation tfoot td { font-weight: 700; border-bottom: 0; }
++.line { display: block; }
++.subsection { display: flex; flex-direction: column; gap: var(--space-1); }
++.subsection h3 { margin: 0; font-size: var(--text-lg); }
++.subsection ul { margin: 0; padding-left: var(--space-4); }
++.assumptions { color: var(--ink-muted); font-size: var(--text-md); }
+```
+
+- [ ] **Step 4: 통과와 웹 전체 확인**
+
+Run: `cd apps/web && npx vitest run src/tax src/app && npm run typecheck && npm run lint && npm run build && npx vitest run --maxWorkers=4`
+Expected: `src/tax`·`src/app` 22파일 177건 PASS(`src/tax/analysis` 6파일 39건 포함), typecheck 통과, lint는 기존 `imports/CoverageSection.tsx` 경고 1건 말고 새 경고 없음, build 통과(`TaxAnalysisPage` 청크가 따로 나뉜다), 전체 93파일 770건 PASS. PR 5·6 때처럼 전체 병렬 실행에서 소득공제와 무관한 시간 의존 테스트가 흔들리면 그 파일만 다시 돌려 통과를 확인하고 보고한다(이번 계획 실행에서는 흔들리지 않았다).
+
+- [ ] **Step 5: 커밋(컨트롤러)**
+
+### Task 7.5: 검증 지도와 문서 마무리 (AC-02, AC-23, AC-29)
+
+**담당:** Codex `gpt-6-luna` / `low` (`write`), 태그 `docs`. 리뷰: Claude Sonnet 5.5 (`review-task`).
+
+**Files:**
+- Create: `.claude/skills/verify/features/tax-analysis.md`
+- Modify: `.claude/skills/verify/features/README.md`, `navigation.md`, `tax-inputs.md`, `tax-law.md`, `.claude/skills/verify/bin/doctor.sh`(분석 결과 확인 1줄), 저장소 `README.md`(주요 기능에 소득공제), `docs/backlog.md`(소득공제 후속)
+
+**Interfaces:**
+- Consumes: 7.1~7.4의 화면 이름·문구(탭·버튼·영역·알림 문장), PR 5 시드(`seed.sh`, 바꾸지 않음), `GET …/analysis`.
+- Produces: 검증 지도 `tax-analysis.md`(H2 4개), `doctor.sh`의 `seed tax analysis YYYY` 확인.
+
+- [ ] **Step 1: 검증 지도**
+
+`.claude/skills/verify/features/tax-analysis.md` (새 파일):
+
+```markdown
+# Tax deduction analysis
+
+소득공제 › 분석·지출계획 (`/tax/analysis`, `h1` `소득공제` on wide screens) shows one member's analysis for the selected tax year in three steps, one at a time at every width: `① 현황` (deduction, threshold and limits, usage shares, the folded calculation), `② 지출계획` (the rest-of-year plan, saved only by `[계산하기]`), and `③ 추천` (current plan against the recommended allocation). The server calculates every number; the page draws them and saves the plan. Wide screens keep one centered column of at most 720px. The data is personal and does not change with the header group.
+
+## Sub-features
+
+- `analysis-entry`: `소득공제` in `navigation "주 메뉴"` opens `/tax`. It goes to `/tax/analysis` at `① 현황` when the selected year's record has at least one statement (incomplete counts), and to `/tax/inputs` when there is no record or no statement. The selected year is the one the tax pages keep in memory (this Korean year after a reload). The sidebar lists `입력자료`, `분석·지출계획` (and `연도별 세법 관리` for service admins) under `소득공제`; narrow screens show the in-page `소득공제 메뉴` with `입력자료 | 분석·지출계획` (plus `세법 관리` for admins).
+- `analysis-steps`: `tablist "분석 단계"` with `① 현황`, `② 지출계획`, `③ 추천`, and `[이전]` / `[다음]` under the step. Step tabs and `[이전]` / `[다음]` are at least 44px tall at every width. Changing the step moves focus to the selected tab.
+- `analysis-facts`: one line `적용 세법 YYYY년 귀속 vN · 적용일 YYYY-MM-DD · 자료 기준일 … · 예상 총급여 ₩ …` (`세법 준비 중` when the record has no law). Notices: `추정` with the date range when statement dates differ, `근로기간 확인 필요` when the months are not 1–12, and `새 세법 버전이 적용됐습니다` with `[새 버전으로 다시 계산]` (the old result stays until it is pressed).
+- `analysis-status`: `region "현재 요약"` with 소득공제액 (`과세표준에서 빼는 금액 · 환급액 아님`), 최저사용금액 `달성`/`미달` and the share of the threshold, 기본한도 사용, 추가한도 사용. `사용 비율` has the tables `소비구분별` and `결제수단별` over the 12-cell year total and says so in the `분모:` line; a 0원 total shows `입력 합계가 0원이라 비율을 계산하지 않습니다.`. `[계산 과정 보기]` starts collapsed and expands to `1. 최저사용금액 차감` → `2. 공제율 적용` → `3. 한도`, ending at the deduction. `참고: 기본한도까지 남은 공제 여유` closes the step. Below the threshold the summary states 0원 and the remaining amount, with no advice to spend more.
+- `analysis-plan`: `남은 기간 지출계획` has four fieldsets (일반, 전통시장, 대중교통, 문화체육), each with `신용카드 고정`, `체크카드·현금영수증 고정`, `바꿀 수 있음` and its `합계`, then `총액`. Editing alone sends nothing and keeps ③ as it was. `[계산하기]` saves, recalculates and moves to ③. A blank cell disables `[계산하기]` with the reason.
+- `analysis-recommend`: `추천 결과` shows `현재 계획: 지금까지의 결제수단 비율(…)`, the allocation table (current plan against the recommendation, equal totals, year-end deductions, `현재 계획 대비 차이`), `이유` and `가정`, or `차이 없음` with the reason. `추천 결과 도움말` explains why 체크카드 and 현금영수증 are one group. A year without a saved plan shows `[② 지출계획으로 가기]`.
+- `analysis-pending`: with no statement or blank cells, ① and ③ show `자료를 완료하면 계산합니다`, `빈 칸 n개` and `[입력자료로 가기]`. With complete data but no law, they show only `세법 준비 중`. ② stays open in both cases and `[계산하기]` only saves.
+- `analysis-mask`: the `지출` mask hides every deduction and spending amount (`₩ •••••`, `+₩ •••••`) but not the percentages; the `수입` mask hides the salary only.
+
+## How to get to it (user POV)
+
+- Click `소득공제` in `navigation "주 메뉴"` while the selected year has statements.
+- Or click `분석·지출계획` under `소득공제` (wide) or in `소득공제 메뉴` (narrow).
+
+## Driving it with the built-in browser
+
+Preconditions:
+
+- Baseline seed (see tax-inputs.md) and `bin/doctor.sh` passing, including `seed tax analysis YYYY`. The owner's `YYYY` record holds the wireframe sample: salary ₩ 50,000,000, year total ₩ 17,800,000, all statements dated `YYYY-06-30`, and the saved plan 일반 500,000 / 300,000 / 1,200,000, 전통시장 0 / 100,000 / 100,000, 대중교통 100,000 / 0 / 0, 문화체육 0 / 0 / 100,000.
+
+- **Entry.** As `verify@example.test` at `desktop`, click `소득공제`: `/tax/analysis` opens at `① 현황` and `분석·지출계획` has `aria-current="page"`. As `verify5@example.test` (no record) the same click opens `/tax/inputs`.
+- **Sample numbers.** At `mobile`, 320×700 and `desktop`, ① reads 소득공제액 ₩ 1,475,000, 최저사용금액 `달성 · 142.4%`, 기본한도 사용 49.2%, 추가한도 사용 0.0%, 소비구분별 92.7 / 3.4 / 2.8 / 1.1%, 결제수단별 82.0 / 14.6 / 3.4%, and `참고: 기본한도까지 남은 공제 여유 ₩ 1,525,000`. ③ reads `신용 82.0% · 체크 14.6% · 현금 3.4%`, 연말 예상 소득공제액 ₩ 1,997,272 and ₩ 2,150,000, `현재 계획 대비 차이` +₩ 152,728, and the 일반 reason with ₩ 1,018,183.
+- **Calculation.** `[계산 과정 보기]` has `aria-expanded="false"` on load. Expanded, the headings run 1 → 2 → 3, 차감액 reads − ₩ 1,875,000, 공제 가능 금액 ₩ 1,475,000, and the last line ₩ 1,475,000 equals the summary.
+- **One step at a time.** At each width the page has exactly one `tabpanel`. `[다음]` and `[이전]` move the step and focus the selected tab. At `desktop` the page column is centered and at most 720px wide (`getBoundingClientRect().width` of the element holding the header).
+- **Plan saves only on 계산하기.** In ②, change 일반 `바꿀 수 있음` to 900,000 and leave the field: the line `저장하지 않은 변경이 있습니다. …` shows, ③ still reads +₩ 152,728, and the network panel has no `PUT …/plan`. Back in ②, press `[계산하기]`: one `PUT …/plan`, the page moves to ③ with new numbers, and a reload shows 900,000 in ②. Restore 1,200,000 and press `[계산하기]` again; ③ returns to +₩ 152,728.
+- **Conflict.** Open the analysis in two tabs. Save the plan in the first, then change and save it in the second: `다른 곳에서 수정되거나 삭제됐습니다. 저장하지 않았습니다.` with `[다시 불러오기]`, which shows the first tab's values and keeps the step at ②.
+- **Incomplete.** As `verify5@example.test`, enter basic info for `YYYY` and add one card with only 일반 신용카드 filled. `소득공제` now opens ①, which shows `자료를 완료하면 계산합니다`, `빈 칸 11개` and `[입력자료로 가기]`. ② shows `… [계산하기]는 지출계획을 저장만 합니다.`, saves, and moves to ③, which shows the same notice. Fill the card's blanks and the cash receipt on the inputs page: ③ then shows a recommendation from the saved plan.
+- **Law pending.** As `verify5@example.test`, pick next year in `귀속연도`, enter basic info, add one card with all 8 cells, and fill the cash receipt with 0원 (`[4칸 0원으로 채우기]`, then a date). ① and ③ show only `세법 준비 중` with no blank count and no button; ② still saves.
+- **Mask.** Turn on `지출`: ① and ③ amounts read `₩ •••••`, the difference `+₩ •••••`, percentages stay, the salary in the facts line stays. Turn on only `수입`: only the salary hides. Turn masks off afterwards.
+- **Sizes.** At `mobile`, read computed sizes: card titles 16px, summary values 16px, body text 15px, the facts line, notices and summary sublines 13px, buttons 14px, plan inputs 16px. Step tabs and `[이전]` / `[다음]` are at least 44px tall at `mobile` and `desktop`. No page-level horizontal scroll at 320px; only the ③ table may scroll inside itself.
+- **Newer law (run last).** As `verify@example.test`, create a draft for `YYYY` on `연도별 세법 관리`, save it unchanged and apply it. Open the analysis: `새 세법 버전이 적용됐습니다. 지금 결과는 v1 기준이며, 누르기 전에는 그대로입니다.` shows and the numbers stay. `[새 버전으로 다시 계산]` changes the facts line to the new version and removes the notice. Applied versions cannot be deleted; relaunch the stack for a clean DB.
+
+## Gotchas
+
+- The analysis is not kept in the cache after leaving the page (`gcTime 0`), so opening it always shows `분석 불러오는 중` first and never an earlier result.
+- The plan form keeps the `rowVersion` from when editing began, so a save from another tab turns this save into a 409. `rowVersion` values are opaque sequence numbers.
+- The step resets to ① only when the page opens. Changing `귀속연도` keeps the step. Unsaved plan edits are kept for one year only: starting to edit another year drops them.
+- `remainingToThreshold` is the smallest whole won that passes the threshold, so a total ₩ 3,200,000 short of it reads ₩ 3,200,001.
+- The page computes only display shares (one decimal, half up, so the sum may differ from 100.0%) and the limit headroom. `현재 계획:` uses the server's `methodShare`.
+```
+
+- [ ] **Step 2: 목록·셸·입력자료·세법 지도, doctor, README, backlog 고침**
+
+`git apply`:
+
+```diff
+diff --git a/.claude/skills/verify/features/README.md b/.claude/skills/verify/features/README.md
+--- a/.claude/skills/verify/features/README.md
++++ b/.claude/skills/verify/features/README.md
+@@ -34,4 +34,5 @@
+ - [Transactions](./transactions.md): my or group transaction list, search, detail, manual add.
+ - [Groups](./groups.md): create, rename, invite link, members, bans.
+ - [Tax deduction inputs](./tax-inputs.md): 소득공제 › 입력자료 — basic info, card and cash-receipt statements, year totals, delete year.
++- [Tax deduction analysis](./tax-analysis.md): 소득공제 › 분석·지출계획 — the 소득공제 entry rule, steps ① 현황 · ② 지출계획 · ③ 추천, saving the plan with 계산하기, incomplete and law-pending notices.
+ - [Tax law admin](./tax-law.md): 소득공제 › 연도별 세법 관리 — service admins only; versions per tax year, drafts, validate, apply, delete drafts, and the no-permission screen for members.
+diff --git a/.claude/skills/verify/features/navigation.md b/.claude/skills/verify/features/navigation.md
+--- a/.claude/skills/verify/features/navigation.md
++++ b/.claude/skills/verify/features/navigation.md
+@@ -4,8 +4,8 @@
+ 
+ ## Sub-features
+ 
+-- `nav-sidebar` shows five sidebar links on wide screens: 홈, 소득공제, 대시보드, 거래 목록, 그룹 관리. Under 소득공제 sits the indented sub-link `입력자료` (`/tax/inputs`), plus `연도별 세법 관리` (`/tax/law`) for service admins only. Under 대시보드 sit indented sub-links `대분류` (`/dashboard/major`) and `소분류` (`/dashboard/minor`). Inside the dashboard the dashboard sub-links replace history and keep `?month=`; the 소득공제 sub-link never takes `?month=`.
+-- `nav-tabs` shows five bottom tabs on narrow screens: 홈, 소득공제, 대시보드, 거래, 그룹. The tabs ignore sub-links; the dashboard has its own `대시보드 메뉴` (see dashboard.md). 소득공제 shows the in-page `소득공제 메뉴` (`입력자료 | 세법 관리`) to service admins only; members have one sub-screen and no in-page menu (see tax-law.md).
++- `nav-sidebar` shows five sidebar links on wide screens: 홈, 소득공제, 대시보드, 거래 목록, 그룹 관리. Under 소득공제 sit the indented sub-links `입력자료` (`/tax/inputs`) and `분석·지출계획` (`/tax/analysis`), plus `연도별 세법 관리` (`/tax/law`) for service admins only. Under 대시보드 sit indented sub-links `대분류` (`/dashboard/major`) and `소분류` (`/dashboard/minor`). Inside the dashboard the dashboard sub-links replace history and keep `?month=`; the 소득공제 sub-link never takes `?month=`.
++- `nav-tabs` shows five bottom tabs on narrow screens: 홈, 소득공제, 대시보드, 거래, 그룹. The tabs ignore sub-links; the dashboard has its own `대시보드 메뉴` (see dashboard.md). 소득공제 shows the in-page `소득공제 메뉴`: `입력자료 | 분석·지출계획` for members and `입력자료 | 분석·지출계획 | 세법 관리` for service admins (see tax-analysis.md and tax-law.md).
+ - `nav-active` marks the current page link with `aria-current="page"`. Home matches `/` exactly. Other links also match sub-paths, so on `/dashboard/major` both `대시보드` and `대분류` are highlighted. Only `대분류` gets `aria-current="page"`; the parent gets `aria-current="true"`. `/tax/inputs` works the same way for `소득공제` and `입력자료`.
+ - `nav-account` opens the account sheet with the nickname and logout (narrow screens).
+ - `nav-group` uses the header `그룹` select to change the group that group-scoped pages show.
+@@ -21,7 +21,7 @@
+ 
+ - Baseline state, logged in, seed group `검증그룹` selected.
+ 
+-- **Wide links.** Use preset `desktop`, then reload. Run `find "주 메뉴"` and click each link. Each click changes the `h1` and moves `aria-current` to the clicked link. As the service admin `verify@example.test` the link list reads 홈, 소득공제, 입력자료, 연도별 세법 관리, 대시보드, 대분류, 소분류, 거래 목록, 그룹 관리. As the member `verify2@example.test` it has no `연도별 세법 관리`.
++- **Wide links.** Use preset `desktop`, then reload. Run `find "주 메뉴"` and click each link. Each click changes the `h1` and moves `aria-current` to the clicked link. As the service admin `verify@example.test` the link list reads 홈, 소득공제, 입력자료, 분석·지출계획, 연도별 세법 관리, 대시보드, 대분류, 소분류, 거래 목록, 그룹 관리. As the member `verify2@example.test` it has no `연도별 세법 관리`. `소득공제` itself opens `분석·지출계획` or `입력자료` by the rule in tax-analysis.md.
+ - **Narrow tabs.** Use preset `mobile`, then reload. The same nav holds 5 tab links with the short labels. The sidebar is gone from the accessibility tree.
+ - **Account sheet.** In `mobile`, click the button `계정`. A sheet titled `계정` shows `검증러` and a logout button.
+ 
+diff --git a/.claude/skills/verify/features/tax-inputs.md b/.claude/skills/verify/features/tax-inputs.md
+--- a/.claude/skills/verify/features/tax-inputs.md
++++ b/.claude/skills/verify/features/tax-inputs.md
+@@ -4,7 +4,7 @@
+ 
+ ## Sub-features
+ 
+-- `tax-entry` opens `/tax`, which redirects to `/tax/inputs` (the analysis rule arrives with PR 7). The sidebar shows `소득공제` with the indented sub-link `입력자료`; narrow screens use the bottom tab `소득공제`.
++- `tax-entry` opens `/tax`, which goes to `/tax/inputs` when the selected year has no record or no statement, and to the analysis otherwise (see tax-analysis.md). The sidebar shows `소득공제` with the indented sub-links `입력자료` and `분석·지출계획`; narrow screens use the bottom tab `소득공제` and the in-page `소득공제 메뉴`.
+ - `tax-year` uses the `귀속연도` select (last, this, next year in Korean time). The choice lives in memory only: reload or logout returns to this year.
+ - `tax-basic` shows `기본정보` with `[수정]` (or `[기본정보 입력]` on an empty year). `근로기간 확인 필요` appears when the months are not 1–12. `자녀등 수` appears only when the record's law has child tiers; its rules open from the `자녀등 수 도움말` button.
+ - `tax-cards` lists `신용·체크 자료` rows: issuer, `완료` or `미완료 · 빈 칸 n개`, `기준일 … · 합계 ₩ … · 메모`, and on the right `[빈 칸 0원으로 채우기]` (incomplete only), `[편집]`, `[삭제]`. Delete asks once. 50 rows per year at most.
+@@ -15,7 +15,7 @@
+ 
+ ## How to get to it (user POV)
+ 
+-- Click `소득공제` in `navigation "주 메뉴"` (sidebar or bottom tab). On wide screens, `입력자료` under it opens the same page.
++- Click `입력자료` under `소득공제` in `navigation "주 메뉴"` (wide) or in `소득공제 메뉴` (narrow). `소득공제` itself opens this page only while the selected year has no statement; the seeded owner lands on the analysis.
+ 
+ ## Driving it with the built-in browser
+ 
+@@ -23,7 +23,7 @@
+ 
+ - Baseline seed. `seed.sh` printed `SEEDED group=… tax_year=YYYY`. `verify@example.test` is a service admin, the `YYYY` law is applied with child tiers, and the owner's `YYYY` record has salary ₩ 50,000,000, A카드 (₩ 9,600,000), B카드 (₩ 7,600,000), cash ₩ 600,000, all dated `YYYY-06-30`. `verify5@example.test` (그룹없음) has no group and no record.
+ 
+-- **Seeded record.** At `mobile` and `desktop`, open `소득공제`. The totals table reads 일반 14,000,000 / 2,000,000 / 500,000 and 합계 14,600,000 / 2,600,000 / 600,000 (17,800,000 on desktop). No warning shows. No page-level horizontal scroll at 375px and 320px (`resize_window` 320×700).
++- **Seeded record.** At `mobile` and `desktop`, open `입력자료`. The totals table reads 일반 14,000,000 / 2,000,000 / 500,000 and 합계 14,600,000 / 2,600,000 / 600,000 (17,800,000 on desktop). No warning shows. No page-level horizontal scroll at 375px and 320px (`resize_window` 320×700).
+ - **Centered dialogs.** At `desktop`, `mobile` (375px), and 320×700, open `기본정보 수정`, `A카드 자료 편집`, `현금영수증 자료 편집`, `A카드 자료 삭제`, and `YYYY년 기록 삭제`. Each dialog is centered with space above and below; none slides up from the bottom. The 8-cell grid shows two columns (신용카드, 체크카드) per category with no horizontal scroll.
+ - **Blank vs 0.** Add a card `C카드` with only 일반 신용카드 filled. Its row reads `미완료 · 빈 칸 7개`, the totals card shows the blank warning, then `[빈 칸 0원으로 채우기]` on the row turns it into `완료`. Delete `C카드` (one confirmation) to restore.
+ - **Long name.** Add a card whose name is 40 characters. At 375px and 320px the name wraps on the left and `[편집] [삭제]` stay right-aligned on the row. Delete it afterwards.
+@@ -40,4 +40,4 @@
+ - The seed year follows today's Korean date. The year select only offers last, this and next year; older records exist on the server but have no entry point.
+ - `rowVersion` values are opaque sequence numbers, not counters. A 409 or 404 on save shows `다른 곳에서 수정되거나 삭제됐습니다. 저장하지 않았습니다.` with `[다시 불러오기]`, which closes the dialog and reloads the year.
+ - Card rows sum their own 8 cells for display; the totals table uses the server's 12 totals, and its row and column totals add those 12 cells.
+-- The page has no analysis yet. `/tax` always opens the inputs page until PR 7.
++- Saves here refresh the analysis (`['tax', 'analysis', year]`); the analysis page also reloads every time it opens.
+diff --git a/.claude/skills/verify/features/tax-law.md b/.claude/skills/verify/features/tax-law.md
+--- a/.claude/skills/verify/features/tax-law.md
++++ b/.claude/skills/verify/features/tax-law.md
+@@ -4,7 +4,7 @@
+ 
+ ## Sub-features
+ 
+-- `law-menu` adds the second sub-link (third after PR 7) `연도별 세법 관리` under `소득공제` in the sidebar, for service admins only. On narrow screens a service admin sees the in-page `소득공제 메뉴` with `입력자료` and `세법 관리`; members see no in-page menu.
++- `law-menu` adds the third sub-link `연도별 세법 관리` under `소득공제` in the sidebar, for service admins only. On narrow screens a service admin sees the in-page `소득공제 메뉴` with `입력자료`, `분석·지출계획` and `세법 관리`; members see only the first two.
+ - `law-forbidden` shows `권한 없음`, `이 화면은 서비스 관리자만 볼 수 있습니다.`, and the link `입력자료로 가기` to a member who opens `/tax/law`. The page sends no admin request then. A 403 from the version list (for example after the admin flag is revoked) shows the same screen.
+ - `law-list` shows `YYYY년 버전` with `현재 적용 vN · 초안 n개` (or `적용 버전 없음(회원 화면은 "세법 준비 중")`), and one row per version: `vN · 초안 | 적용 | 현재 적용`, then `작성 <nickname> · YYYY-MM-DD HH:mm` for drafts or `적용 <nickname> · …` for applied versions. `[새 초안 만들기]` stays enabled while drafts exist. Each draft row has `[삭제]` on the right; applied rows have none.
+ - `law-detail` opens the newest version by default; clicking a row opens it. The heading reads `YYYY년 귀속 vN · 초안` or `… · 적용 · 읽기 전용`, with `계산 알고리즘 버전 1 (고정)` and the creation and apply history. `세법 수치 도움말` explains the salary bracket and the extra limit.
+@@ -24,8 +24,8 @@
+ 
+ - Baseline seed. `verify@example.test` is a service admin and the `YYYY` law (this Korean year) is applied as v1 with the 2026 values. `verify2@example.test` is a regular member.
+ 
+-- **Member.** Log in as `verify2@example.test`. At `desktop`, the sidebar reads 홈, 소득공제, 입력자료, 대시보드, … with no `연도별 세법 관리`. At `mobile`, `소득공제` shows no `소득공제 메뉴`. Type `/tax/law`: `권한 없음` shows, and the network panel has no `/api/tax/admin/` request. `입력자료로 가기` opens `/tax/inputs`.
+-- **Admin menu.** Log in as `verify@example.test`. At `desktop` the sidebar has `연도별 세법 관리` as the second sub-link (third after PR 7) under `소득공제`; clicking it shows `h1` `연도별 세법 관리` and marks the link `aria-current="page"`. At `mobile` and at 320×700, the in-page menu reads `입력자료 | 세법 관리`, the header title stays `소득공제`, and switching keeps focus on the tapped link.
++- **Member.** Log in as `verify2@example.test`. At `desktop`, the sidebar reads 홈, 소득공제, 입력자료, 분석·지출계획, 대시보드, … with no `연도별 세법 관리`. At `mobile`, the `소득공제 메뉴` reads `입력자료 | 분석·지출계획` with no `세법 관리`. Type `/tax/law`: `권한 없음` shows, and the network panel has no `/api/tax/admin/` request. `입력자료로 가기` opens `/tax/inputs`.
++- **Admin menu.** Log in as `verify@example.test`. At `desktop` the sidebar has `연도별 세법 관리` as the third sub-link under `소득공제`; clicking it shows `h1` `연도별 세법 관리` and marks the link `aria-current="page"`. At `mobile` and at 320×700, the in-page menu reads `입력자료 | 분석·지출계획 | 세법 관리`, the header title stays `소득공제`, and switching keeps focus on the tapped link.
+ - **List and read-only v1.** The list reads `현재 적용 v1 · 초안 0개`. v1 shows as text with `적용된 버전은 고칠 수 없습니다. 바꾸려면 새 초안을 만듭니다.`, no inputs, and no `[삭제]`.
+ - **Drafts.** Click `[새 초안 만들기]` twice: v2 and v3 appear as drafts copied from v1, and the button stays enabled. Change `신용카드 공제율` in v3: `[검증]` and `[적용]` turn off with the reason line. Save, then reload the page and confirm the value stayed.
+ - **Validate.** In v3, set `문화체육 공제율` to 130, clear `기본한도 · 경계 초과 (원)` › `자녀등 1명`, save, and press `[검증]`: the alert lists `문화체육 공제율: 0~100 사이여야 합니다` and `기본한도 · 경계 초과 · 자녀등 1명: 값을 입력해야 합니다`. Restore the values (30, ₩ 2,750,000), save, validate again: `검증 통과`.
+diff --git a/.claude/skills/verify/bin/doctor.sh b/.claude/skills/verify/bin/doctor.sh
+--- a/.claude/skills/verify/bin/doctor.sh
++++ b/.claude/skills/verify/bin/doctor.sh
+@@ -21,6 +21,8 @@
+   | python3 -c 'import json,sys; print(json.load(sys.stdin)["accessToken"])' 2>/dev/null)
+ check "applied tax law $tax_year" "curl -sf -H 'Authorization: Bearer $token' '$WEB/api/tax/law-versions/current?year=$tax_year'"
+ check "seed tax record $tax_year" "curl -sf -H 'Authorization: Bearer $token' '$WEB/api/tax/years/$tax_year'"
++# 분석 여정(tax-analysis.md)의 전제: 와이어프레임 합성값의 현황 1,475,000원과 추천 차이 152,728원.
++check "seed tax analysis $tax_year" "curl -sf -H 'Authorization: Bearer $token' '$WEB/api/tax/years/$tax_year/analysis' | python3 -c 'import json,sys; a=json.load(sys.stdin); assert a[\"status\"] == \"READY\" and a[\"deduction\"][\"amount\"] == 1475000 and a[\"recommendation\"][\"difference\"] == 152728'"
+ 
+ echo "build: $(git -C "$ROOT" rev-parse --short HEAD)$(git -C "$ROOT" diff --quiet || echo '+dirty')"
+ exit $ok
+diff --git a/README.md b/README.md
+--- a/README.md
++++ b/README.md
+@@ -9,6 +9,7 @@
+ - **엑셀 가져오기**: 뱅크샐러드 엑셀을 올리면 기존 거래와 병합한다. 웹에서 고친 내용은 다음 가져오기에서 덮어쓰지 않는다.
+ - **가계부**: 홈에서 월별 등록 현황을 확인하고, 거래 목록에서 거래를 추가·수정한다.
+ - **그룹 공유**: 그룹을 만들고 초대 링크로 최대 6명까지 모은다. 내 거래를 공개할 그룹을 고른다.
++- **소득공제**: 귀속연도별 신용카드·체크카드·현금영수증 누계를 입력해 소득공제액(환급액 아님)을 확인하고, 남은 기간 지출계획으로 결제수단 배분 추천을 본다. 그룹과 무관한 개인 자료이며, 서비스 관리자가 연도별 세법 수치를 버전으로 관리한다.
+ - **PWA**: 모바일 홈 화면에 추가해 앱처럼 실행한다.
+ 
+ ## 문서
+diff --git a/docs/backlog.md b/docs/backlog.md
+--- a/docs/backlog.md
++++ b/docs/backlog.md
+@@ -9,5 +9,7 @@
+ 
+ - **태그 기간 검색·금액 합계**: 지금 태그 검색은 선택한 달 안에서만 한다(메모 태그 PR). `from`/`to`로 넓히고 태그별 금액 합계를 낼 때는 `GET /groups/{id}/tags`와 같은 범위(공개 중인 멤버의 숨기지 않은 거래)를 정확 일치로 더한다. 거래 하나에 태그가 둘이면 양쪽에 들어가므로 태그 합계를 다시 더해 전체 합계처럼 보이면 안 된다. 그룹 4.8만 건 기준 태그 목록은 정규식으로 약 47ms였다(로컬 측정). 눈에 띄게 느려지면 `memo_tags text[]` 컬럼과 GIN 인덱스를 둔다.
+ 
++- **소득공제 후속**: ① 그룹 합산(부부·가족의 공제 대상 합산 판단), ② 가계부 거래에서 공제대상액 자동 합산(지금은 카드사·국세청 누계를 직접 입력), ③ 법령 미확인 항목 확인 — D03 중도 입퇴사의 합산 기간, D08 원 단위 처리, D09 취소분의 귀속 시점(지금은 임시 규칙, [구현 계획](superpowers/plans/2026-11-11-tax-implementation.md) "알려진 제약" 12), ④ 연도 목록 API(선택지 3개 밖의 기존 기록 진입), ⑤ 2027 귀속 세법이 확정되면 알고리즘 버전 2 검토("알려진 제약" 15).
++
+ ## 인프라
+ - **개인 도메인(B안)**: 1차는 Cloudflare Pages 프록시(A안)로 간다. 전환할 때는 쿠키 Path와 SameSite 설정, `VITE_API_BASE_URL`, `CORS_ALLOWED_ORIGINS` 값만 바꾼다.
+```
+
+- [ ] **Step 3: 확인** — 문서와 검증 스크립트만 바꾼다(앱 코드 불변). 링크·이름을 화면 코드와 대조한다.
+
+Run: `bash -n .claude/skills/verify/bin/doctor.sh && grep -c "^## " .claude/skills/verify/features/tax-analysis.md && grep -l "tax-analysis.md" .claude/skills/verify/features/*.md`
+Expected: 문법 오류 없음, H2 4개(`Sub-features`, `How to get to it (user POV)`, `Driving it with the built-in browser`, `Gotchas`), `README.md`·`navigation.md`·`tax-inputs.md`·`tax-analysis.md`가 나온다. `doctor.sh`의 새 줄은 스택을 띄운 PR 마무리에서 `bin/doctor.sh`로 `OK    seed tax analysis YYYY`를 본다(계획 작성 때는 `curl`을 가짜 함수로 바꿔 READY·1,475,000·152,728이면 OK, 미완료 응답이면 FAIL임을 확인했다).
+
+- [ ] **Step 4: 커밋(컨트롤러)**
 
 ### PR 7 마무리 (컨트롤러)
 
-- 웹 검증 4종, verify 375px·데스크톱(와이어프레임 합성 숫자: 현황 1,475,000원, 현재 계획 1,997,272원, 추천 2,150,000원, 차이 +152,728원이 화면에 나오는지), 캡처, "UI 표준 적용" 절의 검증 항목, 브랜치 최종 리뷰 Claude Opus 5.5 한 번.
+1. **웹 검증 4종** — `npm run typecheck && npm test && npm run lint && npm run build`. 흔들린 시간 의존 테스트가 있으면 그 파일만 다시 돌려 보고한다.
+2. **verify**(`tax-analysis.md` 여정 전체, `tax-inputs.md`·`tax-law.md`·`navigation.md`의 바뀐 줄) — 375px·320×700·데스크톱 × 소유자(`verify@`, 관리자)·`verify5`(그룹 없음).
+   - 와이어프레임 합성 숫자가 화면에 그대로 나오는지: ① 소득공제액 ₩ 1,475,000, ③ 현재 계획 ₩ 1,997,272 · 추천 ₩ 2,150,000 · 차이 +₩ 152,728(`doctor.sh`의 `seed tax analysis` OK가 전제).
+   - 진입 규칙(소유자 → ①, `verify5` 기록 없음 → 입력자료, 미완료 → ①), 한 번에 한 단계, [이전]·[다음] 포커스, [계산하기] 전 요청 없음·뒤 ③, 두 탭 409, 미완료·세법 준비 중, 금액 가림, 새 세법 버전(마지막에, 되돌릴 수 없음).
+   - "UI 표준 적용" 절 검증: 겹침·페이지 가로 스크롤 없음(320px), 데스크톱 1단 가운데·최대 720px(`getBoundingClientRect`), 글자 computed 실측(카드 제목 16, 요약 값 16, 본문 15, 공통 줄·알림·요약 보조 13, 버튼 14, 입력 16), 단계 탭·[이전]·[다음] 높이 44px 이상(모바일·데스크톱 둘 다), `추천 결과 도움말`의 누르기·다시 누르기·바깥 누르기·Esc·포커스 복귀, 로딩·오류([다시 시도])·저장 중.
+   - **이전·이후 캡처(375px)** — 이전: `main`의 `소득공제`(입력자료로 감)와 화면 안 탭(회원 없음). 이후: 진입 뒤 ①(요약·비율), ①의 계산 과정 펼침, ②, ③, 미완료 ③, 회원 화면 안 탭. 데스크톱 ① 한 장. 캡처는 시드 합성값 화면만 쓰고 `tmp/`에 둔 뒤 `pr-assets` 브랜치 `pr-<번호>/`에 올린다.
+3. **브랜치 최종 리뷰(Claude Opus 5.5, `review-final`) 한 번.** 볼 것:
+   - 계산 복제 없음: 웹 산술이 표시용 비율(`percent`)·한도 여유·표시용 합뿐인지, 소득공제액·연말 예상·차이·이유가 응답 값 그대로인지, `reasonText`가 응답 밖 수치를 쓰지 않는지.
+   - 캐시와 무효화: `useTaxSave`가 분석 무효화를 기다리는 변경이 입력자료·세법 화면 흐름(창 닫힘 시점, 오류 처리)을 바꾸지 않는지, `gcTime: 0`로 지난 분석이 보이지 않는지, 키 머리말 `tax`(그룹 범위 아님)·로그아웃 `clear()`.
+   - 동시 수정: `usePlanEditor`가 고치기 시작한 시점의 `rowVersion`을 보내는지, 연도 전환·[다시 불러오기]·저장 성공 뒤 상태 정리, 저장 중 단계를 옮겨도 화면이 들고 있는 mutation이 끝까지 처리되는지.
+   - 상태: `NO_INPUT`·`INCOMPLETE`·`LAW_PENDING`에서 ①·③에 숫자가 하나도 없는지, ②는 열려 있는지, 기록 없음이면 단계가 없는지.
+   - 접근성: 단계 탭(RAC)·패널 이름, 포커스 이동, [계산 과정 보기] `aria-expanded`·`aria-controls`, 표 `caption`·`scope`, 막대 `aria-hidden`, 도움말 이름.
+   - UI 표준: 정보 왼쪽·조작 오른쪽([새 버전으로 다시 계산], [계산 과정 보기], [계산하기]), [이전] 왼쪽·[다음] 오른쪽, 글자 토큰, 44px, 화면 문구(결제수단 명칭, "환급액 아님", 소비 권유 없음).
+   - 공용 변경 범위: `menu.ts`·`AppRoutes.tsx`·`taxApi.ts`·`taxFixtures.tsx` 변경이 기존 화면·테스트 의미를 바꾸지 않는지(바뀐 기존 테스트 5건은 의도대로인지).
+4. **반론 리뷰(Codex 템플릿 F)는 하지 않는다.** 이유: 계산·소유권·동시 수정 판단은 모두 서버(PR 3 반론 리뷰 완료, PR 4 계산 테스트)에 있고 이 PR은 서버를 바꾸지 않는다. 화면이 하는 일은 응답을 그리는 것과 지출계획 저장 한 가지이고, 저장은 PR 5·6과 같은 `rowVersion` 흐름이다. 화면이 새로 만드는 위험(웹 계산 복제, 지난 결과 표시, 저장 없이 추천이 바뀜, 409 뒤 입력 유실)은 Task 7.2~7.4 테스트와 위 3의 항목으로 대신한다. 리뷰 중 서버 동작을 바꿔야 하는 문제가 나오면 그때 반론 리뷰 대상으로 올린다.
+5. **PR 본문** — 무엇: 소득공제 진입 규칙(TAX-68), 하위 메뉴·화면 안 탭 "분석·지출계획"(회원 2개·관리자 3개), 단계형 ①②③, ① 요약·비율·계산 과정·참고, ② 지출계획 저장([계산하기]만, 409 흐름), ③ 현재 계획 대비 추천·차이·이유·가정, 미완료·세법 준비 중·기록 없음 안내, 새 세법 버전 다시 계산, `useTaxSave` 분석 무효화와 분석 `gcTime: 0`, verify 지도·`doctor.sh`, README·backlog, "계획 초안에서 달라진 점"과 "결정이 필요한 점"의 기본값. 확인: 웹 4종 결과와 흔들린 테스트, verify 375px·320px·데스크톱 × 소유자·`verify5` 결과와 와이어프레임 숫자 4개, 이전·이후 캡처 표, 글자·높이 computed 측정값, 브라우저 확인과 실기기(iOS·Android 설치형 PWA) 미확인 구분. 리뷰: Task 리뷰(Sonnet 5.5) 5회와 최종 리뷰(Opus 5.5) 결과, 반론 리뷰를 하지 않은 이유. 참고: 이 계획, PRD, 와이어프레임, 병합 뒤 진행표를 "PR 7 #번호 병합"으로 고칠 일, `docs/backlog.md`의 소득공제 후속, 알려진 제약 12(법령 미확인 항목). 맨 끝에 `## 소모값`(`python3 scripts/pr_usage.py`).
 
 ---
 
@@ -13146,7 +15390,7 @@ Expected: 두 파일에서 링크·언급 각 1줄, H2 4개(`Sub-features`, `How
 8. **해석 — 자녀등 입력란.** 세법 버전의 자녀등 단계별 기본한도가 서로 다를 때만 보인다(별도 설정값 없음). 적용 버전이 없는 연도는 입력란이 없고 0으로 저장한다.
 9. **해석 — 선택 연도 기억.** 메모리(React 상태)에만 둔다. 새로 고치면 올해로 돌아간다.
 10. PR 1 뒤 홈의 넓은 화면은 문서 순서(요약 → 등록 현황)와 보이는 순서(등록 현황 왼쪽)가 다르다. 와이어프레임이 정한 배치이고 키보드 순서는 문서 순서를 따른다.
-11. 계획의 PR 1 코드는 임시 복사본에서 테스트·typecheck·lint·build까지 확인했지만 화면은 띄워 보지 않았다. PR 2의 코드는 임시 복사본에서 `./gradlew test`(320건)까지 실행해 확인했다(2.2·2.3의 RED 컴파일 오류 문구는 실행하지 않고 적음). PR 3의 코드는 임시 복사본에서 Task 순서대로 실패 확인(3.1: 15건 중 13건, 3.2: 14건 중 13건, 3.3: 11건 중 9건 실패)과 `./gradlew cleanTest test`(3.3 뒤 369건)까지 실행해 확인했고, 계획에 실은 코드 블록을 차례로 넣으면 그 상태와 같아지는 것도 확인했다(2026-11-16, `2987768` 기준). PR 4의 코드는 임시 복사본에서 Task 순서대로 실패 확인(4.1: 10건 중 10건, 4.2: 16건 중 16건, 4.3: 7건 중 7건 실패)과 `./gradlew cleanTest test`(4.1 뒤 385건, 4.2 뒤 401건, 4.3 뒤 408건)까지 실행해 확인했다(2026-11-17, `f908524` 기준). `memoryTest`와 실제 서버 기동은 하지 않았다. PR 5의 웹 코드는 임시 복사본에서 Task 순서대로 실패 확인(5.1: 새 5건 중 3건, 5.2: 7건과 새 파일 2개, 5.3: 12건, 5.4: 12건, 5.5: 5건 실패)과 `typecheck`·`lint`·`build`·전체 `vitest run --maxWorkers=4`(85파일 684건)까지 실행했고, 계획의 코드 블록을 차례로 넣으면 그 상태와 같아지는 것도 확인했다(2026-11-20, `4aecc38` 기준). 화면과 verify 시드(`seed.sh`·`doctor.sh`는 `bash -n`만)는 실행하지 않았다. PR 6의 웹 코드는 임시 복사본에서 Task 순서대로 실패 확인(6.1: 테스트 파일 2개가 import 해석 실패로 파일째, 6.2: 새 12건 실패)과 `typecheck`·`lint`·`build`·전체 `vitest run --maxWorkers=4`(87파일 726건)까지 실행했고, 계획의 코드 블록을 차례로 넣으면 그 상태와 같아지는 것도 확인했다(2026-11-21, `15b38dc` 기준). 화면은 띄워 보지 않았다. PR 7의 설계는 실행해 보지 않았다.
+11. 계획의 PR 1 코드는 임시 복사본에서 테스트·typecheck·lint·build까지 확인했지만 화면은 띄워 보지 않았다. PR 2의 코드는 임시 복사본에서 `./gradlew test`(320건)까지 실행해 확인했다(2.2·2.3의 RED 컴파일 오류 문구는 실행하지 않고 적음). PR 3의 코드는 임시 복사본에서 Task 순서대로 실패 확인(3.1: 15건 중 13건, 3.2: 14건 중 13건, 3.3: 11건 중 9건 실패)과 `./gradlew cleanTest test`(3.3 뒤 369건)까지 실행해 확인했고, 계획에 실은 코드 블록을 차례로 넣으면 그 상태와 같아지는 것도 확인했다(2026-11-16, `2987768` 기준). PR 4의 코드는 임시 복사본에서 Task 순서대로 실패 확인(4.1: 10건 중 10건, 4.2: 16건 중 16건, 4.3: 7건 중 7건 실패)과 `./gradlew cleanTest test`(4.1 뒤 385건, 4.2 뒤 401건, 4.3 뒤 408건)까지 실행해 확인했다(2026-11-17, `f908524` 기준). `memoryTest`와 실제 서버 기동은 하지 않았다. PR 5의 웹 코드는 임시 복사본에서 Task 순서대로 실패 확인(5.1: 새 5건 중 3건, 5.2: 7건과 새 파일 2개, 5.3: 12건, 5.4: 12건, 5.5: 5건 실패)과 `typecheck`·`lint`·`build`·전체 `vitest run --maxWorkers=4`(85파일 684건)까지 실행했고, 계획의 코드 블록을 차례로 넣으면 그 상태와 같아지는 것도 확인했다(2026-11-20, `4aecc38` 기준). 화면과 verify 시드(`seed.sh`·`doctor.sh`는 `bash -n`만)는 실행하지 않았다. PR 6의 웹 코드는 임시 복사본에서 Task 순서대로 실패 확인(6.1: 테스트 파일 2개가 import 해석 실패로 파일째, 6.2: 새 12건 실패)과 `typecheck`·`lint`·`build`·전체 `vitest run --maxWorkers=4`(87파일 726건)까지 실행했고, 계획의 코드 블록을 차례로 넣으면 그 상태와 같아지는 것도 확인했다(2026-11-21, `15b38dc` 기준). 화면은 띄워 보지 않았다. PR 7의 웹 코드는 임시 복사본에서 Task 순서대로 실패 확인(7.1: 테스트 파일 10개가 import 해석 실패로 파일째, 7.2: 새 10건, 7.3: 새 8건, 7.4: 새 9건과 파일 1개)과 `typecheck`·`lint`·`build`·전체 `vitest run --maxWorkers=4`(93파일 770건)까지 실행했고, 계획의 코드 블록을 차례로 넣으면 그 상태와 같아지는 것도 확인했다(2026-11-21, `53c082a` 기준). 화면과 verify 시드·`doctor.sh`의 새 확인 줄은 스택을 띄워 실행하지 않았다(`doctor.sh`는 `bash -n`과 `curl`을 가짜 함수로 바꾼 실행만).
 12. 세법 수치와 7.1절 산식은 독립적인 세무 검증을 거치지 않았다(PRD 14장). D03(합산 기간)·D08(원 단위)·D09(귀속 시점)의 법령 기준은 미확인이고 임시 규칙이다. PR 4 착수 전 조문 대조(2026-11-17)에서 PRD와 다른 값은 없었다: 최저사용금액 25%, 공제율 15/30/30/40/40, 7천만원 경계, 차감액 3경우, 기본한도 300만·250만과 2026 귀속 자녀등 350만·400만 / 275만·300만, 추가한도 300만·200만이 국세청 안내(https://www.nts.go.kr/nts/cm/cntnts/cntntsView.do?mi=2469&cntntsId=7794)와 조문 열람 사이트(https://casenote.kr/법령/조세특례제한법/제126조의2)의 내용과 같다. 다만 국가법령정보센터 원문은 이번 도구로 읽지 못했고 두 자료 모두 요약 도구를 거쳐 읽었으며, 자녀등 한도는 국세청 안내에 없어 조문 열람 사이트와 2차 자료로만 확인했다. 상세는 PR 4 "조문 대조".
 13. 회원 탈퇴 기능이 없어 `ON DELETE CASCADE`에 따른 소득공제 자료 삭제는 검증 대상이 아니다(PRD 2장 비범위).
 14. 후속: 관리자 인가를 인터셉터에서 Spring Security 필터 체인으로 옮긴다. 현재는 지원하지 않는 HTTP 메서드의 405 응답으로 라우트 구조가 드러날 수 있다.
