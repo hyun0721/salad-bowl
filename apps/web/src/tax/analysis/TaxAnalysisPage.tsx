@@ -12,6 +12,7 @@ import TaxTabs from '../TaxTabs'
 import { useTaxYear } from '../TaxYearProvider'
 import { actionError, isStale, taxApi, taxKeys, useTaxAnalysis, useTaxSave, useTaxYearView, type TaxAnalysisView, type TaxYearView } from '../taxApi'
 import { asOfText, seoulDate } from './format'
+import PlanStep, { usePlanEditor } from './PlanStep'
 import StatusStep from './StatusStep'
 import StepTabs, { type Step } from './StepTabs'
 import styles from './analysis.module.css'
@@ -28,6 +29,7 @@ export default function TaxAnalysisPage() {
   const [step, setStep] = useState<Step>('status')
   const result = analysis.data
   const view = record.data
+  const plan = usePlanEditor(year, view, () => setStep('recommend'))
 
   return (
     <div className={`${inputs.page} ${styles.page}`}>
@@ -50,7 +52,9 @@ export default function TaxAnalysisPage() {
         <>
           <Notices analysis={result} view={view} />
           <StepTabs step={step} onStepChange={setStep}>
-            {(id) => (id === 'status' ? <StatusStep analysis={result} /> : null)}
+            {(id) => (id === 'status' ? <StatusStep analysis={result} />
+              : id === 'plan' ? <PlanStep editor={plan} ready={result.status === 'READY'} />
+                : null)}
           </StepTabs>
         </>
       )}
