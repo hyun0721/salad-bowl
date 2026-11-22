@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { server } from '../../test/server'
@@ -19,8 +19,13 @@ async function openPlan() {
   const page = renderTaxAnalysis()
   await page.user.click(await screen.findByRole('tab', { name: '② 지출계획' }))
   const step = within(screen.getByRole('tabpanel', { name: '② 지출계획' }))
-  const field = (group: string, label: string) => within(step.getByRole('group', { name: group })).getByLabelText(label)
+  const field = (group: string, label: string) => within(within(screen.getByRole('tabpanel', { name: '② 지출계획' })).getByRole('group', { name: group })).getByLabelText(label)
   return { ...page, step, field }
+}
+
+async function chooseYear(user: ReturnType<typeof renderTaxAnalysis>['user'], year: number) {
+  await user.click(screen.getByRole('button', { name: /귀속연도/ }))
+  await user.click(screen.getByRole('option', { name: `${year}년` }))
 }
 
 describe('PlanStep — ② 지출계획', () => {
@@ -160,5 +165,81 @@ describe('PlanStep — ② 지출계획', () => {
 
     expect(await step.findByRole('alert')).toHaveTextContent('입력한 값은 그대로 있습니다.')
     expect(field('일반', '바꿀 수 있음')).toHaveValue('900,000')
+  })
+
+  it('does not carry an unsaved edit into another year', async () => {
+    serveAnalysis(analysisView())
+    server.use(
+      http.get('*/api/tax/years/2025', () => HttpResponse.json(readyYearView({ taxYear: 2025, plan: { ...samplePlan, general: { ...samplePlan.general, flexible: 300_000 } } }))),
+      http.get('*/api/tax/years/2025/analysis', () => HttpResponse.json(analysisView({ taxYear: 2025 }))),
+    )
+    const { user, field } = await openPlan()
+    await user.clear(field('일반', '바꿀 수 있음'))
+    await user.type(field('일반', '바꿀 수 있음'), '900000')
+
+    await chooseYear(user, 2025)
+    await waitFor(() => expect(field('일반', '바꿀 수 있음')).toHaveValue('300,000'))
+  })
+
+  it('keeps the edit and offers reload when saving returns 404', async () => {
+    serveAnalysis(analysisView())
+    server.use(http.put('*/api/tax/years/2026/plan', () => HttpResponse.json({ code: 'NOT_FOUND', message: 'x' }, { status: 404 })))
+    const { user, step, field } = await openPlan()
+    await user.clear(field('일반', '바꿀 수 있음'))
+    await user.type(field('일반', '바꿀 수 있음'), '900000')
+    await user.click(step.getByRole('button', { name: '계산하기' }))
+
+    expect(await step.findByRole('alert')).toHaveTextContent('저장하지 않았습니다.')
+    expect(step.getByRole('button', { name: '다시 불러오기' })).toBeInTheDocument()
+    expect(field('일반', '바꿀 수 있음')).toHaveValue('900,000')
+  })
+
+  it('saves with the version from the first edit after the year record is reread', async () => {
+    serveAnalysis(analysisView())
+    let body: unknown
+    server.use(http.put('*/api/tax/years/2026/plan', async ({ request }) => {
+      body = await request.json()
+      return HttpResponse.json(readyYearView())
+    }))
+    const { client, user, field } = await openPlan()
+    await user.clear(field('일반', '바꿀 수 있음'))
+    await user.type(field('일반', '바꿀 수 있음'), '900000')
+    await user.tab()
+    server.use(http.get('*/api/tax/years/2026', () => HttpResponse.json(readyYearView({ plan: { ...samplePlan, rowVersion: 60 } }))))
+    await act(async () => { await client.invalidateQueries({ queryKey: ['tax', 'year', 2026] }) })
+    await user.click(screen.getByRole('button', { name: '계산하기' }))
+
+    await waitFor(() => expect(body).toMatchObject({ rowVersion: 55 }))
+  })
+
+  it('does not clear the current year edit or move to ③ when an earlier year save finishes', async () => {
+    serveAnalysis(analysisView())
+    server.use(
+      http.get('*/api/tax/years/2025', () => HttpResponse.json(readyYearView({ taxYear: 2025, plan: { ...samplePlan, general: { ...samplePlan.general, flexible: 300_000 } } }))),
+      http.get('*/api/tax/years/2025/analysis', () => HttpResponse.json(analysisView({ taxYear: 2025 }))),
+    )
+    let release!: () => void
+    let requested!: () => void
+    const started = new Promise<void>((resolve) => { requested = resolve })
+    server.use(http.put('*/api/tax/years/2026/plan', async () => {
+      requested()
+      await new Promise<void>((resolve) => { release = resolve })
+      return HttpResponse.json(readyYearView({ plan: { ...samplePlan, ...savedBody, rowVersion: 56 } }))
+    }))
+    const { client, user, field } = await openPlan()
+    await user.click(screen.getByRole('button', { name: '계산하기' }))
+    await started
+    await chooseYear(user, 2025)
+    await waitFor(() => expect(field('일반', '바꿀 수 있음')).toHaveValue('300,000'))
+    await user.clear(field('일반', '바꿀 수 있음'))
+    await user.type(field('일반', '바꿀 수 있음'), '200000')
+    await user.tab()
+
+    await act(async () => { release() })
+    await waitFor(() => expect(client.getQueryData(['tax', 'year', 2026])).toMatchObject({ plan: { rowVersion: 56 } }))
+    expect(client.getQueryData(['tax', 'year', 2025])).toMatchObject({ taxYear: 2025 })
+    expect(field('일반', '바꿀 수 있음')).toHaveValue('200,000')
+    expect(screen.getByRole('tab', { name: '② 지출계획' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.queryByText('지출계획을 저장했습니다.')).not.toBeInTheDocument()
   })
 })

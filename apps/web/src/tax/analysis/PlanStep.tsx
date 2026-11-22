@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useAmountFormatter } from '../../common/AmountMask'
 import { errorMessage } from '../../common/errorMessage'
 import MoneyField from '../../common/MoneyField'
@@ -31,6 +31,8 @@ const sum = (values: (number | null)[]) => values.reduce<number>((n, v) => n + (
 // oxlint-disable-next-line react/only-export-components
 export function usePlanEditor(year: number, view: TaxYearView | null | undefined, onSaved: () => void) {
   const client = useQueryClient()
+  const currentYear = useRef(year)
+  useEffect(() => { currentYear.current = year }, [year])
   const [edit, setEdit] = useState<{ year: number; values: PlanForm; rowVersion: number | undefined } | null>(null)
   const [failedYear, setFailedYear] = useState<number | null>(null)
   const save = useTaxSave(year, (body: PlanInput) => taxApi.savePlan(year, body))
@@ -46,10 +48,12 @@ export function usePlanEditor(year: number, view: TaxYearView | null | undefined
     error: failedYear === year ? save.error : null,
     change: (next: PlanForm) => setEdit({ year, values: next, rowVersion }),
     submit: () => {
+      const requestYear = year
       setFailedYear(year)
       // blank이면 버튼이 꺼져 여기 오지 않는다. 남은 칸은 모두 숫자다.
       save.mutate({ ...(values as Record<Row, PlanRow>), rowVersion }, {
         onSuccess: () => {
+          if (currentYear.current !== requestYear) return
           setEdit(null)
           toast('지출계획을 저장했습니다.')
           onSaved()
