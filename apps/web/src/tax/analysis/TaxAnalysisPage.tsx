@@ -12,6 +12,7 @@ import TaxTabs from '../TaxTabs'
 import { useTaxYear } from '../TaxYearProvider'
 import { actionError, isStale, taxApi, taxKeys, useTaxAnalysis, useTaxSave, useTaxYearView, type TaxAnalysisView, type TaxYearView } from '../taxApi'
 import { asOfText, seoulDate } from './format'
+import StatusStep from './StatusStep'
 import StepTabs, { type Step } from './StepTabs'
 import styles from './analysis.module.css'
 
@@ -49,7 +50,7 @@ export default function TaxAnalysisPage() {
         <>
           <Notices analysis={result} view={view} />
           <StepTabs step={step} onStepChange={setStep}>
-            {() => null}
+            {(id) => (id === 'status' ? <StatusStep analysis={result} /> : null)}
           </StepTabs>
         </>
       )}

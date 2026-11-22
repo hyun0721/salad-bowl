@@ -13,3 +13,27 @@
 .stepNav { display: flex; gap: var(--space-2); }
 .stepNav button { min-height: 44px; font-size: var(--text-card-action); }
 .next { margin-left: auto; }
+
+/* ① 현황 */
+.inlineBadge { margin: 0 0 0 var(--space-1); }
+.summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 9.5rem), 1fr)); gap: var(--space-3); margin: 0; }
+.summary > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.summary dt { color: var(--ink-muted); font-size: var(--text-md); }
+.summary dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.big { font-size: var(--text-xl); font-weight: 700; font-variant-numeric: tabular-nums; }
+.sub { color: var(--ink-muted); font-size: var(--text-md); font-variant-numeric: tabular-nums; }
+.shares { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.shares caption { caption-side: top; padding-bottom: var(--space-1); text-align: left; font-weight: 500; }
+.shares th { width: 6.5rem; padding: var(--space-1) 0; text-align: left; font-weight: 400; }
+.shares td { padding: var(--space-1) 0 var(--space-1) var(--space-2); }
+.shares td:last-child { width: 4.5rem; text-align: right; white-space: nowrap; }
+.bar { display: block; height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; }
+.bar > span { display: block; height: 100%; background: var(--brand); }
+.calc { display: flex; flex-direction: column; gap: var(--space-3); }
+.calc ol { display: flex; flex-direction: column; gap: var(--space-3); margin: 0; padding: 0; list-style: none; }
+.calc h3 { margin: 0 0 var(--space-1); font-size: var(--text-lg); }
+.calc ul { margin: 0 0 var(--space-1); padding-left: var(--space-4); }
+.calc dl { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-1) var(--space-3); margin: 0; }
+.calc dt { min-width: 0; overflow-wrap: anywhere; }
+.calc dd { margin: 0; text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.calc .calcTotal { padding-top: var(--space-2); border-top: 1px solid var(--line); font-weight: 700; }
