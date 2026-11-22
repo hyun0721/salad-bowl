@@ -117,8 +117,9 @@ export function useTaxAnalysis(year: number) {
 /**
  * TaxYearView를 돌려주는 저장. 응답으로 캐시를 바꾸고(합계를 다시 계산하지 않는다) 분석을 다시 읽는다.
  * 분석을 다 읽은 뒤에 저장이 끝나므로, 저장 뒤 옮겨 간 화면은 새 결과를 그린다.
+ * 캐시 키는 응답의 귀속연도다.
  */
-export function useTaxSave<T>(_year: number, save: (input: T) => Promise<TaxYearView>) {
+export function useTaxSave<T>(save: (input: T) => Promise<TaxYearView>) {
   const client = useQueryClient()
   return useMutation({
     mutationFn: save,

@@ -16,7 +16,7 @@ export default function CashReceiptDialog({ year, cash, zeros, defaultAsOfDate, 
   const [memo, setMemo] = useState(cash?.memo ?? '')
   const [amounts, setAmounts] = useState<CashAmounts>(cash?.amounts ?? (zeros ? fillBlanks(EMPTY_CASH) : EMPTY_CASH))
   const [rowVersion] = useState(cash?.rowVersion)
-  const save = useTaxSave(year, (body: CashInput) => taxApi.saveCashReceipt(year, body))
+  const save = useTaxSave((body: CashInput) => taxApi.saveCashReceipt(year, body))
 
   function onSubmit(event: FormEvent) {
     event.preventDefault()

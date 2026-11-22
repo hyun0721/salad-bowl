@@ -35,7 +35,7 @@ export function usePlanEditor(year: number, view: TaxYearView | null | undefined
   useEffect(() => { currentYear.current = year }, [year])
   const [edit, setEdit] = useState<{ year: number; values: PlanForm; rowVersion: number | undefined } | null>(null)
   const [failedYear, setFailedYear] = useState<number | null>(null)
-  const save = useTaxSave(year, (body: PlanInput) => taxApi.savePlan(year, body))
+  const save = useTaxSave((body: PlanInput) => taxApi.savePlan(year, body))
   const mine = edit?.year === year ? edit : null
   const saved = toForm(view?.plan ?? null)
   const values = mine?.values ?? saved
@@ -53,8 +53,8 @@ export function usePlanEditor(year: number, view: TaxYearView | null | undefined
       // blank이면 버튼이 꺼져 여기 오지 않는다. 남은 칸은 모두 숫자다.
       save.mutate({ ...(values as Record<Row, PlanRow>), rowVersion }, {
         onSuccess: () => {
+          setEdit((e) => (e?.year === requestYear ? null : e))
           if (currentYear.current !== requestYear) return
-          setEdit(null)
           toast('지출계획을 저장했습니다.')
           onSaved()
         },
@@ -65,6 +65,7 @@ export function usePlanEditor(year: number, view: TaxYearView | null | undefined
       client.invalidateQueries({ queryKey: taxKeys.year(year) }),
       client.invalidateQueries({ queryKey: taxKeys.analysis(year) }),
     ]).then(() => {
+      if (client.getQueryState(taxKeys.year(year))?.status === 'error' || client.getQueryState(taxKeys.analysis(year))?.status === 'error') return
       setEdit(null)
       save.reset()
     }),

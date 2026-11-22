@@ -90,7 +90,7 @@ function Notices({ analysis: a, view }: { analysis: TaxAnalysisView; view: TaxYe
 /** 새 세법 버전 알림(TAX-66). 누르기 전에는 연도 기록이 기억한 버전의 결과를 그대로 보인다(AC-19). */
 function NewerLaw({ year, versionNo }: { year: number; versionNo: number | undefined }) {
   const client = useQueryClient()
-  const refresh = useTaxSave(year, () => taxApi.refreshLawVersion(year))
+  const refresh = useTaxSave(() => taxApi.refreshLawVersion(year))
   return (
     <>
       <div className={inputs.split}>
