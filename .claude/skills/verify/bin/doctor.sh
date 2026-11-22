@@ -21,6 +21,8 @@ token=$(curl -sf -H 'Content-Type: application/json' -d "{\"email\":\"$SEED_EMAI
   | python3 -c 'import json,sys; print(json.load(sys.stdin)["accessToken"])' 2>/dev/null)
 check "applied tax law $tax_year" "curl -sf -H 'Authorization: Bearer $token' '$WEB/api/tax/law-versions/current?year=$tax_year'"
 check "seed tax record $tax_year" "curl -sf -H 'Authorization: Bearer $token' '$WEB/api/tax/years/$tax_year'"
+# Analysis journey (tax-analysis.md): wireframe values for current deduction and recommendation difference.
+check "seed tax analysis $tax_year" "curl -sf -H 'Authorization: Bearer $token' '$WEB/api/tax/years/$tax_year/analysis' | python3 -c 'import json,sys; a=json.load(sys.stdin); assert a["status"] == "READY" and a["deduction"]["amount"] == 1475000 and a["recommendation"]["difference"] == 152728'"
 
 echo "build: $(git -C "$ROOT" rev-parse --short HEAD)$(git -C "$ROOT" diff --quiet || echo '+dirty')"
 exit $ok

@@ -4,7 +4,7 @@
 
 ## Sub-features
 
-- `tax-entry` opens `/tax`, which redirects to `/tax/inputs` (the analysis rule arrives with PR 7). The sidebar shows `소득공제` with the indented sub-link `입력자료`; narrow screens use the bottom tab `소득공제`.
+- `tax-entry` opens `/tax`, which goes to `/tax/inputs` when the selected year has no record or no statement, and to the analysis otherwise (see tax-analysis.md). The sidebar shows `소득공제` with the indented sub-links `입력자료` and `분석·지출계획`; narrow screens use the bottom tab `소득공제` and the in-page `소득공제 메뉴`.
 - `tax-year` uses the `귀속연도` select (last, this, next year in Korean time). The choice lives in memory only: reload or logout returns to this year.
 - `tax-basic` shows `기본정보` with `[수정]` (or `[기본정보 입력]` on an empty year). `근로기간 확인 필요` appears when the months are not 1–12. `자녀등 수` appears only when the record's law has child tiers; its rules open from the `자녀등 수 도움말` button.
 - `tax-cards` lists `신용·체크 자료` rows: issuer, `완료` or `미완료 · 빈 칸 n개`, `기준일 … · 합계 ₩ … · 메모`, and on the right `[빈 칸 0원으로 채우기]` (incomplete only), `[편집]`, `[삭제]`. Delete asks once. 50 rows per year at most.
@@ -15,7 +15,7 @@
 
 ## How to get to it (user POV)
 
-- Click `소득공제` in `navigation "주 메뉴"` (sidebar or bottom tab). On wide screens, `입력자료` under it opens the same page.
+- Click `입력자료` under `소득공제` in `navigation "주 메뉴"` (wide) or in `소득공제 메뉴` (narrow). `소득공제` itself opens this page only while the selected year has no statement; the seeded owner lands on the analysis.
 
 ## Driving it with the built-in browser
 
@@ -23,7 +23,7 @@ Preconditions:
 
 - Baseline seed. `seed.sh` printed `SEEDED group=… tax_year=YYYY`. `verify@example.test` is a service admin, the `YYYY` law is applied with child tiers, and the owner's `YYYY` record has salary ₩ 50,000,000, A카드 (₩ 9,600,000), B카드 (₩ 7,600,000), cash ₩ 600,000, all dated `YYYY-06-30`. `verify5@example.test` (그룹없음) has no group and no record.
 
-- **Seeded record.** At `mobile` and `desktop`, open `소득공제`. The totals table reads 일반 14,000,000 / 2,000,000 / 500,000 and 합계 14,600,000 / 2,600,000 / 600,000 (17,800,000 on desktop). No warning shows. No page-level horizontal scroll at 375px and 320px (`resize_window` 320×700).
+- **Seeded record.** At `mobile` and `desktop`, open `입력자료`. The totals table reads 일반 14,000,000 / 2,000,000 / 500,000 and 합계 14,600,000 / 2,600,000 / 600,000 (17,800,000 on desktop). No warning shows. No page-level horizontal scroll at 375px and 320px (`resize_window` 320×700).
 - **Centered dialogs.** At `desktop`, `mobile` (375px), and 320×700, open `기본정보 수정`, `A카드 자료 편집`, `현금영수증 자료 편집`, `A카드 자료 삭제`, and `YYYY년 기록 삭제`. Each dialog is centered with space above and below; none slides up from the bottom. The 8-cell grid shows two columns (신용카드, 체크카드) per category with no horizontal scroll.
 - **Blank vs 0.** Add a card `C카드` with only 일반 신용카드 filled. Its row reads `미완료 · 빈 칸 7개`, the totals card shows the blank warning, then `[빈 칸 0원으로 채우기]` on the row turns it into `완료`. Delete `C카드` (one confirmation) to restore.
 - **Long name.** Add a card whose name is 40 characters. At 375px and 320px the name wraps on the left and `[편집] [삭제]` stay right-aligned on the row. Delete it afterwards.
@@ -40,4 +40,4 @@ Preconditions:
 - The seed year follows today's Korean date. The year select only offers last, this and next year; older records exist on the server but have no entry point.
 - `rowVersion` values are opaque sequence numbers, not counters. A 409 or 404 on save shows `다른 곳에서 수정되거나 삭제됐습니다. 저장하지 않았습니다.` with `[다시 불러오기]`, which closes the dialog and reloads the year.
 - Card rows sum their own 8 cells for display; the totals table uses the server's 12 totals, and its row and column totals add those 12 cells.
-- The page has no analysis yet. `/tax` always opens the inputs page until PR 7.
+- Saves here refresh the analysis (`['tax', 'analysis', year]`); the analysis page also reloads every time it opens.
