@@ -9,7 +9,7 @@ import { setAccessToken } from '../api/client'
 import { AuthProvider } from '../auth/AuthProvider'
 import { mockViewport } from '../test/mockViewport'
 import { server } from '../test/server'
-import { serveTax, yearView } from '../test/taxFixtures'
+import { analysisView, serveAnalysis, serveTax, yearView } from '../test/taxFixtures'
 import { lawVersion, serveLaw } from '../test/taxLawFixtures'
 import { seoulYear } from '../tax/TaxYearProvider'
 import AppRoutes from './AppRoutes'
@@ -85,7 +85,7 @@ describe('AppRoutes', () => {
     renderApp('/')
     const nav = await screen.findByRole('navigation', { name: '주 메뉴' })
     expect(within(nav).getAllByRole('link').map((l) => l.textContent))
-      .toEqual(['홈', '소득공제', '입력자료', '대시보드', '대분류', '소분류', '거래 목록', '그룹 관리'])
+      .toEqual(['홈', '소득공제', '입력자료', '분석·지출계획', '대시보드', '대분류', '소분류', '거래 목록', '그룹 관리'])
     expect(within(nav).getByRole('link', { name: '대분류' })).toHaveAttribute('href', '/dashboard/major')
     expect(within(nav).getByRole('link', { name: '소분류' })).toHaveAttribute('href', '/dashboard/minor')
     expect(within(nav).getByRole('link', { name: '대시보드' })).not.toHaveAttribute('aria-current')
@@ -109,7 +109,42 @@ describe('AppRoutes', () => {
     expect(screen.queryByRole('link', { name: /세법 관리/ })).not.toBeInTheDocument()
   })
 
-  it('shows 연도별 세법 관리 second under 소득공제 to a service admin only and opens it', async () => {
+  it('opens 소득공제 at the analysis status step when the selected year has inputs', async () => {
+    mockViewport(false)
+    signedIn([])
+    serveAnalysis(analysisView({ taxYear: seoulYear(new Date()) }))
+    renderApp('/')
+    const user = userEvent.setup()
+
+    const nav = await screen.findByRole('navigation', { name: '주 메뉴' })
+    expect(within(nav).getAllByRole('link').map((l) => l.textContent))
+      .toEqual(['홈', '소득공제', '입력자료', '분석·지출계획', '대시보드', '대분류', '소분류', '거래 목록', '그룹 관리'])
+    await user.click(within(nav).getByRole('link', { name: '소득공제' }))
+
+    expect(await screen.findByRole('tab', { name: '① 현황' })).toHaveAttribute('aria-selected', 'true')
+    expect(within(nav).getByRole('link', { name: '분석·지출계획' })).toHaveAttribute('aria-current', 'page')
+  })
+
+  it('decides the 소득공제 entry by the remembered year', async () => {
+    mockViewport(false)
+    const year = seoulYear(new Date())
+    signedIn([])
+    server.use(
+      http.get('*/api/tax/years/:year', ({ params }) => HttpResponse.json(yearView({ taxYear: Number(params.year), hasInputs: Number(params.year) === year - 1 }))),
+      http.get('*/api/tax/years/:year/analysis', () => HttpResponse.json(analysisView({ taxYear: year - 1 }))),
+    )
+    renderApp('/tax')
+    const user = userEvent.setup()
+
+    expect(await screen.findByRole('region', { name: '기본정보' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /귀속연도/ }))
+    await user.click(screen.getByRole('option', { name: `${year - 1}년` }))
+    await user.click(within(screen.getByRole('navigation', { name: '주 메뉴' })).getByRole('link', { name: '소득공제' }))
+
+    expect(await screen.findByRole('tab', { name: '① 현황' })).toHaveAttribute('aria-selected', 'true')
+  })
+
+  it('shows 연도별 세법 관리 third under 소득공제 to a service admin only and opens it', async () => {
     mockViewport(false)
     signedIn([], admin)
     serveTax(null)
@@ -119,7 +154,7 @@ describe('AppRoutes', () => {
 
     const nav = await screen.findByRole('navigation', { name: '주 메뉴' })
     expect(within(nav).getAllByRole('link').map((l) => l.textContent))
-      .toEqual(['홈', '소득공제', '입력자료', '연도별 세법 관리', '대시보드', '대분류', '소분류', '거래 목록', '그룹 관리'])
+      .toEqual(['홈', '소득공제', '입력자료', '분석·지출계획', '연도별 세법 관리', '대시보드', '대분류', '소분류', '거래 목록', '그룹 관리'])
     await user.click(within(nav).getByRole('link', { name: '연도별 세법 관리' }))
 
     expect(await screen.findByRole('heading', { level: 1, name: '연도별 세법 관리' })).toBeInTheDocument()
@@ -396,7 +431,7 @@ describe('AppRoutes', () => {
     await user.click(screen.getByRole('button', { name: '로그인' }))
     await user.click(await screen.findByRole('link', { name: '소득공제' }))
 
-    expect(await screen.findByText('입력자료 불러오는 중')).toBeInTheDocument()
+    expect(await screen.findByText('소득공제 불러오는 중')).toBeInTheDocument()
     expect(screen.queryByText('₩ 52,340,000')).not.toBeInTheDocument()
     expect(await screen.findByRole('heading', { name: `${year}년 귀속 기록이 없습니다` })).toBeInTheDocument()
   })
@@ -556,7 +591,7 @@ describe('AppRoutes on a narrow screen', () => {
     expect(within(screen.getByRole('main')).queryByRole('heading', { level: 1 })).not.toBeInTheDocument()
   })
 
-  it('gives a service admin in-page tabs 입력자료 · 세법 관리', async () => {
+  it('gives a service admin in-page tabs 입력자료 · 분석·지출계획 · 세법 관리', async () => {
     signedIn([], admin)
     serveTax(null)
     serveLaw([lawVersion()])
@@ -564,7 +599,7 @@ describe('AppRoutes on a narrow screen', () => {
     const user = userEvent.setup()
 
     const tabs = await screen.findByRole('navigation', { name: '소득공제 메뉴' })
-    expect(within(tabs).getAllByRole('link').map((l) => l.textContent)).toEqual(['입력자료', '세법 관리'])
+    expect(within(tabs).getAllByRole('link').map((l) => l.textContent)).toEqual(['입력자료', '분석·지출계획', '세법 관리'])
     expect(within(tabs).getByRole('link', { name: '입력자료' })).toHaveAttribute('aria-current', 'page')
     await user.click(within(tabs).getByRole('link', { name: '세법 관리' }))
 
@@ -574,13 +609,19 @@ describe('AppRoutes on a narrow screen', () => {
     expect(within(screen.getByRole('banner')).getByRole('heading', { level: 1 })).toHaveTextContent('소득공제')
   })
 
-  it('shows no in-page tax tabs to a member', async () => {
+  it('gives a member in-page tabs 입력자료 · 분석·지출계획 and opens the analysis', async () => {
     signedIn([])
-    serveTax(null)
+    serveAnalysis(analysisView({ taxYear: seoulYear(new Date()) }))
     renderApp('/tax/inputs')
+    const user = userEvent.setup()
 
-    expect(await screen.findByRole('heading', { name: /귀속 기록이 없습니다/ })).toBeInTheDocument()
-    expect(screen.queryByRole('navigation', { name: '소득공제 메뉴' })).not.toBeInTheDocument()
+    const tabs = await screen.findByRole('navigation', { name: '소득공제 메뉴' })
+    expect(within(tabs).getAllByRole('link').map((l) => l.textContent)).toEqual(['입력자료', '분석·지출계획'])
+    await user.click(within(tabs).getByRole('link', { name: '분석·지출계획' }))
+
+    expect(await screen.findByRole('tablist', { name: '분석 단계' })).toBeInTheDocument()
+    expect(within(screen.getByRole('navigation', { name: '소득공제 메뉴' })).getByRole('link', { name: '분석·지출계획' }))
+      .toHaveAttribute('aria-current', 'page')
   })
 
   it('signs out from the account sheet', async () => {

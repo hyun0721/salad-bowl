@@ -15,6 +15,7 @@ export const MENU: MenuItem[] = [
   { to: '/tax', label: '소득공제', shortLabel: '소득공제', icon: 'calculator', end: false,
     children: [
       { to: '/tax/inputs', label: '입력자료' },
+      { to: '/tax/analysis', label: '분석·지출계획' },
       { to: '/tax/law', label: '연도별 세법 관리', shortLabel: '세법 관리', adminOnly: true },
     ] },
   { to: '/dashboard', label: '대시보드', shortLabel: '대시보드', icon: 'dashboard', end: false,

@@ -1,0 +1,15 @@
+/*
+ * 소득공제 분석·지출계획. 화면 뿌리 글자 토큰(15px·13px)과 .split·.actions·.empty는 입력자료의 inputs.module.css를 같이 쓴다.
+ * 모든 폭에서 1단(TAX-73)이고, 넓은 화면은 가운데에 두고 최대 폭을 720px로 제한한다.
+ */
+.page { width: 100%; max-width: 720px; margin-inline: auto; }
+.facts { color: var(--ink-muted); font-size: var(--text-md); overflow-wrap: anywhere; }
+.notice { color: var(--pending); font-size: var(--text-md); overflow-wrap: anywhere; }
+.badge { display: inline-block; margin-right: var(--space-1); padding: 0 var(--space-1); border: 1px solid currentColor; border-radius: var(--radius-sm); font-weight: 500; }
+
+/* 단계 탭과 [이전]·[다음]은 모든 폭에서 누르는 영역 44px. 공용 탭의 .tab(40·42px)보다 구체적으로 쓴다. */
+.steps [role='tab'] { min-height: 44px; }
+.panel { display: flex; flex-direction: column; gap: var(--space-3); padding-top: var(--space-3); }
+.stepNav { display: flex; gap: var(--space-2); }
+.stepNav button { min-height: 44px; font-size: var(--text-card-action); }
+.next { margin-left: auto; }
