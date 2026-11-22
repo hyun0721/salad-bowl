@@ -13,6 +13,7 @@ import { useTaxYear } from '../TaxYearProvider'
 import { actionError, isStale, taxApi, taxKeys, useTaxAnalysis, useTaxSave, useTaxYearView, type TaxAnalysisView, type TaxYearView } from '../taxApi'
 import { asOfText, seoulDate } from './format'
 import PlanStep, { usePlanEditor } from './PlanStep'
+import RecommendStep from './RecommendStep'
 import StatusStep from './StatusStep'
 import StepTabs, { type Step } from './StepTabs'
 import styles from './analysis.module.css'
@@ -54,7 +55,7 @@ export default function TaxAnalysisPage() {
           <StepTabs step={step} onStepChange={setStep}>
             {(id) => (id === 'status' ? <StatusStep analysis={result} />
               : id === 'plan' ? <PlanStep editor={plan} ready={result.status === 'READY'} />
-                : null)}
+                : <RecommendStep analysis={result} onPlan={() => setStep('plan')} />)}
           </StepTabs>
         </>
       )}
