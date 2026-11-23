@@ -1,6 +1,6 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { mockViewport } from '../../test/mockViewport'
 import { server } from '../../test/server'
 import { lawDraft, lawVersion, renderTaxLaw, serveLaw } from '../../test/taxLawFixtures'
@@ -23,6 +23,22 @@ async function openDraft(no: number) {
 const field = (form: HTMLElement, group: string, label: string) => within(within(form).getByRole('group', { name: group })).getByLabelText(label)
 
 describe('LawVersionForm — 초안 편집', () => {
+  it('uses the numeric keypad for every percentage field', async () => {
+    const userAgent = vi.spyOn(window.navigator, 'userAgent', 'get').mockReturnValue('Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)')
+    const platform = vi.spyOn(window.navigator, 'platform', 'get').mockReturnValue('iPhone')
+    try {
+      serveLaw([v2, v1])
+      const { form } = await openDraft(2)
+      const inputs = within(form).getByRole('group', { name: '비율 (%)' }).querySelectorAll('input')
+
+      expect(inputs).toHaveLength(6)
+      for (const input of inputs) expect(input).toHaveAttribute('inputmode', 'numeric')
+    } finally {
+      userAgent.mockRestore()
+      platform.mockRestore()
+    }
+  })
+
   it('saves the whole draft with the rowVersion it opened with and only then allows validate and apply', async () => {
     serveLaw([v3, v2, v1])
     let body: unknown

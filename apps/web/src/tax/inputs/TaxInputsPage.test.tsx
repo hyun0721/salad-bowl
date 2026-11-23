@@ -1,6 +1,6 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { mockViewport } from '../../test/mockViewport'
 import { server } from '../../test/server'
 import { renderTaxInputs, serveTax, yearView } from '../../test/taxFixtures'
@@ -10,6 +10,22 @@ beforeEach(() => {
 })
 
 describe('TaxInputsPage — 기본정보와 연도 기록', () => {
+  it('uses the numeric keypad for the child count', async () => {
+    const userAgent = vi.spyOn(window.navigator, 'userAgent', 'get').mockReturnValue('Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)')
+    const platform = vi.spyOn(window.navigator, 'platform', 'get').mockReturnValue('iPhone')
+    try {
+      serveTax(null)
+      const { user } = renderTaxInputs()
+      await user.click(await screen.findByRole('button', { name: '기본정보 입력' }))
+
+      const dialog = await screen.findByRole('dialog', { name: '2026년 귀속 기본정보' })
+      expect(within(dialog).getByLabelText('자녀등 수')).toHaveAttribute('inputmode', 'numeric')
+    } finally {
+      userAgent.mockRestore()
+      platform.mockRestore()
+    }
+  })
+
   it('creates the year record from the empty state in a centered dialog, without any group', async () => {
     mockViewport(true)
     serveTax(null)
