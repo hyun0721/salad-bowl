@@ -38,7 +38,7 @@ export function ShareToggle({ groupId, enabled }: { groupId: number; enabled: bo
             <label id={`${shareId}-label`} htmlFor={shareId}>내 거래 그룹 공개</label>
             <HelpButton title="내 거래 그룹 공개">끄면 그룹 대시보드와 그룹 거래에서 내 거래가 제외됩니다. 숨긴 거래는 공개해도 보이지 않습니다.</HelpButton>
           </div>
-          <Text slot="description" className={ui.muted}>이 그룹에 내 거래를 공유해요.</Text>
+          <Text slot="description" className={ui.muted}>이 그룹에 내 거래를 공유합니다.</Text>
         </div>
         <SwitchButton className={`${field.check} ${styles.shareButton}`}>
           <span className={field.track} aria-hidden="true"><span className={field.thumb} /></span>

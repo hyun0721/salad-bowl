@@ -159,6 +159,6 @@ describe('CategoryTrend', () => {
     await screen.findByRole('button', { name: '식비' })
     expect(screen.queryByRole('button', { name: '환불' })).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '식비' }))
-    expect(screen.getByText('대분류를 하나 이상 고르세요.')).toBeInTheDocument()
+    expect(screen.getByText('대분류를 하나 이상 선택하세요.')).toBeInTheDocument()
   })
 })

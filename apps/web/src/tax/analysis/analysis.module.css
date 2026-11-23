@@ -8,10 +8,10 @@
 .badge { display: inline-block; margin-right: var(--space-1); padding: 0 var(--space-1); border: 1px solid currentColor; border-radius: var(--radius-sm); font-weight: 500; }
 
 /* 단계 탭과 [이전]·[다음]은 모든 폭에서 누르는 영역 44px. 공용 탭의 .tab(40·42px)보다 구체적으로 쓴다. */
-.steps [role='tab'] { min-height: 44px; }
+.steps [role='tab'] { min-height: var(--touch-target); }
 .panel { display: flex; flex-direction: column; gap: var(--space-3); padding-top: var(--space-3); }
 .stepNav { display: flex; gap: var(--space-2); }
-.stepNav button { min-height: 44px; font-size: var(--text-card-action); }
+.stepNav button { min-height: var(--touch-target); font-size: var(--text-card-action); }
 .next { margin-left: auto; }
 
 /* ① 현황 */

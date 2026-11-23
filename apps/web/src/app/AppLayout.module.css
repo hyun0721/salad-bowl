@@ -19,9 +19,9 @@
 .noGroup { display: inline-flex; align-items: center; min-height: var(--control-height); }
 .headerTitle { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .headerTitle img { vertical-align: middle; }
-.groupOption { min-height: 44px; overflow-wrap: anywhere; }
+.groupOption { min-height: var(--touch-target); overflow-wrap: anywhere; }
 @media (max-width: 820px) {
-  .noGroup, .groupState button { min-height: 44px; }
+  .noGroup, .groupState button { min-height: var(--touch-target); }
 }
 /* 하단 탭 바(56px)와 안전 영역만큼 본문 끝을 띄워 마지막 내용이 가려지지 않게 한다. */
 .withTabBar { padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px) + var(--space-4)); }
@@ -38,7 +38,7 @@
   .content:has(> [data-fit-viewport]) { flex: 1; min-height: 0; overflow: hidden; padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px)); }
 }
 
-.settingsTrigger { min-width: 44px; min-height: 44px; flex: none; }
+.settingsTrigger { min-width: var(--touch-target); min-height: var(--touch-target); flex: none; }
 .settingsContent { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-3); }
 .settingsContent label { width: 100%; flex-direction: row-reverse; justify-content: space-between; }
 .settingsContent h3 { margin: 0; font-size: var(--text-base); }

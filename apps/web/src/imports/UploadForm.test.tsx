@@ -25,7 +25,7 @@ describe('UploadForm', () => {
       addListener: vi.fn(), removeListener: vi.fn(),
     })))
     renderPage(<UploadForm />)
-    expect(await screen.findByText('파일 선택 버튼을 눌러 엑셀 파일을 고르세요')).toBeVisible()
+    expect(await screen.findByText('파일 선택 버튼을 눌러 엑셀 파일을 선택하세요')).toBeVisible()
     expect(screen.queryByText(/파일을 끌어다/)).not.toBeInTheDocument()
   })
 

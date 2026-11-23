@@ -122,7 +122,7 @@ export default function CategoryTrend({ groupId, month, title = '대분류 추�
             })}
           </div>
           {visible.length === 0
-            ? <p className={ui.status}>{label}를 하나 이상 고르세요.</p>
+            ? <p className={ui.status}>{label}를 하나 이상 선택하세요.</p>
             : <LineChart formatValue={formatValue} hideValueLabels={hidden.EXPENSE} series={series} months={trend.data.months} compact={compact} className={styles.chart} />}
           </> : <TrendTable months={trend.data.months} categories={tableCategories} label={label} />}
           </div>

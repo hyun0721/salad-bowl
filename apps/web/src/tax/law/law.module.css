@@ -9,7 +9,7 @@
 
 /* 버전 행 전체가 선택 버튼이다. `.page section button`(14px)보다 구체적으로 써서 이름 15px·보조 13px를 지킨다. */
 .versions .version {
-  display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-height: 44px; padding: var(--space-1) var(--space-2);
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-height: var(--touch-target); padding: var(--space-1) var(--space-2);
   border: 1px solid transparent; border-radius: var(--radius-sm); background: transparent; color: var(--ink);
   font-size: var(--text-base); text-align: left; cursor: pointer;
 }

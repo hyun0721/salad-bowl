@@ -6,7 +6,7 @@
 .srOnly { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
 @media (max-width: 820px) {
-  .step { width: 44px; height: 44px; min-width: 44px; padding: 0; flex: none; }
+  .step { width: var(--touch-target); height: var(--touch-target); min-width: var(--touch-target); padding: 0; flex: none; }
 }
 
 .compact .hint { grid-column: 1 / -1; }

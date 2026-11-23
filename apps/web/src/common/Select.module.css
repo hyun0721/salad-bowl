@@ -11,8 +11,8 @@
 .item[data-selected] { color: var(--brand); }
 .item[data-focused], .item[data-hovered] { background: var(--surface-100); }
 @media (max-width: 820px) {
-  .trigger { height: 44px; font-size: var(--text-input); }
-  .item { min-height: 48px; }
+  .trigger { height: var(--touch-target); font-size: var(--text-input); }
+  .item { min-height: var(--control-height-primary); }
 }
 
 /* 폼 안에서는 다른 입력칸처럼 라벨을 위에, 트리거를 칸 전체 폭으로 둔다. */
