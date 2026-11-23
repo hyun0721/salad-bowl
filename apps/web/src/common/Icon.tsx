@@ -12,6 +12,7 @@ const ICONS = {
   'chevron-down': <path d="m6 9 6 6 6-6" />,
   'chevron-up': <path d="m18 15-6-6-6 6" />,
   check: <path d="M20 6 9 17l-5-5" />,
+  'circle-check': <><circle cx="12" cy="12" r="10" /><path d="m9 12 2 2 4-4" /></>,
   calendar: (
     <>
       <path d="M8 2v4" />

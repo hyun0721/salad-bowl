@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useAmountFormatter } from '../../common/AmountMask'
+import Icon from '../../common/Icon'
 import ui from '../../common/ui.module.css'
 import type { TaxYearView } from '../taxApi'
 import { sumAmounts } from './amounts'
@@ -11,13 +12,16 @@ export default function CashReceiptSection({ view, defaultAsOfDate }: { view: Ta
   const [open, setOpen] = useState(false)
   const expense = useAmountFormatter('expense')
   const cash = view.cashReceipt
-  const status = !cash ? '미완료 · 4칸 빔' : cash.blankCount > 0 ? `미완료 · 빈 칸 ${cash.blankCount}개` : '완료'
+  const status = !cash ? '미완료 · 4칸 빔' : cash.blankCount > 0 ? `미완료 · 빈 칸 ${cash.blankCount}개` : null
   return (
     <section aria-labelledby="tax-cash-title" className={ui.card}>
       <div className={styles.split}>
         <div className={styles.rowInfo}>
-          <h2 id="tax-cash-title">현금영수증 자료</h2>
-          <p className={cash && cash.blankCount === 0 ? ui.muted : styles.note}>{status}</p>
+          <div className={styles.nameWithStatus}>
+            <h2 id="tax-cash-title">현금영수증 자료</h2>
+            {!status && <span role="img" aria-label="완료" className={styles.completeIcon}><Icon name="circle-check" size={18} /></span>}
+          </div>
+          {status && <p className={styles.note}>{status}</p>}
           {cash ? (
             <p className={ui.muted}>기준일 {cash.asOfDate} · 합계 {expense(sumAmounts(cash.amounts))}{cash.memo && ` · ${cash.memo}`}</p>
           ) : (
@@ -25,8 +29,8 @@ export default function CashReceiptSection({ view, defaultAsOfDate }: { view: Ta
           )}
         </div>
         <div className={styles.actions}>
-          <button type="button" className={ui.button} aria-label={cash ? '현금영수증 자료 편집' : '현금영수증 자료 입력'}
-            onClick={() => setOpen(true)}>{cash ? '편집' : '입력'}</button>
+          <button type="button" className={`${ui.button} ${cash ? ui.iconButton : ''}`} aria-label={cash ? '현금영수증 자료 편집' : '현금영수증 자료 입력'}
+            onClick={() => setOpen(true)}>{cash ? <Icon name="pencil" size={18} /> : '입력'}</button>
         </div>
       </div>
       {open && (

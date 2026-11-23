@@ -94,6 +94,15 @@ describe('ConfirmDialog', () => {
     await user.click(screen.getByRole('button', { name: '짝꿍 내보내기' }))
     expect(screen.getByRole('button', { name: '짝꿍 내보내기 확인' })).toBeInTheDocument()
   })
+
+  it('opens from an icon-only trigger by its accessible name', async () => {
+    const { user } = renderConfirm({ triggerIconOnly: true, triggerIcon: 'trash', triggerAriaLabel: '그룹 삭제' })
+    const trigger = screen.getByRole('button', { name: '그룹 삭제' })
+    expect(trigger).toHaveTextContent('')
+    expect(trigger).toHaveClass('iconButton')
+    await user.click(trigger)
+    expect(screen.getByRole('dialog', { name: '그룹 나가기' })).toBeInTheDocument()
+  })
 })
 
 it('opens as a centered modal on a narrow screen when centered', async () => {

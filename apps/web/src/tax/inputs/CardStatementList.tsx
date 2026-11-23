@@ -26,8 +26,8 @@ export default function CardStatementList({ view, defaultAsOfDate }: Props) {
           <h2 id="tax-cards-title">신용·체크 자료</h2>
           <HelpButton title="신용·체크 자료">카드사마다 1월 1일부터 기준일까지의 누계를 한 건씩 등록합니다. 같은 카드사명을 다시 등록해도 됩니다.</HelpButton>
         </div>
-        <button type="button" className={ui.button} disabled={full} onClick={() => setEditing('new')}>
-          <Icon name="plus" size={18} />신용·체크 자료 추가
+        <button type="button" className={ui.button} aria-label="신용·체크 자료 추가" disabled={full} onClick={() => setEditing('new')}>
+          <Icon name="plus" size={18} />추가
         </button>
       </div>
       {full && <p className={ui.muted}>신용·체크 자료는 연도마다 {MAX_CARDS}건까지 등록할 수 있습니다.</p>}
@@ -59,13 +59,16 @@ function CardRow({ year, card, onEdit }: { year: number; card: CardView; onEdit:
   return (
     <li className={styles.split}>
       <div className={styles.rowInfo}>
-        <p className={styles.name}>{card.issuerName}</p>
-        <p className={card.blankCount > 0 ? styles.note : ui.muted}>{card.blankCount > 0 ? `미완료 · 빈 칸 ${card.blankCount}개` : '완료'}</p>
+        <div className={styles.nameWithStatus}>
+          <p className={styles.name}>{card.issuerName}</p>
+          {card.blankCount === 0 && <span role="img" aria-label="완료" className={styles.completeIcon}><Icon name="circle-check" size={18} /></span>}
+        </div>
+        {card.blankCount > 0 && <p className={styles.note}>미완료 · 빈 칸 {card.blankCount}개</p>}
         <p className={ui.muted}>기준일 {card.asOfDate} · 합계 {expense(sumAmounts(card.amounts))}{card.memo && ` · ${card.memo}`}</p>
       </div>
       <div className={styles.actions}>
-        <button type="button" className={ui.button} aria-label={`${card.issuerName} 자료 편집`} onClick={onEdit}>편집</button>
-        <ConfirmDialog centered triggerLabel="삭제" triggerAriaLabel={`${card.issuerName} 자료 삭제`}
+        <button type="button" className={`${ui.button} ${ui.iconButton}`} aria-label={`${card.issuerName} 자료 편집`} onClick={onEdit}><Icon name="pencil" size={18} /></button>
+        <ConfirmDialog centered triggerLabel="삭제" triggerIcon="trash" triggerIconOnly triggerAriaLabel={`${card.issuerName} 자료 삭제`}
           title={`${card.issuerName} 자료를 삭제할까요?`} description="이 자료의 금액 8칸이 지워지고 연도 합계표에서 빠집니다. 복구할 수 없습니다."
           confirmLabel="삭제" isPending={remove.isPending} error={remove.error ? actionError(remove.error) : null}
           onOpen={() => remove.reset()} onConfirm={(close) => remove.mutate(undefined, { onSuccess: close })} />
