@@ -26,10 +26,12 @@ describe('TaxInputsPage — 기본정보와 연도 기록', () => {
     await user.click(screen.getByRole('button', { name: '기본정보 입력' }))
 
     const dialog = await screen.findByRole('dialog', { name: '2026년 귀속 기본정보' })
-    expect(dialog.parentElement).toHaveClass('modal')
+    expect(dialog.parentElement).toHaveClass('modal', 'pinned')
     await user.type(within(dialog).getByLabelText('예상 총급여'), '50000000')
     await user.clear(within(dialog).getByLabelText('자녀등 수'))
     await user.type(within(dialog).getByLabelText('자녀등 수'), '2')
+    expect(within(dialog).getByRole('button', { name: '저장' }).closest('form')).toBeNull()
+    expect((within(dialog).getByRole('button', { name: '저장' }) as HTMLButtonElement).form).toBe(within(dialog).getByLabelText('예상 총급여').closest('form'))
     await user.click(within(dialog).getByRole('button', { name: '저장' }))
 
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
@@ -239,7 +241,7 @@ describe('TaxInputsPage — 기본정보와 연도 기록', () => {
 
     await user.click(await screen.findByRole('button', { name: '2026년 기록 삭제' }))
     let dialog = await screen.findByRole('dialog', { name: '2026년 기록을 삭제할까요?' })
-    expect(dialog.parentElement).toHaveClass('modal')
+    expect(dialog.parentElement).toHaveClass('modal', 'pinned')
     expect(dialog).toHaveTextContent('기본정보, 신용·체크 자료 0건, 현금영수증 자료, 지출계획이 모두 지워집니다')
     const confirm = () => within(dialog).getByRole('button', { name: '삭제' })
     expect(confirm()).toBeDisabled()

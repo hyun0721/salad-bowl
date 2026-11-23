@@ -35,16 +35,17 @@ export default function ConfirmDialog(props: Props) {
         onPress={() => { onOpen?.(); setOpen(true) }}>
         {triggerIcon && <Icon name={triggerIcon} size={18} />}{triggerLabel}
       </Button>
-      <DialogFrame isOpen={open} onOpenChange={setOpen} title={title} closeDisabled={isPending} closeOnOutsideClick centered={centered}>
+      <DialogFrame isOpen={open} onOpenChange={setOpen} title={title} closeDisabled={isPending} closeOnOutsideClick centered={centered} footer={
+        <div className={ui.confirmActions}>
+          <Button autoFocus className={ui.button} isDisabled={isPending} onPress={close}>취소</Button>
+          <Button aria-label={confirmAriaLabel} className={`${ui.button} ${ui.dangerFill} ${ui.cta}`} isDisabled={isPending}
+            onPress={() => onConfirm(close)}>{confirmLabel}</Button>
+        </div>
+      }>
         {() => (
           <>
             <p>{description}</p>
             {error && <p role="alert" className={ui.alert}>{error}</p>}
-            <div className={ui.confirmActions}>
-              <Button autoFocus className={ui.button} isDisabled={isPending} onPress={close}>취소</Button>
-              <Button aria-label={confirmAriaLabel} className={`${ui.button} ${ui.dangerFill} ${ui.cta}`} isDisabled={isPending}
-                onPress={() => onConfirm(close)}>{confirmLabel}</Button>
-            </div>
           </>
         )}
       </DialogFrame>

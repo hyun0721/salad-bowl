@@ -33,6 +33,7 @@ describe('신용·체크 자료', () => {
     expect(section).toHaveTextContent('등록한 신용·체크 자료가 없습니다.')
     await user.click(within(section).getByRole('button', { name: '신용·체크 자료 추가' }))
     const dialog = await screen.findByRole('dialog', { name: '신용·체크 자료 추가' })
+    expect(dialog.parentElement).toHaveClass('pinned')
     expect(dialog.parentElement).toHaveClass('modal')
     expect(within(dialog).getAllByRole('group').map((g) => g.getAttribute('aria-label') ?? g.querySelector('legend')?.textContent))
       .toEqual(expect.arrayContaining(CATEGORIES))

@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useId, useState, type FormEvent } from 'react'
 import DateTimePicker from '../../common/DateTimePicker'
 import Dialog from '../../common/Dialog'
 import TextField from '../../common/TextField'
@@ -12,6 +12,7 @@ type Props = { year: number; card: CardView | null; defaultAsOfDate: string; onC
 
 /** 신용·체크 자료 추가(card가 null)·편집. 같은 카드사명을 다시 써도 막지 않는다(TAX-22). */
 export default function CardStatementDialog({ year, card, defaultAsOfDate, onClose }: Props) {
+  const formId = useId()
   const [issuerName, setIssuerName] = useState(card?.issuerName ?? '')
   const [asOfDate, setAsOfDate] = useState(card?.asOfDate ?? defaultAsOfDate)
   const [memo, setMemo] = useState(card?.memo ?? '')
@@ -27,8 +28,13 @@ export default function CardStatementDialog({ year, card, defaultAsOfDate, onClo
   }
 
   return (
-    <Dialog title={card ? `${card.issuerName} 자료 편집` : '신용·체크 자료 추가'} onClose={onClose} closeDisabled={save.isPending} centered>
-      <form className={ui.stack} onSubmit={onSubmit}>
+    <Dialog title={card ? `${card.issuerName} 자료 편집` : '신용·체크 자료 추가'} onClose={onClose} closeDisabled={save.isPending} centered footer={
+        <div className={ui.confirmActions}>
+          <button type="button" className={ui.button} disabled={save.isPending} onClick={onClose}>취소</button>
+          <button type="submit" form={formId} className={`${ui.button} ${ui.primary} ${ui.cta}`} disabled={save.isPending}>저장</button>
+        </div>
+      }>
+      <form id={formId} className={ui.stack} onSubmit={onSubmit}>
         <SaveError error={save.error} year={year} onReload={onClose} />
         <TextField label="카드사명" value={issuerName} onChange={(value) => { setIssuerName(value); setNameError(false) }} isRequired maxLength={50} />
         {nameError && <p role="alert" className={ui.alert}>카드사명을 입력하세요.</p>}
@@ -39,10 +45,6 @@ export default function CardStatementDialog({ year, card, defaultAsOfDate, onClo
         </div>
         <TextField label="메모 (선택)" value={memo} onChange={setMemo} maxLength={200} />
         <AmountGrid groups={CARD_GROUPS} values={amounts} onChange={setAmounts} />
-        <div className={ui.confirmActions}>
-          <button type="button" className={ui.button} disabled={save.isPending} onClick={onClose}>취소</button>
-          <button type="submit" className={`${ui.button} ${ui.primary} ${ui.cta}`} disabled={save.isPending}>저장</button>
-        </div>
       </form>
     </Dialog>
   )

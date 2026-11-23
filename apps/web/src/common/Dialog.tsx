@@ -18,13 +18,14 @@ type FrameProps = {
   /** 좁은 화면에서도 아래 시트가 아니라 가운데 창으로 연다(소득공제 창, TAX-76). */
   centered?: boolean
   pinnedHeader?: boolean
+  footer?: ReactNode
   headerAction?: ReactNode
   children: (opts: { close: () => void }) => ReactNode
 }
 
 /** 넓은 화면은 가운데 모달, 좁은 화면은 아래에서 올라오는 시트(centered면 가운데 모달). 포커스 가두기·Esc·복귀는 RAC가 맡는다. */
 export function DialogFrame(props: FrameProps) {
-  const { isOpen, onOpenChange, title, closeDisabled = false, closeOnOutsideClick = false, fullHeight = false, wide = false, centered = false, pinnedHeader = false, headerAction, children } = props
+  const { isOpen, onOpenChange, title, closeDisabled = false, closeOnOutsideClick = false, fullHeight = false, wide = false, centered = false, pinnedHeader = false, headerAction, footer, children } = props
   const narrow = useNarrowWhileOpen(isOpen)
   useDialogHistory(isOpen, closeDisabled, onOpenChange)
 
@@ -34,14 +35,17 @@ export function DialogFrame(props: FrameProps) {
         <Heading slot="title" level={2} className={styles.dialogTitle}>{title}</Heading>
         {headerAction}
       </div>
-      {children({ close })}
+      {footer != null ? <>
+        <div className={styles.scrollBody}>{children({ close })}</div>
+        <div className={styles.footer}>{footer}</div>
+      </> : children({ close })}
     </>
   )
   // RAC Sheet는 닫힘을 IntersectionObserver로만 기다려, 안드로이드에서 시트가 화면 끝에 걸치면 배경이 남아 탭을 막는다.
   // 좁은 화면도 같은 ModalOverlay에 CSS 애니메이션을 달아 애니메이션이 끝나면 닫히게 한다.
   const sheetClass = fullHeight ? `${styles.modalSheet} ${styles.fullSheet}` : styles.modalSheet
   const modalClass = wide ? `${styles.modal} ${styles.wide}` : styles.modal
-  const pinned = pinnedHeader ? ` ${styles.pinned}` : ''
+  const pinned = pinnedHeader || footer != null ? ` ${styles.pinned}` : ''
   const sheet = narrow && !centered
   const backdropClass = sheet ? styles.sheetBackdrop : narrow ? `${styles.backdrop} ${styles.centeredNarrow}` : styles.backdrop
   return (
@@ -54,13 +58,13 @@ export function DialogFrame(props: FrameProps) {
   )
 }
 
-type Props = { title: string; onClose: () => void; closeDisabled?: boolean; centered?: boolean; children: ReactNode }
+type Props = { title: string; onClose: () => void; closeDisabled?: boolean; centered?: boolean; footer?: ReactNode; children: ReactNode }
 
 /** 화면이 조건부로 그려서 여닫는 대화상자. 기존 Modal과 사용법이 같다. */
-export default function Dialog({ title, onClose, closeDisabled = false, centered, children }: Props) {
+export default function Dialog({ title, onClose, closeDisabled = false, centered, footer, children }: Props) {
   return (
     <DialogFrame isOpen onOpenChange={(open) => { if (!open && !closeDisabled) onClose() }}
-      title={title} closeDisabled={closeDisabled} centered={centered}
+      title={title} closeDisabled={closeDisabled} centered={centered} footer={footer}
       headerAction={<button type="button" className={`${ui.button} ${ui.iconButton} ${ui.ghost}`} aria-label="닫기" disabled={closeDisabled} onClick={onClose}><Icon name="x" /></button>}>
       {() => children}
     </DialogFrame>

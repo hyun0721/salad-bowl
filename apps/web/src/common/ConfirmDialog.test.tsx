@@ -21,6 +21,7 @@ describe('ConfirmDialog', () => {
 
     await user.click(trigger)
     const dialog = screen.getByRole('dialog', { name: '그룹 나가기' })
+    expect(dialog.parentElement).toHaveClass('pinned')
     expect(dialog).toHaveTextContent('다시 초대받아야')
     expect(within(dialog).getByRole('button', { name: '취소' })).toHaveFocus()
 

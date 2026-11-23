@@ -189,14 +189,15 @@ function ApplyDialog({ version, onClose, onReload, onApplied }: { version: LawVe
     ? actionError(apply.error)
     : errorMessage(apply.error, { VALIDATION_FAILED: '검증을 통과하지 못해 적용하지 않았습니다. [검증]으로 이유를 확인해 주세요.' }))
   return (
-    <Dialog title={`${year}년 귀속 v${version.versionNo} 적용`} onClose={onClose} closeDisabled={apply.isPending} centered>
+    <Dialog title={`${year}년 귀속 v${version.versionNo} 적용`} onClose={onClose} closeDisabled={apply.isPending} centered footer={
+        <div className={ui.confirmActions}>
+          <button type="button" className={ui.button} disabled={apply.isPending} onClick={onClose}>취소</button>
+          <button type="button" className={`${ui.button} ${ui.primary} ${ui.cta}`} disabled={apply.isPending} onClick={() => apply.mutate()}>적용</button>
+        </div>
+      }>
       <p>적용하면 이 버전은 고치거나 삭제할 수 없습니다. {year}년 귀속 연도 기록에는 "새 세법 버전 있음"이 표시되고, 회원이 직접 눌러야 새 버전으로 다시 계산됩니다. 세법이 없던 기록은 바로 이 버전으로 계산됩니다.</p>
       <p>다른 초안은 초안으로 남습니다.</p>
       {failure && <p role="alert" className={ui.alert}>{failure}</p>}
-      <div className={ui.confirmActions}>
-        <button type="button" className={ui.button} disabled={apply.isPending} onClick={onClose}>취소</button>
-        <button type="button" className={`${ui.button} ${ui.primary} ${ui.cta}`} disabled={apply.isPending} onClick={() => apply.mutate()}>적용</button>
-      </div>
     </Dialog>
   )
 }
