@@ -28,6 +28,41 @@ export type CurrentLaw = { id: number; taxYear: number; versionNo: number; appli
 export type BasicInfoInput = { totalSalary: number; workStartMonth: number; workEndMonth: number; childCount: number; rowVersion?: number }
 export type CardInput = { issuerName: string; asOfDate: string; memo: string | null; amounts: CardAmounts; rowVersion?: number }
 export type CashInput = { asOfDate: string; memo: string | null; amounts: CashAmounts; rowVersion?: number }
+export type PlanInput = { general: PlanRow; market: PlanRow; transit: PlanRow; culture: PlanRow; rowVersion?: number }
+
+// PR 4 분석 응답(TaxAnalysisView)과 같은 모양. 계산은 서버가 하고 웹은 그리기만 한다(TAX-44·46).
+export type Category = 'GENERAL' | 'MARKET' | 'TRANSIT' | 'CULTURE'
+export type AnalysisStatus = 'NO_INPUT' | 'INCOMPLETE' | 'LAW_PENDING' | 'READY'
+export type ByCategory<T> = { general: T; market: T; transit: T; culture: T }
+export type LawRates = {
+  minSpendRatePct: number; bracketBoundary: number
+  rateCreditPct: number; rateDebitCashPct: number; rateCulturePct: number; rateMarketPct: number; rateTransitPct: number
+}
+/** 소득공제액(amount)과 그 과정 값. 과정 값은 표시용으로 각각 원 미만을 버린 값이고 amount만 계산 결과다. */
+export type Deduction = {
+  highBracket: boolean; credit: number; debitCash: number; culture: number; market: number; transit: number; total: number
+  threshold: number; thresholdReached: boolean; remainingToThreshold: number; beforeThresholdCut: number; thresholdCut: number
+  deductible: number; basicLimit: number; basicUsed: number; extraCap: number; extraEligible: number; extraUsed: number; amount: number
+}
+export type ReasonCode = 'CREDIT_OVER_THRESHOLD' | 'CREDIT_RATE_HIGHER' | 'NO_FLEXIBLE_AMOUNT' | 'BELOW_THRESHOLD' | 'LIMIT_REACHED'
+  | 'METHOD_NEUTRAL' | 'ALREADY_BEST'
+export type Reason = { code: ReasonCode; category: Category | null; amount: number | null }
+/** allocation은 지출계획의 "바꿀 수 있는 금액"만 결제수단에 둔 금액이다(고정액 없음). */
+export type Recommendation = {
+  methodShare: { creditPct: number; debitPct: number; cashPct: number } | null
+  current: { allocation: ByCategory<{ credit: number; debit: number; cash: number }>; yearEndDeduction: number }
+  recommended: { allocation: ByCategory<{ credit: number; debitCash: number }>; yearEndDeduction: number }
+  difference: number; reasons: Reason[]
+}
+export type TaxAnalysisView = {
+  taxYear: number; status: AnalysisStatus; blankCount: number; totals: SpendingTotals; totalSalary: number
+  estimated: boolean; asOfDateMin: string | null; asOfDateMax: string | null; partialYear: boolean
+  law: LawVersionRef | null; lawRates: LawRates | null; newerLawVersion: boolean; planSaved: boolean
+  /** READY일 때만 있다. */
+  deduction: Deduction | null
+  /** READY이고 지출계획이 저장돼 있을 때만 있다. */
+  recommendation: Recommendation | null
+}
 
 const yearPath = (year: number) => `/tax/years/${year}`
 
@@ -53,22 +88,46 @@ export const taxApi = {
     apiFetch<void>(`${yearPath(year)}/cards/${cardId}?rowVersion=${rowVersion}`, { method: 'DELETE' }),
   saveCashReceipt: (year: number, body: CashInput) => apiFetch<TaxYearView>(`${yearPath(year)}/cash-receipt`, { method: 'PUT', json: body }),
   currentLaw: (year: number) => orNull(apiFetch<CurrentLaw>(`/tax/law-versions/current?year=${year}`)),
+  analysis: (year: number) => orNull(apiFetch<TaxAnalysisView>(`${yearPath(year)}/analysis`)),
+  /** rowVersion이 없으면 지출계획을 만들고, 있으면 고친다. 자료가 미완료여도 저장된다(TAX-75). */
+  savePlan: (year: number, body: PlanInput) => apiFetch<TaxYearView>(`${yearPath(year)}/plan`, { method: 'PUT', json: body }),
+  /** 연도 기록의 세법 버전을 그 연도의 현재 적용 버전으로 바꾼다(TAX-66). */
+  refreshLawVersion: (year: number) => apiFetch<TaxYearView>(`${yearPath(year)}/law-version/refresh`, { method: 'POST' }),
 }
 
 /** 소득공제 쿼리 키. 머리말 `tax`는 isGroupScopedKey가 보지 않고, 로그아웃 때 queryClient.clear()로 지워진다. */
 export const taxKeys = {
   year: (year: number) => ['tax', 'year', year] as const,
   currentLaw: (year: number) => ['tax', 'law', 'current', year] as const,
+  analysis: (year: number) => ['tax', 'analysis', year] as const,
 }
 
 export function useTaxYearView(year: number) {
   return useQuery({ queryKey: taxKeys.year(year), queryFn: () => taxApi.year(year) })
 }
 
-/** TaxYearView를 돌려주는 저장. 응답으로 캐시를 바꾼다(합계를 다시 계산하지 않는다). */
-export function useTaxSave<T>(year: number, save: (input: T) => Promise<TaxYearView>) {
+/**
+ * 분석 결과. 연도 기록이 바뀌면 달라지므로 화면을 떠나면 캐시에 남기지 않는다(gcTime 0).
+ * 입력자료 화면에서 고친 뒤 돌아왔을 때 지난 결과를 잠깐이라도 보이지 않게 하려는 것이다.
+ */
+export function useTaxAnalysis(year: number) {
+  return useQuery({ queryKey: taxKeys.analysis(year), queryFn: () => taxApi.analysis(year), gcTime: 0 })
+}
+
+/**
+ * TaxYearView를 돌려주는 저장. 응답으로 캐시를 바꾸고(합계를 다시 계산하지 않는다) 분석을 다시 읽는다.
+ * 분석을 다 읽은 뒤에 저장이 끝나므로, 저장 뒤 옮겨 간 화면은 새 결과를 그린다.
+ * 캐시 키는 응답의 귀속연도다.
+ */
+export function useTaxSave<T>(save: (input: T) => Promise<TaxYearView>) {
   const client = useQueryClient()
-  return useMutation({ mutationFn: save, onSuccess: (view) => client.setQueryData(taxKeys.year(year), view) })
+  return useMutation({
+    mutationFn: save,
+    onSuccess: (view) => {
+      client.setQueryData(taxKeys.year(view.taxYear), view)
+      return client.invalidateQueries({ queryKey: taxKeys.analysis(view.taxYear) })
+    },
+  })
 }
 
 /** 다른 곳에서 먼저 고쳤거나(409) 지운(404) 자료에 대한 저장. 새로 불러와야 다시 저장할 수 있다. */

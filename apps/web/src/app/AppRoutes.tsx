@@ -8,6 +8,7 @@ import ClearCacheOnSignOut from './ClearCacheOnSignOut'
 import PageLoading from './PageLoading'
 import PublicOnly from './PublicOnly'
 import RequireAuth from './RequireAuth'
+import TaxIndexRedirect from '../tax/TaxIndexRedirect'
 import { TaxYearProvider } from '../tax/TaxYearProvider'
 
 const LoginPage = lazy(() => import('../auth/LoginPage'))
@@ -17,6 +18,7 @@ const TransactionsPage = lazy(() => import('../transactions/TransactionsPage'))
 const GroupsPage = lazy(() => import('../groups/GroupsPage'))
 const TaxInputsPage = lazy(() => import('../tax/inputs/TaxInputsPage'))
 const TaxLawPage = lazy(() => import('../tax/law/TaxLawPage'))
+const TaxAnalysisPage = lazy(() => import('../tax/analysis/TaxAnalysisPage'))
 
 /** 옛 업로드 주소. 홈의 월별 등록 현황이 ?month=를 받아 그 달 창을 연다. */
 function UploadRedirect() {
@@ -33,9 +35,9 @@ export default function AppRoutes() {
           <Route path="/invite/:token" element={<RequireAuth><InvitePage /></RequireAuth>} />
           <Route element={<RequireAuth><GroupProvider><TaxYearProvider><AppLayout /></TaxYearProvider></GroupProvider></RequireAuth>}>
             <Route index element={<HomePage />} />
-            {/* PR 7에서 TAX-68(자료가 있으면 분석) 규칙으로 바꾼다. */}
-            <Route path="tax" element={<Navigate to="/tax/inputs" replace />} />
+            <Route path="tax" element={<TaxIndexRedirect />} />
             <Route path="tax/inputs" element={<TaxInputsPage />} />
+            <Route path="tax/analysis" element={<TaxAnalysisPage />} />
             <Route path="tax/law" element={<TaxLawPage />} />
             <Route path="dashboard/:level?/:view?" element={<DashboardPage />} />
             <Route path="transactions" element={<TransactionsPage />} />

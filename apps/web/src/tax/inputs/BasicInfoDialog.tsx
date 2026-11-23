@@ -22,7 +22,7 @@ export default function BasicInfoDialog({ year, view, childTiersApply, onClose }
   const [end, setEnd] = useState(view?.workEndMonth ?? 12)
   const [childCount, setChildCount] = useState(view?.childCount ?? 0)
   const [rowVersion] = useState(view?.rowVersion)
-  const save = useTaxSave(year, (body: BasicInfoInput) => taxApi.saveBasicInfo(year, body))
+  const save = useTaxSave((body: BasicInfoInput) => taxApi.saveBasicInfo(year, body))
   const childLabel = useId()
   const monthError = start > end
 

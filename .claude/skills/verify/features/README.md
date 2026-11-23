@@ -34,4 +34,5 @@ Each feature file starts with an H1 title and one paragraph describing the user-
 - [Transactions](./transactions.md): my or group transaction list, search, detail, manual add.
 - [Groups](./groups.md): create, rename, invite link, members, bans.
 - [Tax deduction inputs](./tax-inputs.md): 소득공제 › 입력자료 — basic info, card and cash-receipt statements, year totals, delete year.
+- [Tax deduction analysis](./tax-analysis.md): 소득공제 › 분석·지출계획 — the 소득공제 entry rule, steps ① 현황 · ② 지출계획 · ③ 추천, saving the plan with 계산하기, incomplete and law-pending notices.
 - [Tax law admin](./tax-law.md): 소득공제 › 연도별 세법 관리 — service admins only; versions per tax year, drafts, validate, apply, delete drafts, and the no-permission screen for members.

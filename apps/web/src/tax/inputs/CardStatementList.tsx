@@ -50,7 +50,7 @@ function CardRow({ year, card, onEdit }: { year: number; card: CardView; onEdit:
   const expense = useAmountFormatter('expense')
   const client = useQueryClient()
   const reload = () => client.invalidateQueries({ queryKey: taxKeys.year(year) })
-  const fill = useTaxSave(year, () => taxApi.saveCard(year, card.id, {
+  const fill = useTaxSave(() => taxApi.saveCard(year, card.id, {
     issuerName: card.issuerName, asOfDate: card.asOfDate, memo: card.memo, amounts: fillBlanks(card.amounts), rowVersion: card.rowVersion,
   }))
   // 삭제는 204라 연도를 다시 읽는다. 다른 곳에서 바뀌었어도 새로 불러와 최신 목록을 보인다.

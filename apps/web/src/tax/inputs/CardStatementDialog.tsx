@@ -18,7 +18,7 @@ export default function CardStatementDialog({ year, card, defaultAsOfDate, onClo
   const [amounts, setAmounts] = useState<CardAmounts>(card?.amounts ?? EMPTY_CARD)
   const [rowVersion] = useState(card?.rowVersion)
   const [nameError, setNameError] = useState(false)
-  const save = useTaxSave(year, (body: CardInput) => (card ? taxApi.saveCard(year, card.id, { ...body, rowVersion }) : taxApi.addCard(year, body)))
+  const save = useTaxSave((body: CardInput) => (card ? taxApi.saveCard(year, card.id, { ...body, rowVersion }) : taxApi.addCard(year, body)))
 
   function onSubmit(event: FormEvent) {
     event.preventDefault()
