@@ -115,7 +115,7 @@ export default function TransactionPanel({ tx, onDeleted, onSaved, loadDraft, on
           </div>
           {noMinorOptions && <p className={ui.muted}>이 대분류에는 고를 수 있는 소분류가 없습니다.</p>}
           <TextAreaField label="메모" value={memo} onChange={(v) => change({ memo: v })} maxLength={1000} rows={2} />
-          <p className={ui.muted}>메모를 비우거나 '원래 값'·원래 타입을 고르고 저장하면 엑셀의 원래 값으로 돌아갑니다.</p>
+          <p className={ui.muted}>메모를 비우거나 '원래 값'·원래 타입을 선택하고 저장하면 엑셀의 원래 값으로 돌아갑니다.</p>
           {isOwner && (
             <Checkbox isSelected={hidden} onChange={(v) => change({ hidden: v })}>그룹 화면에서 숨기기 (본인만)</Checkbox>
           )}

@@ -66,7 +66,7 @@ export default function MonthDataDialog({ coverage, onClose, onDeleted }: Props)
 
       {step === 'upload' && (
         <>
-          <p className={ui.status}>뱅크샐러드에서 내려받은 엑셀(.xlsx)을 올려주세요. 여러 달이 들어 있어도 거래 일자에 맞게 반영됩니다.</p>
+          <p className={ui.status}>뱅크샐러드에서 내려받은 엑셀(.xlsx)을 올려 주세요. 여러 달이 들어 있어도 거래 일자에 맞게 반영됩니다.</p>
           <UploadForm />
         </>
       )}

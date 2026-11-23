@@ -27,6 +27,8 @@ describe('design tokens', () => {
   })
 
   it('uses tokens for colors, font sizes and control dimensions', () => {
+    // apps/web 밖에서 실행하면 glob이 비어 검사 없이 통과하므로 막는다.
+    expect(Object.keys(styles).length).toBeGreaterThan(10)
     const failures = Object.entries(styles)
       .filter(([file]) => file !== 'src/styles/tokens.css')
       .flatMap(([file, css]) => violations(css).map((violation) => `${file}:${violation}`))
