@@ -16,6 +16,7 @@ const MONTHS = Array.from({ length: 12 }, (_, i) => ({ id: i + 1, label: `${i + 
 
 /** 기본정보 만들기·수정. view가 null이면 이 연도 기록을 새로 만든다(rowVersion 없이 PUT). */
 export default function BasicInfoDialog({ year, view, childTiersApply, onClose }: Props) {
+  const formId = useId()
   // 연 시점의 값과 버전으로 저장한다. 그 사이 다른 곳에서 바뀌면 서버가 409로 막는다.
   const [salary, setSalary] = useState<number | null>(view?.totalSalary ?? null)
   const [start, setStart] = useState(view?.workStartMonth ?? 1)
@@ -34,8 +35,13 @@ export default function BasicInfoDialog({ year, view, childTiersApply, onClose }
   }
 
   return (
-    <Dialog title={`${year}년 귀속 기본정보`} onClose={onClose} closeDisabled={save.isPending} centered>
-      <form className={ui.stack} onSubmit={onSubmit}>
+    <Dialog title={`${year}년 귀속 기본정보`} onClose={onClose} closeDisabled={save.isPending} centered footer={
+        <div className={ui.confirmActions}>
+          <button type="button" className={ui.button} disabled={save.isPending} onClick={onClose}>취소</button>
+          <button type="submit" form={formId} className={`${ui.button} ${ui.primary} ${ui.cta}`} disabled={save.isPending || monthError}>저장</button>
+        </div>
+      }>
+      <form id={formId} className={ui.stack} onSubmit={onSubmit}>
         <SaveError error={save.error} year={year} onReload={onClose} />
         <div className={ui.stack}>
           <MoneyField label="예상 총급여" value={salary} onChange={setSalary} isRequired minValue={1} />
@@ -66,10 +72,6 @@ export default function BasicInfoDialog({ year, view, childTiersApply, onClose }
             </NumberField>
           </div>
         )}
-        <div className={ui.confirmActions}>
-          <button type="button" className={ui.button} disabled={save.isPending} onClick={onClose}>취소</button>
-          <button type="submit" className={`${ui.button} ${ui.primary} ${ui.cta}`} disabled={save.isPending || monthError}>저장</button>
-        </div>
       </form>
     </Dialog>
   )

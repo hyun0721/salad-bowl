@@ -24,8 +24,8 @@ async function openPlan() {
 }
 
 async function chooseYear(user: ReturnType<typeof renderTaxAnalysis>['user'], year: number) {
-  await user.click(screen.getByRole('button', { name: /귀속연도/ }))
-  await user.click(screen.getByRole('option', { name: `${year}년` }))
+  const current = Number(within(screen.getByRole('group', { name: '귀속연도' })).getByText(/^\d{4}년$/).textContent?.slice(0, 4))
+  await user.click(screen.getByRole('button', { name: year > current ? '다음 연도' : '이전 연도' }))
 }
 
 describe('PlanStep — ② 지출계획', () => {

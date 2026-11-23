@@ -27,6 +27,7 @@ describe('현금영수증 자료', () => {
     await user.click(within(section).getByRole('button', { name: '4칸 0원으로 채우기' }))
 
     const dialog = await screen.findByRole('dialog', { name: '2026년 현금영수증 자료' })
+    expect(dialog.parentElement).toHaveClass('pinned')
     expect(dialog.parentElement).toHaveClass('modal')
     const group = within(dialog).getByRole('group', { name: '현금영수증' })
     expect(['일반', '전통시장', '대중교통', '문화체육'].map((label) => within(group).getByLabelText(label))).toHaveLength(4)

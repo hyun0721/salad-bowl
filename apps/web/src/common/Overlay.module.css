@@ -44,5 +44,8 @@
 
 /* 머리를 고정하고 본문 안의 목록만 스크롤하는 창. 본문이 남은 높이를 받고, 스크롤할 영역은 본문이 정한다. */
 .pinned { display: flex; flex-direction: column; }
+.pinned:has(.footer) { overflow: hidden; }
 .pinned .content { flex: 1 1 auto; min-height: 0; }
 .pinned .header { flex: none; }
+.scrollBody { display: flex; flex-direction: column; gap: var(--space-6); flex: 1 1 auto; min-height: 0; overflow: auto; overscroll-behavior: contain; padding: var(--space-2); margin: calc(-1 * var(--space-2)); }
+.footer { flex: none; border-top: 1px solid var(--line); padding-top: var(--space-4); }

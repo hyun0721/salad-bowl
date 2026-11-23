@@ -13,9 +13,9 @@ export function revealFocusedField(sheet: HTMLElement | null) {
   observer.observe(sheet)
   // RAC Popover는 시트 스크롤을 따라가지 않고 창 resize 때만 위치를 다시 잡아, 입력란이 움직이면 ComboBox 목록이 입력란을 덮는다.
   const repositionPopover = () => { if (focusedField()) window.dispatchEvent(new Event('resize')) }
-  sheet.addEventListener('scroll', repositionPopover, { passive: true })
+  sheet.addEventListener('scroll', repositionPopover, { passive: true, capture: true })
   return () => {
     observer.disconnect()
-    sheet.removeEventListener('scroll', repositionPopover)
+    sheet.removeEventListener('scroll', repositionPopover, true)
   }
 }

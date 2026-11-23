@@ -137,8 +137,7 @@ describe('AppRoutes', () => {
     const user = userEvent.setup()
 
     expect(await screen.findByRole('region', { name: '기본정보' })).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: /귀속연도/ }))
-    await user.click(screen.getByRole('option', { name: `${year - 1}년` }))
+    await user.click(screen.getByRole('button', { name: '이전 연도' }))
     await user.click(within(screen.getByRole('navigation', { name: '주 메뉴' })).getByRole('link', { name: '소득공제' }))
 
     expect(await screen.findByRole('tab', { name: '① 현황' })).toHaveAttribute('aria-selected', 'true')

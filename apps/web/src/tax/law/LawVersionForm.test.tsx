@@ -146,6 +146,7 @@ describe('LawVersionForm — 적용', () => {
 
     await user.click(within(form).getByRole('button', { name: '적용' }))
     const dialog = await screen.findByRole('dialog', { name: '2026년 귀속 v2 적용' })
+    expect(dialog.parentElement).toHaveClass('pinned')
     expect(dialog.parentElement).toHaveClass('modal')
     expect(dialog).toHaveTextContent('적용하면 이 버전은 고치거나 삭제할 수 없습니다.')
     expect(dialog).toHaveTextContent('다른 초안은 초안으로 남습니다.')

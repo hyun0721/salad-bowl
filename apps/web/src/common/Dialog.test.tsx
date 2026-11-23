@@ -276,3 +276,33 @@ describe('centered dialogs', () => {
     expect(observe).toHaveBeenCalledWith(modal)
   })
 })
+
+it.each([[false, false], [true, false], [true, true]])('keeps footer and heading outside the scroll body (narrow %s, centered %s)', (narrow, centered) => {
+  mockViewport(narrow)
+  render(<Dialog title="고정 창" onClose={vi.fn()} centered={centered} footer={<button>완료</button>}><p>스크롤 본문</p></Dialog>)
+  const dialog = screen.getByRole('dialog')
+  const body = screen.getByText('스크롤 본문').parentElement!
+  const header = screen.getByRole('heading', { name: '고정 창' }).parentElement!
+  const footer = screen.getByRole('button', { name: '완료' }).parentElement!
+  expect(body).toHaveClass('scrollBody')
+  expect(body.parentElement).toBe(dialog)
+  expect(header.nextElementSibling).toBe(body)
+  expect(body.nextElementSibling).toBe(footer)
+  expect(footer).toHaveClass('footer')
+  expect(dialog.parentElement).toHaveClass('pinned')
+})
+
+it('repositions popovers when the footer dialog body scrolls', () => {
+  mockViewport(true)
+  mockResizeObserver()
+  render(<Dialog title="입력" onClose={vi.fn()} footer={<button>저장</button>}><label>값<input /></label></Dialog>)
+  const onResize = vi.fn()
+  window.addEventListener('resize', onResize)
+  try {
+    act(() => screen.getByLabelText('값').focus())
+    fireEvent.scroll(screen.getByLabelText('값').closest('.scrollBody')!)
+    expect(onResize).toHaveBeenCalledOnce()
+  } finally {
+    window.removeEventListener('resize', onResize)
+  }
+})

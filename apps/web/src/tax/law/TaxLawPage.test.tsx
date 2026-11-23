@@ -19,7 +19,7 @@ describe('TaxLawPage — 권한', () => {
     expect(await screen.findByRole('heading', { name: '권한 없음' })).toBeInTheDocument()
     expect(screen.getByText('이 화면은 서비스 관리자만 볼 수 있습니다.')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: '입력자료로 가기' })).toHaveAttribute('href', '/tax/inputs')
-    expect(screen.queryByRole('button', { name: /귀속연도/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '다음 연도' })).not.toBeInTheDocument()
     expect(calls.list).toBe(0)
   })
 
@@ -119,8 +119,7 @@ describe('TaxLawPage — 버전 목록', () => {
     const { user } = renderTaxLaw()
 
     await screen.findByRole('region', { name: '2026년 버전' })
-    await user.click(screen.getByRole('button', { name: /귀속연도/ }))
-    await user.click(screen.getByRole('option', { name: '2027년' }))
+    await user.click(screen.getByRole('button', { name: '다음 연도' }))
 
     const list = await screen.findByRole('region', { name: '2027년 버전' })
     expect(within(list).getByText(/^v1 · 초안/)).toBeInTheDocument()

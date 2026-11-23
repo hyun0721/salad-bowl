@@ -40,7 +40,15 @@ export default function MonthDataDialog({ coverage, onClose, onDeleted }: Props)
   }
 
   return (
-    <Dialog title={`${label} 데이터`} onClose={onClose} closeDisabled={uploading || remove.isPending}>
+    <Dialog title={`${label} 데이터`} onClose={onClose} closeDisabled={uploading || remove.isPending} footer={step === 'confirm' ? (
+        <div className={ui.confirmActions}>
+          <button type="button" className={ui.button} disabled={remove.isPending}
+            onClick={cancelConfirm}>취소</button>
+          <button type="button" className={`${ui.button} ${ui.dangerFill} ${ui.cta}`}
+            disabled={typed !== month || uploading || remove.isPending}
+            onClick={confirmDelete}>삭제</button>
+        </div>
+      ) : undefined}>
       {step === 'summary' && (
         <div className={ui.stack}>
           <dl className={styles.totals}>
@@ -78,13 +86,6 @@ export default function MonthDataDialog({ coverage, onClose, onDeleted }: Props)
             autoComplete="off" isDisabled={remove.isPending} />
           {uploading && <p className={ui.status}>업로드가 끝난 뒤 삭제할 수 있습니다.</p>}
           {remove.isError && <p role="alert" className={ui.alert}>{errorMessage(remove.error)}</p>}
-          <div className={ui.confirmActions}>
-            <button type="button" className={ui.button} disabled={remove.isPending}
-              onClick={cancelConfirm}>취소</button>
-            <button type="button" className={`${ui.button} ${ui.dangerFill} ${ui.cta}`}
-              disabled={typed !== month || uploading || remove.isPending}
-              onClick={confirmDelete}>삭제</button>
-          </div>
         </div>
       )}
     </Dialog>

@@ -186,6 +186,7 @@ describe('CoverageSection', () => {
     await user.click(within(dialog).getByRole('button', { name: '이 달 데이터 삭제' }))
 
     expect(within(dialog).getByText(/업로드한 거래 168건을 영구 삭제합니다/)).toBeInTheDocument()
+    expect(dialog.parentElement).toHaveClass('pinned')
     const confirm = within(dialog).getByRole('button', { name: '삭제' })
     expect(confirm).toBeDisabled()
     await user.click(within(dialog).getByLabelText('직접 추가한 거래 12건도 함께 삭제'))
