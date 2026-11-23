@@ -1,6 +1,6 @@
 import { afterEach, expect, it } from 'vitest'
 import { screen, within } from '@testing-library/react'
-import { renderPage } from '../test/renderPage'
+import { renderPage, testMe } from '../test/renderPage'
 import { mockViewport } from '../test/mockViewport'
 import { AmountMaskProvider } from '../common/AmountMask'
 import AppLayout from './AppLayout'
@@ -8,6 +8,23 @@ import { http, HttpResponse, delay } from 'msw'
 import { server } from '../test/server'
 
 afterEach(() => localStorage.clear())
+
+it.each([true, false])('shows the admin label in the account sheet only for admins (admin=%s)', async (isAdmin) => {
+  mockViewport(true)
+  const { user } = renderPage(<AppLayout />, { me: { ...testMe, serviceAdmin: isAdmin } })
+  await user.click(await screen.findByRole('button', { name: '계정' }))
+  const dialog = screen.getByRole('dialog', { name: '계정' })
+  expect(within(dialog).queryByText('관리자') !== null).toBe(isAdmin)
+})
+
+it.each([true, false])('shows the admin label beside the desktop nickname only for admins (admin=%s)', async (isAdmin) => {
+  mockViewport(false)
+  renderPage(<AppLayout />, { me: { ...testMe, serviceAdmin: isAdmin } })
+  const banner = await screen.findByRole('banner')
+  await within(banner).findByRole('button', { name: '설정' })
+  expect(within(banner).queryByText('관리자') !== null).toBe(isAdmin)
+})
+
 it.each([true, false])('opens settings and persists all three switches (narrow=%s)', async (narrow) => {
   mockViewport(narrow)
   const { user } = renderPage(<AmountMaskProvider><AppLayout /></AmountMaskProvider>, {
