@@ -36,9 +36,9 @@ describe('현금영수증 자료', () => {
 
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     expect(body).toEqual({ asOfDate: '2026-09-30', memo: null, amounts: zeros })
-    expect(section).toHaveTextContent('완료')
+    expect(within(section).getByRole('img', { name: '완료' })).toBeInTheDocument()
     expect(section).not.toHaveTextContent('미완료')
-    expect(within(section).getAllByRole('button').map((b) => b.textContent)).toEqual(['편집'])
+    expect(within(section).getByRole('button', { name: '현금영수증 자료 편집' })).toHaveTextContent('')
     expect(screen.queryByRole('button', { name: /현금영수증.*삭제/ })).not.toBeInTheDocument()
   })
 

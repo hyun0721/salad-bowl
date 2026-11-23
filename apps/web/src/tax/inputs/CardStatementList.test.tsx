@@ -31,7 +31,10 @@ describe('신용·체크 자료', () => {
 
     const section = await screen.findByRole('region', { name: '신용·체크 자료' })
     expect(section).toHaveTextContent('등록한 신용·체크 자료가 없습니다.')
-    await user.click(within(section).getByRole('button', { name: '신용·체크 자료 추가' }))
+    const addButton = within(section).getByRole('button', { name: '신용·체크 자료 추가' })
+    expect(addButton).toHaveTextContent('추가')
+    expect(addButton).not.toHaveTextContent('신용·체크 자료 추가')
+    await user.click(addButton)
     const dialog = await screen.findByRole('dialog', { name: '신용·체크 자료 추가' })
     expect(dialog.parentElement).toHaveClass('pinned')
     expect(dialog.parentElement).toHaveClass('modal')
@@ -59,7 +62,7 @@ describe('신용·체크 자료', () => {
     })
     const row = within(section).getByRole('listitem')
     expect(row).toHaveTextContent('A카드')
-    expect(row).toHaveTextContent('완료')
+    expect(within(row).getByRole('img', { name: '완료' })).toBeInTheDocument()
     expect(row).toHaveTextContent('기준일 2026-10-31 · 합계 ₩ 9,600,000 · 주 사용 카드')
   })
 
@@ -182,7 +185,7 @@ describe('신용·체크 자료', () => {
     const dialog = await screen.findByRole('dialog')
     await user.click(within(dialog).getByRole('button', { name: '저장' }))
 
-    await waitFor(() => expect(screen.getByRole('listitem')).toHaveTextContent('완료'))
+    await waitFor(() => expect(within(screen.getByRole('listitem')).getByRole('img', { name: '완료' })).toBeInTheDocument())
     expect(screen.getByRole('listitem')).not.toHaveTextContent('미완료')
     expect(body).toEqual({
       issuerName: 'A카드', asOfDate: '2026-10-31', memo: '주 사용 카드',

@@ -26,6 +26,9 @@
 .list > li { padding: var(--space-3) 0; border-top: 1px solid var(--line); }
 .rowInfo { display: flex; flex-direction: column; gap: 2px; }
 .name { font-weight: 500; }
+.nameWithStatus { display: flex; align-items: center; gap: var(--space-3); min-width: 0; }
+.nameWithStatus > :first-child { min-width: 0; overflow-wrap: anywhere; }
+.completeIcon { display: inline-flex; flex: none; color: var(--brand); }
 
 /* 창 */
 .months { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); margin: 0; padding: 0; border: 0; min-width: 0; }
