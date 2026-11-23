@@ -16,6 +16,7 @@ import BottomSheet from '../common/BottomSheet'
 import { Radio, RadioGroup } from 'react-aria-components'
 import { Indicator } from '../common/SelectionIndicator'
 import optionStyles from '../common/OptionButton.module.css'
+import ui from '../common/ui.module.css'
 import { MENU, visibleChildren } from './menu'
 
 const firstSegment = (pathname: string) => pathname.split('/')[1] ?? ''
@@ -137,11 +138,11 @@ export default function AppLayout() {
           {narrow ? (
             <>
             <AmountSettings narrow />
-            <AccountSheet nickname={me?.nickname ?? ''} onLogout={onLogout} logoutFailed={logoutError} onOpen={() => setLogoutError(false)} />
+            <AccountSheet nickname={me?.nickname ?? ''} isAdmin={me?.serviceAdmin ?? false} onLogout={onLogout} logoutFailed={logoutError} onOpen={() => setLogoutError(false)} />
             </>
           ) : (
             <div className={styles.user}>
-              <span>{me?.nickname}</span>
+              <span>{me?.nickname}{me?.serviceAdmin && <span className={ui.badge}>관리자</span>}</span>
               <AmountSettings narrow={false} />
               <button type="button" className={styles.logout} onClick={onLogout}><Icon name="log-out" size={18} />로그아웃</button>
             </div>
