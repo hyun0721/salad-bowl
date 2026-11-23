@@ -23,13 +23,9 @@ export const EMPTY_CARD: CardAmounts = {
 }
 export const EMPTY_CASH: CashAmounts = { general: null, market: null, transit: null, culture: null }
 
-/** 빈 칸(모름)만 0(없음)으로 바꾼다. 입력한 값은 그대로 둔다. */
+/** 저장할 때 빈 칸만 0으로 바꾼다. 입력한 값은 그대로 둔다. */
 export function fillBlanks<T extends Record<string, number | null>>(values: T): T {
   return Object.fromEntries(Object.entries(values).map(([key, value]) => [key, value ?? 0])) as T
-}
-
-export function countBlanks(values: Record<string, number | null>): number {
-  return Object.values(values).filter((value) => value == null).length
 }
 
 /** 자료 한 건의 표시용 합계. 빈 칸은 0으로 더한다(서버 연도 합계표와 같은 규칙). */

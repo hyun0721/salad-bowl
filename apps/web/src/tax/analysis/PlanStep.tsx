@@ -13,7 +13,7 @@ const ROWS = [['general', '일반'], ['market', '전통시장'], ['transit', '�
 const FIELDS = [['creditFixed', '신용카드 고정'], ['debitFixed', '체크카드·현금영수증 고정'], ['flexible', '바꿀 수 있음']] as const
 type Row = (typeof ROWS)[number][0]
 type Field = (typeof FIELDS)[number][0]
-/** 입력 중인 지출계획. 비운 칸은 null이다(저장 전에 막는다). */
+/** 입력 중인 지출계획. 비운 칸은 null로 두고 저장할 때 0으로 채운다. */
 type PlanForm = Record<Row, Record<Field, number | null>>
 
 function toForm(plan: PlanView | null): PlanForm {
@@ -43,15 +43,18 @@ export function usePlanEditor(year: number, view: TaxYearView | null | undefined
   return {
     values,
     dirty: mine !== null && JSON.stringify(mine.values) !== JSON.stringify(saved),
-    blank: ROWS.some(([row]) => FIELDS.some(([field]) => values[row][field] === null)),
     saving: save.isPending,
     error: failedYear === year ? save.error : null,
     change: (next: PlanForm) => setEdit({ year, values: next, rowVersion }),
     submit: () => {
       const requestYear = year
       setFailedYear(year)
-      // blank이면 버튼이 꺼져 여기 오지 않는다. 남은 칸은 모두 숫자다.
-      save.mutate({ ...(values as Record<Row, PlanRow>), rowVersion }, {
+      const row = (key: Row): PlanRow => ({
+        creditFixed: values[key].creditFixed ?? 0,
+        debitFixed: values[key].debitFixed ?? 0,
+        flexible: values[key].flexible ?? 0,
+      })
+      save.mutate({ general: row('general'), market: row('market'), transit: row('transit'), culture: row('culture'), rowVersion }, {
         onSuccess: () => {
           setEdit((e) => (e?.year === requestYear ? null : e))
           if (currentYear.current !== requestYear) return
@@ -86,6 +89,7 @@ export default function PlanStep({ editor, ready }: Props) {
         기준일 다음 날부터 12월 31일까지 쓸 공제대상액을 소비구분별로 적습니다. 결제수단이 정해진 금액과 바꿀 수 있는 금액을 나눠 적고,
         공제 대상이 아닌 지출(보험료·공과금 등)은 적지 않습니다.
       </p>
+      <p className={ui.muted}>비운 칸은 0원으로 저장됩니다.</p>
       <form className={ui.stack} onSubmit={(event) => { event.preventDefault(); editor.submit() }}>
         {ROWS.map(([row, label]) => (
           <fieldset key={row} className={styles.planGroup}>
@@ -109,12 +113,11 @@ export default function PlanStep({ editor, ready }: Props) {
         ) : <p role="alert" className={ui.alert}>{errorMessage(error)} 입력한 값은 그대로 있습니다.</p>)}
         <div className={inputs.split}>
           <p className={ui.muted}>
-            {editor.blank ? '빈 칸이 있어 계산할 수 없습니다. 쓰지 않을 금액은 0원으로 적어 주세요.'
-              : ready ? '[계산하기]를 누르면 지출계획을 저장하고 추천을 다시 계산합니다. 입력하는 동안에는 다시 계산하지 않습니다.'
-                : '자료가 완료되지 않았거나 세법이 준비 중이라 [계산하기]는 지출계획을 저장만 합니다.'}
+            {ready ? '[계산하기]를 누르면 지출계획을 저장하고 추천을 다시 계산합니다. 입력하는 동안에는 다시 계산하지 않습니다.'
+              : '자료가 완료되지 않았거나 세법이 준비 중이라 [계산하기]는 지출계획을 저장만 합니다.'}
           </p>
           <div className={inputs.actions}>
-            <button type="submit" className={`${ui.button} ${ui.primary}`} disabled={editor.saving || editor.blank}>계산하기</button>
+            <button type="submit" className={`${ui.button} ${ui.primary}`} disabled={editor.saving}>계산하기</button>
           </div>
         </div>
       </form>

@@ -11,6 +11,20 @@ function Controlled({ onValue }: { onValue: (v: number | null) => void }) {
 }
 
 describe('MoneyField', () => {
+  it('requests a numeric keyboard on iPhone while keeping text formatting', () => {
+    const userAgent = vi.spyOn(window.navigator, 'userAgent', 'get').mockReturnValue('Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)')
+    const platform = vi.spyOn(window.navigator, 'platform', 'get').mockReturnValue('iPhone')
+    try {
+      render(<I18nProvider locale="ko-KR"><Controlled onValue={vi.fn()} /></I18nProvider>)
+      const input = screen.getByLabelText('금액 (원)')
+      expect(input).toHaveAttribute('inputmode', 'numeric')
+      expect(input).toHaveAttribute('type', 'text')
+    } finally {
+      userAgent.mockRestore()
+      platform.mockRestore()
+    }
+  })
+
   it('formats won with separators and reports a whole number', async () => {
     const user = userEvent.setup()
     const onValue = vi.fn()

@@ -8,20 +8,20 @@ import AmountGrid from './AmountGrid'
 import { CASH_GROUPS, EMPTY_CASH, fillBlanks } from './amounts'
 import SaveError from './SaveError'
 
-type Props = { year: number; cash: CashView | null; zeros: boolean; defaultAsOfDate: string; onClose: () => void }
+type Props = { year: number; cash: CashView | null; defaultAsOfDate: string; onClose: () => void }
 
-/** 현금영수증 자료(연도에 1건) 입력·편집. 삭제는 없다(D19). zeros면 4칸을 0으로 채운 채 연다. */
-export default function CashReceiptDialog({ year, cash, zeros, defaultAsOfDate, onClose }: Props) {
+/** 현금영수증 자료(연도에 1건) 입력·편집. 삭제는 없다(D19). */
+export default function CashReceiptDialog({ year, cash, defaultAsOfDate, onClose }: Props) {
   const formId = useId()
   const [asOfDate, setAsOfDate] = useState(cash?.asOfDate ?? defaultAsOfDate)
   const [memo, setMemo] = useState(cash?.memo ?? '')
-  const [amounts, setAmounts] = useState<CashAmounts>(cash?.amounts ?? (zeros ? fillBlanks(EMPTY_CASH) : EMPTY_CASH))
+  const [amounts, setAmounts] = useState<CashAmounts>(cash?.amounts ?? EMPTY_CASH)
   const [rowVersion] = useState(cash?.rowVersion)
   const save = useTaxSave((body: CashInput) => taxApi.saveCashReceipt(year, body))
 
   function onSubmit(event: FormEvent) {
     event.preventDefault()
-    const body: CashInput = { asOfDate, memo: memo.trim() || null, amounts }
+    const body: CashInput = { asOfDate, memo: memo.trim() || null, amounts: fillBlanks(amounts) }
     save.mutate(rowVersion === undefined ? body : { ...body, rowVersion }, { onSuccess: onClose })
   }
 

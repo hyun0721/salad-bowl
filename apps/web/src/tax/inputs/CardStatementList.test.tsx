@@ -19,7 +19,7 @@ async function typeDate(user: UserEvent, dialog: HTMLElement, digits: string) {
 }
 
 describe('신용·체크 자료', () => {
-  it('adds a card in a centered dialog with 4 categories × credit/debit and tells blank from 0', async () => {
+  it('adds a card in a centered dialog with 4 categories × credit/debit and saves blank amounts as 0', async () => {
     mockViewport(true)
     serveTax(yearView())
     let body: unknown
@@ -46,15 +46,15 @@ describe('신용·체크 자료', () => {
     await user.type(cell(dialog, '일반', '신용카드'), '9000000')
     await user.type(cell(dialog, '일반', '체크카드'), '0')
     await user.tab()
-    expect(dialog).toHaveTextContent('빈 칸 6개 · 빈 칸이 있으면 미완료로 저장됩니다.')
+    expect(dialog).toHaveTextContent('비워 두면 0원으로 저장됩니다')
     await user.click(within(dialog).getByRole('button', { name: '저장' }))
 
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     expect(body).toEqual({
       issuerName: 'A카드', asOfDate: '2026-10-31', memo: '주 사용 카드',
       amounts: {
-        creditGeneral: 9_000_000, creditMarket: null, creditTransit: null, creditCulture: null,
-        debitGeneral: 0, debitMarket: null, debitTransit: null, debitCulture: null,
+        creditGeneral: 9_000_000, creditMarket: 0, creditTransit: 0, creditCulture: 0,
+        debitGeneral: 0, debitMarket: 0, debitTransit: 0, debitCulture: 0,
       },
     })
     const row = within(section).getByRole('listitem')
@@ -63,20 +63,18 @@ describe('신용·체크 자료', () => {
     expect(row).toHaveTextContent('기준일 2026-10-31 · 합계 ₩ 9,600,000 · 주 사용 카드')
   })
 
-  it('fills the blanks with 0 in the dialog', async () => {
+  it('keeps blank inputs empty without a fill button', async () => {
     serveTax(yearView())
     const { user } = renderTaxInputs()
 
     await user.click(await screen.findByRole('button', { name: '신용·체크 자료 추가' }))
     const dialog = await screen.findByRole('dialog', { name: '신용·체크 자료 추가' })
-    await user.click(within(dialog).getByRole('button', { name: '빈 칸 0원으로 채우기' }))
 
     for (const category of CATEGORIES) {
-      expect(cell(dialog, category, '신용카드')).toHaveValue('0')
-      expect(cell(dialog, category, '체크카드')).toHaveValue('0')
+      expect(cell(dialog, category, '신용카드')).toHaveValue('')
+      expect(cell(dialog, category, '체크카드')).toHaveValue('')
     }
-    expect(dialog).toHaveTextContent('빈 칸 없음')
-    expect(within(dialog).getByRole('button', { name: '빈 칸 0원으로 채우기' })).toBeDisabled()
+    expect(within(dialog).queryByRole('button', { name: '빈 칸 0원으로 채우기' })).not.toBeInTheDocument()
   })
 
   it('saves a second card with the same issuer name without a warning', async () => {
@@ -94,7 +92,6 @@ describe('신용·체크 자료', () => {
     expect(within(dialog).getByRole('group', { name: '기준일' })).toHaveTextContent('10')
     expect(within(dialog).getByRole('group', { name: '기준일' })).toHaveTextContent('31')
     await user.type(within(dialog).getByLabelText('카드사명'), 'A카드')
-    await user.click(within(dialog).getByRole('button', { name: '빈 칸 0원으로 채우기' }))
     await user.click(within(dialog).getByRole('button', { name: '저장' }))
 
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
@@ -164,7 +161,7 @@ describe('신용·체크 자료', () => {
     expect(posted).toBe(0)
   })
 
-  it('shows an incomplete card with its blank count and fills the blanks from the row', async () => {
+  it('shows an incomplete card with its blank count and saves the blanks as 0 through editing', async () => {
     const incomplete = cardView({
       rowVersion: 41,
       amounts: { ...cardView().amounts, debitMarket: null, debitTransit: null, debitCulture: null },
@@ -180,7 +177,10 @@ describe('신용·체크 자료', () => {
 
     const row = await screen.findByRole('listitem')
     expect(row).toHaveTextContent('미완료 · 빈 칸 3개')
-    await user.click(within(row).getByRole('button', { name: '빈 칸 0원으로 채우기' }))
+    expect(within(row).queryByRole('button', { name: '빈 칸 0원으로 채우기' })).not.toBeInTheDocument()
+    await user.click(within(row).getByRole('button', { name: 'A카드 자료 편집' }))
+    const dialog = await screen.findByRole('dialog')
+    await user.click(within(dialog).getByRole('button', { name: '저장' }))
 
     await waitFor(() => expect(screen.getByRole('listitem')).toHaveTextContent('완료'))
     expect(screen.getByRole('listitem')).not.toHaveTextContent('미완료')
@@ -238,16 +238,20 @@ describe('신용·체크 자료', () => {
     await waitFor(() => expect(calls.year).toBeGreaterThan(1))
   })
 
-  it.each([409, 404])('reloads and explains a %i row fill conflict', async (status) => {
+  it.each([409, 404])('reloads and explains a %i incomplete card edit conflict', async (status) => {
     const incomplete = cardView({ blankCount: 1, amounts: { ...cardView().amounts, debitMarket: null } })
     const calls = serveTax(yearView({ cards: [incomplete], hasInputs: true }))
     server.use(http.put('*/api/tax/years/2026/cards/7', () => HttpResponse.json({ code: 'X', message: 'x' }, { status })))
     const { user } = renderTaxInputs()
 
     const row = await screen.findByRole('listitem')
-    await user.click(within(row).getByRole('button', { name: '빈 칸 0원으로 채우기' }))
+    expect(within(row).queryByRole('button', { name: '빈 칸 0원으로 채우기' })).not.toBeInTheDocument()
+    await user.click(within(row).getByRole('button', { name: 'A카드 자료 편집' }))
+    const dialog = await screen.findByRole('dialog')
+    await user.click(within(dialog).getByRole('button', { name: '저장' }))
 
-    expect(await within(row).findByRole('alert')).toHaveTextContent('새로 불러온 내용을 확인한 뒤 다시 시도해 주세요.')
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('저장하지 않았습니다.')
+    await user.click(within(dialog).getByRole('button', { name: '다시 불러오기' }))
     await waitFor(() => expect(calls.year).toBeGreaterThan(1))
   })
 

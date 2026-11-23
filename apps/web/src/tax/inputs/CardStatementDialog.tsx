@@ -5,7 +5,7 @@ import TextField from '../../common/TextField'
 import ui from '../../common/ui.module.css'
 import { taxApi, useTaxSave, type CardAmounts, type CardInput, type CardView } from '../taxApi'
 import AmountGrid from './AmountGrid'
-import { CARD_GROUPS, EMPTY_CARD } from './amounts'
+import { CARD_GROUPS, EMPTY_CARD, fillBlanks } from './amounts'
 import SaveError from './SaveError'
 
 type Props = { year: number; card: CardView | null; defaultAsOfDate: string; onClose: () => void }
@@ -24,7 +24,7 @@ export default function CardStatementDialog({ year, card, defaultAsOfDate, onClo
   function onSubmit(event: FormEvent) {
     event.preventDefault()
     if (!issuerName.trim()) { setNameError(true); return }
-    save.mutate({ issuerName: issuerName.trim(), asOfDate, memo: memo.trim() || null, amounts }, { onSuccess: onClose })
+    save.mutate({ issuerName: issuerName.trim(), asOfDate, memo: memo.trim() || null, amounts: fillBlanks(amounts) }, { onSuccess: onClose })
   }
 
   return (
