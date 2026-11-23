@@ -22,7 +22,8 @@ export default function MoneyField({ label, value, onChange, isRequired, minValu
       isWheelDisabled className={styles.field}>
       <Label className={styles.label}>{label}</Label>
       <Group className={money.money}>
-        <Input className={`${styles.input} ${money.input}`} />
+        {/* RAC가 iPhone에서 전체 키보드를 선택하므로 숫자패드로 덮어쓴다. */}
+        <Input inputMode="numeric" className={`${styles.input} ${money.input}`} />
         <span className={money.unit} aria-hidden="true">원</span>
       </Group>
       <FieldError className={styles.error} />

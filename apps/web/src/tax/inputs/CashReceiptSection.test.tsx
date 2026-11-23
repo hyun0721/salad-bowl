@@ -8,7 +8,7 @@ import { cardView, renderTaxInputs, serveTax, yearView } from '../../test/taxFix
 const zeros = { general: 0, market: 0, transit: 0, culture: 0 }
 
 describe('현금영수증 자료', () => {
-  it('starts as 4 blank cells and fills them with 0 through the centered dialog, with no delete anywhere', async () => {
+  it('starts as 4 blank cells and saves them as 0 through the centered dialog, with no delete anywhere', async () => {
     mockViewport(true)
     serveTax(yearView({ cards: [cardView({ asOfDate: '2026-09-30' })], hasInputs: true }))
     let body: unknown
@@ -23,15 +23,15 @@ describe('현금영수증 자료', () => {
 
     const section = await screen.findByRole('region', { name: '현금영수증 자료' })
     expect(section).toHaveTextContent('미완료 · 4칸 빔')
-    expect(within(section).getAllByRole('button').map((b) => b.textContent)).toEqual(['입력', '4칸 0원으로 채우기'])
-    await user.click(within(section).getByRole('button', { name: '4칸 0원으로 채우기' }))
+    expect(within(section).getAllByRole('button').map((b) => b.textContent)).toEqual(['입력'])
+    await user.click(within(section).getByRole('button', { name: '현금영수증 자료 입력' }))
 
     const dialog = await screen.findByRole('dialog', { name: '2026년 현금영수증 자료' })
     expect(dialog.parentElement).toHaveClass('pinned')
     expect(dialog.parentElement).toHaveClass('modal')
     const group = within(dialog).getByRole('group', { name: '현금영수증' })
     expect(['일반', '전통시장', '대중교통', '문화체육'].map((label) => within(group).getByLabelText(label))).toHaveLength(4)
-    expect(within(group).getByLabelText('일반')).toHaveValue('0')
+    expect(within(group).getByLabelText('일반')).toHaveValue('')
     await user.click(within(dialog).getByRole('button', { name: '저장' }))
 
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
@@ -43,7 +43,7 @@ describe('현금영수증 자료', () => {
   })
 
   it('edits the cash receipt with the row version it received', async () => {
-    serveTax(yearView({ cashReceipt: { rowVersion: 55, asOfDate: '2026-10-31', memo: '연말정산 대비', amounts: zeros, blankCount: 0 }, hasInputs: true }))
+    serveTax(yearView({ cashReceipt: { rowVersion: 55, asOfDate: '2026-10-31', memo: '연말정산 대비', amounts: { ...zeros, market: null }, blankCount: 1 }, hasInputs: true }))
     let body: unknown
     server.use(http.put('*/api/tax/years/2026/cash-receipt', async ({ request }) => {
       body = await request.json()

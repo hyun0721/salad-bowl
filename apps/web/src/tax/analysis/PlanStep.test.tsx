@@ -121,15 +121,30 @@ describe('PlanStep — ② 지출계획', () => {
     expect(puts).toBe(1)
   })
 
-  it('turns 계산하기 off with the reason while a cell is blank', async () => {
+  it('saves blank plan cells as 0 while preserving other amounts', async () => {
     serveAnalysis(analysisView())
+    let body: unknown
+    server.use(http.put('*/api/tax/years/2026/plan', async ({ request }) => {
+      body = await request.json()
+      return HttpResponse.json(readyYearView())
+    }))
     const { user, step, field } = await openPlan()
-
+    await user.clear(field('일반', '신용카드 고정'))
     await user.clear(field('전통시장', '신용카드 고정'))
+    await user.clear(field('대중교통', '바꿀 수 있음'))
+    await user.clear(field('문화체육', '바꿀 수 있음'))
     await user.tab()
 
-    expect(step.getByRole('button', { name: '계산하기' })).toBeDisabled()
-    expect(step.getByText('빈 칸이 있어 계산할 수 없습니다. 쓰지 않을 금액은 0원으로 적어 주세요.')).toBeInTheDocument()
+    expect(step.getByRole('button', { name: '계산하기' })).toBeEnabled()
+    expect(step.getByText('비운 칸은 0원으로 저장됩니다.')).toBeInTheDocument()
+    await user.click(step.getByRole('button', { name: '계산하기' }))
+    await waitFor(() => expect(body).toEqual({
+      general: { creditFixed: 0, debitFixed: 300_000, flexible: 1_200_000 },
+      market: { creditFixed: 0, debitFixed: 100_000, flexible: 100_000 },
+      transit: { creditFixed: 100_000, debitFixed: 0, flexible: 0 },
+      culture: { creditFixed: 0, debitFixed: 0, flexible: 0 },
+      rowVersion: 55,
+    }))
   })
 
   it('keeps the edits on a conflict and reloads the newer plan on request', async () => {

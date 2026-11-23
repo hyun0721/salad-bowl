@@ -5,8 +5,8 @@ import ConfirmDialog from '../../common/ConfirmDialog'
 import HelpButton from '../../common/HelpButton'
 import Icon from '../../common/Icon'
 import ui from '../../common/ui.module.css'
-import { actionError, isStale, taxApi, taxKeys, useTaxSave, type CardView, type TaxYearView } from '../taxApi'
-import { fillBlanks, sumAmounts } from './amounts'
+import { actionError, isStale, taxApi, taxKeys, type CardView, type TaxYearView } from '../taxApi'
+import { sumAmounts } from './amounts'
 import CardStatementDialog from './CardStatementDialog'
 import styles from './inputs.module.css'
 
@@ -50,9 +50,6 @@ function CardRow({ year, card, onEdit }: { year: number; card: CardView; onEdit:
   const expense = useAmountFormatter('expense')
   const client = useQueryClient()
   const reload = () => client.invalidateQueries({ queryKey: taxKeys.year(year) })
-  const fill = useTaxSave(() => taxApi.saveCard(year, card.id, {
-    issuerName: card.issuerName, asOfDate: card.asOfDate, memo: card.memo, amounts: fillBlanks(card.amounts), rowVersion: card.rowVersion,
-  }))
   // 삭제는 204라 연도를 다시 읽는다. 다른 곳에서 바뀌었어도 새로 불러와 최신 목록을 보인다.
   const remove = useMutation({
     mutationFn: () => taxApi.deleteCard(year, card.id, card.rowVersion),
@@ -65,13 +62,8 @@ function CardRow({ year, card, onEdit }: { year: number; card: CardView; onEdit:
         <p className={styles.name}>{card.issuerName}</p>
         <p className={card.blankCount > 0 ? styles.note : ui.muted}>{card.blankCount > 0 ? `미완료 · 빈 칸 ${card.blankCount}개` : '완료'}</p>
         <p className={ui.muted}>기준일 {card.asOfDate} · 합계 {expense(sumAmounts(card.amounts))}{card.memo && ` · ${card.memo}`}</p>
-        {fill.error && <p role="alert" className={ui.alert}>{actionError(fill.error)}</p>}
       </div>
       <div className={styles.actions}>
-        {card.blankCount > 0 && (
-          <button type="button" className={ui.button} disabled={fill.isPending}
-            onClick={() => fill.mutate(undefined, { onError: (error) => { if (isStale(error)) void reload() } })}>빈 칸 0원으로 채우기</button>
-        )}
         <button type="button" className={ui.button} aria-label={`${card.issuerName} 자료 편집`} onClick={onEdit}>편집</button>
         <ConfirmDialog centered triggerLabel="삭제" triggerAriaLabel={`${card.issuerName} 자료 삭제`}
           title={`${card.issuerName} 자료를 삭제할까요?`} description="이 자료의 금액 8칸이 지워지고 연도 합계표에서 빠집니다. 복구할 수 없습니다."
