@@ -51,7 +51,7 @@ export default function CoverageSection({ today, initialMonth, onInitialMonthHan
           <button type="button" className={`${ui.button} ${ui.iconButton}`} aria-label="업로드 이력" onClick={() => setHistoryOpen(true)}><Icon name="history" /></button>
         </div>
       </div>
-      <p className={ui.muted}>거래 일자 기준 · 미등록 월을 누르면 업로드합니다</p>
+      <p className={ui.muted}>거래 일자 기준 · 미등록 월을 누르면 업로드해요</p>
       {notice && <p role="status" className={ui.status}>{notice}</p>}
       {coverage.isPending && <SkeletonRegion><ul className={calendarStyles.grid}>
         {Array.from({ length: 12 }, (_, i) => <li key={i} className={`${calendarStyles.cell} ${calendarStyles.future}`}>
@@ -60,7 +60,7 @@ export default function CoverageSection({ today, initialMonth, onInitialMonthHan
       </ul></SkeletonRegion>}
       {coverage.isError && (
         <div className={ui.row}>
-          <p role="alert" className={ui.alert}>등록 현황을 불러오지 못했습니다.</p>
+          <p role="alert" className={ui.alert}>등록 현황을 불러오지 못했어요.</p>
           <button type="button" className={ui.button} onClick={() => void coverage.refetch()}><Icon name="refresh-cw" size={18} />다시 시도</button>
         </div>
       )}
@@ -70,9 +70,9 @@ export default function CoverageSection({ today, initialMonth, onInitialMonthHan
       )}
       {uploadMonth && (
         <Dialog title={`${formatMonthLabel(uploadMonth)} 데이터 업로드`} onClose={() => setUploadMonth(null)} closeDisabled={uploading}>
-          <p className={ui.status}>뱅크샐러드에서 내려받은 엑셀(.xlsx)을 올려 주세요. 여러 달이 들어 있어도 거래 일자에 맞게 반영됩니다.</p>
-          <p className={ui.muted}>뱅크샐러드 앱에서 기간을 3개월 이하로 골라 가계부 엑셀을 내려받습니다.</p>
-          <p className={ui.muted}>이미 있는 거래는 건너뛰고, 내가 고친 카테고리·메모는 유지됩니다.</p>
+          <p className={ui.status}>뱅크샐러드에서 내려받은 엑셀(.xlsx)을 올려 주세요. 여러 달이 들어 있어도 거래 일자에 맞게 반영돼요.</p>
+          <p className={ui.muted}>뱅크샐러드 앱에서 기간을 3개월 이하로 골라 가계부 엑셀을 내려받아요.</p>
+          <p className={ui.muted}>이미 있는 거래는 건너뛰고, 내가 고친 카테고리·메모는 유지돼요.</p>
           <UploadForm />
         </Dialog>
       )}

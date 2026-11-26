@@ -20,10 +20,10 @@ export default function AmountGrid<K extends string>({ groups, values, onChange 
       <div className={styles.titleWithHelp}>
         <p className={styles.gridTitle}>공제대상액 (원)</p>
         <HelpButton title="공제대상액">
-          카드사 명세서나 국세청 자료의 1월 1일부터 기준일까지 누계를 적습니다. 전체 사용액에서 전통시장·대중교통·문화체육 사용액을 뺀 나머지를 일반에 적고, 취소·환불이 반영된 금액을 그대로 씁니다. 이전 값에 더하지 않고 새 누계로 덮어씁니다.
+          카드사 명세서나 국세청 자료의 1월 1일부터 기준일까지 누계를 적으세요. 전체 사용액에서 전통시장·대중교통·문화체육 사용액을 뺀 나머지를 일반에 적고, 취소·환불이 반영된 금액을 그대로 쓰세요. 이전 값에 더하지 않고 새 누계로 덮어쓰세요.
         </HelpButton>
       </div>
-      <p className={ui.muted}>"일반"은 전통시장·대중교통·문화체육을 뺀 금액입니다. 비워 두면 0원으로 저장됩니다.</p>
+      <p className={ui.muted}>"일반"은 전통시장·대중교통·문화체육을 뺀 금액이에요. 비워 두면 0원으로 저장돼요.</p>
       {groups.map((group) => (
         <fieldset key={group.legend} className={styles.amountGroup}>
           <legend>{group.legend}</legend>

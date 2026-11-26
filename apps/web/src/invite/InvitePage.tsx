@@ -31,7 +31,7 @@ export default function InvitePage() {
       <main className={`${ui.card} ${styles.card}`}>
         <span className={styles.brand}>Salad Bowl</span>
         <h1>그룹 초대</h1>
-        {preview.isPending && <SkeletonRegion label="초대 정보를 불러오는 중입니다."><div className={ui.stack}>
+        {preview.isPending && <SkeletonRegion label="초대 정보를 불러오는 중이에요."><div className={ui.stack}>
           <Skeleton width="60%" height="1lh" />
           <div className={styles.facts}><Skeleton width={80} height={40} /><Skeleton width={150} height={40} /></div>
           <Skeleton width="100%" height="var(--control-height)" />
@@ -72,17 +72,17 @@ function InviteDetails({ preview, joining, onJoin }: { preview: InvitePreview; j
       </dl>
       {preview.alreadyMember ? (
         <>
-          <p className={ui.status}>이미 이 그룹의 멤버입니다.</p>
+          <p className={ui.status}>이미 이 그룹의 멤버예요.</p>
           <Link to="/dashboard" className={`${ui.button} ${ui.primary} ${ui.linkButton}`}>대시보드로 가기</Link>
         </>
       ) : full ? (
-        <p className={ui.status}>그룹 정원이 찼습니다. 관리자에게 문의해 주세요.</p>
+        <p className={ui.status}>그룹 정원이 찼어요. 관리자에게 문의해 주세요.</p>
       ) : (
         <button type="button" className={`${ui.button} ${ui.primary}`} disabled={joining} onClick={onJoin}>
           그룹에 합류하기
         </button>
       )}
-      <p className={ui.muted}>합류하면 내 거래가 이 그룹 멤버에게 공개됩니다. 그룹 관리에서 언제든 끌 수 있습니다.</p>
+      <p className={ui.muted}>합류하면 내 거래가 이 그룹 멤버에게 공개돼요. 그룹 관리에서 언제든 끌 수 있어요.</p>
     </>
   )
 }

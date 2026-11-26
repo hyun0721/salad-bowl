@@ -17,7 +17,7 @@ describe('TaxLawPage — 권한', () => {
     renderTaxLaw({ admin: false })
 
     expect(await screen.findByRole('heading', { name: '권한 없음' })).toBeInTheDocument()
-    expect(screen.getByText('이 화면은 서비스 관리자만 볼 수 있습니다.')).toBeInTheDocument()
+    expect(screen.getByText('이 화면은 서비스 관리자만 볼 수 있어요.')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: '입력자료로 가기' })).toHaveAttribute('href', '/tax/inputs')
     expect(screen.queryByRole('button', { name: '다음 연도' })).not.toBeInTheDocument()
     expect(calls.list).toBe(0)
@@ -61,7 +61,7 @@ describe('TaxLawPage — 버전 목록', () => {
 
     expect(versionButton(list, 1)).toHaveAttribute('aria-current', 'true')
     const detail = screen.getByRole('region', { name: /2026년 귀속 v1/ })
-    expect(detail).toHaveTextContent('적용된 버전은 고칠 수 없습니다. 바꾸려면 새 초안을 만듭니다.')
+    expect(detail).toHaveTextContent('적용된 버전은 고칠 수 없어요. 바꾸려면 새 초안을 만드세요.')
     expect(detail).toHaveTextContent('계산 알고리즘 버전 1 (고정)')
     expect(detail).toHaveTextContent('작성 관리자가 · 2026-01-10 09:00 · 적용 관리자나 · 2026-01-15 10:00')
     const term = (label: string) => within(detail).getByText(label, { selector: 'dt' }).nextElementSibling
@@ -110,7 +110,7 @@ describe('TaxLawPage — 버전 목록', () => {
     renderTaxLaw()
 
     const list = await screen.findByRole('region', { name: '2026년 버전' })
-    expect(within(list).getByText('2026년 귀속 세법 버전이 없습니다. [새 초안 만들기]로 시작합니다.')).toBeInTheDocument()
+    expect(within(list).getByText('2026년 귀속 세법 버전이 없어요. [새 초안 만들기]로 시작하세요.')).toBeInTheDocument()
     expect(await within(list).findByText('적용 버전 없음(회원 화면은 "세법 준비 중") · 초안 0개')).toBeInTheDocument()
   })
 
@@ -134,7 +134,7 @@ describe('TaxLawPage — 버전 목록', () => {
       : HttpResponse.json([v1]))))
     const { user } = renderTaxLaw()
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('세법 버전을 불러오지 못했습니다.')
+    expect(await screen.findByRole('alert')).toHaveTextContent('세법 버전을 불러오지 못했어요.')
     fail = false
     await user.click(screen.getByRole('button', { name: '다시 시도' }))
 

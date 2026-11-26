@@ -79,7 +79,7 @@ describe('GroupsPage', () => {
       http.get('*/api/groups/30/bans', () => HttpResponse.json([])),
     )
 
-    expect(await screen.findByText(/아직 속한 그룹이 없습니다/)).toBeInTheDocument()
+    expect(await screen.findByText(/아직 속한 그룹이 없어요/)).toBeInTheDocument()
     expect(screen.queryByLabelText('그룹 이름')).not.toBeInTheDocument()
     const add = screen.getByRole('button', { name: '그룹 추가' })
     expect(add).toHaveTextContent(/^추가$/)
@@ -103,7 +103,7 @@ describe('GroupsPage', () => {
       : HttpResponse.json(homeDetail)))
     const { user } = renderPage(<GroupsPage />, { groups: [home] })
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('그룹 정보를 불러오지 못했습니다.')
+    expect(await screen.findByRole('alert')).toHaveTextContent('그룹 정보를 불러오지 못했어요.')
     const info = screen.getByRole('region', { name: '그룹 정보' })
     expect(within(info).getByRole('heading', { name: '그룹 정보' })).toBeInTheDocument()
     expect(screen.queryByRole('region', { name: '멤버 관리' })).not.toBeInTheDocument()
@@ -128,7 +128,7 @@ describe('GroupsPage', () => {
     await user.type(input, '우리 가족')
     await user.click(screen.getByRole('button', { name: '이름 바꾸기' }))
 
-    expect(await screen.findByText('이름을 바꿨습니다.')).toBeInTheDocument()
+    expect(await screen.findByText('이름을 바꿨어요.')).toBeInTheDocument()
     expect(body).toEqual({ name: '우리 가족' })
   })
 
@@ -157,7 +157,7 @@ describe('GroupsPage', () => {
     }))
     const { user } = renderPage(<GroupsPage />, { groups: [home] })
     const help = await screen.findByRole('button', { name: '내 거래 그룹 공개 도움말' })
-    const description = '끄면 그룹 대시보드와 그룹 거래에서 내 거래가 제외됩니다. 숨긴 거래는 공개해도 보이지 않습니다.'
+    const description = '끄면 그룹 대시보드와 그룹 거래에서 내 거래가 제외돼요. 숨긴 거래는 공개해도 보이지 않아요.'
 
     expect(screen.queryByText(description)).not.toBeInTheDocument()
     await user.click(help)

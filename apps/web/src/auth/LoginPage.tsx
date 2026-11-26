@@ -46,7 +46,7 @@ export default function LoginPage() {
       if (e instanceof SignupLoginError) {
         // 계정은 만들어졌다. 다시 가입하면 '이미 가입된 이메일'이 나오므로 로그인으로 안내한다.
         setMode('login')
-        setNotice('가입은 완료되었습니다. 로그인해 주세요.')
+        setNotice('가입은 완료되었어요. 로그인해 주세요.')
       } else {
         setError(errorMessage(e))
       }
@@ -92,18 +92,18 @@ export default function LoginPage() {
       <main className={styles.card}>
         <div className={styles.brand}>
           <span className={styles.name}><img src="/logo.svg" alt="" width="36" height="36" />Salad Bowl</span>
-          <p className={styles.lead}>뱅크샐러드 가계부를 가족·친구와 함께 봅니다.</p>
+          <p className={styles.lead}>뱅크샐러드 가계부를 가족·친구와 함께 봐요.</p>
         </div>
         <Tabs label="로그인 또는 회원가입" tabs={MODES.map((m) => ({ id: m, label: TAB_LABEL[m] }))}
           selectedKey={mode} onSelectionChange={(id) => changeMode(id as Mode)} className={styles.authTabs}>
           {() => form}
         </Tabs>
         <GoogleSignInButton onCredential={onGoogleCredential}
-          onError={() => setError('Google 로그인을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.')} />
+          onError={() => setError('Google 로그인을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.')} />
         {/* 탭 패널은 선택된 것만 그리므로, 안내·오류는 패널 바깥에 둬서 탭이 바뀌어도 스크린리더가 읽게 한다. */}
         <p role="status" className={notice ? styles.notice : styles.noticeEmpty}>{notice}</p>
         {error && <p role="alert" className={styles.error}>{error}</p>}
-        <p className={styles.hint}>초대 링크로 들어왔다면 로그인 후 초대 화면으로 돌아갑니다.</p>
+        <p className={styles.hint}>초대 링크로 들어왔다면 로그인 후 초대 화면으로 돌아가요.</p>
       </main>
     </div>
   )

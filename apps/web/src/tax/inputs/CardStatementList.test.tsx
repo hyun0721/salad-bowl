@@ -30,7 +30,7 @@ describe('신용·체크 자료', () => {
     const { user } = renderTaxInputs()
 
     const section = await screen.findByRole('region', { name: '신용·체크 자료' })
-    expect(section).toHaveTextContent('등록한 신용·체크 자료가 없습니다.')
+    expect(section).toHaveTextContent('등록한 신용·체크 자료가 없어요.')
     const addButton = within(section).getByRole('button', { name: '신용·체크 자료 추가' })
     expect(addButton).toHaveTextContent('추가')
     expect(addButton).not.toHaveTextContent('신용·체크 자료 추가')
@@ -40,7 +40,7 @@ describe('신용·체크 자료', () => {
     expect(dialog.parentElement).toHaveClass('modal')
     expect(within(dialog).getAllByRole('group').map((g) => g.getAttribute('aria-label') ?? g.querySelector('legend')?.textContent))
       .toEqual(expect.arrayContaining(CATEGORIES))
-    expect(dialog).toHaveTextContent('"일반"은 전통시장·대중교통·문화체육을 뺀 금액입니다.')
+    expect(dialog).toHaveTextContent('"일반"은 전통시장·대중교통·문화체육을 뺀 금액이에요.')
     expect(dialog).not.toHaveTextContent('직불')
 
     await user.type(within(dialog).getByLabelText('카드사명'), '  A카드  ')
@@ -49,7 +49,7 @@ describe('신용·체크 자료', () => {
     await user.type(cell(dialog, '일반', '신용카드'), '9000000')
     await user.type(cell(dialog, '일반', '체크카드'), '0')
     await user.tab()
-    expect(dialog).toHaveTextContent('비워 두면 0원으로 저장됩니다')
+    expect(dialog).toHaveTextContent('비워 두면 0원으로 저장돼요')
     await user.click(within(dialog).getByRole('button', { name: '저장' }))
 
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
@@ -146,7 +146,7 @@ describe('신용·체크 자료', () => {
     await typeDate(user, dialog, '20261031')
     await user.type(cell(dialog, '일반', '신용카드'), '10000000000000')
     await user.click(within(dialog).getByRole('button', { name: '저장' }))
-    expect(await within(dialog).findByText('금액이 너무 큽니다')).toBeInTheDocument()
+    expect(await within(dialog).findByText('금액이 너무 커요')).toBeInTheDocument()
     expect(posted).toBe(0)
   })
 
@@ -224,7 +224,7 @@ describe('신용·체크 자료', () => {
     expect(within(dialog).queryByRole('textbox')).not.toBeInTheDocument()
     await user.click(within(dialog).getByRole('button', { name: '삭제' }))
 
-    expect(await screen.findByText('등록한 신용·체크 자료가 없습니다.')).toBeInTheDocument()
+    expect(await screen.findByText('등록한 신용·체크 자료가 없어요.')).toBeInTheDocument()
     expect(new URL(url).search).toBe('?rowVersion=5')
   })
 
@@ -253,7 +253,7 @@ describe('신용·체크 자료', () => {
     const dialog = await screen.findByRole('dialog')
     await user.click(within(dialog).getByRole('button', { name: '저장' }))
 
-    expect(await within(dialog).findByRole('alert')).toHaveTextContent('저장하지 않았습니다.')
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('저장하지 않았어요.')
     await user.click(within(dialog).getByRole('button', { name: '다시 불러오기' }))
     await waitFor(() => expect(calls.year).toBeGreaterThan(1))
   })
@@ -269,7 +269,7 @@ describe('신용·체크 자료', () => {
     await user.type(cell(dialog, '일반', '신용카드'), '9500000')
     await user.click(within(dialog).getByRole('button', { name: '저장' }))
 
-    expect(await within(dialog).findByRole('alert')).toHaveTextContent('다른 곳에서 수정되거나 삭제됐습니다. 저장하지 않았습니다.')
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('다른 곳에서 수정되거나 삭제됐어요. 저장하지 않았어요.')
     expect(cell(dialog, '일반', '신용카드')).toHaveValue('9,500,000')
     expect(within(dialog).getByRole('button', { name: '다시 불러오기' })).toBeInTheDocument()
   })
@@ -279,6 +279,6 @@ describe('신용·체크 자료', () => {
     renderTaxInputs()
 
     expect(await screen.findByRole('button', { name: '신용·체크 자료 추가' })).toBeDisabled()
-    expect(screen.getByText('신용·체크 자료는 연도마다 50건까지 등록할 수 있습니다.')).toBeInTheDocument()
+    expect(screen.getByText('신용·체크 자료는 연도마다 50건까지 등록할 수 있어요.')).toBeInTheDocument()
   })
 })

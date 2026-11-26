@@ -34,12 +34,12 @@ export default function YearTotalsTable({ view }: { view: TaxYearView }) {
       <h2 id="tax-totals-title">연도 합계표</h2>
       {view.blankCount > 0 && (
         <p role="status" className={styles.warning}>
-          미입력 칸이 있습니다({blanks.join(', ')}). 아래 합계는 입력한 칸만 더한 값이며 분석은 확정값으로 보여 주지 않습니다.
+          미입력 칸이 있어요({blanks.join(', ')}). 아래 합계는 입력한 칸만 더한 값이며 분석은 확정값으로 보여 주지 않아요.
         </p>
       )}
       {view.asOfDateMismatch && (
         <p role="status" className={styles.warning}>
-          자료의 기준일이 서로 다릅니다({dates.join(', ')}). 합계는 서로 다른 시점의 누계를 더한 값이며 분석에 "추정"이 붙습니다.
+          자료의 기준일이 서로 달라요({dates.join(', ')}). 합계는 서로 다른 시점의 누계를 더한 값이며 분석에 "추정"이 붙어요.
         </p>
       )}
       <div className={styles.tableScroll}>

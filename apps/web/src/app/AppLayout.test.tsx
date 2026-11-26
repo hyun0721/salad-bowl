@@ -81,7 +81,7 @@ it('retries failed groups inside the sheet', async () => {
   server.use(http.get('*/api/groups', () => new HttpResponse(null, { status: 500 })))
   const trigger = await screen.findByRole('button', { name: '그룹 선택' })
   await user.click(trigger)
-  expect(await screen.findByText('그룹을 불러오지 못했습니다')).toBeInTheDocument()
+  expect(await screen.findByText('그룹을 불러오지 못했어요')).toBeInTheDocument()
   server.use(http.get('*/api/groups', () => HttpResponse.json([{ groupId: 3, name: '재시도 그룹' }])))
   await user.click(screen.getByRole('button', { name: '다시 시도' }))
   expect(await screen.findByRole('radio', { name: '재시도 그룹' })).toBeChecked()

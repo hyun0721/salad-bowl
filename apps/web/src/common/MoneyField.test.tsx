@@ -75,6 +75,6 @@ describe('MoneyField', () => {
     await user.tab()
 
     expect(input).toBeInvalid()
-    expect(await screen.findByText('금액이 너무 큽니다')).toBeInTheDocument()
+    expect(await screen.findByText('금액이 너무 커요')).toBeInTheDocument()
   })
 })

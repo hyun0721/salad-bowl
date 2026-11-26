@@ -16,7 +16,7 @@ export function RenameForm({ groupId, name }: { groupId: number; name: string })
   const trimmed = value.trim()
 
   return (
-    <form className={styles.fieldAction} onSubmit={(e) => { e.preventDefault(); rename.mutate({ groupId, name: trimmed }, { onSuccess: () => toast('이름을 바꿨습니다.') }) }}>
+    <form className={styles.fieldAction} onSubmit={(e) => { e.preventDefault(); rename.mutate({ groupId, name: trimmed }, { onSuccess: () => toast('이름을 바꿨어요.') }) }}>
       <TextField label="그룹 이름" value={value}
         onChange={(v) => { setValue(v); rename.reset() }} isRequired maxLength={50} />
       <button type="submit" className={ui.button}
@@ -36,9 +36,9 @@ export function ShareToggle({ groupId, enabled }: { groupId: number; enabled: bo
         <div className={styles.settingCopy}>
           <div className={styles.titleWithHelp}>
             <label id={`${shareId}-label`} htmlFor={shareId}>내 거래 그룹 공개</label>
-            <HelpButton title="내 거래 그룹 공개">끄면 그룹 대시보드와 그룹 거래에서 내 거래가 제외됩니다. 숨긴 거래는 공개해도 보이지 않습니다.</HelpButton>
+            <HelpButton title="내 거래 그룹 공개">끄면 그룹 대시보드와 그룹 거래에서 내 거래가 제외돼요. 숨긴 거래는 공개해도 보이지 않아요.</HelpButton>
           </div>
-          <Text slot="description" className={ui.muted}>이 그룹에 내 거래를 공유합니다.</Text>
+          <Text slot="description" className={ui.muted}>이 그룹에 내 거래를 공유해요.</Text>
         </div>
         <SwitchButton className={`${field.check} ${styles.shareButton}`}>
           <span className={field.track} aria-hidden="true"><span className={field.thumb} /></span>
@@ -54,7 +54,7 @@ export function LeaveGroup({ groupId, name }: { groupId: number; name: string })
   return (
     <div className={styles.actions}>
       <ConfirmDialog triggerLabel="그룹 나가기" title="그룹 나가기"
-        description={`${name}에서 나가면 다시 초대받아야 합류할 수 있습니다. 나갈까요?`}
+        description={`${name}에서 나가면 다시 초대받아야 합류할 수 있어요. 나갈까요?`}
         confirmLabel="나가기 확인" isPending={leave.isPending} error={leave.isError ? errorMessage(leave.error) : null}
         onOpen={() => leave.reset()} onConfirm={(close) => leave.mutate(groupId, { onSuccess: close })} />
     </div>

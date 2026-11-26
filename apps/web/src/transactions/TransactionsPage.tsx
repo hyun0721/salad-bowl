@@ -281,7 +281,7 @@ export default function TransactionsPage({ today }: Props) {
         )}
         {!compact && inGroup && detail.isError && (
           <>
-            <p role="alert" className={ui.alert}>멤버 목록을 불러오지 못했습니다.</p>
+            <p role="alert" className={ui.alert}>멤버 목록을 불러오지 못했어요.</p>
             <button type="button" className={ui.button} onClick={() => void detail.refetch()}><Icon name="refresh-cw" size={18} />멤버 목록 다시 시도</button>
           </>
         )}
@@ -300,7 +300,7 @@ export default function TransactionsPage({ today }: Props) {
           {compact && selectionAction}
         </div>
       </div>
-      {selectedGroupId === null && <p className={ui.muted}>그룹에 속하면 그룹 거래를 볼 수 있습니다.</p>}
+      {selectedGroupId === null && <p className={ui.muted}>그룹에 속하면 그룹 거래를 볼 수 있어요.</p>}
 
       {selecting && <div className={styles.selectionBar} role="region" aria-label="거래 선택">
         <span role="status">{selectedIds.size}건 선택 · 합계 {total}</span>
@@ -322,12 +322,12 @@ export default function TransactionsPage({ today }: Props) {
           {list.isPending && <TransactionListSkeleton showOwner={inGroup} />}
           {list.isError && (
             <div className={ui.row}>
-              <p role="alert" className={ui.alert}>거래를 불러오지 못했습니다.</p>
+              <p role="alert" className={ui.alert}>거래를 불러오지 못했어요.</p>
               <button type="button" className={ui.button} onClick={() => void list.refetch()}><Icon name="refresh-cw" size={18} />다시 시도</button>
             </div>
           )}
           {list.data && items.length === 0 && (
-            <p className={ui.status}>{list.data.length > 0 ? '검색 결과가 없습니다.' : isFilterApplied(filter) ? '조건에 맞는 거래가 없습니다.' : '이 달에 거래가 없습니다.'}</p>
+            <p className={ui.status}>{list.data.length > 0 ? '검색 결과가 없어요.' : isFilterApplied(filter) ? '조건에 맞는 거래가 없어요.' : '이 달에 거래가 없어요.'}</p>
           )}
           {items.length > 0 && (
             <TransactionList key={JSON.stringify([groupId, month, memberId, search, filter, sort])} items={items} showOwner={inGroup} selectedId={selectedId}

@@ -13,7 +13,7 @@ export default function MoneyField({ label, value, onChange, isRequired, minValu
   const validate = (v: number) => {
     if (Number.isNaN(v)) return true
     if (v < minValue) return `${minValue}원 이상 입력하세요`
-    if (v > MAX_WON) return '금액이 너무 큽니다'
+    if (v > MAX_WON) return '금액이 너무 커요'
     return true
   }
   return (

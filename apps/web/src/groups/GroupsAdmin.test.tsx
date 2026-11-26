@@ -93,7 +93,7 @@ describe('group admin tools', () => {
     expect(await screen.findByLabelText('초대 주소')).toHaveValue(link)
     expect(screen.getByText('10-26 12:00까지')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '링크 복사' }))
-    expect(await screen.findByText('링크를 복사했습니다.')).toBeInTheDocument()
+    expect(await screen.findByText('링크를 복사했어요.')).toBeInTheDocument()
     expect(await navigator.clipboard.readText()).toBe(link)
 
     // 초대 주소 칸은 포커스하면 전체가 선택되어 바로 복사할 수 있다.
@@ -117,8 +117,8 @@ describe('group admin tools', () => {
     vi.spyOn(navigator.clipboard, 'writeText').mockRejectedValue(new Error('denied'))
     await user.click(screen.getByRole('button', { name: '링크 복사' }))
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('복사하지 못했습니다. 주소 칸을 눌러 직접 복사해 주세요.')
-    expect(screen.queryByText('링크를 복사했습니다.')).not.toBeInTheDocument()
+    expect(await screen.findByRole('alert')).toHaveTextContent('복사하지 못했어요. 주소 칸을 눌러 직접 복사해 주세요.')
+    expect(screen.queryByText('링크를 복사했어요.')).not.toBeInTheDocument()
   })
 
   it('does not offer new invites when the group is full', async () => {
@@ -130,7 +130,7 @@ describe('group admin tools', () => {
     renderPage(<GroupsPage />, { groups: [{ ...home, memberCount: 6 }] })
 
     expect(await screen.findByRole('button', { name: '초대 링크 만들기' })).toBeDisabled()
-    expect(screen.getByText(/정원\(6명\)이 찼습니다/)).toBeInTheDocument()
+    expect(screen.getByText(/정원\(6명\)이 찼어요/)).toBeInTheDocument()
   })
 
   it('lifts a ban', async () => {
@@ -148,7 +148,7 @@ describe('group admin tools', () => {
 
     await user.click(await screen.findByRole('button', { name: '예전멤버 차단 해제' }))
 
-    expect(await screen.findByText('차단한 사람이 없습니다.')).toBeInTheDocument()
+    expect(await screen.findByText('차단한 사람이 없어요.')).toBeInTheDocument()
     expect(unbanned).toBe(true)
   })
 

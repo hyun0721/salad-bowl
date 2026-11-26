@@ -78,9 +78,9 @@ export default function ManualTransactionForm({ onDone, loadDraft, onDraftChange
           items={[{ id: 'none', label: '소분류 없음' }, ...minorOptions(list, major).map((value) => ({ id: 'minor:' + value, label: value }))]}
           onSelectionChange={(key) => { if (key != null) change({ minor: key === 'none' ? '' : String(key).slice(6) }) }} />
       </div>
-      {categories.isSuccess && list.length === 0 && <p className={ui.muted}>엑셀을 먼저 업로드하면 분류를 고를 수 있습니다.</p>}
+      {categories.isSuccess && list.length === 0 && <p className={ui.muted}>엑셀을 먼저 업로드하면 분류를 고를 수 있어요.</p>}
       {categories.isError && <div className={ui.row}>
-        <p role="alert" className={ui.alert}>분류를 불러오지 못했습니다.</p>
+        <p role="alert" className={ui.alert}>분류를 불러오지 못했어요.</p>
         <button type="button" className={ui.button} onClick={() => void categories.refetch()}>분류 다시 시도</button>
       </div>}
       <TextField label="내용" value={description} onChange={(v) => change({ description: v })} isRequired maxLength={500} />

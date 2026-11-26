@@ -39,7 +39,7 @@ export default function LawVersionList({ year, versions, selectedId, onSelect, o
       </div>
       {create.error && <p role="alert" className={ui.alert}>{errorMessage(create.error)}</p>}
       {versions.length === 0 ? (
-        <p className={ui.status}>{year}년 귀속 세법 버전이 없습니다. [새 초안 만들기]로 시작합니다.</p>
+        <p className={ui.status}>{year}년 귀속 세법 버전이 없어요. [새 초안 만들기]로 시작하세요.</p>
       ) : (
         <ul className={`${inputs.list} ${styles.versions}`}>
           {versions.map((v) => (
@@ -70,7 +70,7 @@ function DeleteDraft({ version, onReload, onDeleted }: { version: LawVersion; on
   const name = `${version.taxYear}년 귀속 v${version.versionNo}`
   return (
     <ConfirmDialog centered triggerLabel="삭제" triggerAriaLabel={`v${version.versionNo} 초안 삭제`}
-      title={`${name} 초안을 삭제할까요?`} description="이 초안에 입력한 값이 지워집니다. 적용된 버전과 다른 초안은 남습니다. 복구할 수 없습니다."
+      title={`${name} 초안을 삭제할까요?`} description="이 초안에 입력한 값이 지워져요. 적용된 버전과 다른 초안은 남아요. 복구할 수 없어요."
       confirmLabel="삭제" isPending={remove.isPending} error={remove.error ? actionError(remove.error) : null}
       onOpen={() => remove.reset()} onConfirm={(close) => remove.mutate(undefined, {
         onSuccess: () => { close(); onDeleted() },

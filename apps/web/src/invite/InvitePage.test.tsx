@@ -29,7 +29,7 @@ describe('InvitePage', () => {
     const heading = await screen.findByRole('heading', { name: '그룹 초대' })
     const status = heading.parentElement!.querySelector('[role="status"]')
     expect(status).toHaveAttribute('aria-busy', 'true')
-    expect(status).toHaveTextContent('초대 정보를 불러오는 중입니다.')
+    expect(status).toHaveTextContent('초대 정보를 불러오는 중이에요.')
     expect(await screen.findByText('우리집')).toBeInTheDocument()
   })
   it('shows the invite and joins the group', async () => {
@@ -57,7 +57,7 @@ describe('InvitePage', () => {
     server.use(http.get('*/api/invites/abc', () => HttpResponse.json({ ...preview, alreadyMember: true })))
     renderInvite()
 
-    expect(await screen.findByText('이미 이 그룹의 멤버입니다.')).toBeInTheDocument()
+    expect(await screen.findByText('이미 이 그룹의 멤버예요.')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: '대시보드로 가기' })).toHaveAttribute('href', '/dashboard')
     expect(screen.queryByRole('button', { name: '그룹에 합류하기' })).not.toBeInTheDocument()
   })
@@ -66,7 +66,7 @@ describe('InvitePage', () => {
     server.use(http.get('*/api/invites/abc', () => HttpResponse.json({ ...preview, memberCount: 6 })))
     renderInvite()
 
-    expect(await screen.findByText('그룹 정원이 찼습니다. 관리자에게 문의해 주세요.')).toBeInTheDocument()
+    expect(await screen.findByText('그룹 정원이 찼어요. 관리자에게 문의해 주세요.')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '그룹에 합류하기' })).not.toBeInTheDocument()
   })
 
@@ -75,7 +75,7 @@ describe('InvitePage', () => {
       HttpResponse.json({ code: 'INVITE_EXPIRED', message: 'invite expired' }, { status: 410 })))
     renderInvite()
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('초대 링크가 만료되었습니다. 관리자에게 새 링크를 요청해 주세요.')
+    expect(await screen.findByRole('alert')).toHaveTextContent('초대 링크가 만료되었어요. 관리자에게 새 링크를 요청해 주세요.')
     expect(screen.queryByRole('button', { name: '다시 시도' })).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: '홈으로' })).toHaveAttribute('href', '/')
   })
@@ -85,7 +85,7 @@ describe('InvitePage', () => {
       HttpResponse.json({ code: 'REMOVED_FROM_GROUP', message: 'removed' }, { status: 403 })))
     renderInvite()
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('이 그룹에서 내보내져 다시 합류할 수 없습니다.')
+    expect(await screen.findByRole('alert')).toHaveTextContent('이 그룹에서 내보내져 다시 합류할 수 없어요.')
   })
 
   it('offers a retry when the server fails', async () => {
@@ -112,6 +112,6 @@ describe('InvitePage', () => {
 
     await user.click(await screen.findByRole('button', { name: '그룹에 합류하기' }))
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('그룹 정원(6명)이 찼습니다.')
+    expect(await screen.findByRole('alert')).toHaveTextContent('그룹 정원(6명)이 찼어요.')
   })
 })

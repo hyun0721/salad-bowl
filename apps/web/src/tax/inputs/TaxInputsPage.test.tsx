@@ -20,9 +20,9 @@ describe('TaxInputsPage — 기본정보와 연도 기록', () => {
     }))
     const { user } = renderTaxInputs({ groups: [] })
 
-    expect(await screen.findByRole('heading', { name: '2026년 귀속 기록이 없습니다' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: '2026년 귀속 기록이 없어요' })).toBeInTheDocument()
     expect(screen.getByText('개인 자료 · 그룹과 무관')).toBeInTheDocument()
-    expect(screen.queryByText(/세법은 준비 중입니다/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/세법은 준비 중이에요/)).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '기본정보 입력' }))
 
     const dialog = await screen.findByRole('dialog', { name: '2026년 귀속 기본정보' })
@@ -64,7 +64,7 @@ describe('TaxInputsPage — 기본정보와 연도 기록', () => {
     serveTax(null, null)
     const { user } = renderTaxInputs()
 
-    expect(await screen.findByText('2026년 귀속 세법은 준비 중입니다. 자료는 저장되며, 분석은 세법이 등록된 뒤 볼 수 있습니다.')).toBeInTheDocument()
+    expect(await screen.findByText('2026년 귀속 세법은 준비 중이에요. 자료는 저장되며, 분석은 세법이 등록된 뒤 볼 수 있어요.')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '기본정보 입력' }))
 
     const dialog = await screen.findByRole('dialog', { name: '2026년 귀속 기본정보' })
@@ -79,9 +79,9 @@ describe('TaxInputsPage — 기본정보와 연도 기록', () => {
       : HttpResponse.json({ id: 1, taxYear: 2026, versionNo: 1, appliedAt: '2026-01-02T00:00:00Z', childTiersApply: true })))
     const { user } = renderTaxInputs()
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('현재 세법을 불러오지 못했습니다. 다시 시도해 주세요.')
+    expect(await screen.findByRole('alert')).toHaveTextContent('현재 세법을 불러오지 못했어요. 다시 시도해 주세요.')
     expect(screen.getByRole('button', { name: '기본정보 입력' })).toBeDisabled()
-    expect(screen.queryByText(/세법은 준비 중입니다/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/세법은 준비 중이에요/)).not.toBeInTheDocument()
     fail = false
     await user.click(screen.getByRole('button', { name: '다시 시도' }))
     await waitFor(() => expect(screen.getByRole('button', { name: '기본정보 입력' })).toBeEnabled())
@@ -101,7 +101,7 @@ describe('TaxInputsPage — 기본정보와 연도 기록', () => {
   it('shows the law pending message when the saved record has no law version', async () => {
     serveTax(yearView({ lawVersion: null }))
     const { user } = renderTaxInputs()
-    expect(await screen.findByText(/2026년 귀속 세법은 준비 중입니다/)).toBeInTheDocument()
+    expect(await screen.findByText(/2026년 귀속 세법은 준비 중이에요/)).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '기본정보 수정' }))
     expect(within(await screen.findByRole('dialog')).queryByLabelText('자녀등 수')).not.toBeInTheDocument()
   })
@@ -123,7 +123,7 @@ describe('TaxInputsPage — 기본정보와 연도 기록', () => {
     await user.click(within(dialog).getByRole('button', { name: /시작월/ }))
     await user.click(screen.getByRole('option', { name: '4월' }))
 
-    expect(within(dialog).getByRole('alert')).toHaveTextContent('시작월이 종료월보다 늦습니다.')
+    expect(within(dialog).getByRole('alert')).toHaveTextContent('시작월이 종료월보다 늦어요.')
     expect(within(dialog).getByRole('button', { name: '저장' })).toBeDisabled()
     await user.click(within(dialog).getByRole('button', { name: /종료월/ }))
     await user.click(screen.getByRole('option', { name: '12월' }))
@@ -146,7 +146,7 @@ describe('TaxInputsPage — 기본정보와 연도 기록', () => {
     await user.type(salary, '61000000')
     await user.click(within(dialog).getByRole('button', { name: '저장' }))
 
-    expect(await within(dialog).findByRole('alert')).toHaveTextContent('다른 곳에서 수정되거나 삭제됐습니다. 저장하지 않았습니다.')
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('다른 곳에서 수정되거나 삭제됐어요. 저장하지 않았어요.')
     expect(salary).toHaveValue('61,000,000')
     serveTax(yearView({ totalSalary: 70_000_000, rowVersion: 900 }))
     await user.click(within(dialog).getByRole('button', { name: '다시 불러오기' }))
@@ -162,7 +162,7 @@ describe('TaxInputsPage — 기본정보와 연도 기록', () => {
     await user.click(await screen.findByRole('button', { name: '기본정보 수정' }))
     const dialog = await screen.findByRole('dialog')
     await user.click(within(dialog).getByRole('button', { name: '저장' }))
-    expect(await within(dialog).findByRole('alert')).toHaveTextContent('다른 곳에서 수정되거나 삭제됐습니다. 저장하지 않았습니다.')
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('다른 곳에서 수정되거나 삭제됐어요. 저장하지 않았어요.')
     expect(within(dialog).getByRole('button', { name: '다시 불러오기' })).toBeInTheDocument()
   })
 
@@ -180,7 +180,7 @@ describe('TaxInputsPage — 기본정보와 연도 기록', () => {
     await user.clear(salary)
     await user.type(salary, '10000000000000')
     await user.click(within(dialog).getByRole('button', { name: '저장' }))
-    expect(await within(dialog).findByText('금액이 너무 큽니다')).toBeInTheDocument()
+    expect(await within(dialog).findByText('금액이 너무 커요')).toBeInTheDocument()
     expect(bodies).toHaveLength(0)
     await user.clear(salary)
     await user.type(salary, '50000000')
@@ -205,7 +205,7 @@ describe('TaxInputsPage — 기본정보와 연도 기록', () => {
     const dialog = await screen.findByRole('dialog', { name: '2026년 귀속 기본정보' })
     await user.click(within(dialog).getByRole('button', { name: '저장' }))
 
-    expect(await within(dialog).findByRole('alert')).toHaveTextContent('서버에 연결하지 못했습니다. 잠시 후 다시 시도해 주세요. 입력한 값은 그대로 있습니다.')
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('서버에 연결하지 못했어요. 잠시 후 다시 시도해 주세요. 입력한 값은 그대로 있어요.')
     expect(within(dialog).getByLabelText('예상 총급여')).toHaveValue('50,000,000')
   })
 
@@ -242,7 +242,7 @@ describe('TaxInputsPage — 기본정보와 연도 기록', () => {
     await user.click(await screen.findByRole('button', { name: '2026년 기록 삭제' }))
     let dialog = await screen.findByRole('dialog', { name: '2026년 기록을 삭제할까요?' })
     expect(dialog.parentElement).toHaveClass('modal', 'pinned')
-    expect(dialog).toHaveTextContent('기본정보, 신용·체크 자료 0건, 현금영수증 자료, 지출계획이 모두 지워집니다')
+    expect(dialog).toHaveTextContent('기본정보, 신용·체크 자료 0건, 현금영수증 자료, 지출계획이 모두 지워져요')
     const confirm = () => within(dialog).getByRole('button', { name: '삭제' })
     expect(confirm()).toBeDisabled()
     await user.type(within(dialog).getByLabelText('확인을 위해 귀속연도(2026)를 입력하세요'), '2025')
@@ -259,7 +259,7 @@ describe('TaxInputsPage — 기본정보와 연도 기록', () => {
     await user.type(input, '2026')
     await user.click(confirm())
 
-    expect(await screen.findByRole('heading', { name: '2026년 귀속 기록이 없습니다' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: '2026년 귀속 기록이 없어요' })).toBeInTheDocument()
     expect(new URL(url).search).toBe('?rowVersion=777')
   })
 
@@ -271,7 +271,7 @@ describe('TaxInputsPage — 기본정보와 연도 기록', () => {
     const wrapper = section.firstElementChild
     expect(wrapper).toHaveClass('split')
     expect(wrapper?.children).toHaveLength(2)
-    expect(wrapper?.firstElementChild).toHaveTextContent('이 연도의 기본정보·입력자료·금액·지출계획을 모두 지웁니다.')
+    expect(wrapper?.firstElementChild).toHaveTextContent('이 연도의 기본정보·입력자료·금액·지출계획을 모두 지워요.')
     expect(wrapper?.lastElementChild).toBe(within(section).getByRole('button', { name: '2026년 기록 삭제' }))
   })
 
@@ -296,7 +296,7 @@ describe('TaxInputsPage — 기본정보와 연도 기록', () => {
     )
     const { user } = renderTaxInputs()
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('입력자료를 불러오지 못했습니다.')
+    expect(await screen.findByRole('alert')).toHaveTextContent('입력자료를 불러오지 못했어요.')
     fail = false
     await user.click(screen.getByRole('button', { name: '다시 시도' }))
 

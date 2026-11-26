@@ -62,8 +62,8 @@ class TaxLawValidatorTest {
                 List.of(3_000_000L, 3_500_000L, 4_000_000L), List.of(2_500_000L, 2_750_000L, 3_000_000L),
                 3_000_000L, 2_000_000L, "조세특례제한법", "제126조의2", "https://www.law.go.kr/", START, END, null));
         assertThat(TaxLawValidator.validate(outOfRange)).containsExactly(
-                new FieldError("minSpendRatePct", "0~100 사이여야 합니다"),
-                new FieldError("rateCreditPct", "0~100 사이여야 합니다"));
+                new FieldError("minSpendRatePct", "0~100 사이로 입력하세요"),
+                new FieldError("rateCreditPct", "0~100 사이로 입력하세요"));
 
         TaxLawVersion edges = draft(request(0, 100, 0, 100, 0, 100, 70_000_000L,
                 List.of(3_000_000L, 3_500_000L, 4_000_000L), List.of(2_500_000L, 2_750_000L, 3_000_000L),
@@ -77,9 +77,9 @@ class TaxLawValidatorTest {
                 List.of(3_000_000L, -1L, 4_000_000L), List.of(2_500_000L, 2_750_000L, 3_000_000L),
                 3_000_000L, -1L, "조세특례제한법", "제126조의2", "https://www.law.go.kr/", START, END, null));
         assertThat(TaxLawValidator.validate(negative)).containsExactly(
-                new FieldError("bracketBoundary", "0 이상이어야 합니다"),
-                new FieldError("basicLimitLow[1]", "0 이상이어야 합니다"),
-                new FieldError("extraLimitHigh", "0 이상이어야 합니다"));
+                new FieldError("bracketBoundary", "0 이상 입력하세요"),
+                new FieldError("basicLimitLow[1]", "0 이상 입력하세요"),
+                new FieldError("extraLimitHigh", "0 이상 입력하세요"));
 
         TaxLawVersion zeros = draft(request(25, 15, 30, 30, 40, 40, 0L,
                 List.of(0L, 0L, 0L), List.of(0L, 0L, 0L), 0L, 0L,
@@ -128,7 +128,7 @@ class TaxLawValidatorTest {
                 List.of(3_000_000L, 3_500_000L, 4_000_000L), List.of(2_500_000L, 2_750_000L, 3_000_000L),
                 3_000_000L, 2_000_000L, "조세특례제한법", "제126조의2", "javascript:alert(1)", START, END, null));
         assertThat(TaxLawValidator.validate(script))
-                .containsExactly(new FieldError("basisUrl", "http:// 또는 https://로 시작해야 합니다"));
+                .containsExactly(new FieldError("basisUrl", "http:// 또는 https://로 시작하세요"));
     }
 
     @Test
@@ -137,7 +137,7 @@ class TaxLawValidatorTest {
                 List.of(3_000_000L, 3_500_000L, 4_000_000L), List.of(2_500_000L, 2_750_000L, 3_000_000L),
                 3_000_000L, 2_000_000L, "조세특례제한법", "제126조의2", "https://www.law.go.kr/", END, START, null));
         assertThat(TaxLawValidator.validate(reversed))
-                .containsExactly(new FieldError("periodEnd", "종료일이 시작일보다 빠릅니다"));
+                .containsExactly(new FieldError("periodEnd", "종료일이 시작일보다 빨라요"));
 
         TaxLawVersion sameDay = draft(request(25, 15, 30, 30, 40, 40, 70_000_000L,
                 List.of(3_000_000L, 3_500_000L, 4_000_000L), List.of(2_500_000L, 2_750_000L, 3_000_000L),

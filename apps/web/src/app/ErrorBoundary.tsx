@@ -22,8 +22,8 @@ export default class ErrorBoundary extends Component<Props, State> {
     if (!this.state.failed) return this.props.children
     return (
       <div className={styles.page} role="alert">
-        <h1 className={styles.title}>문제가 생겼습니다</h1>
-        <p className={styles.text}>화면을 표시하지 못했습니다.</p>
+        <h1 className={styles.title}>문제가 생겼어요</h1>
+        <p className={styles.text}>화면을 표시하지 못했어요.</p>
         <button type="button" className={styles.button} onClick={() => window.location.reload()}>
           <Icon name="refresh-cw" size={18} />다시 불러오기
         </button>

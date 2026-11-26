@@ -50,7 +50,7 @@ export function apiUrl(path: string): string {
   return new URL(BASE + path, window.location.origin).toString()
 }
 
-const FAILED_MESSAGE = '요청을 처리하지 못했습니다.'
+const FAILED_MESSAGE = '요청을 처리하지 못했어요.'
 
 function tokenSubject(token: string | null): string | null {
   if (!token) return null
@@ -172,7 +172,7 @@ async function rawFetch(path: string, init: RequestInit, trackSlow = true): Prom
   try {
     return await fetch(apiUrl(path), { ...init, credentials: 'include' })
   } catch {
-    throw new ApiError(0, 'NETWORK_ERROR', '서버에 연결하지 못했습니다.')
+    throw new ApiError(0, 'NETWORK_ERROR', '서버에 연결하지 못했어요.')
   } finally {
     if (timer !== undefined) clearTimeout(timer)
     if (slow) markSlow(-1)
@@ -206,6 +206,6 @@ async function toError(res: Response): Promise<ApiError> {
     }
   }
   // Pages·Render가 돌려주는 HTML 502·503·524 등: API가 응답하지 못한 것이다.
-  if (res.status >= 500) return new ApiError(res.status, 'SERVER_UNAVAILABLE', '서버를 사용할 수 없습니다.')
+  if (res.status >= 500) return new ApiError(res.status, 'SERVER_UNAVAILABLE', '서버를 사용할 수 없어요.')
   return new ApiError(res.status, 'REQUEST_FAILED', FAILED_MESSAGE)
 }

@@ -8,7 +8,7 @@ export default function ServerUnavailable() {
   const { retryRestore } = useAuth()
   return (
     <div className={styles.unavailable}>
-      <p role="alert" className={ui.alert}>서버에 연결하지 못했습니다. 잠시 후 다시 시도해 주세요.</p>
+      <p role="alert" className={ui.alert}>서버에 연결하지 못했어요. 잠시 후 다시 시도해 주세요.</p>
       <button type="button" className={`${ui.button} ${ui.primary}`} onClick={retryRestore}><Icon name="refresh-cw" size={18} />다시 시도</button>
     </div>
   )

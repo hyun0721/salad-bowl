@@ -1,9 +1,9 @@
 .stepper { position: relative; align-self: flex-start; width: fit-content; display: grid; grid-template-columns: 36px auto 36px; flex: none; gap: 0; }
-.stepper::before { content: ''; position: absolute; inset: 0 0 auto; height: var(--touch-target); border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface-000); pointer-events: none; }
-.stepper .step { position: relative; z-index: 1; width: 36px; min-width: 36px; height: var(--touch-target); min-height: var(--touch-target); border: 0; border-radius: 0; padding: 0; background: transparent; }
+.stepper::before { content: ''; position: absolute; inset: 0 0 auto; height: var(--control-height); border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface-000); pointer-events: none; }
+.stepper .step { position: relative; z-index: 1; width: 36px; min-width: 36px; height: var(--control-height); min-height: var(--control-height); border: 0; border-radius: 0; padding: 0; background: transparent; }
 .stepper .step:first-child { border-right: 1px solid var(--line); }
 .stepper .step:last-of-type { border-left: 1px solid var(--line); }
-.value { position: relative; display: flex; align-items: center; justify-content: center; height: var(--touch-target); padding-inline: var(--space-2); }
+.value { position: relative; display: flex; align-items: center; justify-content: center; height: var(--control-height); padding-inline: var(--space-2); }
 .stepper .text { text-align: center; font-variant-numeric: tabular-nums; font-size: var(--text-xl); font-weight: 600; color: var(--ink); white-space: nowrap; }
 .year { min-width: 72px; }
 .stepper .step[aria-disabled="true"] { color: var(--ink-muted); cursor: not-allowed; }

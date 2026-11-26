@@ -12,17 +12,17 @@ export default function PendingNotice({ analysis }: { analysis: TaxAnalysisView 
     return (
       <section className={`${ui.card} ${inputs.empty}`}>
         <h2>세법 준비 중</h2>
-        <p>{analysis.taxYear}년 귀속 세법이 등록되면 계산합니다. 저장한 지출계획은 남습니다.</p>
+        <p>{analysis.taxYear}년 귀속 세법이 등록되면 계산해요. 저장한 지출계획은 남아요.</p>
       </section>
     )
   }
   return (
     <section className={`${ui.card} ${inputs.empty}`}>
-      <h2>자료를 완료하면 계산합니다</h2>
+      <h2>자료를 완료하면 계산해요</h2>
       <p>
         빈 칸 {analysis.blankCount}개 · {analysis.status === 'NO_INPUT'
           ? '신용·체크 자료나 현금영수증 자료를 먼저 입력하세요.'
-          : '사용액이 없는 칸은 0원으로 채웁니다.'}
+          : '사용액이 없는 칸은 0원으로 채워요.'}
       </p>
       <Link to="/tax/inputs" className={`${ui.button} ${ui.primary} ${ui.linkButton}`}>입력자료로 가기</Link>
     </section>

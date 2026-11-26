@@ -137,5 +137,5 @@ export function isStale(error: unknown): boolean {
 
 /** 확인·채우기처럼 입력이 없는 동작의 실패 문구. 다른 곳에서 바뀌었으면 호출한 쪽이 새로 불러온다. */
 export function actionError(error: unknown): string {
-  return isStale(error) ? '다른 곳에서 수정되거나 삭제됐습니다. 새로 불러온 내용을 확인한 뒤 다시 시도해 주세요.' : errorMessage(error)
+  return isStale(error) ? '다른 곳에서 수정되거나 삭제됐어요. 새로 불러온 내용을 확인한 뒤 다시 시도해 주세요.' : errorMessage(error)
 }

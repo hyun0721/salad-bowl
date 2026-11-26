@@ -17,11 +17,11 @@ export default function UploadHistoryDialog({ onClose }: { onClose: () => void }
       </ul></SkeletonRegion>}
       {history.isError && (
         <div className={ui.row}>
-          <p role="alert" className={ui.alert}>업로드 이력을 불러오지 못했습니다.</p>
+          <p role="alert" className={ui.alert}>업로드 이력을 불러오지 못했어요.</p>
           <button type="button" className={ui.button} onClick={() => void history.refetch()}><Icon name="refresh-cw" size={18} />다시 시도</button>
         </div>
       )}
-      {history.data && history.data.length === 0 && <p className={ui.status}>아직 올린 파일이 없습니다.</p>}
+      {history.data && history.data.length === 0 && <p className={ui.status}>아직 올린 파일이 없어요.</p>}
       {history.data && history.data.length > 0 && (
         <ul className={ui.stack}>
           {history.data.map((batch) => (

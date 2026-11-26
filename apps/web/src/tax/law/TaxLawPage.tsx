@@ -55,11 +55,11 @@ export default function TaxLawPage() {
     <div className={inputs.page}>
       <TaxHeader title={title} note="모든 회원의 계산에 쓰는 기준 · 서비스 관리자 전용" />
       <TaxTabs />
-      {reloadNoticeYear === year && <p role="alert" className={ui.alert}>다른 곳에서 바뀌어 새로 불러왔습니다.</p>}
+      {reloadNoticeYear === year && <p role="alert" className={ui.alert}>다른 곳에서 바뀌어 새로 불러왔어요.</p>}
       {list.isPending && <SkeletonRegion label="세법 버전 불러오는 중"><Skeleton height={160} radius="var(--radius-md)" /></SkeletonRegion>}
       {list.isError && (
         <div className={inputs.split}>
-          <p role="alert" className={ui.alert}>세법 버전을 불러오지 못했습니다.</p>
+          <p role="alert" className={ui.alert}>세법 버전을 불러오지 못했어요.</p>
           <div className={inputs.actions}>
             <button type="button" className={ui.button} onClick={() => void list.refetch()}><Icon name="refresh-cw" size={18} />다시 시도</button>
           </div>
@@ -82,7 +82,7 @@ function NoPermission({ title }: { title: string }) {
       <PageHeader title={title} />
       <section aria-labelledby="law-forbidden-title" className={`${ui.card} ${inputs.empty}`}>
         <h2 id="law-forbidden-title">권한 없음</h2>
-        <p>이 화면은 서비스 관리자만 볼 수 있습니다.</p>
+        <p>이 화면은 서비스 관리자만 볼 수 있어요.</p>
         <Link to="/tax/inputs" className={`${ui.button} ${ui.linkButton}`}>입력자료로 가기</Link>
       </section>
     </div>

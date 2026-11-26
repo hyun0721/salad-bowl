@@ -25,7 +25,7 @@ export default function CashReceiptSection({ view, defaultAsOfDate }: { view: Ta
           {cash ? (
             <p className={ui.muted}>기준일 {cash.asOfDate} · 합계 {expense(sumAmounts(cash.amounts))}{cash.memo && ` · ${cash.memo}`}</p>
           ) : (
-            <p className={ui.muted}>아직 입력하지 않았습니다. 현금영수증을 쓰지 않았다면 저장만 하면 0원으로 기록됩니다.</p>
+            <p className={ui.muted}>아직 입력하지 않았어요. 현금영수증을 쓰지 않았다면 저장만 하면 0원으로 기록돼요.</p>
           )}
         </div>
         <div className={styles.actions}>

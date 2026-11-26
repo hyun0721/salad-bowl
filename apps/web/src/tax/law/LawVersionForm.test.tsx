@@ -40,7 +40,7 @@ describe('LawVersionForm — 초안 편집', () => {
     await user.type(within(form).getByLabelText('메모 (선택)'), '  자녀등 한도 반영  ')
     await user.tab()
 
-    expect(form).toHaveTextContent('저장하지 않은 변경이 있습니다. 초안을 저장한 뒤 검증·적용할 수 있습니다.')
+    expect(form).toHaveTextContent('저장하지 않은 변경이 있어요. 초안을 저장한 뒤 검증·적용할 수 있어요.')
     expect(within(form).getByRole('button', { name: '검증' })).toBeDisabled()
     expect(within(form).getByRole('button', { name: '적용' })).toBeDisabled()
     await user.click(within(form).getByRole('button', { name: '초안 저장' }))
@@ -54,7 +54,7 @@ describe('LawVersionForm — 초안 편집', () => {
       basisLawName: '조세특례제한법', basisArticle: '제126조의2', basisUrl: 'https://www.law.go.kr/',
       periodStart: '2026-01-01', periodEnd: '2026-12-31', memo: '자녀등 한도 반영',
     })
-    expect(await screen.findByText('2026년 귀속 v2 초안을 저장했습니다.')).toBeInTheDocument()
+    expect(await screen.findByText('2026년 귀속 v2 초안을 저장했어요.')).toBeInTheDocument()
     expect(within(form).getByRole('button', { name: '검증' })).toBeEnabled()
     expect(field(form, '비율 (%)', '신용카드 공제율')).toHaveValue('20')
   })
@@ -81,8 +81,8 @@ describe('LawVersionForm — 초안 편집', () => {
   it('validates the saved draft and lists failures with field names, then a pass', async () => {
     serveLaw([v2, v1])
     let errors = [
-      { field: 'rateCulturePct', message: '0~100 사이여야 합니다' },
-      { field: 'basicLimitHigh[1]', message: '값을 입력해야 합니다' },
+      { field: 'rateCulturePct', message: '0~100 사이로 입력하세요' },
+      { field: 'basicLimitHigh[1]', message: '값을 입력하세요' },
     ]
     server.use(http.post('*/api/tax/admin/law-versions/2/validate', () => HttpResponse.json({ errors })))
     const { user, form } = await openDraft(2)
@@ -90,15 +90,15 @@ describe('LawVersionForm — 초안 편집', () => {
     await user.click(within(form).getByRole('button', { name: '검증' }))
 
     const failed = await within(form).findByRole('alert')
-    expect(failed).toHaveTextContent('검증 실패 — 적용할 수 없습니다.')
+    expect(failed).toHaveTextContent('검증 실패 — 적용할 수 없어요.')
     expect(within(failed).getAllByRole('listitem').map((li) => li.textContent)).toEqual([
-      '문화체육 공제율: 0~100 사이여야 합니다',
-      '기본한도 · 경계 초과 · 자녀등 1명: 값을 입력해야 합니다',
+      '문화체육 공제율: 0~100 사이로 입력하세요',
+      '기본한도 · 경계 초과 · 자녀등 1명: 값을 입력하세요',
     ])
     errors = []
     await user.click(within(form).getByRole('button', { name: '검증' }))
 
-    expect(await within(form).findByRole('status')).toHaveTextContent('검증 통과 — 적용할 수 있습니다.')
+    expect(await within(form).findByRole('status')).toHaveTextContent('검증 통과 — 적용할 수 있어요.')
   })
 
   it('keeps the input after a stale save and reloads the draft on request', async () => {
@@ -110,7 +110,7 @@ describe('LawVersionForm — 초안 편집', () => {
     await user.type(field(form, '비율 (%)', '신용카드 공제율'), '20')
     await user.click(within(form).getByRole('button', { name: '초안 저장' }))
 
-    expect(await within(form).findByRole('alert')).toHaveTextContent('다른 곳에서 수정·적용되거나 삭제됐습니다. 저장하지 않았습니다.')
+    expect(await within(form).findByRole('alert')).toHaveTextContent('다른 곳에서 수정·적용되거나 삭제됐어요. 저장하지 않았어요.')
     expect(field(form, '비율 (%)', '신용카드 공제율')).toHaveValue('20')
     await user.click(within(form).getByRole('button', { name: '다시 불러오기' }))
 
@@ -128,7 +128,7 @@ describe('LawVersionForm — 초안 편집', () => {
     await user.type(within(form).getByLabelText('메모 (선택)'), '합성')
     await user.click(within(form).getByRole('button', { name: '초안 저장' }))
 
-    expect(await within(form).findByRole('alert')).toHaveTextContent('서버에 연결하지 못했습니다. 잠시 후 다시 시도해 주세요. 입력한 값은 그대로 있습니다.')
+    expect(await within(form).findByRole('alert')).toHaveTextContent('서버에 연결하지 못했어요. 잠시 후 다시 시도해 주세요. 입력한 값은 그대로 있어요.')
     expect(within(form).getByLabelText('메모 (선택)')).toHaveValue('합성')
   })
 })
@@ -148,8 +148,8 @@ describe('LawVersionForm — 적용', () => {
     const dialog = await screen.findByRole('dialog', { name: '2026년 귀속 v2 적용' })
     expect(dialog.parentElement).toHaveClass('pinned')
     expect(dialog.parentElement).toHaveClass('modal')
-    expect(dialog).toHaveTextContent('적용하면 이 버전은 고치거나 삭제할 수 없습니다.')
-    expect(dialog).toHaveTextContent('다른 초안은 초안으로 남습니다.')
+    expect(dialog).toHaveTextContent('적용하면 이 버전은 고치거나 삭제할 수 없어요.')
+    expect(dialog).toHaveTextContent('다른 초안은 초안으로 남아요.')
     await user.click(within(dialog).getByRole('button', { name: '적용' }))
 
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
@@ -167,14 +167,14 @@ describe('LawVersionForm — 적용', () => {
   it('keeps the dialog open when the draft fails validation on apply', async () => {
     serveLaw([v2, v1])
     server.use(http.post('*/api/tax/admin/law-versions/2/apply', () =>
-      HttpResponse.json({ code: 'VALIDATION_FAILED', message: 'basicLimitHigh[1]: 값을 입력해야 합니다' }, { status: 400 })))
+      HttpResponse.json({ code: 'VALIDATION_FAILED', message: 'basicLimitHigh[1]: 값을 입력하세요' }, { status: 400 })))
     const { user, form } = await openDraft(2)
 
     await user.click(within(form).getByRole('button', { name: '적용' }))
     const dialog = await screen.findByRole('dialog', { name: '2026년 귀속 v2 적용' })
     await user.click(within(dialog).getByRole('button', { name: '적용' }))
 
-    expect(await within(dialog).findByRole('alert')).toHaveTextContent('검증을 통과하지 못해 적용하지 않았습니다. [검증]으로 이유를 확인해 주세요.')
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('검증을 통과하지 못해 적용하지 않았어요. [검증]으로 이유를 확인해 주세요.')
   })
 
   it.each([409, 404])('reloads the list after a %i apply', async (status) => {
@@ -188,7 +188,7 @@ describe('LawVersionForm — 적용', () => {
 
     await waitFor(() => expect(calls.list).toBe(2))
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-    expect(screen.getByRole('alert')).toHaveTextContent('다른 곳에서 바뀌어 새로 불러왔습니다.')
+    expect(screen.getByRole('alert')).toHaveTextContent('다른 곳에서 바뀌어 새로 불러왔어요.')
   })
 
   it('reopens a changed draft with its new rowVersion after an apply conflict', async () => {
@@ -210,13 +210,13 @@ describe('LawVersionForm — 적용', () => {
 
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     const reloaded = screen.getByRole('region', { name: /2026년 귀속 v2 · 초안/ })
-    expect(screen.getByRole('alert')).toHaveTextContent('다른 곳에서 바뀌어 새로 불러왔습니다.')
+    expect(screen.getByRole('alert')).toHaveTextContent('다른 곳에서 바뀌어 새로 불러왔어요.')
     expect(field(reloaded, '비율 (%)', '신용카드 공제율')).toHaveValue('20')
     await user.click(within(reloaded).getByRole('button', { name: '적용' }))
     await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: '적용' }))
 
     await waitFor(() => expect(appliedBodies).toEqual([{ rowVersion: 21 }, { rowVersion: 22 }]))
-    await waitFor(() => expect(screen.queryByText('다른 곳에서 바뀌어 새로 불러왔습니다.')).not.toBeInTheDocument())
+    await waitFor(() => expect(screen.queryByText('다른 곳에서 바뀌어 새로 불러왔어요.')).not.toBeInTheDocument())
   })
 })
 
@@ -232,7 +232,7 @@ describe('LawVersionForm — 검증 충돌', () => {
     await user.click(within(form).getByRole('button', { name: '검증' }))
 
     await waitFor(() => expect(calls.list).toBe(1))
-    expect(await screen.findByRole('alert')).toHaveTextContent('다른 곳에서 바뀌어 새로 불러왔습니다.')
+    expect(await screen.findByRole('alert')).toHaveTextContent('다른 곳에서 바뀌어 새로 불러왔어요.')
     if (status === 404) {
       expect(screen.getByRole('region', { name: /2026년 귀속 v1 · 적용/ })).toBeInTheDocument()
     } else {
@@ -259,7 +259,7 @@ describe('LawVersionList — 초안 삭제', () => {
     await user.click(within(list).getByRole('button', { name: 'v3 초안 삭제' }))
     const dialog = await screen.findByRole('dialog', { name: '2026년 귀속 v3 초안을 삭제할까요?' })
     expect(dialog.parentElement).toHaveClass('modal')
-    expect(dialog).toHaveTextContent('이 초안에 입력한 값이 지워집니다. 적용된 버전과 다른 초안은 남습니다. 복구할 수 없습니다.')
+    expect(dialog).toHaveTextContent('이 초안에 입력한 값이 지워져요. 적용된 버전과 다른 초안은 남아요. 복구할 수 없어요.')
     await user.click(within(dialog).getByRole('button', { name: '삭제' }))
 
     await waitFor(() => expect(within(list).getAllByRole('listitem')).toHaveLength(2))
@@ -283,7 +283,7 @@ describe('LawVersionList — 초안 삭제', () => {
 
     if (status === 409) await waitFor(() => expect(calls.list).toBe(2))
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-    expect(screen.getByRole('alert')).toHaveTextContent('다른 곳에서 바뀌어 새로 불러왔습니다.')
+    expect(screen.getByRole('alert')).toHaveTextContent('다른 곳에서 바뀌어 새로 불러왔어요.')
     if (status === 404) await waitFor(() => expect(within(list).queryByRole('button', { name: /^v3 · / })).not.toBeInTheDocument())
   })
 })

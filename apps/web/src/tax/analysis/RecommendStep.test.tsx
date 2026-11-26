@@ -34,10 +34,10 @@ describe('RecommendStep — ③ 추천', () => {
     expect(rowOf(table, '연말 예상 소득공제액')).toHaveTextContent(/₩ 1,997,272\s*₩ 2,150,000/)
     expect(rowOf(table, '현재 계획 대비 차이')).toHaveTextContent('+₩ 152,728')
     expect(within(step.getByRole('region', { name: '이유' })).getAllByRole('listitem').map((li) => li.textContent))
-      .toEqual(['일반: 현재 계획에서 신용카드로 쓸 금액(₩ 1,018,183)을 체크카드·현금영수증으로 옮깁니다. 최저사용금액(₩ 12,500,000)을 넘는 사용분에는 체크카드·현금영수증 공제율 30%가 신용카드 15%보다 높습니다.'])
+      .toEqual(['일반: 현재 계획에서 신용카드로 쓸 금액(₩ 1,018,183)을 체크카드·현금영수증으로 옮겨요. 최저사용금액(₩ 12,500,000)을 넘는 사용분에는 체크카드·현금영수증 공제율 30%가 신용카드 15%보다 높아요.'])
     const assumptions = within(step.getByRole('region', { name: '가정' })).getAllByRole('listitem').map((li) => li.textContent)
     expect(assumptions[0]).toBe('예상 총급여 ₩ 50,000,000 · 2026년 귀속 세법 v1 · 자료 기준일 2026-06-30')
-    expect(assumptions).toContain('카드 포인트·할인·연회비·전월실적은 고려하지 않습니다. 결과는 소득공제액이며 환급액이 아닙니다.')
+    expect(assumptions).toContain('카드 포인트·할인·연회비·전월실적은 고려하지 않아요. 결과는 소득공제액이며 환급액이 아니에요.')
   })
 
   it('says there is no difference and why, without the comparison table', async () => {
@@ -47,17 +47,17 @@ describe('RecommendStep — ③ 추천', () => {
     } }))
     const { step } = await openRecommend()
 
-    expect(step.getByText(/결제수단을 바꿔도/)).toHaveTextContent('차이 없음 결제수단을 바꿔도 연말 예상 소득공제액(₩ 1,997,272)이 같습니다. 현재 계획을 유지합니다.')
+    expect(step.getByText(/결제수단을 바꿔도/)).toHaveTextContent('차이 없음 결제수단을 바꿔도 연말 예상 소득공제액(₩ 1,997,272)이 같아요. 현재 계획을 유지해요.')
     expect(step.queryByRole('table')).not.toBeInTheDocument()
     expect(within(step.getByRole('region', { name: '이유' })).getByRole('listitem'))
-      .toHaveTextContent('바꿀 수 있는 금액이 결제수단과 무관하게 공제율이 같은 소비구분(전통시장·대중교통·문화체육)에만 있습니다.')
+      .toHaveTextContent('바꿀 수 있는 금액이 결제수단과 무관하게 공제율이 같은 소비구분(전통시장·대중교통·문화체육)에만 있어요.')
   })
 
   it('explains the current plan when there is no spending yet', async () => {
     serveAnalysis(analysisView({ recommendation: { ...base, methodShare: null } }))
     const { step } = await openRecommend()
 
-    expect(step.getByText(/^현재 계획:/)).toHaveTextContent('현재 계획: 지금까지 사용액이 없어 바꿀 수 있는 금액을 모두 신용카드로 둡니다.')
+    expect(step.getByText(/^현재 계획:/)).toHaveTextContent('현재 계획: 지금까지 사용액이 없어 바꿀 수 있는 금액을 모두 신용카드로 둬요.')
   })
 
   it('explains why 체크카드 and 현금영수증 are one group in a help popover', async () => {
@@ -72,7 +72,7 @@ describe('RecommendStep — ③ 추천', () => {
     serveAnalysis(analysisView({ status: 'INCOMPLETE', blankCount: 3, lawRates: null, deduction: null, recommendation: null }), readyYearView({ blankCount: 3 }))
     const { step } = await openRecommend()
 
-    expect(step.getByRole('heading', { name: '자료를 완료하면 계산합니다' })).toBeInTheDocument()
+    expect(step.getByRole('heading', { name: '자료를 완료하면 계산해요' })).toBeInTheDocument()
     expect(step.getByText(/^빈 칸 3개/)).toBeInTheDocument()
     expect(step.getByRole('link', { name: '입력자료로 가기' })).toHaveAttribute('href', '/tax/inputs')
   })
@@ -90,7 +90,7 @@ describe('RecommendStep — ③ 추천', () => {
     serveAnalysis(analysisView({ planSaved: false, recommendation: null }), readyYearView({ plan: null }))
     const { user, step } = await openRecommend()
 
-    expect(step.getByRole('heading', { name: '지출계획을 저장하면 추천을 계산합니다' })).toBeInTheDocument()
+    expect(step.getByRole('heading', { name: '지출계획을 저장하면 추천을 계산해요' })).toBeInTheDocument()
     await user.click(step.getByRole('button', { name: '② 지출계획으로 가기' }))
     expect(screen.getByRole('tab', { name: '② 지출계획' })).toHaveAttribute('aria-selected', 'true')
   })

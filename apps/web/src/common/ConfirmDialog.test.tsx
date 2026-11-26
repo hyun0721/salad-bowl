@@ -8,7 +8,7 @@ function renderConfirm(props: Partial<Parameters<typeof ConfirmDialog>[0]> = {})
   const onConfirm = vi.fn()
   const user = userEvent.setup()
   const view = render(
-    <ConfirmDialog triggerLabel="그룹 나가기" title="그룹 나가기" description="우리집에서 나가면 다시 초대받아야 합류할 수 있습니다."
+    <ConfirmDialog triggerLabel="그룹 나가기" title="그룹 나가기" description="우리집에서 나가면 다시 초대받아야 합류할 수 있어요."
       confirmLabel="나가기 확인" isPending={false} error={null} onConfirm={onConfirm} {...props} />,
   )
   return { onConfirm, user, ...view }
@@ -79,12 +79,12 @@ describe('ConfirmDialog', () => {
 
     rerender(
       <ConfirmDialog triggerLabel="그룹 나가기" title="그룹 나가기" description="설명" confirmLabel="나가기 확인"
-        isPending error="관리자는 나갈 수 없습니다." onConfirm={onConfirm} />,
+        isPending error="관리자는 나갈 수 없어요." onConfirm={onConfirm} />,
     )
     const dialog = screen.getByRole('dialog')
     expect(within(dialog).getByRole('button', { name: '나가기 확인' })).toBeDisabled()
     expect(within(dialog).getByRole('button', { name: '취소' })).toBeDisabled()
-    expect(within(dialog).getByRole('alert')).toHaveTextContent('관리자는 나갈 수 없습니다.')
+    expect(within(dialog).getByRole('alert')).toHaveTextContent('관리자는 나갈 수 없어요.')
     await user.keyboard('{Escape}')
     expect(screen.getByRole('dialog')).toBeInTheDocument()
   })

@@ -83,7 +83,7 @@ export default function CategoryTrend({ groupId, month, title = '대분류 추�
   return (
     <section id="dashboard-trend" aria-labelledby={titleId} className={`${ui.card} ${styles.card}`}>
       <div className={styles.header}><h2 id={titleId}>{title}</h2><ChartViewToggle title={title} table value={view} onChange={setView} /></div>
-      {!ready ? null : !enabled ? <p className={ui.status}>대분류 하나를 선택하면 하위 소분류를 볼 수 있습니다.</p> : <>
+      {!ready ? null : !enabled ? <p className={ui.status}>대분류 하나를 선택하면 하위 소분류를 볼 수 있어요.</p> : <>
       <div className={styles.presetScroll}>
         <SegmentedControl label="기간" items={compact ? compactPresets : presets} selectedKey={preset} onSelectionChange={selectPreset} />
       </div>
@@ -99,12 +99,12 @@ export default function CategoryTrend({ groupId, month, title = '대분류 추�
       {!error && trend.isPending && <SkeletonRegion><TrendSkeleton compact={compact} /></SkeletonRegion>}
       {!error && trend.isError && (
         <div className={pageStyles.feedback}>
-          <p role="alert" className={ui.alert}>추이를 불러오지 못했습니다.</p>
+          <p role="alert" className={ui.alert}>추이를 불러오지 못했어요.</p>
           <button type="button" className={ui.button} onClick={() => void trend.refetch()}><Icon name="refresh-cw" size={18} />다시 시도</button>
         </div>
       )}
       {!error && trend.data && (
-        (view === 'chart' ? categories : tableCategories).length === 0 ? <p className={ui.status}>이 기간에 지출이 없습니다.</p> : <>
+        (view === 'chart' ? categories : tableCategories).length === 0 ? <p className={ui.status}>이 기간에 지출이 없어요.</p> : <>
           <div aria-busy={trend.isPlaceholderData || undefined} className={trend.isPlaceholderData ? styles.stale : undefined}>
           {view === 'chart' ? <>
           <div className={styles.chips} role="group" aria-label={`${label} 선택`}>

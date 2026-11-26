@@ -54,7 +54,7 @@ export default function DashboardPage({ today }: Props) {
         {isLoading && <SkeletonRegion><TotalsCardsSkeleton /></SkeletonRegion>}
         {isError && (
           <div className={styles.feedback}>
-            <p role="alert" className={ui.alert}>그룹을 불러오지 못했습니다.</p>
+            <p role="alert" className={ui.alert}>그룹을 불러오지 못했어요.</p>
             <button type="button" className={ui.button} onClick={retry}><Icon name="refresh-cw" size={18} />그룹 목록 다시 시도</button>
           </div>
         )}
@@ -70,13 +70,13 @@ export default function DashboardPage({ today }: Props) {
       {summary.isPending && <SkeletonRegion><TotalsCardsSkeleton /></SkeletonRegion>}
       {summary.isError && (
         <div className={styles.feedback}>
-          <p role="alert" className={ui.alert}>요약을 불러오지 못했습니다.</p>
+          <p role="alert" className={ui.alert}>요약을 불러오지 못했어요.</p>
           <button type="button" className={ui.button} onClick={() => void summary.refetch()}><Icon name="refresh-cw" size={18} />다시 시도</button>
         </div>
       )}
       {summary.data && <>
         <TotalsCards income={summary.data.income} expense={summary.data.expense} onSelect={setKind} opensDialog />
-        {summary.data.income === 0 && summary.data.expense === 0 && <p className={ui.status}>이 달에 합칠 거래가 없습니다.</p>}
+        {summary.data.income === 0 && summary.data.expense === 0 && <p className={ui.status}>이 달에 합칠 거래가 없어요.</p>}
         <MemberTotalsDialog kind={kind} summary={summary.data} onClose={() => setKind(null)} />
       </>}
       {narrow && <DashboardMenu level={level} />}
@@ -108,7 +108,7 @@ function SummaryView({ groupId, month, summary, summaryPending, level, view }: {
       ) : (
         <>
           <div id="dashboard-share">
-            {summaryPending && <SkeletonRegion label="대분류 분포를 불러오는 중입니다."><CategoryShareSkeleton compact={compact} /></SkeletonRegion>}
+            {summaryPending && <SkeletonRegion label="대분류 분포를 불러오는 중이에요."><CategoryShareSkeleton compact={compact} /></SkeletonRegion>}
             {summary && <CategoryBreakdown key={`${groupId}:${month}`} groupId={groupId} month={month} summary={summary} />}
           </div>
           <CategoryTrend groupId={groupId} month={month} />

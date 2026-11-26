@@ -31,8 +31,8 @@ describe('연도 합계표', () => {
     expect(rowCells(table, '전통시장')).toEqual(['300,000', '200,000', '100,000', '600,000'])
     expect(rowCells(table, '합계')).toEqual(['14,600,000', '2,600,000', '600,000', '17,800,000'])
     expect(within(table).getByRole('rowheader', { name: /^일반/ })).toHaveTextContent('일반 계 16,500,000')
-    expect(section).not.toHaveTextContent('미입력 칸이 있습니다')
-    expect(section).not.toHaveTextContent('기준일이 서로 다릅니다')
+    expect(section).not.toHaveTextContent('미입력 칸이 있어요')
+    expect(section).not.toHaveTextContent('기준일이 서로 달라요')
   })
 
   it('shows a dash in every cell while the year has no inputs and lists the blank cells', async () => {
@@ -41,7 +41,7 @@ describe('연도 합계표', () => {
 
     const section = await screen.findByRole('region', { name: '연도 합계표' })
     expect(rowCells(within(section).getByRole('table'), '일반')).toEqual(['—', '—', '—', '—'])
-    expect(within(section).getByRole('status')).toHaveTextContent('미입력 칸이 있습니다(현금영수증 4칸).')
+    expect(within(section).getByRole('status')).toHaveTextContent('미입력 칸이 있어요(현금영수증 4칸).')
   })
 
   it('warns about blank cells and different as-of dates', async () => {
@@ -53,8 +53,8 @@ describe('연도 합계표', () => {
 
     const section = await screen.findByRole('region', { name: '연도 합계표' })
     const [blanks, dates] = within(section).getAllByRole('status')
-    expect(blanks).toHaveTextContent('미입력 칸이 있습니다(B카드 3칸). 아래 합계는 입력한 칸만 더한 값이며 분석은 확정값으로 보여 주지 않습니다.')
-    expect(dates).toHaveTextContent('자료의 기준일이 서로 다릅니다(A카드 2026-10-31, B카드 2026-09-30, 현금영수증 2026-10-31).')
+    expect(blanks).toHaveTextContent('미입력 칸이 있어요(B카드 3칸). 아래 합계는 입력한 칸만 더한 값이며 분석은 확정값으로 보여 주지 않아요.')
+    expect(dates).toHaveTextContent('자료의 기준일이 서로 달라요(A카드 2026-10-31, B카드 2026-09-30, 현금영수증 2026-10-31).')
   })
 
   it('masks the deductible amounts with the expense setting and leaves the salary alone', async () => {

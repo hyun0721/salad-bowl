@@ -58,7 +58,7 @@ export function usePlanEditor(year: number, view: TaxYearView | null | undefined
         onSuccess: () => {
           setEdit((e) => (e?.year === requestYear ? null : e))
           if (currentYear.current !== requestYear) return
-          toast('지출계획을 저장했습니다.')
+          toast('지출계획을 저장했어요.')
           onSaved()
         },
       })
@@ -86,10 +86,10 @@ export default function PlanStep({ editor, ready }: Props) {
     <section aria-labelledby="tax-plan-title" className={ui.card}>
       <h2 id="tax-plan-title">남은 기간 지출계획</h2>
       <p className={ui.muted}>
-        기준일 다음 날부터 12월 31일까지 쓸 공제대상액을 소비구분별로 적습니다. 결제수단이 정해진 금액과 바꿀 수 있는 금액을 나눠 적고,
-        공제 대상이 아닌 지출(보험료·공과금 등)은 적지 않습니다.
+        기준일 다음 날부터 12월 31일까지 쓸 공제대상액을 소비구분별로 적으세요. 결제수단이 정해진 금액과 바꿀 수 있는 금액을 나눠 적고,
+        공제 대상이 아닌 지출(보험료·공과금 등)은 적지 마세요.
       </p>
-      <p className={ui.muted}>비운 칸은 0원으로 저장됩니다.</p>
+      <p className={ui.muted}>비운 칸은 0원으로 저장돼요.</p>
       <form className={ui.stack} onSubmit={(event) => { event.preventDefault(); editor.submit() }}>
         {ROWS.map(([row, label]) => (
           <fieldset key={row} className={styles.planGroup}>
@@ -104,17 +104,17 @@ export default function PlanStep({ editor, ready }: Props) {
         <p className={styles.planTotal}>
           총액 {won(sum(FIELDS.map(([field]) => column(field))))} (신용카드 고정 {won(column('creditFixed'))} · 체크카드·현금영수증 고정 {won(column('debitFixed'))} · 바꿀 수 있음 {won(column('flexible'))})
         </p>
-        {editor.dirty && <p className={ui.status}>저장하지 않은 변경이 있습니다. ③ 추천은 마지막으로 저장한 계획 기준입니다.</p>}
+        {editor.dirty && <p className={ui.status}>저장하지 않은 변경이 있어요. ③ 추천은 마지막으로 저장한 계획 기준이에요.</p>}
         {error && (isStale(error) ? (
           <div className={inputs.split}>
-            <p role="alert" className={ui.alert}>다른 곳에서 수정되거나 삭제됐습니다. 저장하지 않았습니다.</p>
+            <p role="alert" className={ui.alert}>다른 곳에서 수정되거나 삭제됐어요. 저장하지 않았어요.</p>
             <div className={inputs.actions}><button type="button" className={ui.button} onClick={editor.reload}>다시 불러오기</button></div>
           </div>
-        ) : <p role="alert" className={ui.alert}>{errorMessage(error)} 입력한 값은 그대로 있습니다.</p>)}
+        ) : <p role="alert" className={ui.alert}>{errorMessage(error)} 입력한 값은 그대로 있어요.</p>)}
         <div className={inputs.split}>
           <p className={ui.muted}>
-            {ready ? '[계산하기]를 누르면 지출계획을 저장하고 추천을 다시 계산합니다. 입력하는 동안에는 다시 계산하지 않습니다.'
-              : '자료가 완료되지 않았거나 세법이 준비 중이라 [계산하기]는 지출계획을 저장만 합니다.'}
+            {ready ? '[계산하기]를 누르면 지출계획을 저장하고 추천을 다시 계산해요. 입력하는 동안에는 다시 계산하지 않아요.'
+              : '자료가 완료되지 않았거나 세법이 준비 중이라 [계산하기]는 지출계획을 저장만 해요.'}
           </p>
           <div className={inputs.actions}>
             <button type="submit" className={`${ui.button} ${ui.primary}`} disabled={editor.saving}>계산하기</button>

@@ -283,7 +283,7 @@ describe('AppRoutes', () => {
 
     await user.click(await screen.findByRole('button', { name: '로그아웃' }))
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('로그아웃하지 못했습니다. 잠시 후 다시 시도해 주세요.')
+    expect(await screen.findByRole('alert')).toHaveTextContent('로그아웃하지 못했어요. 잠시 후 다시 시도해 주세요.')
     expect(screen.getByText('나')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '로그인' })).not.toBeInTheDocument()
   })
@@ -334,7 +334,7 @@ describe('AppRoutes', () => {
     renderApp('/')
     const user = userEvent.setup()
 
-    expect(await screen.findByText('그룹을 불러오지 못했습니다')).toBeInTheDocument()
+    expect(await screen.findByText('그룹을 불러오지 못했어요')).toBeInTheDocument()
     expect(screen.queryByText(/그룹 없음/)).not.toBeInTheDocument()
     fail = false
     await user.click(screen.getByRole('button', { name: '다시 시도' }))
@@ -432,7 +432,7 @@ describe('AppRoutes', () => {
 
     expect(await screen.findByText('소득공제 불러오는 중')).toBeInTheDocument()
     expect(screen.queryByText('₩ 52,340,000')).not.toBeInTheDocument()
-    expect(await screen.findByRole('heading', { name: `${year}년 귀속 기록이 없습니다` })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: `${year}년 귀속 기록이 없어요` })).toBeInTheDocument()
   })
 
   it('keeps the same tax data without a new request when the header group changes', async () => {
@@ -501,7 +501,7 @@ describe('AppRoutes', () => {
     server.use(http.post('*/api/auth/refresh', () => new HttpResponse('down', { status: 503 })))
     renderApp('/')
 
-    expect(await screen.findByText('서버에 연결하지 못했습니다. 잠시 후 다시 시도해 주세요.', {}, { timeout: 4000 }))
+    expect(await screen.findByText('서버에 연결하지 못했어요. 잠시 후 다시 시도해 주세요.', {}, { timeout: 4000 }))
       .toBeInTheDocument()
     expect(screen.getByRole('button', { name: '다시 시도' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '로그인' })).not.toBeInTheDocument()
@@ -648,7 +648,7 @@ describe('AppRoutes on a narrow screen', () => {
     const sheet = await screen.findByRole('dialog', { name: '계정' })
     await user.click(within(sheet).getByRole('button', { name: '로그아웃' }))
 
-    expect(await within(sheet).findByRole('alert')).toHaveTextContent('로그아웃하지 못했습니다. 잠시 후 다시 시도해 주세요.')
+    expect(await within(sheet).findByRole('alert')).toHaveTextContent('로그아웃하지 못했어요. 잠시 후 다시 시도해 주세요.')
 
     // 닫았다 다시 열면 지난 실패 문구는 사라진다.
     await user.keyboard('{Escape}')

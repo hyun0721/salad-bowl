@@ -88,7 +88,7 @@ describe('CategoryTrend', () => {
     await screen.findByRole('button', { name: '식비' })
     await user.click(screen.getByRole('radio', { name: '직접 지정' }))
     fireEvent.change(screen.getByLabelText('시작 월'), { target: { value: '2026-04' } })
-    expect(screen.getByRole('alert')).toHaveTextContent('기간은 최대 12개월이고, 시작 월이 끝 월보다 늦을 수 없습니다.')
+    expect(screen.getByRole('alert')).toHaveTextContent('기간은 최대 12개월이고, 시작 월이 끝 월보다 늦을 수 없어요.')
     await new Promise((resolve) => setTimeout(resolve, 50))
     expect(requests).toHaveLength(1)
   })
@@ -111,7 +111,7 @@ describe('CategoryTrend', () => {
     await waitFor(() => expect(nextRequested).toBe(true))
     const content = view === 'chart' ? screen.getByRole('button', { name: '식비' }) : screen.getByRole('table')
     expect(content.closest('[aria-busy]')).toHaveAttribute('aria-busy', 'true')
-    expect(screen.queryByText('불러오는 중입니다.')).not.toBeInTheDocument()
+    expect(screen.queryByText('불러오는 중이에요.')).not.toBeInTheDocument()
     release()
   })
 
@@ -138,7 +138,7 @@ describe('CategoryTrend', () => {
   it('shows an empty state', async () => {
     setup({ months: ['2026-03'], categories: [] })
     renderPage(<CategoryTrend groupId={10} month="2026-03" />)
-    expect(await screen.findByText('이 기간에 지출이 없습니다.')).toBeInTheDocument()
+    expect(await screen.findByText('이 기간에 지출이 없어요.')).toBeInTheDocument()
   })
 
   it('retries a failed request', async () => {
@@ -147,7 +147,7 @@ describe('CategoryTrend', () => {
       ? HttpResponse.json({ code: 'INTERNAL_ERROR', message: 'x' }, { status: 500 })
       : HttpResponse.json(trend)))
     const { user } = renderPage(<CategoryTrend groupId={10} month="2026-03" />)
-    expect(await screen.findByRole('alert')).toHaveTextContent('추이를 불러오지 못했습니다.')
+    expect(await screen.findByRole('alert')).toHaveTextContent('추이를 불러오지 못했어요.')
     fail = false
     await user.click(screen.getByRole('button', { name: '다시 시도' }))
     expect(await screen.findByRole('button', { name: '식비' })).toBeInTheDocument()

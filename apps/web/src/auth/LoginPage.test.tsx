@@ -69,7 +69,7 @@ describe('LoginPage', () => {
     await user.type(screen.getByLabelText(/비밀번호/), 'wrong-pass')
     await user.click(screen.getByRole('button', { name: '로그인' }))
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('이메일 또는 비밀번호가 맞지 않습니다.')
+    expect(await screen.findByRole('alert')).toHaveTextContent('이메일 또는 비밀번호가 맞지 않아요.')
   })
 
   it('shows the retry message after too many login attempts', async () => {
@@ -82,7 +82,7 @@ describe('LoginPage', () => {
     await user.type(screen.getByLabelText(/비밀번호/), 'password123')
     await user.click(screen.getByRole('button', { name: '로그인' }))
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('로그인 시도가 너무 많습니다. 15분쯤 뒤 다시 시도해 주세요.')
+    expect(await screen.findByRole('alert')).toHaveTextContent('로그인 시도가 너무 많아요. 15분쯤 뒤 다시 시도해 주세요.')
   })
 
   it('signs up then logs in', async () => {
@@ -138,7 +138,7 @@ describe('LoginPage', () => {
     await user.type(screen.getByLabelText(/닉네임/), '나')
     await user.click(screen.getByRole('button', { name: '가입하고 시작하기' }))
 
-    expect(await screen.findByText('가입은 완료되었습니다. 로그인해 주세요.')).toBeInTheDocument()
+    expect(await screen.findByText('가입은 완료되었어요. 로그인해 주세요.')).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: '로그인' })).toHaveAttribute('aria-selected', 'true')
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
@@ -155,6 +155,6 @@ describe('LoginPage', () => {
     await user.type(screen.getByLabelText(/닉네임/), '나')
     await user.click(screen.getByRole('button', { name: '가입하고 시작하기' }))
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('이미 가입된 이메일입니다.')
+    expect(await screen.findByRole('alert')).toHaveTextContent('이미 가입된 이메일이에요.')
   })
 })

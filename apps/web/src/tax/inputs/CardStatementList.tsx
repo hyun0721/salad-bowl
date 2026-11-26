@@ -24,15 +24,15 @@ export default function CardStatementList({ view, defaultAsOfDate }: Props) {
       <div className={styles.split}>
         <div className={styles.titleWithHelp}>
           <h2 id="tax-cards-title">신용·체크 자료</h2>
-          <HelpButton title="신용·체크 자료">카드사마다 1월 1일부터 기준일까지의 누계를 한 건씩 등록합니다. 같은 카드사명을 다시 등록해도 됩니다.</HelpButton>
+          <HelpButton title="신용·체크 자료">카드사마다 1월 1일부터 기준일까지의 누계를 한 건씩 등록하세요. 같은 카드사명을 다시 등록해도 돼요.</HelpButton>
         </div>
         <button type="button" className={ui.button} aria-label="신용·체크 자료 추가" disabled={full} onClick={() => setEditing('new')}>
           <Icon name="plus" size={18} />추가
         </button>
       </div>
-      {full && <p className={ui.muted}>신용·체크 자료는 연도마다 {MAX_CARDS}건까지 등록할 수 있습니다.</p>}
+      {full && <p className={ui.muted}>신용·체크 자료는 연도마다 {MAX_CARDS}건까지 등록할 수 있어요.</p>}
       {view.cards.length === 0 ? (
-        <p className={ui.status}>등록한 신용·체크 자료가 없습니다.</p>
+        <p className={ui.status}>등록한 신용·체크 자료가 없어요.</p>
       ) : (
         <ul className={styles.list}>
           {view.cards.map((card) => <CardRow key={card.id} year={view.taxYear} card={card} onEdit={() => setEditing(card)} />)}
@@ -69,7 +69,7 @@ function CardRow({ year, card, onEdit }: { year: number; card: CardView; onEdit:
       <div className={styles.actions}>
         <button type="button" className={`${ui.button} ${ui.iconButton}`} aria-label={`${card.issuerName} 자료 편집`} onClick={onEdit}><Icon name="pencil" size={18} /></button>
         <ConfirmDialog centered triggerLabel="삭제" triggerIcon="trash" triggerIconOnly triggerAriaLabel={`${card.issuerName} 자료 삭제`}
-          title={`${card.issuerName} 자료를 삭제할까요?`} description="이 자료의 금액 8칸이 지워지고 연도 합계표에서 빠집니다. 복구할 수 없습니다."
+          title={`${card.issuerName} 자료를 삭제할까요?`} description="이 자료의 금액 8칸이 지워지고 연도 합계표에서 빠져요. 복구할 수 없어요."
           confirmLabel="삭제" isPending={remove.isPending} error={remove.error ? actionError(remove.error) : null}
           onOpen={() => remove.reset()} onConfirm={(close) => remove.mutate(undefined, { onSuccess: close })} />
       </div>

@@ -41,9 +41,9 @@ describe('TaxAnalysisPage — 단계 틀과 상태 알림', () => {
     expect(await screen.findByText(/^적용 세법/))
       .toHaveTextContent('적용 세법 2026년 귀속 v1 · 적용일 2026-01-15 · 자료 기준일 2026-06-30 · 예상 총급여 ₩ 50,000,000')
     expect(screen.getByText('개인 자료 · 그룹과 무관')).toBeInTheDocument()
-    expect(screen.queryByText(/자료의 기준일이 서로 다릅니다/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/자료의 기준일이 서로 달라요/)).not.toBeInTheDocument()
     expect(screen.queryByText(/근로기간이/)).not.toBeInTheDocument()
-    expect(screen.queryByText(/새 세법 버전이 적용됐습니다/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/새 세법 버전이 적용됐어요/)).not.toBeInTheDocument()
   })
 
   it('marks an estimate with its reason and asks to check the work months', async () => {
@@ -51,10 +51,10 @@ describe('TaxAnalysisPage — 단계 틀과 상태 알림', () => {
     renderTaxAnalysis()
 
     expect(await screen.findByText(/^적용 세법/)).toHaveTextContent('자료 기준일 2026-05-31 ~ 2026-06-30')
-    expect(screen.getByText(/자료의 기준일이 서로 다릅니다/))
-      .toHaveTextContent('추정 자료의 기준일이 서로 다릅니다(2026-05-31 ~ 2026-06-30). 서로 다른 시점의 누계를 더한 추정입니다.')
+    expect(screen.getByText(/자료의 기준일이 서로 달라요/))
+      .toHaveTextContent('추정 자료의 기준일이 서로 달라요(2026-05-31 ~ 2026-06-30). 서로 다른 시점의 누계를 더한 추정이에요.')
     expect(screen.getByText(/근로기간이/))
-      .toHaveTextContent('근로기간 확인 필요 근로기간이 4월~12월입니다. 근로기간에 쓴 금액만 입력했는지 확인하세요. 계산은 입력한 금액 그대로 합니다.')
+      .toHaveTextContent('근로기간 확인 필요 근로기간이 4월~12월이에요. 근로기간에 쓴 금액만 입력했는지 확인하세요. 계산은 입력한 금액 그대로 해요.')
   })
 
   it('says the law is not ready instead of a version', async () => {
@@ -74,21 +74,21 @@ describe('TaxAnalysisPage — 단계 틀과 상태 알림', () => {
     }))
     const { user } = renderTaxAnalysis()
 
-    expect(await screen.findByText(/새 세법 버전이 적용됐습니다/)).toHaveTextContent('지금 결과는 v1 기준이며, 누르기 전에는 그대로입니다.')
+    expect(await screen.findByText(/새 세법 버전이 적용됐어요/)).toHaveTextContent('지금 결과는 v1 기준이며, 누르기 전에는 그대로예요.')
     expect(screen.getByText(/^적용 세법/)).toHaveTextContent('v1 · 적용일 2026-01-15')
     expect(refreshed).toBe(0)
     await user.click(screen.getByRole('button', { name: '새 버전으로 다시 계산' }))
 
     await waitFor(() => expect(screen.getByText(/^적용 세법/)).toHaveTextContent('v2 · 적용일 2026-03-02'))
     expect(refreshed).toBe(1)
-    expect(screen.queryByText(/새 세법 버전이 적용됐습니다/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/새 세법 버전이 적용됐어요/)).not.toBeInTheDocument()
   })
 
   it('guides a year without a record to the inputs page and shows no steps', async () => {
     serveAnalysis(null)
     renderTaxAnalysis()
 
-    expect(await screen.findByRole('heading', { name: '2026년 귀속 기록이 없습니다' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: '2026년 귀속 기록이 없어요' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: '입력자료로 가기' })).toHaveAttribute('href', '/tax/inputs')
     expect(screen.queryByRole('tablist')).not.toBeInTheDocument()
   })
@@ -101,7 +101,7 @@ describe('TaxAnalysisPage — 단계 틀과 상태 알림', () => {
       : HttpResponse.json(analysisView()))))
     const { user } = renderTaxAnalysis()
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('분석을 불러오지 못했습니다.')
+    expect(await screen.findByRole('alert')).toHaveTextContent('분석을 불러오지 못했어요.')
     fail = false
     await user.click(screen.getByRole('button', { name: '다시 시도' }))
     expect(await screen.findByRole('tablist', { name: '분석 단계' })).toBeInTheDocument()

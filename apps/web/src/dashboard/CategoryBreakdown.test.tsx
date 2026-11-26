@@ -39,7 +39,7 @@ describe('CategoryBreakdown', () => {
 
   it('shows the empty state when no category has a positive expense', async () => {
     renderPage(<CategoryBreakdown groupId={10} month="2026-10" summary={{ ...summary, byCategory: [{ category: '환불', expense: -1 }] }} />)
-    expect(await screen.findByText('지출이 없습니다.')).toBeInTheDocument()
+    expect(await screen.findByText('지출이 없어요.')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /환불/ })).not.toBeInTheDocument()
   })
 

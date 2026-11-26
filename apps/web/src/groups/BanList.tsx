@@ -17,7 +17,7 @@ export default function BanList({ groupId }: { groupId: number }) {
     <section aria-labelledby="bans-title" className={ui.stack}>
       <div className={styles.titleWithHelp}>
         <h3 id="bans-title" className={styles.subTitle}>차단 목록</h3>
-        <HelpButton title="차단 목록">내보낸 멤버는 다시 합류할 수 없습니다. 차단을 해제하면 다시 초대할 수 있습니다.</HelpButton>
+        <HelpButton title="차단 목록">내보낸 멤버는 다시 합류할 수 없어요. 차단을 해제하면 다시 초대할 수 있어요.</HelpButton>
       </div>
       {bans.isPending && <SkeletonRegion><ul className={styles.memberList}>
         {[0, 1].map((i) => <li key={i} className={styles.member}>
@@ -26,11 +26,11 @@ export default function BanList({ groupId }: { groupId: number }) {
       </ul></SkeletonRegion>}
       {bans.isError && (
         <div className={styles.actionRow}>
-          <p role="alert" className={ui.alert}>차단 목록을 불러오지 못했습니다.</p>
+          <p role="alert" className={ui.alert}>차단 목록을 불러오지 못했어요.</p>
           <button type="button" className={ui.button} onClick={() => void bans.refetch()}><Icon name="refresh-cw" size={18} />다시 시도</button>
         </div>
       )}
-      {bans.data?.length === 0 && <p className={ui.status}>차단한 사람이 없습니다.</p>}
+      {bans.data?.length === 0 && <p className={ui.status}>차단한 사람이 없어요.</p>}
       {bans.data && bans.data.length > 0 && (
         <ul className={styles.memberList}>
           {bans.data.map((b) => (

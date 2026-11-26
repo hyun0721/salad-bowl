@@ -22,7 +22,7 @@ export default function InviteSection({ groupId, memberCount }: { groupId: numbe
     try {
       await navigator.clipboard.writeText(text)
       setCopied(null)
-      toast('링크를 복사했습니다.')
+      toast('링크를 복사했어요.')
     } catch {
       setCopied('failed')
     }
@@ -33,14 +33,14 @@ export default function InviteSection({ groupId, memberCount }: { groupId: numbe
       <div className={styles.actionRow}>
         <div className={styles.titleWithHelp}>
           <h3 id="invite-title" className={styles.subTitle}>초대 링크</h3>
-          <HelpButton title="초대 링크">링크는 7일간 유효합니다. 받은 사람은 로그인하거나 가입한 뒤 합류할 수 있습니다.</HelpButton>
+          <HelpButton title="초대 링크">링크는 7일간 유효해요. 받은 사람은 로그인하거나 가입한 뒤 합류할 수 있어요.</HelpButton>
         </div>
         <button type="button" className={ui.button} disabled={full || createInvite.isPending}
           onClick={() => { setCopied(null); createInvite.mutate(groupId) }}>
           {link ? '새 링크 만들기' : '초대 링크 만들기'}
         </button>
       </div>
-      {full && <p className={ui.status}>정원(6명)이 찼습니다. 멤버를 내보낸 뒤 초대하세요.</p>}
+      {full && <p className={ui.status}>정원(6명)이 찼어요. 멤버를 내보낸 뒤 초대하세요.</p>}
       {invite && link && (
         <div className={ui.stack}>
           <div className={styles.fieldAction}>
@@ -51,7 +51,7 @@ export default function InviteSection({ groupId, memberCount }: { groupId: numbe
           <span className={ui.muted}>{formatInstant(invite.expiresAt)}까지</span>
         </div>
       )}
-      {copied === 'failed' && <p role="alert" className={ui.alert}>복사하지 못했습니다. 주소 칸을 눌러 직접 복사해 주세요.</p>}
+      {copied === 'failed' && <p role="alert" className={ui.alert}>복사하지 못했어요. 주소 칸을 눌러 직접 복사해 주세요.</p>}
       {createInvite.isError && <p role="alert" className={ui.alert}>{errorMessage(createInvite.error)}</p>}
     </section>
   )

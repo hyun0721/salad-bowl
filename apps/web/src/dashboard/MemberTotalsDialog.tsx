@@ -26,7 +26,7 @@ export default function MemberTotalsDialog({ kind, summary, onClose }: Props) {
           <Icon name="x" />
         </button>
       }>
-      {() => rows.length === 0 ? <p className={ui.status}>공개한 멤버가 없습니다.</p> : (
+      {() => rows.length === 0 ? <p className={ui.status}>공개한 멤버가 없어요.</p> : (
         <table className={styles.table}>
           <thead>
             <tr><th scope="col">멤버</th><th scope="col">{LABELS[shown]}</th></tr>

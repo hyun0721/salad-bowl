@@ -40,19 +40,19 @@ export default function TaxInputsPage() {
       )}
       {record.isError && (
         <div className={styles.split}>
-          <p role="alert" className={ui.alert}>입력자료를 불러오지 못했습니다.</p>
+          <p role="alert" className={ui.alert}>입력자료를 불러오지 못했어요.</p>
           <button type="button" className={ui.button} onClick={() => void record.refetch()}><Icon name="refresh-cw" size={18} />다시 시도</button>
         </div>
       )}
-      {lawPending && <p className={ui.status}>{year}년 귀속 세법은 준비 중입니다. 자료는 저장되며, 분석은 세법이 등록된 뒤 볼 수 있습니다.</p>}
+      {lawPending && <p className={ui.status}>{year}년 귀속 세법은 준비 중이에요. 자료는 저장되며, 분석은 세법이 등록된 뒤 볼 수 있어요.</p>}
       {view === null && law.isError && <div className={styles.split}>
-        <p role="alert" className={ui.alert}>현재 세법을 불러오지 못했습니다. 다시 시도해 주세요.</p>
+        <p role="alert" className={ui.alert}>현재 세법을 불러오지 못했어요. 다시 시도해 주세요.</p>
         <button type="button" className={ui.button} onClick={() => void law.refetch()}><Icon name="refresh-cw" size={18} />다시 시도</button>
       </div>}
       {view === null && (
         <section aria-labelledby="tax-empty-title" className={`${ui.card} ${styles.empty}`}>
-          <h2 id="tax-empty-title">{year}년 귀속 기록이 없습니다</h2>
-          <p>기본정보(예상 총급여·근로기간)를 입력하면 이 연도의 기록이 만들어집니다.</p>
+          <h2 id="tax-empty-title">{year}년 귀속 기록이 없어요</h2>
+          <p>기본정보(예상 총급여·근로기간)를 입력하면 이 연도의 기록이 만들어져요.</p>
           <button type="button" className={`${ui.button} ${ui.primary}`} disabled={!law.isSuccess} onClick={() => setEditing(true)}>기본정보 입력</button>
         </section>
       )}
@@ -68,7 +68,7 @@ export default function TaxInputsPage() {
           </div>
           <section aria-label="연도 기록 삭제" className={ui.card}>
             <div className={styles.split}>
-              <p>이 연도의 기본정보·입력자료·금액·지출계획을 모두 지웁니다.</p>
+              <p>이 연도의 기본정보·입력자료·금액·지출계획을 모두 지워요.</p>
               <button type="button" className={`${ui.button} ${ui.danger}`} onClick={() => setDeleting(true)}>{year}년 기록 삭제</button>
             </div>
           </section>

@@ -49,7 +49,7 @@ export default function CategoryBreakdown({ groupId, month, summary }: Props) {
             expense: memberData.filter((row) => row.major === item.category && row.userId === member.userId)
               .reduce((sum, row) => sum + row.expense, 0),
           })),
-        }))} /> : items.length === 0 ? <p className={ui.status}>지출이 없습니다.</p> : (
+        }))} /> : items.length === 0 ? <p className={ui.status}>지출이 없어요.</p> : (
         <div className={styles.content}>
           <DonutChart formatValue={formatWon} compact={compact} slices={slices}
             centerLabel="총지출" centerValue={formatWon(summary.expense)} activeId={activeId}

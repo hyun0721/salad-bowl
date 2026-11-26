@@ -5,10 +5,10 @@ import ui from '../common/ui.module.css'
 export default function NoGroupNotice() {
   return (
     <section aria-labelledby="no-group-title" className={ui.card}>
-      <h2 id="no-group-title">아직 속한 그룹이 없습니다</h2>
+      <h2 id="no-group-title">아직 속한 그룹이 없어요</h2>
       <p className={ui.status}>
-        그룹을 만들어 초대 링크로 가족·친구를 부르거나, 받은 초대 링크를 열어 합류합니다.
-        그룹이 없어도 홈의 업로드와 내 거래는 그대로 쓸 수 있습니다.
+        그룹을 만들어 초대 링크로 가족·친구를 부르거나, 받은 초대 링크를 열어 합류해요.
+        그룹이 없어도 홈의 업로드와 내 거래는 그대로 쓸 수 있어요.
       </p>
       <div className={ui.row}>
         <Link to="/groups" className={`${ui.button} ${ui.primary} ${ui.linkButton}`}>그룹 만들기</Link>
