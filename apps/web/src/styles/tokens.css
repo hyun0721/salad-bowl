@@ -50,7 +50,8 @@
   --text-tag: 12px;
   --text-transaction: var(--text-base);
   --text-transaction-meta: var(--text-sm);
-  --control-height: 32px;
+  --control-height: 40px;
+  --nav-item-height: 32px;
   --touch-target: 44px;
   --control-height-primary: 48px;
   --segment-height: calc(var(--control-height) - 4px);

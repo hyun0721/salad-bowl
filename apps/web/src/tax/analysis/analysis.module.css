@@ -7,11 +7,11 @@
 .notice { color: var(--pending); font-size: var(--text-md); overflow-wrap: anywhere; }
 .badge { display: inline-block; margin-right: var(--space-1); padding: 0 var(--space-1); border: 1px solid currentColor; border-radius: var(--radius-sm); font-weight: 500; }
 
-/* 단계 탭과 [이전]·[다음]은 모든 폭에서 누르는 영역 44px. 공용 탭의 .tab(40·42px)보다 구체적으로 쓴다. */
-.steps [role='tab'] { min-height: var(--touch-target); }
+/* 단계 탭은 페이지 탭 높이 대신 같은 줄 버튼 높이를 따른다. */
+.steps [role='tab'] { --segment-min-height: var(--control-height); }
 .panel { display: flex; flex-direction: column; gap: var(--space-3); padding-top: var(--space-3); }
 .stepNav { display: flex; gap: var(--space-2); }
-.stepNav button { min-height: var(--touch-target); font-size: var(--text-card-action); }
+.stepNav button { min-height: var(--control-height); font-size: var(--text-card-action); }
 .next { margin-left: auto; }
 
 /* ① 현황 */

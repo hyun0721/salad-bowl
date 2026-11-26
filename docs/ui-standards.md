@@ -54,6 +54,8 @@ Salad Bowl 앱 전체의 화면 정책이며, 새 화면과 수정하는 화면�
 
 ## 버튼과 조작
 
+넓은 화면에서 같은 줄의 독립 버튼과 입력은 `--control-height`로 높이를 맞춘다. 사이드바 메뉴는 별도 `--nav-item-height`를 따른다.
+
 | 역할 | 기준 |
 |---|---|
 | 일반 버튼 | 좁은 화면 높이 `--touch-target` 이상, 좌우 여백 `--space-5`, 최소 폭 `--touch-target` |
@@ -67,7 +69,7 @@ Salad Bowl 앱 전체의 화면 정책이며, 새 화면과 수정하는 화면�
 ### 선택 컨트롤
 
 - 여러 값 중 하나를 고르는 컨트롤은 회색 트랙 위 흰 조각 한 가지 모양을 쓴다. 공통 스타일은 `common/Segmented.module.css`이며 `SegmentedControl`, `Tabs`, 대시보드 메뉴, 차트 보기 전환, 거래 종류 필터가 이를 가져다 쓴다.
-- 조각 높이는 `--segment-height`, 페이지 탭은 `--tab-height`를 쓴다. 선택은 굵은 글자와 `--shadow-raised`, 포커스는 `--brand` 외곽선으로 표시한다.
+- 넓은 화면의 선택 조각은 `--segment-height`, 페이지 탭은 `--tab-height`를 쓴다. 카드 제목 옆에 단독으로 놓이는 차트 보기 전환은 38px 예외다. 선택은 굵은 글자와 `--shadow-raised`, 포커스는 `--brand` 외곽선으로 표시한다.
 - 새 선택 컨트롤을 만들 때 스타일을 복제하지 않고 이 공통 스타일을 `composes`로 가져다 쓴다.
 - `composes: segment`를 쓰는 모듈은 `min-height`·`padding`을 직접 쓰지 않고 아래 변수로 바꾼다. production 빌드는 composes한 규칙을 청크마다 복제하므로, 직접 쓴 속성은 나중 청크에서 덮어써진다.
 
