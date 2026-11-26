@@ -30,6 +30,7 @@ async function start() {
 it.each([false, true])('selects rows without opening details, narrow=%s', async (narrow) => {
   mockViewport(narrow)
   const { user } = await start()
+  if (!narrow) expect(screen.getByRole('checkbox', { name: '선택 김밥' }).closest('td:first-child label')).toBeInTheDocument()
   await user.click(screen.getByText('김밥'))
   expect(screen.getByText(/1건 선택/)).toBeInTheDocument()
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
