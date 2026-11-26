@@ -7,7 +7,7 @@ Transactions (`/transactions`, heading `거래 목록`) lists my transactions or
 - `tx-scope` uses the `범위` segmented control: `내 거래` or `그룹 거래` (disabled with no group), plus a `멤버` select for group scope.
 - `tx-search` uses the `검색` field to filter by description or category.
 - `tx-detail` opens a panel named after the transaction description when you click a row (`거래 상세`).
-- `tx-add` uses the button named `거래 추가` (visible text `추가`) to open the panel `거래 추가 (수동)` with side-by-side 대분류/소분류 Select fields. Only existing categories can be selected; custom category input is unavailable. 대분류 is required (placeholder `선택`); 소분류 defaults to `소분류 없음` and resets when 대분류 changes. The major selector is disabled while loading or when no categories exist. An empty list shows `엑셀을 먼저 업로드하면 분류를 고를 수 있습니다.`; a fetch failure shows `분류를 불러오지 못했습니다.` and `분류 다시 시도`.
+- `tx-add` uses the button named `거래 추가` (visible text `추가`) to open the panel `거래 추가 (수동)` with side-by-side 대분류/소분류 Select fields. Only existing categories can be selected; custom category input is unavailable. 대분류 is required (placeholder `선택`); 소분류 defaults to `소분류 없음` and resets when 대분류 changes. The major selector is disabled while loading or when no categories exist. An empty list shows `엑셀을 먼저 업로드하면 분류를 선택할 수 있어요.`; a fetch failure shows `분류를 불러오지 못했어요.` and `분류 다시 시도`.
 
 ## How to get to it (user POV)
 

@@ -22,7 +22,7 @@ export default function PendingNotice({ analysis }: { analysis: TaxAnalysisView 
       <p>
         빈 칸 {analysis.blankCount}개 · {analysis.status === 'NO_INPUT'
           ? '신용·체크 자료나 현금영수증 자료를 먼저 입력하세요.'
-          : '사용액이 없는 칸은 0원으로 채워요.'}
+          : '저장하면 사용액이 없는 칸은 0원으로 채워져요.'}
       </p>
       <Link to="/tax/inputs" className={`${ui.button} ${ui.primary} ${ui.linkButton}`}>입력자료로 가기</Link>
     </section>

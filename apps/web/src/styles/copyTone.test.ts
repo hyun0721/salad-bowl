@@ -3,9 +3,10 @@ import { globSync, readFileSync } from 'node:fs'
 import { expect, it } from 'vitest'
 
 it('keeps app copy free of 합니다체', () => {
-  const files = ['ts', 'tsx'].flatMap((ext) => globSync(`src/**/*.${ext}`))
-    .filter((file) => !/\.test\.tsx?$/.test(file))
+  const files = [...['ts', 'tsx'].flatMap((ext) => globSync(`src/**/*.${ext}`))
+    .filter((file) => !/\.test\.tsx?$/.test(file)), 'index.html', 'vite.config.ts']
   expect(files.length).toBeGreaterThan(10)
+  expect(files).toEqual(expect.arrayContaining(['index.html', 'vite.config.ts']))
 
   const failures = files.flatMap((file) => {
     const source = readFileSync(file, 'utf8')

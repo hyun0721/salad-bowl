@@ -62,6 +62,8 @@ describe('TaxLawPage — 버전 목록', () => {
     expect(versionButton(list, 1)).toHaveAttribute('aria-current', 'true')
     const detail = screen.getByRole('region', { name: /2026년 귀속 v1/ })
     expect(detail).toHaveTextContent('적용된 버전은 고칠 수 없어요. 바꾸려면 새 초안을 만드세요.')
+    await user.click(within(detail).getByRole('button', { name: '세법 수치 도움말' }))
+    expect(await screen.findByRole('dialog', { name: '세법 수치 도움말' })).toHaveTextContent('자녀등 조건이 없는 연도는 세 단계에 같은 값을 넣으세요.')
     expect(detail).toHaveTextContent('계산 알고리즘 버전 1 (고정)')
     expect(detail).toHaveTextContent('작성 관리자가 · 2026-01-10 09:00 · 적용 관리자나 · 2026-01-15 10:00')
     const term = (label: string) => within(detail).getByText(label, { selector: 'dt' }).nextElementSibling

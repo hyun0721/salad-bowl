@@ -44,6 +44,7 @@ describe('CoverageSection', () => {
     renderPage(<CoverageSection today={today} />)
 
     const calendar = await screen.findByRole('region', { name: '월별 등록 현황' })
+    expect(screen.getByText('거래 일자 기준 · 미등록 월을 누르면 업로드할 수 있어요')).toBeInTheDocument()
     expect(await within(calendar).findByText('등록됨 · 168건')).toBeInTheDocument()
     expect(within(calendar).getByText('등록됨 · 120건')).toBeInTheDocument()
     expect(within(calendar).getByRole('button', { name: '2026년 2월 미등록, 업로드하기' })).toBeInTheDocument()
@@ -126,7 +127,7 @@ describe('CoverageSection', () => {
 
     await user.click(await screen.findByRole('button', { name: '2026년 2월 미등록, 업로드하기' }))
     const dialog = screen.getByRole('dialog', { name: '2026년 2월 데이터 업로드' })
-    expect(within(dialog).getByText('뱅크샐러드 앱에서 기간을 3개월 이하로 골라 가계부 엑셀을 내려받아요.')).toBeInTheDocument()
+    expect(within(dialog).getByText('뱅크샐러드 앱에서 기간을 3개월 이하로 선택해 가계부 엑셀을 내려받아요.')).toBeInTheDocument()
     expect(within(dialog).getByText('이미 있는 거래는 건너뛰고, 내가 고친 카테고리·메모는 유지돼요.')).toBeInTheDocument()
   })
 

@@ -28,16 +28,16 @@ Preconditions:
 - **Blank vs 0.** Add a card `C카드` with only 일반 신용카드 filled. Its row reads `미완료 · 빈 칸 7개`, the totals card shows the blank warning, then `[빈 칸 0원으로 채우기]` on the row turns it into `완료`. Delete `C카드` (one confirmation) to restore.
 - **Long name.** Add a card whose name is 40 characters. At 375px and 320px the name wraps on the left and `[편집] [삭제]` stay right-aligned on the row. Delete it afterwards.
 - **Help.** In the 기본정보 dialog, tap `자녀등 수 도움말`, tap it again, tap outside, press Esc: the popover closes each time, focus returns to `?`, the dialog stays open, and the value does not change.
-- **Different dates.** Edit B카드 기준일 to `YYYY-05-31`. The totals card warns `자료의 기준일이 서로 다릅니다(…)`. Restore `YYYY-06-30`.
+- **Different dates.** Edit B카드 기준일 to `YYYY-05-31`. The totals card warns `자료의 기준일이 서로 달라요(…)`. Restore `YYYY-06-30`.
 - **No group.** Log out, log in as `verify5@example.test`, open `소득공제`, enter basic info, add one card, then reload: the same data shows.
 - **Group switch.** As `verify@example.test`, change the header group and confirm the tax page shows the same numbers without reloading.
-- **Delete year.** As `verify5@example.test`, open `YYYY년 기록 삭제`: `삭제` stays disabled for an empty value and for the previous year, enables on the exact year, and the page returns to `YYYY년 귀속 기록이 없습니다`. Reopen the dialog before confirming once to see the input start empty.
+- **Delete year.** As `verify5@example.test`, open `YYYY년 기록 삭제`: `삭제` stays disabled for an empty value and for the previous year, enables on the exact year, and the page returns to `YYYY년 귀속 기록이 없어요`. Reopen the dialog before confirming once to see the input start empty.
   Run this after **No group**, which creates the record to delete.
 - **Mask.** Turn on the `수입` mask: the salary shows `₩ •••••` and totals stay visible. Turn on only `지출`: totals and card sums show `•••••`, the salary is visible. Turn masks off afterwards.
 
 ## Gotchas
 
 - The seed year follows today's Korean date. The year select only offers last, this and next year; older records exist on the server but have no entry point.
-- `rowVersion` values are opaque sequence numbers, not counters. A 409 or 404 on save shows `다른 곳에서 수정되거나 삭제됐습니다. 저장하지 않았습니다.` with `[다시 불러오기]`, which closes the dialog and reloads the year.
+- `rowVersion` values are opaque sequence numbers, not counters. A 409 or 404 on save shows `다른 곳에서 수정되거나 삭제됐어요. 저장하지 않았어요.` with `[다시 불러오기]`, which closes the dialog and reloads the year.
 - Card rows sum their own 8 cells for display; the totals table uses the server's 12 totals, and its row and column totals add those 12 cells.
 - Saves here refresh the analysis (`['tax', 'analysis', year]`); the analysis page also reloads every time it opens.

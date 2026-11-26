@@ -24,7 +24,7 @@ export function DonutLegendSkeleton({ compact }: { compact: boolean }) {
             <Skeleton width={40} height={12} />
           </div>
         ))}
-        <div className={styles.legendAction}><Skeleton width={120} height="var(--control-height)" /></div>
+        <div className={styles.legendAction}><Skeleton width={120} height="var(--row-height)" /></div>
       </div>
     </div>
   )

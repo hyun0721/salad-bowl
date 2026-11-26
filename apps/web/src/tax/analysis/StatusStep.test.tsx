@@ -124,7 +124,7 @@ describe('StatusStep — ① 현황', () => {
     const step = await status()
 
     expect(step.getByRole('heading', { name: '자료를 완료하면 계산해요' })).toBeInTheDocument()
-    expect(step.getByText(/^빈 칸 3개/)).toBeInTheDocument()
+    expect(step.getByText('빈 칸 3개 · 저장하면 사용액이 없는 칸은 0원으로 채워져요.')).toBeInTheDocument()
     expect(step.getByRole('link', { name: '입력자료로 가기' })).toHaveAttribute('href', '/tax/inputs')
     expect(step.queryByRole('region', { name: '현재 요약' })).not.toBeInTheDocument()
     expect(step.queryByText(/₩/)).not.toBeInTheDocument()

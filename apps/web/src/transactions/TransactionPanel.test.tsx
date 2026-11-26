@@ -83,7 +83,7 @@ describe('TransactionPanel', () => {
     const { user } = renderPage(<TransactionPanel tx={mine} onDeleted={vi.fn()} />)
     await user.click(await screen.findByRole('button', { name: /대분류/ }))
     await user.click(await screen.findByRole('option', { name: '외식' }))
-    expect(screen.getByText('이 대분류에는 고를 수 있는 소분류가 없어요.')).toHaveClass('muted')
+    expect(screen.getByText('이 대분류에는 선택할 수 있는 소분류가 없어요.')).toHaveClass('muted')
     expect(screen.getByRole('button', { name: /소분류/ })).toBeDisabled()
     expect(screen.getByRole('button', { name: '저장' })).toBeDisabled()
     fireEvent.submit(screen.getByRole('button', { name: '저장' }).closest('form')!)
