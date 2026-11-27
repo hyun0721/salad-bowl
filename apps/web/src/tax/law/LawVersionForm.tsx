@@ -52,7 +52,8 @@ function PercentField({ label, value, onChange }: { label: string; value: number
       formatOptions={{ maximumFractionDigits: 0 }} validationBehavior="native" isWheelDisabled className={fields.field}>
       <Label className={fields.label}>{label}</Label>
       <Group className={money.money}>
-        <Input className={`${fields.input} ${money.input}`} />
+        {/* RAC가 iPhone에서 전체 키보드를 선택하므로 숫자패드로 덮어쓴다. */}
+        <Input inputMode="numeric" className={`${fields.input} ${money.input}`} />
         <span className={money.unit} aria-hidden="true">%</span>
       </Group>
       <FieldError className={fields.error} />
