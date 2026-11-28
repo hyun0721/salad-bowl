@@ -77,7 +77,7 @@ export default function TransactionPanel({ tx, onDeleted, onSaved, loadDraft, on
       // 비워서 저장하면 서버가 원본 값을 돌려준다. 입력칸도 그 값으로 맞춘다.
       onSuccess: (updated) => {
         change({ type: updated.type, major: updated.categoryMajor, minor: updated.categoryMinor, memo: updated.memo ?? '', hidden: updated.hidden })
-        toast('저장했습니다.')
+        toast('저장했어요.')
         onSaved?.()
       },
     })
@@ -113,9 +113,9 @@ export default function TransactionPanel({ tx, onDeleted, onSaved, loadDraft, on
                   .map((value) => ({ id: 'minor:' + value, label: value }))]}
               onSelectionChange={(key) => change({ minor: key === null ? null : key === 'original' ? '' : String(key).slice(6) })} />
           </div>
-          {noMinorOptions && <p className={ui.muted}>이 대분류에는 고를 수 있는 소분류가 없습니다.</p>}
+          {noMinorOptions && <p className={ui.muted}>이 대분류에는 선택할 수 있는 소분류가 없어요.</p>}
           <TextAreaField label="메모" value={memo} onChange={(v) => change({ memo: v })} maxLength={1000} rows={2} />
-          <p className={ui.muted}>메모를 비우거나 '원래 값'·원래 타입을 고르고 저장하면 엑셀의 원래 값으로 돌아갑니다.</p>
+          <p className={ui.muted}>메모를 비우거나 '원래 값'·원래 타입을 선택하고 저장하면 엑셀의 원래 값으로 돌아가요.</p>
           {isOwner && (
             <Checkbox isSelected={hidden} onChange={(v) => change({ hidden: v })}>그룹 화면에서 숨기기 (본인만)</Checkbox>
           )}
@@ -129,7 +129,7 @@ export default function TransactionPanel({ tx, onDeleted, onSaved, loadDraft, on
           </div>
         </form>
       ) : (
-        <p className={styles.readOnly}>다른 멤버의 거래는 볼 수만 있습니다. 관리자만 수정할 수 있습니다.</p>
+        <p className={styles.readOnly}>다른 멤버의 거래는 볼 수만 있어요. 관리자만 수정할 수 있어요.</p>
       )}
       {error && <p role="alert" className={ui.alert}>{error}</p>}
 
@@ -140,11 +140,11 @@ export default function TransactionPanel({ tx, onDeleted, onSaved, loadDraft, on
         </ul></SkeletonRegion>}
         {audits.isError && (
           <div className={ui.row}>
-            <p role="alert" className={ui.alert}>수정 이력을 불러오지 못했습니다.</p>
+            <p role="alert" className={ui.alert}>수정 이력을 불러오지 못했어요.</p>
             <button type="button" className={ui.button} onClick={() => void audits.refetch()}><Icon name="refresh-cw" size={18} />수정 이력 다시 시도</button>
           </div>
         )}
-        {audits.data && audits.data.length === 0 && <p className={ui.muted}>수정한 적이 없습니다.</p>}
+        {audits.data && audits.data.length === 0 && <p className={ui.muted}>수정한 적이 없어요.</p>}
         {audits.data && audits.data.length > 0 && (
           <ul className={ui.stack}>
             {audits.data.map((a, i) => <li key={i} className={ui.muted}>{auditLine(a)}</li>)}

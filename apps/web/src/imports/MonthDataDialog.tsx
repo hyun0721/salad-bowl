@@ -35,7 +35,7 @@ export default function MonthDataDialog({ coverage, onClose, onDeleted }: Props)
 
   function confirmDelete() {
     remove.mutate({ month, includeManual }, {
-      onSuccess: (result) => onDeleted(`${label} 거래 ${result.deletedImported + result.deletedManual}건을 삭제했습니다.`),
+      onSuccess: (result) => onDeleted(`${label} 거래 ${result.deletedImported + result.deletedManual}건을 삭제했어요.`),
     })
   }
 
@@ -55,7 +55,7 @@ export default function MonthDataDialog({ coverage, onClose, onDeleted }: Props)
             <div><dt>업로드한 거래</dt><dd>{importedCount}건</dd></div>
             {manualCount > 0 && <div><dt>직접 추가한 거래</dt><dd>{manualCount}건</dd></div>}
           </dl>
-          {uploading && <p className={ui.status}>업로드가 끝난 뒤 삭제할 수 있습니다.</p>}
+          {uploading && <p className={ui.status}>업로드가 끝난 뒤 삭제할 수 있어요.</p>}
           <div className={ui.row}>
             <button type="button" className={ui.button} onClick={() => setStep('upload')}>다시 업로드</button>
             <button type="button" className={`${ui.button} ${ui.danger}`} disabled={uploading}
@@ -66,7 +66,7 @@ export default function MonthDataDialog({ coverage, onClose, onDeleted }: Props)
 
       {step === 'upload' && (
         <>
-          <p className={ui.status}>뱅크샐러드에서 내려받은 엑셀(.xlsx)을 올려주세요. 여러 달이 들어 있어도 거래 일자에 맞게 반영됩니다.</p>
+          <p className={ui.status}>뱅크샐러드에서 내려받은 엑셀(.xlsx)을 올려 주세요. 여러 달이 들어 있어도 거래 일자에 맞게 반영돼요.</p>
           <UploadForm />
         </>
       )}
@@ -74,8 +74,8 @@ export default function MonthDataDialog({ coverage, onClose, onDeleted }: Props)
       {step === 'confirm' && (
         <div className={ui.stack}>
           <p>
-            {target}을 영구 삭제합니다. 바꾼 카테고리·메모·숨김과 수정 이력도 함께 사라집니다.
-            같은 엑셀을 다시 올리면 거래는 돌아오지만 수정한 내용은 돌아오지 않습니다.
+            {target}을 영구 삭제해요. 바꾼 카테고리·메모·숨김과 수정 이력도 함께 사라져요.
+            같은 엑셀을 다시 올리면 거래는 돌아오지만 수정한 내용은 돌아오지 않아요.
           </p>
           {manualCount > 0 && (
             <Checkbox isSelected={includeManual} isDisabled={remove.isPending} onChange={setIncludeManual}>
@@ -84,7 +84,7 @@ export default function MonthDataDialog({ coverage, onClose, onDeleted }: Props)
           )}
           <TextField label={`삭제하려면 ${month}를 입력하세요`} value={typed} onChange={setTyped}
             autoComplete="off" isDisabled={remove.isPending} />
-          {uploading && <p className={ui.status}>업로드가 끝난 뒤 삭제할 수 있습니다.</p>}
+          {uploading && <p className={ui.status}>업로드가 끝난 뒤 삭제할 수 있어요.</p>}
           {remove.isError && <p role="alert" className={ui.alert}>{errorMessage(remove.error)}</p>}
         </div>
       )}

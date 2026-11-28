@@ -54,14 +54,14 @@ export default function BasicInfoDialog({ year, view, childTiersApply, onClose }
           <Select label="종료월" variant="field" items={MONTHS} selectedKey={end}
             onSelectionChange={(key) => { if (key != null) setEnd(Number(key)) }} />
         </fieldset>
-        {monthError && <p role="alert" className={styles.fieldError}>시작월이 종료월보다 늦습니다.</p>}
-        <p className={ui.muted}>중도 입사·퇴사한 해는 근로기간에 쓴 금액만 입력합니다.</p>
+        {monthError && <p role="alert" className={styles.fieldError}>시작월이 종료월보다 늦어요.</p>}
+        <p className={ui.muted}>중도 입사·퇴사한 해는 근로기간에 쓴 금액만 입력하세요.</p>
         {childTiersApply && (
           <div className={fields.field}>
             <div className={styles.labelRow}>
               <span id={childLabel} className={fields.label}>자녀등 수</span>
               <HelpButton title="자녀등 수">
-                직계비속 가운데 ① 소득금액 100만원 이하(근로소득만 있으면 총급여 500만원 이하) ② 20세 이하(장애인은 나이와 관계없음) ③ 다른 사람의 기본공제를 받지 않는 사람의 수입니다.
+                직계비속 가운데 ① 소득금액 100만원 이하(근로소득만 있으면 총급여 500만원 이하) ② 20세 이하(장애인은 나이와 관계없음) ③ 다른 사람의 기본공제를 받지 않는 사람의 수예요.
               </HelpButton>
             </div>
             <NumberField aria-labelledby={childLabel} value={childCount} minValue={0} maxValue={99}

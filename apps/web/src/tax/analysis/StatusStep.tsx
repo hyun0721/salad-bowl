@@ -49,7 +49,7 @@ function Status({ analysis: a, d, rates }: { analysis: TaxAnalysisView; d: Deduc
           </div>
         </dl>
         {!d.thresholdReached && (
-          <p className={ui.status}>최저사용금액까지 {won(d.remainingToThreshold)} 남았습니다. 전체 사용액이 최저사용금액을 넘어야 공제가 시작됩니다.</p>
+          <p className={ui.status}>최저사용금액까지 {won(d.remainingToThreshold)} 남았어요. 전체 사용액이 최저사용금액을 넘어야 공제가 시작돼요.</p>
         )}
       </section>
       <Shares year={a.taxYear} totals={a.totals} total={d.total} />
@@ -78,12 +78,12 @@ function Shares({ year, totals: t, total }: { year: number; totals: SpendingTota
   return (
     <section aria-labelledby="tax-share-title" className={ui.card}>
       <h2 id="tax-share-title">사용 비율</h2>
-      <p className={ui.muted}>분모: {year}년 전체 입력 공제대상액 {won(total)}(연도 합계표 12칸의 합). 공제율·한도 사용률과 다른 숫자입니다.</p>
-      {total === 0 ? <p className={ui.status}>입력 합계가 0원이라 비율을 계산하지 않습니다.</p> : (
+      <p className={ui.muted}>분모: {year}년 전체 입력 공제대상액 {won(total)}(연도 합계표 12칸의 합). 공제율·한도 사용률과 다른 숫자예요.</p>
+      {total === 0 ? <p className={ui.status}>입력 합계가 0원이라 비율을 계산하지 않아요.</p> : (
         <>
           <ShareTable caption="소비구분별" rows={byCategory} total={total} />
           <ShareTable caption="결제수단별" rows={byMethod} total={total} />
-          <p className={ui.muted}>소수 첫째 자리에서 반올림해 합이 100.0%가 아닐 수 있습니다.</p>
+          <p className={ui.muted}>소수 첫째 자리에서 반올림해 합이 100.0%가 아닐 수 있어요.</p>
         </>
       )}
     </section>
@@ -134,13 +134,13 @@ function CalcSteps({ analysis: a, d, rates }: { analysis: TaxAnalysisView; d: De
               <dd>− {won(d.thresholdCut)}</dd>
             </>}
           </dl>
-          {!d.thresholdReached && <p>전체 사용액이 최저사용금액 이하라 여기서 끝납니다. 소득공제액은 0원입니다.</p>}
+          {!d.thresholdReached && <p>전체 사용액이 최저사용금액 이하라 여기서 끝나요. 소득공제액은 0원이에요.</p>}
         </li>
         {d.thresholdReached && <>
           <li>
             <h3>2. 공제율 적용</h3>
             <ul>{parts.map(([label, amount, rate]) => <li key={label}>{label} {won(amount)} × {rate}%</li>)}</ul>
-            {d.highBracket && <p className={ui.muted}>총급여가 {formatWon(rates.bracketBoundary)}를 넘어 문화체육은 원래 결제수단의 일반으로 계산합니다.</p>}
+            {d.highBracket && <p className={ui.muted}>총급여가 {formatWon(rates.bracketBoundary)}를 넘어 문화체육은 원래 결제수단의 일반으로 계산해요.</p>}
             <dl>
               <dt>공제율을 곱한 합계</dt><dd>{won(d.beforeThresholdCut)}</dd>
               <dt>공제 가능 금액 = 합계 − 차감액</dt><dd>{won(d.deductible)}</dd>

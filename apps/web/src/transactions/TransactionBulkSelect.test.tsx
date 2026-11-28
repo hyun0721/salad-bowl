@@ -30,6 +30,7 @@ async function start() {
 it.each([false, true])('selects rows without opening details, narrow=%s', async (narrow) => {
   mockViewport(narrow)
   const { user } = await start()
+  if (!narrow) expect(screen.getByRole('checkbox', { name: '선택 김밥' }).closest('td:first-child label')).toBeInTheDocument()
   await user.click(screen.getByText('김밥'))
   expect(screen.getByText(/1건 선택/)).toBeInTheDocument()
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
@@ -79,7 +80,7 @@ it('sends only changed fields and exits with a toast on success', async () => {
   expect(screen.getByRole('button', { name: '적용' })).toBeDisabled()
   await choose(user, '소분류', '소분류 없음')
   await user.click(screen.getByRole('button', { name: '적용' }))
-  expect(await screen.findByText('1건을 수정했습니다.')).toBeInTheDocument()
+  expect(await screen.findByText('1건을 수정했어요.')).toBeInTheDocument()
   expect(body).toEqual({ ids: [1], categoryMajor: '생활', categoryMinor: '' })
   expect(screen.queryByText(/1건 선택/)).not.toBeInTheDocument()
 })
@@ -113,7 +114,7 @@ it('blocks more than 1000 selected transactions', async () => {
   fireEvent.click(screen.getByRole('button', { name: '선택' }))
   fireEvent.click(screen.getByRole('button', { name: '전체 선택' }))
   fireEvent.click(screen.getByRole('button', { name: '편집' }))
-  expect(screen.getByRole('alert')).toHaveTextContent('한 번에 최대 1,000건까지 수정할 수 있습니다.')
+  expect(screen.getByRole('alert')).toHaveTextContent('한 번에 최대 1,000건까지 수정할 수 있어요.')
   fireEvent.change(screen.getByRole('textbox', { name: '태그 추가' }), { target: { value: '#여행' } })
   expect(screen.getByRole('button', { name: '적용' })).toBeDisabled()
 }, 20000)
@@ -264,7 +265,7 @@ it('parses tags, blocks invalid tokens, suggests tags and sends a tag-only patch
   expect(input).toHaveValue('#결혼준비 결혼준비 #여행')
   expect(screen.queryByRole('button', { name: '#여행' })).not.toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: '적용' }))
-  expect(await screen.findByText('1건을 수정했습니다.')).toBeInTheDocument()
+  expect(await screen.findByText('1건을 수정했어요.')).toBeInTheDocument()
   expect(body).toEqual({ ids: [1], addTags: ['결혼준비', '여행'] })
 })
 it('offers only selected memo tags with transaction counts and removes tags', async () => {
@@ -279,17 +280,17 @@ it('offers only selected memo tags with transaction counts and removes tags', as
   expect(screen.getByRole('checkbox', { name: '#제주 · 1건' })).toBeInTheDocument()
   await user.click(screen.getByRole('checkbox', { name: '#여행 · 2건' }))
   await user.click(screen.getByRole('button', { name: '적용' }))
-  expect(await screen.findByText('2건을 수정했습니다.')).toBeInTheDocument()
+  expect(await screen.findByText('2건을 수정했어요.')).toBeInTheDocument()
   expect(body).toEqual({ ids: [1, 2], removeTags: ['여행'] })
 })
 it('blocks overflowing memos with a count and checks removal before addition', async () => {
   items = [{ ...base, memo: 'a'.repeat(996) + ' #제주' }, { ...base, id: 2, description: '커피', memo: 'a'.repeat(1000) }]
   const { user } = await openBulk()
   await user.type(screen.getByRole('textbox', { name: '태그 추가' }), '#여행')
-  expect(screen.getByText('2건은 메모가 1,000자를 넘어 태그를 추가할 수 없습니다.')).toBeInTheDocument()
+  expect(screen.getByText('2건은 메모가 1,000자를 넘어 태그를 추가할 수 없어요.')).toBeInTheDocument()
   expect(screen.getByRole('button', { name: '적용' })).toBeDisabled()
   await user.click(screen.getByRole('checkbox', { name: '#제주 · 1건' }))
-  expect(screen.getByText('1건은 메모가 1,000자를 넘어 태그를 추가할 수 없습니다.')).toBeInTheDocument()
+  expect(screen.getByText('1건은 메모가 1,000자를 넘어 태그를 추가할 수 없어요.')).toBeInTheDocument()
 })
 
 it('limits suggestions to eight and blocks more than twenty tags', async () => {
@@ -321,10 +322,10 @@ it('counts memo length in code points before blocking a tag edit', async () => {
   items = [{ ...base, memo: '😀'.repeat(990) }, { ...base, id: 2, description: '커피', memo: '😀'.repeat(998) }]
   const { user } = await openBulk()
   await user.type(screen.getByRole('textbox', { name: '태그 추가' }), '#여행')
-  expect(screen.getByText('1건은 메모가 1,000자를 넘어 태그를 추가할 수 없습니다.')).toBeInTheDocument()
+  expect(screen.getByText('1건은 메모가 1,000자를 넘어 태그를 추가할 수 없어요.')).toBeInTheDocument()
   await user.clear(screen.getByRole('textbox', { name: '태그 추가' }))
   await user.type(screen.getByRole('textbox', { name: '태그 추가' }), '#' + 'a'.repeat(8))
-  expect(screen.getByText('1건은 메모가 1,000자를 넘어 태그를 추가할 수 없습니다.')).toBeInTheDocument()
+  expect(screen.getByText('1건은 메모가 1,000자를 넘어 태그를 추가할 수 없어요.')).toBeInTheDocument()
 })
 it('drops selected rows that a refreshed list no longer matches the search for', async () => {
   let body: unknown
@@ -344,6 +345,6 @@ it('drops selected rows that a refreshed list no longer matches the search for',
   await user.click(screen.getByRole('button', { name: '편집' }))
   await user.type(screen.getByRole('textbox', { name: '태그 추가' }), '#새태그')
   await user.click(screen.getByRole('button', { name: '적용' }))
-  await screen.findByText('1건을 수정했습니다.')
+  await screen.findByText('1건을 수정했어요.')
   expect(body).toEqual({ ids: [1], addTags: ['새태그'] })
 })

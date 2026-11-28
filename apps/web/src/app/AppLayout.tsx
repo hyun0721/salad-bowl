@@ -69,7 +69,7 @@ export default function AppLayout() {
     </SkeletonRegion>
   ) : isError ? (
     <span className={styles.groupState}>
-      그룹을 불러오지 못했습니다{' '}
+      그룹을 불러오지 못했어요{' '}
       <button type="button" className={styles.logout} onClick={retry}><Icon name="refresh-cw" size={18} />다시 시도</button>
     </span>
   ) : groups.length > 0 ? (
@@ -113,7 +113,7 @@ export default function AppLayout() {
               isDisabled={isLoading}>
               {({ close }) => isError ? (
                 <div className={styles.groupState}>
-                  그룹을 불러오지 못했습니다
+                  그룹을 불러오지 못했어요
                   <button type="button" className={styles.logout} onClick={retry}><Icon name="refresh-cw" size={18} />다시 시도</button>
                 </div>
               ) : groups.length ? (
@@ -149,7 +149,7 @@ export default function AppLayout() {
           )}
         </header>
         {logoutError && !narrow && (
-          <p role="alert" className={styles.logoutError}>로그아웃하지 못했습니다. 잠시 후 다시 시도해 주세요.</p>
+          <p role="alert" className={styles.logoutError}>로그아웃하지 못했어요. 잠시 후 다시 시도해 주세요.</p>
         )}
         <main ref={mainRef} className={narrow ? `${styles.content} ${styles.withTabBar}` : styles.content}>
           <Suspense fallback={<AppPageLoading />}>

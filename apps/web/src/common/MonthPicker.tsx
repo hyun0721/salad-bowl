@@ -43,7 +43,7 @@ export default function MonthPicker({ month, onChange, label }: Props) {
       </label>
       <button type="button" className={`${ui.button} ${styles.step} ${compact ? stepper.step : ''}`} aria-label={`${prefix}다음 달`}
         onClick={() => onChange(shiftMonth(month, 1))}><Icon name="chevron-right" size={18} /></button>
-      {!valid && <p id={hintId} className={`${ui.muted} ${styles.hint}`}>2026-10처럼 연도와 월을 입력해 주세요.</p>}
+      {!valid && <p id={hintId} className={`${ui.muted} ${styles.hint}`}>2026-10처럼 연도와 월을 입력하세요.</p>}
     </div>
   )
 }

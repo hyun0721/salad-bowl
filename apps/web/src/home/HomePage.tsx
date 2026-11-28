@@ -39,7 +39,7 @@ export default function HomePage({ today: todayProp }: Props) {
           {mine.isPending && <SkeletonRegion><TotalsCardsSkeleton /></SkeletonRegion>}
           {mine.isError && (
             <div className={ui.row}>
-              <p role="alert" className={ui.alert}>지난달 거래를 불러오지 못했습니다.</p>
+              <p role="alert" className={ui.alert}>지난달 거래를 불러오지 못했어요.</p>
               <button type="button" className={ui.button} aria-label="요약 다시 시도" onClick={() => void mine.refetch()}><Icon name="refresh-cw" size={18} />다시 시도</button>
             </div>
           )}

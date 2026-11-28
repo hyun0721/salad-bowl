@@ -17,6 +17,6 @@ export function rangeError(from: string, to: string): string | null {
   const [toYear, toMonth] = to.split('-').map(Number)
   const months = (toYear - fromYear) * 12 + toMonth - fromMonth + 1
   return months < 1 || months > 12
-    ? '기간은 최대 12개월이고, 시작 월이 끝 월보다 늦을 수 없습니다.'
+    ? '기간은 최대 12개월이고, 시작 월이 끝 월보다 늦을 수 없어요.'
     : null
 }

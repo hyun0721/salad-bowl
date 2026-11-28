@@ -44,7 +44,7 @@ describe('MonthPicker', () => {
     fireEvent.change(screen.getByLabelText('월'), { target: { value: '' } })
 
     expect(onChange).not.toHaveBeenCalled()
-    expect(screen.getByText('2026-10처럼 연도와 월을 입력해 주세요.')).toBeInTheDocument()
+    expect(screen.getByText('2026-10처럼 연도와 월을 입력하세요.')).toBeInTheDocument()
     expect(screen.getByLabelText('월')).toHaveAttribute('aria-invalid', 'true')
   })
 

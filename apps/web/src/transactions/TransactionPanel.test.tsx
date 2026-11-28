@@ -42,7 +42,7 @@ describe('TransactionPanel', () => {
     await user.click(screen.getByRole('option', { name: '저녁' }))
     await user.click(screen.getByRole('button', { name: '저장' }))
 
-    expect(await screen.findByText('저장했습니다.')).toBeInTheDocument()
+    expect(await screen.findByText('저장했어요.')).toBeInTheDocument()
     expect(body).toEqual({ categoryMajor: '외식', categoryMinor: '저녁' })
   })
 
@@ -83,7 +83,7 @@ describe('TransactionPanel', () => {
     const { user } = renderPage(<TransactionPanel tx={mine} onDeleted={vi.fn()} />)
     await user.click(await screen.findByRole('button', { name: /대분류/ }))
     await user.click(await screen.findByRole('option', { name: '외식' }))
-    expect(screen.getByText('이 대분류에는 고를 수 있는 소분류가 없습니다.')).toHaveClass('muted')
+    expect(screen.getByText('이 대분류에는 선택할 수 있는 소분류가 없어요.')).toHaveClass('muted')
     expect(screen.getByRole('button', { name: /소분류/ })).toBeDisabled()
     expect(screen.getByRole('button', { name: '저장' })).toBeDisabled()
     fireEvent.submit(screen.getByRole('button', { name: '저장' }).closest('form')!)
@@ -114,7 +114,7 @@ describe('TransactionPanel', () => {
     await user.click(await screen.findByRole('option', { name: '이체' }))
     await user.click(screen.getByRole('button', { name: '저장' }))
 
-    expect(await screen.findByText('저장했습니다.')).toBeInTheDocument()
+    expect(await screen.findByText('저장했어요.')).toBeInTheDocument()
     expect(body).toEqual({ type: 'TRANSFER' })
     expect(client.getQueryState(['summary', 1, '2026-10'])?.isInvalidated).toBe(true)
   })
@@ -141,7 +141,7 @@ describe('TransactionPanel', () => {
     await user.clear(await screen.findByLabelText('메모'))
     await user.click(screen.getByRole('button', { name: '저장' }))
 
-    await screen.findByText('저장했습니다.')
+    await screen.findByText('저장했어요.')
     expect(body).toEqual({ memo: '' })
   })
 
@@ -169,7 +169,7 @@ describe('TransactionPanel', () => {
     auditsHandler()
     renderPage(<TransactionPanel tx={{ ...mine, ownerId: 2, ownerNickname: '멤버', editable: false }} onDeleted={vi.fn()} />)
 
-    expect(await screen.findByText('다른 멤버의 거래는 볼 수만 있습니다. 관리자만 수정할 수 있습니다.')).toBeInTheDocument()
+    expect(await screen.findByText('다른 멤버의 거래는 볼 수만 있어요. 관리자만 수정할 수 있어요.')).toBeInTheDocument()
     expect(screen.queryByLabelText('그룹 화면에서 숨기기 (본인만)')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '저장' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '삭제' })).not.toBeInTheDocument()
@@ -200,7 +200,7 @@ describe('TransactionPanel', () => {
     await user.click(await screen.findByRole('button', { name: '삭제' }))
     await user.click(screen.getByRole('button', { name: '삭제 확인' }))
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('엑셀로 가져온 거래는 삭제할 수 없습니다.')
+    expect(await screen.findByRole('alert')).toHaveTextContent('엑셀로 가져온 거래는 삭제할 수 없어요.')
   })
 
   it('offers a retry when the audit trail fails to load', async () => {
@@ -212,7 +212,7 @@ describe('TransactionPanel', () => {
       ])))
     const { user } = renderPage(<TransactionPanel tx={mine} onDeleted={vi.fn()} />)
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('수정 이력을 불러오지 못했습니다.')
+    expect(await screen.findByRole('alert')).toHaveTextContent('수정 이력을 불러오지 못했어요.')
     fail = false
     await user.click(screen.getByRole('button', { name: '수정 이력 다시 시도' }))
 
@@ -235,7 +235,7 @@ describe('TransactionPanel', () => {
     expect(screen.getByRole('button', { name: /소분류/ })).toBeDisabled()
     await user.click(screen.getByRole('button', { name: '저장' }))
 
-    await screen.findByText('저장했습니다.')
+    await screen.findByText('저장했어요.')
     expect(screen.getByRole('button', { name: /대분류/ })).toHaveTextContent('식비')
     expect(screen.getByRole('button', { name: /소분류/ })).toHaveTextContent('점심')
     expect(body).toEqual({ categoryMajor: '', categoryMinor: '' })

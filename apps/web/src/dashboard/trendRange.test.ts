@@ -14,7 +14,7 @@ describe('trendRange', () => {
   })
 
   it('rejects reversed and 13-month ranges but accepts 12 months', () => {
-    const message = '기간은 최대 12개월이고, 시작 월이 끝 월보다 늦을 수 없습니다.'
+    const message = '기간은 최대 12개월이고, 시작 월이 끝 월보다 늦을 수 없어요.'
     expect(rangeError('2026-04', '2026-03')).toBe(message)
     expect(rangeError('2025-03', '2026-03')).toBe(message)
     expect(rangeError('2025-04', '2026-03')).toBeNull()

@@ -121,7 +121,7 @@ describe('SubcategoryTrends', () => {
     }))
     renderPage(<SubcategoryTrends groupId={10} month="2026-10" />, { path: '/dashboard/minor?major=unknown' })
     const share = await screen.findByRole('region', { name: '소분류 분포' })
-    expect(await within(share).findByText('대분류 하나를 선택하면 하위 소분류를 볼 수 있습니다.')).toBeInTheDocument()
+    expect(await within(share).findByText('대분류 하나를 선택하면 하위 소분류를 볼 수 있어요.')).toBeInTheDocument()
     expect(requests).toHaveLength(1)
   })
 
@@ -179,10 +179,10 @@ describe('SubcategoryTrends', () => {
         ? HttpResponse.json({}, { status: 500 }) : HttpResponse.json([])),
     )
     const { user } = renderMinorDashboard()
-    expect(await screen.findByText('대분류 목록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.')).toBeInTheDocument()
+    expect(await screen.findByText('대분류 목록을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.')).toBeInTheDocument()
     fail = false
     await user.click(screen.getByRole('button', { name: '소분류 다시 시도' }))
-    expect(await screen.findByText('최근 6개월에 공개된 지출이 없습니다.')).toBeInTheDocument()
+    expect(await screen.findByText('최근 6개월에 공개된 지출이 없어요.')).toBeInTheDocument()
   })
 
   it.each([false, true])('waits for the initial list before offering selection, mobile=%s', async (mobile) => {
@@ -194,12 +194,12 @@ describe('SubcategoryTrends', () => {
       return HttpResponse.json([{ month: '2026-10', major: '식비', minor: '외식', expense: 1000 }])
     }))
     const { user } = renderPage(<SubcategoryTrends groupId={10} month="2026-10" />, { path: "/dashboard/minor?major=식비" })
-    expect(await screen.findByText('대분류 목록을 불러오는 중입니다.')).toBeInTheDocument()
+    expect(await screen.findByText('대분류 목록을 불러오는 중이에요.')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /대분류/ })).not.toBeInTheDocument()
-    expect(screen.queryByText('최근 6개월에 공개된 지출이 없습니다.')).not.toBeInTheDocument()
+    expect(screen.queryByText('최근 6개월에 공개된 지출이 없어요.')).not.toBeInTheDocument()
     try {
-      expect(screen.queryByText('대분류 하나를 선택하면 하위 소분류를 볼 수 있습니다.')).not.toBeInTheDocument()
-      expect(screen.getAllByText('대분류 목록을 불러오는 중입니다.')).toHaveLength(1)
+      expect(screen.queryByText('대분류 하나를 선택하면 하위 소분류를 볼 수 있어요.')).not.toBeInTheDocument()
+      expect(screen.getAllByText('대분류 목록을 불러오는 중이에요.')).toHaveLength(1)
     } finally { release() }
     await user.click(await screen.findByRole('button', { name: /대분류.*필수/ }))
     if (mobile) expect(screen.getByRole('dialog', { name: '대분류 (필수)' })).toBeInTheDocument()
@@ -213,10 +213,10 @@ describe('SubcategoryTrends', () => {
       ? HttpResponse.json({ code: status === 404 ? 'NOT_FOUND' : 'SERVER_UNAVAILABLE' }, { status })
       : HttpResponse.json([{ month: '2026-10', major: '식비', minor: '외식', expense: 1000 }])))
     const { user } = renderPage(<SubcategoryTrends groupId={10} month="2026-10" />, { path: "/dashboard/minor?major=식비" })
-    expect(await screen.findByRole('alert')).toHaveTextContent('대분류 목록을 불러오지 못했습니다.')
+    expect(await screen.findByRole('alert')).toHaveTextContent('대분류 목록을 불러오지 못했어요.')
     expect(screen.queryByRole('button', { name: /대분류/ })).not.toBeInTheDocument()
-    expect(screen.queryByText('최근 6개월에 공개된 지출이 없습니다.')).not.toBeInTheDocument()
-    expect(screen.queryByText('대분류 하나를 선택하면 하위 소분류를 볼 수 있습니다.')).not.toBeInTheDocument()
+    expect(screen.queryByText('최근 6개월에 공개된 지출이 없어요.')).not.toBeInTheDocument()
+    expect(screen.queryByText('대분류 하나를 선택하면 하위 소분류를 볼 수 있어요.')).not.toBeInTheDocument()
     expect(screen.getAllByRole('alert')).toHaveLength(1)
     fail = false
     await user.click(screen.getByRole('button', { name: '소분류 다시 시도' }))
@@ -229,10 +229,10 @@ describe('SubcategoryTrends', () => {
   it('distinguishes an empty successful response from a failed or pending list', async () => {
     server.use(http.get('*/api/groups/10/summary/subcategories', () => HttpResponse.json([])))
     renderPage(<SubcategoryTrends groupId={10} month="2026-10" />)
-    expect(await screen.findByText('최근 6개월에 공개된 지출이 없습니다.')).toBeInTheDocument()
+    expect(await screen.findByText('최근 6개월에 공개된 지출이 없어요.')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /대분류/ })).not.toBeInTheDocument()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
-    expect(screen.queryByText('대분류 목록을 불러오는 중입니다.')).not.toBeInTheDocument()
+    expect(screen.queryByText('대분류 목록을 불러오는 중이에요.')).not.toBeInTheDocument()
   })
 
 })

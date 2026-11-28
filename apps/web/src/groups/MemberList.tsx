@@ -44,7 +44,7 @@ function MemberRow({ groupId, member, canRemove, onRemoving }: {
       {canRemove && (
         <span className={styles.memberActions}>
           <ConfirmDialog triggerLabel="내보내기" triggerIcon="user-minus" triggerAriaLabel={`${member.nickname} 내보내기`}
-            title={`${member.nickname} 내보내기`} description="내보내면 차단되어 다시 합류할 수 없습니다."
+            title={`${member.nickname} 내보내기`} description="내보내면 차단되어 다시 합류할 수 없어요."
             confirmLabel="내보내기 확인" confirmAriaLabel={`${member.nickname} 내보내기 확인`}
             isPending={removeMember.isPending} error={removeMember.isError ? errorMessage(removeMember.error) : null}
             onOpen={() => { onRemoving(null); removeMember.reset() }}

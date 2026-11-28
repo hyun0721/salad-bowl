@@ -101,12 +101,12 @@ export default function CategoryTransactionsDialog({ groupId, month, category, m
             <TransactionListSkeleton showOwner />
           </div>}
           {transactions.isError && <div className={ui.row}>
-            <p role="alert" className={ui.alert}>거래를 불러오지 못했습니다.</p>
+            <p role="alert" className={ui.alert}>거래를 불러오지 못했어요.</p>
             <button type="button" className={ui.button} onClick={() => void transactions.refetch()}><Icon name="refresh-cw" size={18} />다시 시도</button>
           </div>}
           {transactions.isSuccess && <>
             <p ref={summaryRef} tabIndex={-1} className={styles.summary}>{items.length}건 · 합계 {formatWon(total)}</p>
-            {items.length === 0 ? <p className={ui.status}>거래가 없습니다.</p> : (
+            {items.length === 0 ? <p className={ui.status}>거래가 없어요.</p> : (
               <div ref={listRef} className={`${styles.dialogList} ${styles.transactionList} ${scrollStyles.scroll}`} onScroll={onScroll} data-dialog-list="">
                 {narrow ? (
                   <CardList label="거래 목록" items={items} textValue={(tx) => tx.description} onAction={(id) => showTransaction(Number(id))}>

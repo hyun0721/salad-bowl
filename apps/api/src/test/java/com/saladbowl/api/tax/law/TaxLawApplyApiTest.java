@@ -198,12 +198,12 @@ class TaxLawApplyApiTest extends IntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.errors", hasSize(20)))
                 .andExpect(jsonPath("$.errors[0].field").value("minSpendRatePct"))
-                .andExpect(jsonPath("$.errors[0].message").value("값을 입력해야 합니다"));
+                .andExpect(jsonPath("$.errors[0].message").value("값을 입력하세요"));
         mvc.perform(post(URL + "/" + id + "/apply").header("Authorization", admin.bearer())
                         .contentType(MediaType.APPLICATION_JSON).content("{\"rowVersion\":0}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
-                .andExpect(jsonPath("$.message").value("minSpendRatePct: 값을 입력해야 합니다"));
+                .andExpect(jsonPath("$.message").value("minSpendRatePct: 값을 입력하세요"));
 
         assertThat(statusOf(id)).isEqualTo("DRAFT");
         mvc.perform(get(CURRENT).param("year", "2026").header("Authorization", admin.bearer()))

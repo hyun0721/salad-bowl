@@ -146,7 +146,7 @@ export default function TransactionFilter({ categories, value, onApply, member }
                 items={[{ id: 'all', label: '전체' }, ...member.items]} selectedKey={draftMember ?? 'all'}
                 onSelectionChange={(key) => setDraftMember(key == null || key === 'all' ? null : Number(key))} />}
               {member?.isError && <>
-                <p role="alert" className={ui.alert}>멤버 목록을 불러오지 못했습니다.</p>
+                <p role="alert" className={ui.alert}>멤버 목록을 불러오지 못했어요.</p>
                 <button type="button" className={ui.button} onClick={member.onRetry}><Icon name="refresh-cw" size={18} />멤버 목록 다시 시도</button>
               </>}
               <div className={optionStyles.group}>

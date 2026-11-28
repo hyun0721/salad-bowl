@@ -49,7 +49,7 @@ describe('StatusStep — ① 현황', () => {
     renderTaxAnalysis()
     const step = await status()
 
-    expect(step.getByText(/^분모:/)).toHaveTextContent('분모: 2026년 전체 입력 공제대상액 ₩ 17,800,000(연도 합계표 12칸의 합). 공제율·한도 사용률과 다른 숫자입니다.')
+    expect(step.getByText(/^분모:/)).toHaveTextContent('분모: 2026년 전체 입력 공제대상액 ₩ 17,800,000(연도 합계표 12칸의 합). 공제율·한도 사용률과 다른 숫자예요.')
     const rows = (name: string) => within(step.getByRole('table', { name })).getAllByRole('row').map((row) => row.textContent)
     expect(rows('소비구분별')).toEqual(['일반92.7%', '전통시장3.4%', '대중교통2.8%', '문화체육1.1%'])
     expect(rows('결제수단별')).toEqual(['신용카드82.0%', '체크카드14.6%', '현금영수증3.4%'])
@@ -60,7 +60,7 @@ describe('StatusStep — ① 현황', () => {
     renderTaxAnalysis()
     const step = await status()
 
-    expect(step.getByText('입력 합계가 0원이라 비율을 계산하지 않습니다.')).toBeInTheDocument()
+    expect(step.getByText('입력 합계가 0원이라 비율을 계산하지 않아요.')).toBeInTheDocument()
     expect(step.queryByRole('table')).not.toBeInTheDocument()
     expect(step.getByRole('region', { name: '현재 요약' })).toHaveTextContent(/최저사용금액\s*미달 · 0\.0%/)
   })
@@ -73,7 +73,7 @@ describe('StatusStep — ① 현황', () => {
     const summary = step.getByRole('region', { name: '현재 요약' })
     expect(summary).toHaveTextContent(/소득공제액\s*₩ 0/)
     expect(summary).toHaveTextContent(/최저사용금액\s*미달 · 74\.4%/)
-    expect(summary).toHaveTextContent('최저사용금액까지 ₩ 3,200,001 남았습니다. 전체 사용액이 최저사용금액을 넘어야 공제가 시작됩니다.')
+    expect(summary).toHaveTextContent('최저사용금액까지 ₩ 3,200,001 남았어요. 전체 사용액이 최저사용금액을 넘어야 공제가 시작돼요.')
     expect(screen.getByRole('tabpanel').textContent).not.toMatch(/더 쓰|늘리|쓰세요/)
   })
 
@@ -107,7 +107,7 @@ describe('StatusStep — ① 현황', () => {
     await user.click(step.getByRole('button', { name: '계산 과정 보기' }))
 
     expect(step.getAllByRole('heading', { level: 3 }).map((h) => h.textContent)).toEqual(['1. 최저사용금액 차감'])
-    expect(step.getByText('전체 사용액이 최저사용금액 이하라 여기서 끝납니다. 소득공제액은 0원입니다.')).toBeInTheDocument()
+    expect(step.getByText('전체 사용액이 최저사용금액 이하라 여기서 끝나요. 소득공제액은 0원이에요.')).toBeInTheDocument()
   })
 
   it('marks an estimate on the deduction', async () => {
@@ -123,8 +123,8 @@ describe('StatusStep — ① 현황', () => {
     renderTaxAnalysis()
     const step = await status()
 
-    expect(step.getByRole('heading', { name: '자료를 완료하면 계산합니다' })).toBeInTheDocument()
-    expect(step.getByText(/^빈 칸 3개/)).toBeInTheDocument()
+    expect(step.getByRole('heading', { name: '자료를 완료하면 계산해요' })).toBeInTheDocument()
+    expect(step.getByText('빈 칸 3개 · 저장하면 사용액이 없는 칸은 0원으로 채워져요.')).toBeInTheDocument()
     expect(step.getByRole('link', { name: '입력자료로 가기' })).toHaveAttribute('href', '/tax/inputs')
     expect(step.queryByRole('region', { name: '현재 요약' })).not.toBeInTheDocument()
     expect(step.queryByText(/₩/)).not.toBeInTheDocument()

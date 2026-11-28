@@ -13,10 +13,10 @@ type Props = { error: unknown; year: number; onReload: () => void }
 export default function SaveError({ error, year, onReload }: Props) {
   const client = useQueryClient()
   if (!error) return null
-  if (!isStale(error)) return <p role="alert" className={ui.alert}>{errorMessage(error)} 입력한 값은 그대로 있습니다.</p>
+  if (!isStale(error)) return <p role="alert" className={ui.alert}>{errorMessage(error)} 입력한 값은 그대로 있어요.</p>
   return (
     <div className={styles.split}>
-      <p role="alert" className={ui.alert}>다른 곳에서 수정되거나 삭제됐습니다. 저장하지 않았습니다.</p>
+      <p role="alert" className={ui.alert}>다른 곳에서 수정되거나 삭제됐어요. 저장하지 않았어요.</p>
       <button type="button" className={ui.button}
         onClick={() => { void client.invalidateQueries({ queryKey: taxKeys.year(year) }); onReload() }}>다시 불러오기</button>
     </div>

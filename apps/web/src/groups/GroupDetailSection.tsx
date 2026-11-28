@@ -36,7 +36,7 @@ export default function GroupDetailSection({ groupId }: { groupId: number }) {
       <section aria-labelledby="group-detail-title" className={`${ui.card} ${styles.detail}`}>
         <h2 id="group-detail-title">그룹 정보</h2>
         <div className={styles.actionRow}>
-          <p role="alert" className={ui.alert}>그룹 정보를 불러오지 못했습니다.</p>
+          <p role="alert" className={ui.alert}>그룹 정보를 불러오지 못했어요.</p>
           <button type="button" className={ui.button} onClick={() => void detail.refetch()}><Icon name="refresh-cw" size={18} />다시 시도</button>
         </div>
       </section>

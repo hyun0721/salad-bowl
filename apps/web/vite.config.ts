@@ -13,7 +13,7 @@ const pwa = VitePWA({
   manifest: {
     name: 'Salad Bowl',
     short_name: 'Salad Bowl',
-    description: '뱅크샐러드 가계부를 가족·친구와 함께 봅니다.',
+    description: '뱅크샐러드 가계부를 가족·친구와 함께 봐요.',
     lang: 'ko',
     start_url: '/',
     scope: '/',

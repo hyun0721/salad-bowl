@@ -53,7 +53,7 @@ describe('PlanStep — ② 지출계획', () => {
     await user.clear(field('일반', '바꿀 수 있음'))
     await user.type(field('일반', '바꿀 수 있음'), '900000')
     await user.tab()
-    expect(step.getByText('저장하지 않은 변경이 있습니다. ③ 추천은 마지막으로 저장한 계획 기준입니다.')).toBeInTheDocument()
+    expect(step.getByText('저장하지 않은 변경이 있어요. ③ 추천은 마지막으로 저장한 계획 기준이에요.')).toBeInTheDocument()
     await user.click(screen.getByRole('tab', { name: '③ 추천' }))
     await user.click(screen.getByRole('tab', { name: '② 지출계획' }))
 
@@ -82,7 +82,7 @@ describe('PlanStep — ② 지출계획', () => {
     await waitFor(() => expect(screen.getByRole('tab', { name: '③ 추천' })).toHaveAttribute('aria-selected', 'true'))
     expect(body).toEqual({ ...savedBody, rowVersion: 55 })
     expect(after?.analysis).toBe(1)
-    expect(await screen.findByText('지출계획을 저장했습니다.')).toBeInTheDocument()
+    expect(await screen.findByText('지출계획을 저장했어요.')).toBeInTheDocument()
     await user.click(screen.getByRole('tab', { name: '② 지출계획' }))
     const plan = within(screen.getByRole('tabpanel', { name: '② 지출계획' }))
     expect(within(plan.getByRole('group', { name: '일반' })).getByLabelText('바꿀 수 있음')).toHaveValue('900,000')
@@ -114,7 +114,7 @@ describe('PlanStep — ② 지출계획', () => {
     server.use(http.put('*/api/tax/years/2026/plan', () => { puts++; return HttpResponse.json(readyYearView({ blankCount: 3 })) }))
     const { user, step } = await openPlan()
 
-    expect(step.getByText('자료가 완료되지 않았거나 세법이 준비 중이라 [계산하기]는 지출계획을 저장만 합니다.')).toBeInTheDocument()
+    expect(step.getByText('자료가 완료되지 않았거나 세법이 준비 중이라 [계산하기]는 지출계획을 저장만 해요.')).toBeInTheDocument()
     await user.click(step.getByRole('button', { name: '계산하기' }))
 
     await waitFor(() => expect(screen.getByRole('tab', { name: '③ 추천' })).toHaveAttribute('aria-selected', 'true'))
@@ -136,7 +136,7 @@ describe('PlanStep — ② 지출계획', () => {
     await user.tab()
 
     expect(step.getByRole('button', { name: '계산하기' })).toBeEnabled()
-    expect(step.getByText('비운 칸은 0원으로 저장됩니다.')).toBeInTheDocument()
+    expect(step.getByText('비운 칸은 0원으로 저장돼요.')).toBeInTheDocument()
     await user.click(step.getByRole('button', { name: '계산하기' }))
     await waitFor(() => expect(body).toEqual({
       general: { creditFixed: 0, debitFixed: 300_000, flexible: 1_200_000 },
@@ -159,7 +159,7 @@ describe('PlanStep — ② 지출계획', () => {
     await user.type(field('일반', '바꿀 수 있음'), '900000')
     await user.click(step.getByRole('button', { name: '계산하기' }))
 
-    expect(await step.findByRole('alert')).toHaveTextContent('다른 곳에서 수정되거나 삭제됐습니다. 저장하지 않았습니다.')
+    expect(await step.findByRole('alert')).toHaveTextContent('다른 곳에서 수정되거나 삭제됐어요. 저장하지 않았어요.')
     expect(field('일반', '바꿀 수 있음')).toHaveValue('900,000')
     expect(screen.getByRole('tab', { name: '② 지출계획' })).toHaveAttribute('aria-selected', 'true')
     await user.click(step.getByRole('button', { name: '다시 불러오기' }))
@@ -178,7 +178,7 @@ describe('PlanStep — ② 지출계획', () => {
     await user.type(field('일반', '바꿀 수 있음'), '900000')
     await user.click(step.getByRole('button', { name: '계산하기' }))
 
-    expect(await step.findByRole('alert')).toHaveTextContent('입력한 값은 그대로 있습니다.')
+    expect(await step.findByRole('alert')).toHaveTextContent('입력한 값은 그대로 있어요.')
     expect(field('일반', '바꿀 수 있음')).toHaveValue('900,000')
   })
 
@@ -204,7 +204,7 @@ describe('PlanStep — ② 지출계획', () => {
     await user.type(field('일반', '바꿀 수 있음'), '900000')
     await user.click(step.getByRole('button', { name: '계산하기' }))
 
-    expect(await step.findByRole('alert')).toHaveTextContent('저장하지 않았습니다.')
+    expect(await step.findByRole('alert')).toHaveTextContent('저장하지 않았어요.')
     expect(step.getByRole('button', { name: '다시 불러오기' })).toBeInTheDocument()
     expect(field('일반', '바꿀 수 있음')).toHaveValue('900,000')
   })
@@ -255,7 +255,7 @@ describe('PlanStep — ② 지출계획', () => {
     expect(client.getQueryData(['tax', 'year', 2025])).toMatchObject({ taxYear: 2025 })
     expect(field('일반', '바꿀 수 있음')).toHaveValue('200,000')
     expect(screen.getByRole('tab', { name: '② 지출계획' })).toHaveAttribute('aria-selected', 'true')
-    expect(screen.queryByText('지출계획을 저장했습니다.')).not.toBeInTheDocument()
+    expect(screen.queryByText('지출계획을 저장했어요.')).not.toBeInTheDocument()
   })
 
   it('uses the refreshed version when editing the saved year again', async () => {
@@ -306,11 +306,11 @@ describe('PlanStep — ② 지출계획', () => {
     await step.findByRole('alert')
     server.use(http.get('*/api/tax/years/2026', () => HttpResponse.json({ code: 'X', message: 'x' }, { status: 500 })))
     await user.click(step.getByRole('button', { name: '다시 불러오기' }))
-    expect(await screen.findByText('분석을 불러오지 못했습니다.')).toBeInTheDocument()
+    expect(await screen.findByText('분석을 불러오지 못했어요.')).toBeInTheDocument()
     server.use(http.get('*/api/tax/years/2026', () => HttpResponse.json(readyYearView())))
     await user.click(screen.getByRole('button', { name: '다시 시도' }))
 
     await waitFor(() => expect(field('일반', '바꿀 수 있음')).toHaveValue('900,000'))
-    expect(step.getByRole('alert')).toHaveTextContent('저장하지 않았습니다.')
+    expect(step.getByRole('alert')).toHaveTextContent('저장하지 않았어요.')
   })
 })

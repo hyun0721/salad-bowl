@@ -66,7 +66,7 @@ public class TaxRecordService {
     @Transactional
     public SavedYear saveYear(long userId, int year, YearRequest request) {
         if (request.workStartMonth() > request.workEndMonth()) {
-            throw invalid("workEndMonth: 종료월이 시작월보다 빠릅니다");
+            throw invalid("workEndMonth: 종료월이 시작월보다 빨라요");
         }
         Optional<TaxYearRecord> existing = records.findOwnedForUpdate(userId, year);
         if (existing.isEmpty()) {
@@ -100,7 +100,7 @@ public class TaxRecordService {
     public TaxYearView addCard(long userId, int year, CardRequest request) {
         TaxYearRecord record = lockOwned(userId, year);
         if (cards.countByRecordId(record.getId()) >= TaxRecordDtos.MAX_CARDS) {
-            throw invalid("cards: 연도 기록당 " + TaxRecordDtos.MAX_CARDS + "건까지만 저장할 수 있습니다");
+            throw invalid("cards: 연도 기록당 " + TaxRecordDtos.MAX_CARDS + "건까지만 저장할 수 있어요");
         }
         cards.saveAndFlush(TaxCardStatement.create(record.getId(), issuerName(request.issuerName()),
                 asOfDate(request.asOfDate(), year), blankToNull(request.memo()), request.amounts()));
@@ -198,7 +198,7 @@ public class TaxRecordService {
 
     private static LocalDate asOfDate(LocalDate date, int year) {
         if (date.getYear() != year) {
-            throw invalid("asOfDate: 귀속연도 안의 날짜여야 합니다");
+            throw invalid("asOfDate: 귀속연도 안의 날짜로 입력하세요");
         }
         return date;
     }
@@ -210,14 +210,14 @@ public class TaxRecordService {
 
     private static void rejectNul(String value) {
         if (value != null && value.indexOf('\0') >= 0) {
-            throw invalid("issuerName/memo: NUL 문자는 사용할 수 없습니다");
+            throw invalid("issuerName/memo: NUL 문자는 사용할 수 없어요");
         }
     }
 
     private TaxYearView viewWithinTotalLimit(TaxYearRecord record) {
         TaxYearView view = view(record);
         if (view.totals().max() > TaxRecordDtos.MAX_AMOUNT) {
-            throw invalid("amounts: 연도 합계가 9,999,999,999,999원을 넘습니다");
+            throw invalid("amounts: 연도 합계가 9,999,999,999,999원을 넘어요");
         }
         return view;
     }
@@ -225,7 +225,7 @@ public class TaxRecordService {
     private void requireCreatableYear(int year) {
         int thisYear = LocalDate.now(clock.withZone(KST)).getYear();
         if (year < thisYear - 1 || year > thisYear + 1) {
-            throw invalid("year: 올해·전년도·다음 해만 만들 수 있습니다");
+            throw invalid("year: 올해·전년도·다음 해만 만들 수 있어요");
         }
     }
 

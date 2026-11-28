@@ -37,7 +37,7 @@ export default function CashReceiptDialog({ year, cash, defaultAsOfDate, onClose
         <div className={ui.stack}>
           <DateTimePicker label="기준일" granularity="day" minValue={`${year}-01-01`} maxValue={`${year}-12-31`}
             value={asOfDate} onChange={setAsOfDate} isRequired />
-          <p className={ui.muted}>1월 1일부터 기준일까지의 누계를 적습니다.</p>
+          <p className={ui.muted}>1월 1일부터 기준일까지의 누계를 적으세요.</p>
         </div>
         <TextField label="메모 (선택)" value={memo} onChange={setMemo} maxLength={200} />
         <AmountGrid groups={CASH_GROUPS} values={amounts} onChange={setAmounts} />

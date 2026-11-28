@@ -59,15 +59,15 @@ export default function TransactionBulkEdit({ items, categories, groupId, onClos
     event.preventDefault()
     if (disabled) return
     bulkUpdate.mutate({ ids: items.map((tx) => tx.id), patch }, {
-      onSuccess: ({ updated }) => { toast(`${updated}건을 수정했습니다.`); onDone() },
+      onSuccess: ({ updated }) => { toast(`${updated}건을 수정했어요.`); onDone() },
     })
   }
 
   return (
     <Dialog title="거래 일괄 편집" onClose={onClose} closeDisabled={saving}>
       <form className={ui.stack} onSubmit={apply}>
-        <p>선택한 {items.length}건에 적용합니다. 비워 둔 항목은 바뀌지 않습니다.</p>
-        {tooMany && <p role="alert" className={ui.alert}>한 번에 최대 1,000건까지 수정할 수 있습니다.</p>}
+        <p>선택한 {items.length}건에 적용해요. 비워 둔 항목은 바뀌지 않아요.</p>
+        {tooMany && <p role="alert" className={ui.alert}>한 번에 최대 1,000건까지 수정할 수 있어요.</p>}
         <Select variant="field" label="타입" selectedKey={type || 'unchanged'}
           items={[{ id: 'unchanged', label: '변경 안 함' }, ...Object.entries(TYPE_LABELS)
             .filter(([id]) => id !== 'INCOME' || allowIncome).map(([id, label]) => ({ id, label }))]}
@@ -85,21 +85,21 @@ export default function TransactionBulkEdit({ items, categories, groupId, onClos
           items={[{ id: 'unchanged', label: '변경 안 함' }, { id: 'hide', label: '숨기기' }, { id: 'show', label: '숨기기 해제' }]}
           onSelectionChange={(key) => setHidden(String(key ?? 'unchanged'))} />}
         <TextField label="태그 추가" value={tagInput} onChange={setTagInput} placeholder="#결혼준비 #여행"
-          description={invalidTags ? '태그는 글자·숫자·밑줄 1~50자로 입력하세요. 공백으로 구분합니다.' : undefined} />
+          description={invalidTags ? '태그는 글자·숫자·밑줄 1~50자로 입력하세요. 공백으로 구분하세요.' : undefined} />
         {suggestions.length > 0 && <div className={ui.row} aria-label="추천 태그">
           {suggestions.map(({ tag }) => <button key={tag} type="button" className={ui.button}
             onClick={() => setTagInput((value) => (value.trim() ? value.trim() + ' ' : '') + '#' + tag)}>#{tag}</button>)}
         </div>}
         <div role="group" aria-label="태그 제거" className={ui.stack}>
           <span>태그 제거</span>
-          {removableTags.length === 0 && <p className={ui.muted}>선택한 거래에 태그가 없습니다.</p>}
+          {removableTags.length === 0 && <p className={ui.muted}>선택한 거래에 태그가 없어요.</p>}
           {removableTags.map(([tag, count]) => <Checkbox key={tag} isSelected={removedTags.includes(tag)}
             onChange={(checked) => setRemovedTags((current) => checked ? [...current, tag] : current.filter((value) => value !== tag))}>
             #{tag} · {count}건
           </Checkbox>)}
         </div>
-        {tooManyTags && <p role="alert" className={ui.alert}>태그 추가·제거는 각각 최대 20개까지 가능합니다.</p>}
-        {overflowing > 0 && <p role="alert" className={ui.alert}>{overflowing}건은 메모가 1,000자를 넘어 태그를 추가할 수 없습니다.</p>}
+        {tooManyTags && <p role="alert" className={ui.alert}>태그 추가·제거는 각각 최대 20개까지 가능해요.</p>}
+        {overflowing > 0 && <p role="alert" className={ui.alert}>{overflowing}건은 메모가 1,000자를 넘어 태그를 추가할 수 없어요.</p>}
         {bulkUpdate.isError && <p role="alert" className={ui.alert}>{errorMessage(bulkUpdate.error)}</p>}
         <div className={styles.bulkActions}>
           <button type="submit" className={`${ui.button} ${ui.primary} ${ui.cta}`} disabled={disabled}>{saving ? '저장 중' : '적용'}</button>

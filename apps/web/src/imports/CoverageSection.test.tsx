@@ -44,6 +44,7 @@ describe('CoverageSection', () => {
     renderPage(<CoverageSection today={today} />)
 
     const calendar = await screen.findByRole('region', { name: '월별 등록 현황' })
+    expect(screen.getByText('거래 일자 기준 · 미등록 월을 누르면 업로드할 수 있어요')).toBeInTheDocument()
     expect(await within(calendar).findByText('등록됨 · 168건')).toBeInTheDocument()
     expect(within(calendar).getByText('등록됨 · 120건')).toBeInTheDocument()
     expect(within(calendar).getByRole('button', { name: '2026년 2월 미등록, 업로드하기' })).toBeInTheDocument()
@@ -126,8 +127,8 @@ describe('CoverageSection', () => {
 
     await user.click(await screen.findByRole('button', { name: '2026년 2월 미등록, 업로드하기' }))
     const dialog = screen.getByRole('dialog', { name: '2026년 2월 데이터 업로드' })
-    expect(within(dialog).getByText('뱅크샐러드 앱에서 기간을 3개월 이하로 골라 가계부 엑셀을 내려받습니다.')).toBeInTheDocument()
-    expect(within(dialog).getByText('이미 있는 거래는 건너뛰고, 내가 고친 카테고리·메모는 유지됩니다.')).toBeInTheDocument()
+    expect(within(dialog).getByText('뱅크샐러드 앱에서 기간을 3개월 이하로 선택해 가계부 엑셀을 내려받아요.')).toBeInTheDocument()
+    expect(within(dialog).getByText('이미 있는 거래는 건너뛰고, 내가 고친 카테고리·메모는 유지돼요.')).toBeInTheDocument()
   })
 
   it('keeps the upload dialog open while the file is uploading', async () => {
@@ -185,19 +186,19 @@ describe('CoverageSection', () => {
     const dialog = screen.getByRole('dialog', { name: '2026년 9월 데이터' })
     await user.click(within(dialog).getByRole('button', { name: '이 달 데이터 삭제' }))
 
-    expect(within(dialog).getByText(/업로드한 거래 168건을 영구 삭제합니다/)).toBeInTheDocument()
+    expect(within(dialog).getByText(/업로드한 거래 168건을 영구 삭제해요/)).toBeInTheDocument()
     expect(dialog.parentElement).toHaveClass('pinned')
     const confirm = within(dialog).getByRole('button', { name: '삭제' })
     expect(confirm).toBeDisabled()
     await user.click(within(dialog).getByLabelText('직접 추가한 거래 12건도 함께 삭제'))
-    expect(within(dialog).getByText(/거래 180건을 영구 삭제합니다/)).toBeInTheDocument()
+    expect(within(dialog).getByText(/거래 180건을 영구 삭제해요/)).toBeInTheDocument()
     await user.type(within(dialog).getByLabelText('삭제하려면 2026-09를 입력하세요'), '2026-08')
     expect(confirm).toBeDisabled()
     await user.clear(within(dialog).getByLabelText('삭제하려면 2026-09를 입력하세요'))
     await user.type(within(dialog).getByLabelText('삭제하려면 2026-09를 입력하세요'), '2026-09')
     await user.click(confirm)
 
-    expect(await screen.findByRole('status')).toHaveTextContent('2026년 9월 거래 180건을 삭제했습니다.')
+    expect(await screen.findByRole('status')).toHaveTextContent('2026년 9월 거래 180건을 삭제했어요.')
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(query.get('month')).toBe('2026-09')
     expect(query.get('includeManual')).toBe('true')
@@ -288,7 +289,7 @@ describe('CoverageSection', () => {
     await user.type(within(dialog).getByLabelText('삭제하려면 2026-09를 입력하세요'), '2026-09')
     await user.click(within(dialog).getByRole('button', { name: '삭제' }))
 
-    expect(await screen.findByRole('status')).toHaveTextContent('2026년 9월 거래 168건을 삭제했습니다.')
+    expect(await screen.findByRole('status')).toHaveTextContent('2026년 9월 거래 168건을 삭제했어요.')
     expect(query.get('includeManual')).toBe('false')
   })
 
@@ -312,7 +313,7 @@ describe('CoverageSection', () => {
     act(() => { running = upload.execute(undefined) })
 
     await waitFor(() => expect(within(dialog).getByRole('button', { name: '삭제' })).toBeDisabled())
-    expect(within(dialog).getByText('업로드가 끝난 뒤 삭제할 수 있습니다.')).toBeInTheDocument()
+    expect(within(dialog).getByText('업로드가 끝난 뒤 삭제할 수 있어요.')).toBeInTheDocument()
     expect(within(dialog).getByRole('button', { name: '닫기' })).toBeDisabled()
 
     await act(async () => { release(); await running })
@@ -347,7 +348,7 @@ describe('CoverageSection', () => {
 
     await waitFor(() => expect(started).toBe(true))
     release()
-    expect(await screen.findByRole('status')).toHaveTextContent('2026년 9월 거래 3건을 삭제했습니다.')
+    expect(await screen.findByRole('status')).toHaveTextContent('2026년 9월 거래 3건을 삭제했어요.')
   })
 
   it('opens the upload history from the icon button next to the year stepper', async () => {
@@ -386,7 +387,7 @@ describe('CoverageSection', () => {
     const dialog = await screen.findByRole('dialog', { name: '업로드 이력' })
     expect(within(dialog).getByRole('status')).toHaveAttribute('aria-busy', 'true')
     expect(within(dialog).getByRole('status').querySelectorAll('li')).toHaveLength(3)
-    expect(await within(dialog).findByText('아직 올린 파일이 없습니다.')).toBeInTheDocument()
+    expect(await within(dialog).findByText('아직 올린 파일이 없어요.')).toBeInTheDocument()
   })
 
   it('retries the upload history inside the dialog', async () => {
@@ -400,10 +401,10 @@ describe('CoverageSection', () => {
     await user.click(await screen.findByRole('button', { name: '업로드 이력' }))
 
     const dialog = await screen.findByRole('dialog', { name: '업로드 이력' })
-    expect(await within(dialog).findByRole('alert')).toHaveTextContent('업로드 이력을 불러오지 못했습니다.')
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('업로드 이력을 불러오지 못했어요.')
     fail = false
     await user.click(within(dialog).getByRole('button', { name: '다시 시도' }))
-    expect(await within(dialog).findByText('아직 올린 파일이 없습니다.')).toBeInTheDocument()
+    expect(await within(dialog).findByText('아직 올린 파일이 없어요.')).toBeInTheDocument()
     expect(within(dialog).queryByRole('alert')).not.toBeInTheDocument()
   })
 })

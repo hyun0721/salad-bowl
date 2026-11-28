@@ -25,7 +25,7 @@ describe('UploadForm', () => {
       addListener: vi.fn(), removeListener: vi.fn(),
     })))
     renderPage(<UploadForm />)
-    expect(await screen.findByText('파일 선택 버튼을 눌러 엑셀 파일을 고르세요')).toBeVisible()
+    expect(await screen.findByText('파일 선택 버튼을 눌러 엑셀 파일을 선택하세요')).toBeVisible()
     expect(screen.queryByText(/파일을 끌어다/)).not.toBeInTheDocument()
   })
 
@@ -103,11 +103,11 @@ describe('UploadForm', () => {
     const input = await fileInput()
 
     await user.upload(input, new File(['a'], 'ledger.csv', { type: 'text/csv' }))
-    expect(screen.getByRole('alert')).toHaveTextContent('.xlsx 파일만 올릴 수 있습니다.')
+    expect(screen.getByRole('alert')).toHaveTextContent('.xlsx 파일만 올릴 수 있어요.')
     expect(screen.getByRole('button', { name: '업로드' })).toBeDisabled()
 
     await user.upload(input, xlsx('big.xlsx', 512 * 1024 + 1))
-    expect(screen.getByRole('alert')).toHaveTextContent('파일은 512KB 이하만 올릴 수 있습니다. 한 번에 최대 3개월치까지 올릴 수 있습니다.')
+    expect(screen.getByRole('alert')).toHaveTextContent('파일은 512KB 이하만 올릴 수 있어요. 한 번에 최대 3개월치까지 올릴 수 있어요.')
     expect(screen.getByRole('button', { name: '업로드' })).toBeDisabled()
   })
 
@@ -128,7 +128,7 @@ describe('UploadForm', () => {
     await user.upload(await fileInput(), xlsx('half-year.xlsx', 2048))
     await user.click(screen.getByRole('button', { name: '업로드' }))
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('한 번에 최대 3개월치까지 올릴 수 있습니다.')
+    expect(await screen.findByRole('alert')).toHaveTextContent('한 번에 최대 3개월치까지 올릴 수 있어요.')
   })
 
   it('shows the failing row from the server', async () => {
@@ -139,6 +139,6 @@ describe('UploadForm', () => {
     await user.upload(await fileInput(), xlsx())
     await user.click(screen.getByRole('button', { name: '업로드' }))
 
-    expect(await screen.findByRole('alert')).toHaveTextContent("3행의 값을 읽지 못했습니다. (unknown type '환전')")
+    expect(await screen.findByRole('alert')).toHaveTextContent("3행의 값을 읽지 못했어요. (unknown type '환전')")
   })
 })

@@ -100,7 +100,7 @@ describe('DashboardPage', () => {
       }),
     )
     const { user } = renderDashboard('/dashboard/minor?month=2026-03')
-    await screen.findByText('최근 6개월에 공개된 지출이 없습니다.')
+    await screen.findByText('최근 6개월에 공개된 지출이 없어요.')
     expect(months).toEqual(['2026-03'])
     expect(summaryMonths).toEqual(['2026-03'])
     expect(screen.getByRole('heading', { level: 2, name: '소분류 분포' })).toBeInTheDocument()
@@ -272,9 +272,9 @@ describe('DashboardPage', () => {
       { month: '2026-10', income: 0, expense: 0, byCategory: [], byMember: [] })))
     const { user } = renderDashboard()
 
-    expect(await screen.findByText('이 달에 합칠 거래가 없습니다.')).toBeInTheDocument()
+    expect(await screen.findByText('이 달에 합칠 거래가 없어요.')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '수입 ₩ 0' }))
-    expect(within(await screen.findByRole('dialog', { name: '멤버별 수입' })).getByText('공개한 멤버가 없습니다.')).toBeInTheDocument()
+    expect(within(await screen.findByRole('dialog', { name: '멤버별 수입' })).getByText('공개한 멤버가 없어요.')).toBeInTheDocument()
   })
 
   it('retries a failed summary', async () => {
@@ -284,7 +284,7 @@ describe('DashboardPage', () => {
       : HttpResponse.json(summary))))
     const { user } = renderDashboard()
 
-    expect(await screen.findByText('요약을 불러오지 못했습니다.')).toBeInTheDocument()
+    expect(await screen.findByText('요약을 불러오지 못했어요.')).toBeInTheDocument()
     fail = false
     await user.click(screen.getByRole('button', { name: '다시 시도' }))
 
@@ -295,7 +295,7 @@ describe('DashboardPage', () => {
     renderPage(<Routes><Route path="/dashboard/:level?/:view?" element={<DashboardPage today={today} />} /></Routes>,
       { groups: [], path: '/dashboard/major' })
 
-    expect(await screen.findByRole('heading', { name: '아직 속한 그룹이 없습니다' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: '아직 속한 그룹이 없어요' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: '그룹 만들기' })).toHaveAttribute('href', '/groups')
     expect(screen.getByRole('link', { name: '홈으로' })).toHaveAttribute('href', '/')
   })

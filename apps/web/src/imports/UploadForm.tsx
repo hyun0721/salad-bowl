@@ -43,9 +43,9 @@ export default function UploadForm({ onDone }: Props) {
       <FileDropZone className={styles.drop} label="엑셀 파일 업로드" onFile={choose}>
         <span className={styles.dropIcon}><Icon name="sheet-upload" size={32} /></span>
         <span className={styles.dropTitle}>{mobile
-          ? '파일 선택 버튼을 눌러 엑셀 파일을 고르세요'
+          ? '파일 선택 버튼을 눌러 엑셀 파일을 선택하세요'
           : '파일을 끌어다 놓거나 파일 선택 버튼을 누르세요'}</span>
-        <span className={ui.muted}>.xlsx · 한 번에 최대 3개월치 · 512KB 이하 · 원본 파일과 개인정보 시트는 저장하지 않습니다</span>
+        <span className={ui.muted}>.xlsx · 한 번에 최대 3개월치 · 512KB 이하 · 원본 파일과 개인정보 시트는 저장하지 않아요</span>
         <FilePickerButton accept={ACCEPTED_UPLOAD_FILE_TYPES} onFile={choose} className={`${ui.button} ${styles.choose}`}>
           파일 선택
         </FilePickerButton>
@@ -68,7 +68,7 @@ export default function UploadForm({ onDone }: Props) {
       {error && <p role="alert" className={ui.alert}>{error}</p>}
       {result && (
         <div role="status" className={styles.result}>
-          <p className={styles.resultTitle}>업로드가 끝났습니다.</p>
+          <p className={styles.resultTitle}>업로드가 끝났어요.</p>
           <dl className={styles.counts}>
             <div><dt>전체</dt><dd>{result.totalRows}건</dd></div>
             <div><dt>신규</dt><dd>{result.createdRows}건</dd></div>

@@ -17,7 +17,7 @@ export default function RecommendStep({ analysis, onPlan }: Props) {
   if (!recommendation) {
     return (
       <section className={`${ui.card} ${inputs.empty}`}>
-        <h2>지출계획을 저장하면 추천을 계산합니다</h2>
+        <h2>지출계획을 저장하면 추천을 계산해요</h2>
         <p>② 지출계획에 남은 기간의 예상 공제대상액을 적고 [계산하기]를 누르세요.</p>
         <button type="button" className={`${ui.button} ${ui.primary}`} onClick={onPlan}>② 지출계획으로 가기</button>
       </section>
@@ -39,15 +39,15 @@ function Result({ analysis: a, d, rates, r }: { analysis: TaxAnalysisView; d: De
       <div className={inputs.titleWithHelp}>
         <h2 id="tax-reco-title">추천 결과</h2>
         <HelpButton title="추천 결과">
-          체크카드와 현금영수증은 공제율이 같아 추천에서는 한 묶음으로 다룹니다. 어느 쪽으로 써도 연말 예상 소득공제액이 같습니다.
+          체크카드와 현금영수증은 공제율이 같아 추천에서는 한 묶음으로 다뤄요. 어느 쪽으로 써도 연말 예상 소득공제액이 같아요.
         </HelpButton>
       </div>
       <p>
         {share
           ? `현재 계획: 지금까지의 결제수단 비율(신용 ${share.creditPct.toFixed(1)}% · 체크 ${share.debitPct.toFixed(1)}% · 현금 ${share.cashPct.toFixed(1)}%)`
-          : '현재 계획: 지금까지 사용액이 없어 바꿀 수 있는 금액을 모두 신용카드로 둡니다.'}
+          : '현재 계획: 지금까지 사용액이 없어 바꿀 수 있는 금액을 모두 신용카드로 둬요.'}
       </p>
-      <p className={ui.muted}>연도 전체 비율입니다. 표의 현재 계획 금액은 소비구분마다 그 소비구분의 지금까지 비율로 나눈 값이라 이 비율과 다를 수 있습니다.</p>
+      <p className={ui.muted}>연도 전체 비율이에요. 표의 현재 계획 금액은 소비구분마다 그 소비구분의 지금까지 비율로 나눈 값이라 이 비율과 다를 수 있어요.</p>
       {r.difference > 0 ? (
         <div className={inputs.tableScroll}>
           <table className={styles.allocation}>
@@ -83,7 +83,7 @@ function Result({ analysis: a, d, rates, r }: { analysis: TaxAnalysisView; d: De
         </div>
       ) : (
         <p>
-          <span className={styles.badge}>차이 없음</span> 결제수단을 바꿔도 연말 예상 소득공제액({won(r.current.yearEndDeduction)})이 같습니다. 현재 계획을 유지합니다.
+          <span className={styles.badge}>차이 없음</span> 결제수단을 바꿔도 연말 예상 소득공제액({won(r.current.yearEndDeduction)})이 같아요. 현재 계획을 유지해요.
         </p>
       )}
       <section aria-labelledby="tax-reco-reasons" className={styles.subsection}>
@@ -94,9 +94,9 @@ function Result({ analysis: a, d, rates, r }: { analysis: TaxAnalysisView; d: De
         <h3 id="tax-reco-assumptions">가정</h3>
         <ul className={styles.assumptions}>
           <li>{`예상 총급여 ${income(a.totalSalary)} · ${a.taxYear}년 귀속 세법 v${a.law?.versionNo} · 자료 기준일 ${a.estimated ? `${asOf}(서로 다름, 추정)` : asOf}`}</li>
-          <li>현재 계획은 바꿀 수 있는 금액을 소비구분마다 지금까지의 결제수단 비율로 나눈 것입니다. 원 미만은 내리고 남는 원은 신용카드에 더합니다.</li>
-          <li>남은 기간 총액과 소비구분별 금액은 그대로 두고, 바꿀 수 있는 금액의 결제수단만 비교했습니다.</li>
-          <li>카드 포인트·할인·연회비·전월실적은 고려하지 않습니다. 결과는 소득공제액이며 환급액이 아닙니다.</li>
+          <li>현재 계획은 바꿀 수 있는 금액을 소비구분마다 지금까지의 결제수단 비율로 나눈 거예요. 원 미만은 내리고 남는 원은 신용카드에 더해요.</li>
+          <li>남은 기간 총액과 소비구분별 금액은 그대로 두고, 바꿀 수 있는 금액의 결제수단만 비교했어요.</li>
+          <li>카드 포인트·할인·연회비·전월실적은 고려하지 않아요. 결과는 소득공제액이며 환급액이 아니에요.</li>
         </ul>
       </section>
     </section>

@@ -44,7 +44,7 @@ export default function AppRoutes() {
             <Route path="upload" element={<UploadRedirect />} />
             <Route path="groups" element={<GroupsPage />} />
           </Route>
-          <Route path="*" element={<PagePlaceholder title="페이지를 찾을 수 없습니다" />} />
+          <Route path="*" element={<PagePlaceholder title="페이지를 찾을 수 없어요" />} />
         </Routes>
       </Suspense>
     </>

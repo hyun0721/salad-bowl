@@ -165,7 +165,7 @@ describe('HomePage', () => {
     const { user } = renderPage(<HomePage today={today} />)
 
     const summary = await screen.findByRole('region', { name: '지난달 내 요약 (2026년 9월)' })
-    expect(await within(summary).findByRole('alert')).toHaveTextContent('지난달 거래를 불러오지 못했습니다.')
+    expect(await within(summary).findByRole('alert')).toHaveTextContent('지난달 거래를 불러오지 못했어요.')
 
     fail = false
     await user.click(within(summary).getByRole('button', { name: '요약 다시 시도' }))

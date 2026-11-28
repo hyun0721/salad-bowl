@@ -38,12 +38,12 @@ export default function GroupsPage() {
           </ul></SkeletonRegion>}
           {isError && (
             <div className={styles.actionRow}>
-              <p role="alert" className={ui.alert}>그룹을 불러오지 못했습니다.</p>
+              <p role="alert" className={ui.alert}>그룹을 불러오지 못했어요.</p>
               <button type="button" className={ui.button} onClick={retry}><Icon name="refresh-cw" size={18} />다시 시도</button>
             </div>
           )}
           {!isLoading && !isError && groups.length === 0 && (
-            <p className={ui.status}>아직 속한 그룹이 없습니다. 그룹을 추가하거나 초대 링크로 합류하세요.</p>
+            <p className={ui.status}>아직 속한 그룹이 없어요. 그룹을 추가하거나 초대 링크로 합류하세요.</p>
           )}
           {groups.length > 0 && (
             <ul className={styles.groupList}>

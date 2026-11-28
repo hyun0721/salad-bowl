@@ -87,7 +87,7 @@ export default function LawVersionForm({ version, onReload, onApplied }: Props) 
       putVersion(client, saved)
       setBase(saved)
       setValues(toForm(saved))
-      toast(`${name} 초안을 저장했습니다.`)
+      toast(`${name} 초안을 저장했어요.`)
     },
   })
   const validate = useMutation({
@@ -142,21 +142,21 @@ export default function LawVersionForm({ version, onReload, onApplied }: Props) 
         </fieldset>
         {save.error && (isStale(save.error) ? (
           <div className={inputs.split}>
-            <p role="alert" className={ui.alert}>다른 곳에서 수정·적용되거나 삭제됐습니다. 저장하지 않았습니다.</p>
+            <p role="alert" className={ui.alert}>다른 곳에서 수정·적용되거나 삭제됐어요. 저장하지 않았어요.</p>
             <div className={inputs.actions}><button type="button" className={ui.button} onClick={() => onReload()}>다시 불러오기</button></div>
           </div>
-        ) : <p role="alert" className={ui.alert}>{errorMessage(save.error)} 입력한 값은 그대로 있습니다.</p>)}
+        ) : <p role="alert" className={ui.alert}>{errorMessage(save.error)} 입력한 값은 그대로 있어요.</p>)}
         {validate.error && <p role="alert" className={ui.alert}>{actionError(validate.error)}</p>}
         {checked && (checked.length === 0
-          ? <p role="status" className={ui.status}>검증 통과 — 적용할 수 있습니다.</p>
+          ? <p role="status" className={ui.status}>검증 통과 — 적용할 수 있어요.</p>
           : (
             <div role="alert" className={ui.alert}>
-              <p>검증 실패 — 적용할 수 없습니다.</p>
+              <p>검증 실패 — 적용할 수 없어요.</p>
               <ul>{checked.map((e) => <li key={`${e.field}:${e.message}`}>{LAW_LABEL[e.field] ?? e.field}: {e.message}</li>)}</ul>
             </div>
           ))}
         <div className={inputs.split}>
-          <p className={ui.muted}>{dirty ? '저장하지 않은 변경이 있습니다. 초안을 저장한 뒤 검증·적용할 수 있습니다.' : '검증과 적용은 저장한 값으로 합니다.'}</p>
+          <p className={ui.muted}>{dirty ? '저장하지 않은 변경이 있어요. 초안을 저장한 뒤 검증·적용할 수 있어요.' : '검증과 적용은 저장한 값으로 해요.'}</p>
           <div className={inputs.actions}>
             <button type="submit" className={ui.button} disabled={busy}>초안 저장</button>
             <button type="button" className={ui.button} disabled={busy || dirty} onClick={() => validate.mutate()}>검증</button>
@@ -182,13 +182,13 @@ function ApplyDialog({ version, onClose, onReload, onApplied }: { version: LawVe
       // 이 연도의 회원용 현재 적용 세법과, 세법이 없던 내 연도 기록(적용 때 서버가 이 버전을 붙인다)을 다시 읽는다.
       void client.invalidateQueries({ queryKey: taxKeys.currentLaw(year) })
       void client.invalidateQueries({ queryKey: taxKeys.year(year) })
-      toast(`${year}년 귀속 v${applied.versionNo} 적용을 마쳤습니다.`)
+      toast(`${year}년 귀속 v${applied.versionNo} 적용을 마쳤어요.`)
     },
     onError: (error) => { if (isStale(error)) { onClose(); onReload() } },
   })
   const failure = apply.error && (isStale(apply.error)
     ? actionError(apply.error)
-    : errorMessage(apply.error, { VALIDATION_FAILED: '검증을 통과하지 못해 적용하지 않았습니다. [검증]으로 이유를 확인해 주세요.' }))
+    : errorMessage(apply.error, { VALIDATION_FAILED: '검증을 통과하지 못해 적용하지 않았어요. [검증]으로 이유를 확인해 주세요.' }))
   return (
     <Dialog title={`${year}년 귀속 v${version.versionNo} 적용`} onClose={onClose} closeDisabled={apply.isPending} centered footer={
         <div className={ui.confirmActions}>
@@ -196,8 +196,8 @@ function ApplyDialog({ version, onClose, onReload, onApplied }: { version: LawVe
           <button type="button" className={`${ui.button} ${ui.primary} ${ui.cta}`} disabled={apply.isPending} onClick={() => apply.mutate()}>적용</button>
         </div>
       }>
-      <p>적용하면 이 버전은 고치거나 삭제할 수 없습니다. {year}년 귀속 연도 기록에는 "새 세법 버전 있음"이 표시되고, 회원이 직접 눌러야 새 버전으로 다시 계산됩니다. 세법이 없던 기록은 바로 이 버전으로 계산됩니다.</p>
-      <p>다른 초안은 초안으로 남습니다.</p>
+      <p>적용하면 이 버전은 고치거나 삭제할 수 없어요. {year}년 귀속 연도 기록에는 "새 세법 버전 있음"이 표시되고, 회원이 직접 눌러야 새 버전으로 다시 계산돼요. 세법이 없던 기록은 바로 이 버전으로 계산돼요.</p>
+      <p>다른 초안은 초안으로 남아요.</p>
       {failure && <p role="alert" className={ui.alert}>{failure}</p>}
     </Dialog>
   )

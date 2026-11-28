@@ -4,7 +4,7 @@ import Skeleton, { SkeletonRegion } from '../common/Skeleton'
 import header from '../common/PageHeader.module.css'
 
 export default function PageLoading() {
-  return <p className={ui.status}>불러오는 중입니다.</p>
+  return <p className={ui.status}>불러오는 중이에요.</p>
 }
 
 export function AppPageLoading() {

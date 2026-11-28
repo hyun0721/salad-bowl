@@ -14,7 +14,7 @@ export default function AccountSheet({ nickname, isAdmin, onLogout, logoutFailed
           <button type="button" className={ui.button} onClick={onLogout}>
             <Icon name="log-out" size={18} />로그아웃
           </button>
-          {logoutFailed && <p role="alert" className={ui.alert}>로그아웃하지 못했습니다. 잠시 후 다시 시도해 주세요.</p>}
+          {logoutFailed && <p role="alert" className={ui.alert}>로그아웃하지 못했어요. 잠시 후 다시 시도해 주세요.</p>}
         </>
       )}
     </BottomSheet>

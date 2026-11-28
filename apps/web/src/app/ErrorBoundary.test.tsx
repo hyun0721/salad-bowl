@@ -23,8 +23,8 @@ describe('ErrorBoundary', () => {
 
     render(<ErrorBoundary><Boom /></ErrorBoundary>)
 
-    expect(screen.getByRole('heading', { name: '문제가 생겼습니다' })).toBeInTheDocument()
-    expect(screen.getByText('화면을 표시하지 못했습니다.')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '문제가 생겼어요' })).toBeInTheDocument()
+    expect(screen.getByText('화면을 표시하지 못했어요.')).toBeInTheDocument()
     await userEvent.setup().click(screen.getByRole('button', { name: '다시 불러오기' }))
     expect(reload).toHaveBeenCalled()
     expect(consoleError).toHaveBeenCalled()

@@ -134,10 +134,10 @@ describe('TransactionsPage', () => {
     const { user, client } = renderPage(<TransactionsPage today={today} />, { groups })
     await user.click(await screen.findByRole('radio', { name: '그룹 거래' }))
     await waitFor(() => expect(client.getQueryState(['groups', 10])?.status).toBe('error'))
-    expect(screen.queryByText('멤버 목록을 불러오지 못했습니다.')).not.toBeInTheDocument()
+    expect(screen.queryByText('멤버 목록을 불러오지 못했어요.')).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '필터' }))
     const sheet = screen.getByRole('dialog', { name: '내역 필터' })
-    expect(within(sheet).getByRole('alert')).toHaveTextContent('멤버 목록을 불러오지 못했습니다.')
+    expect(within(sheet).getByRole('alert')).toHaveTextContent('멤버 목록을 불러오지 못했어요.')
     failed = false
     await user.click(within(sheet).getByRole('button', { name: '멤버 목록 다시 시도' }))
     expect(await within(sheet).findByRole('button', { name: /멤버/ })).toHaveTextContent('전체')
@@ -184,7 +184,7 @@ describe('TransactionsPage', () => {
       }),
     )
     const { user } = renderPage(<TransactionsPage today={today} />, { groups })
-    await screen.findByText('이 달에 거래가 없습니다.')
+    await screen.findByText('이 달에 거래가 없어요.')
     await user.click(screen.getByRole('button', { name: '필터' }))
     await user.click(screen.getByRole('button', { name: '지출 카테고리 전체' }))
     await user.click(screen.getByRole('checkbox', { name: '교통' }))
@@ -228,11 +228,11 @@ describe('TransactionsPage', () => {
   it('shows a filtered empty state when the server returns no matches', async () => {
     mineHandler([])
     const { user } = renderPage(<TransactionsPage today={today} />, { groups })
-    await screen.findByText('이 달에 거래가 없습니다.')
+    await screen.findByText('이 달에 거래가 없어요.')
     await user.click(screen.getByRole('button', { name: '필터' }))
     await user.click(screen.getByRole('button', { name: '수입' }))
     await user.click(screen.getByRole('button', { name: '적용' }))
-    expect(await screen.findByText('조건에 맞는 거래가 없습니다.')).toBeInTheDocument()
+    expect(await screen.findByText('조건에 맞는 거래가 없어요.')).toBeInTheDocument()
   })
 
   it.each([false, true])('back closes only the modal and keeps the route (narrow: %s)', async (narrow) => {
@@ -514,7 +514,7 @@ describe('TransactionsPage', () => {
     }))
     const { user } = renderPage(<TransactionsPage today={today} />, { groups })
 
-    expect(await screen.findByText('이 달에 거래가 없습니다.')).toBeInTheDocument()
+    expect(await screen.findByText('이 달에 거래가 없어요.')).toBeInTheDocument()
     // jsdom은 type="month"에 한 글자씩 입력하는 것을 지원하지 않아 change 이벤트로 바꾼다.
     fireEvent.change(screen.getByLabelText('월'), { target: { value: '2026-09' } })
     expect(await screen.findByText('스타벅스')).toBeInTheDocument()
@@ -565,7 +565,7 @@ describe('TransactionsPage', () => {
       : HttpResponse.json([{ ...base }])))
     const { user } = renderPage(<TransactionsPage today={today} />, { groups })
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('거래를 불러오지 못했습니다.')
+    expect(await screen.findByRole('alert')).toHaveTextContent('거래를 불러오지 못했어요.')
     fail = false
     await user.click(screen.getByRole('button', { name: '다시 시도' }))
 
@@ -587,7 +587,7 @@ describe('TransactionsPage', () => {
     const { user } = renderPage(<TransactionsPage today={today} />, { groups })
 
     await user.click(await screen.findByRole('radio', { name: '그룹 거래' }))
-    expect(await screen.findByText('멤버 목록을 불러오지 못했습니다.')).toBeInTheDocument()
+    expect(await screen.findByText('멤버 목록을 불러오지 못했어요.')).toBeInTheDocument()
     fail = false
     await user.click(screen.getByRole('button', { name: '멤버 목록 다시 시도' }))
 
@@ -673,7 +673,7 @@ describe('TransactionsPage', () => {
     mineHandler([])
     const { user } = renderPage(<TransactionsPage today={today} />, { groups })
 
-    await screen.findByText('이 달에 거래가 없습니다.')
+    await screen.findByText('이 달에 거래가 없어요.')
     await user.click(screen.getByRole('button', { name: '거래 추가' }))
     await user.type(screen.getByLabelText('내용'), '편의점')
     await user.click(screen.getByRole('button', { name: '오른쪽 패널로 보기' }))
@@ -756,7 +756,7 @@ describe('TransactionsPage', () => {
 
     fireEvent.change(screen.getByLabelText('월'), { target: { value: '2026-09' } })
 
-    expect(await screen.findByText('이 달에 거래가 없습니다.')).toBeInTheDocument()
+    expect(await screen.findByText('이 달에 거래가 없어요.')).toBeInTheDocument()
     expect(screen.queryByRole('complementary', { name: '거래 상세' })).not.toBeInTheDocument()
   })
 
@@ -773,7 +773,7 @@ describe('TransactionsPage', () => {
     expect(screen.getByRole('complementary', { name: '거래 상세' })).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: '이전 달' }))
-    expect(await screen.findByText('이 달에 거래가 없습니다.')).toBeInTheDocument()
+    expect(await screen.findByText('이 달에 거래가 없어요.')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '다음 달' }))
 
     expect(await screen.findByRole('row', { name: /김밥/ })).toBeInTheDocument()
@@ -804,7 +804,7 @@ describe('TransactionsPage', () => {
     )
     const { user } = renderPage(<TransactionsPage today={today} />, { groups })
 
-    await screen.findByText('이 달에 거래가 없습니다.')
+    await screen.findByText('이 달에 거래가 없어요.')
     await user.click(screen.getByRole('button', { name: '거래 추가' }))
     await typeDateTime(user, '202609051330')
     await user.click(screen.getByRole('button', { name: /대분류/ }))
@@ -847,10 +847,10 @@ describe('TransactionsPage', () => {
     )
     const { user } = renderPage(<TransactionsPage today={today} />, { groups })
 
-    await screen.findByText('이 달에 거래가 없습니다.')
+    await screen.findByText('이 달에 거래가 없어요.')
     await user.click(screen.getByRole('button', { name: '이전 달' }))
     await waitFor(() => expect(screen.getByLabelText('월')).toHaveValue('2026-09'))
-    await screen.findByText('이 달에 거래가 없습니다.')
+    await screen.findByText('이 달에 거래가 없어요.')
     await user.click(screen.getByRole('button', { name: '다음 달' }))
     await waitFor(() => expect(screen.getByLabelText('월')).toHaveValue('2026-10'))
     await user.click(screen.getByRole('button', { name: '거래 추가' }))
@@ -898,8 +898,8 @@ describe('TransactionsPage', () => {
     await screen.findByText('김밥')
     await user.type(screen.getByRole('searchbox', { name: '검색' }), '없는말')
 
-    expect(screen.getByText('검색 결과가 없습니다.')).toBeInTheDocument()
-    expect(screen.queryByText('이 달에 거래가 없습니다.')).not.toBeInTheDocument()
+    expect(screen.getByText('검색 결과가 없어요.')).toBeInTheDocument()
+    expect(screen.queryByText('이 달에 거래가 없어요.')).not.toBeInTheDocument()
   })
 
   it('jumps to the month of a manually added transaction and opens its panel', async () => {
@@ -919,7 +919,7 @@ describe('TransactionsPage', () => {
     )
     const { user } = renderPage(<TransactionsPage today={today} />, { groups })
 
-    await screen.findByText('이 달에 거래가 없습니다.')
+    await screen.findByText('이 달에 거래가 없어요.')
     await user.click(screen.getByRole('button', { name: '거래 추가' }))
     await typeDateTime(user, '202609051330')
     await user.click(screen.getByRole('button', { name: /대분류/ }))
@@ -941,7 +941,7 @@ describe('TransactionsPage', () => {
     }))
     const { user } = renderPage(<TransactionsPage today={today} />, { groups })
 
-    await screen.findByText('이 달에 거래가 없습니다.')
+    await screen.findByText('이 달에 거래가 없어요.')
     await user.click(screen.getByRole('button', { name: '이전 달' }))
 
     await waitFor(() => expect(months).toContain('2026-09'))

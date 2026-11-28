@@ -94,16 +94,16 @@ export default function SubcategoryTrends({ groupId, month, members = [] }: { gr
         <h2 id="subcategory-title" ref={titleRef} tabIndex={-1}>소분류 분포</h2>
         <ChartViewToggle title="소분류 분포" value={view} onChange={setView} />
       </div>
-      {query.isPending && <SkeletonRegion label="대분류 목록을 불러오는 중입니다."><DonutLegendSkeleton compact={compact} /></SkeletonRegion>}
+      {query.isPending && <SkeletonRegion label="대분류 목록을 불러오는 중이에요."><DonutLegendSkeleton compact={compact} /></SkeletonRegion>}
       {query.isError && <div className={pageStyles.feedback}>
-        <p role="alert" className={ui.alert}>대분류 목록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</p>
+        <p role="alert" className={ui.alert}>대분류 목록을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.</p>
         <button type="button" className={ui.button} onClick={() => void query.refetch()}><Icon name="refresh-cw" size={18} />소분류 다시 시도</button>
       </div>}
       {query.isSuccess && (majors.length === 0
-        ? <p className={ui.status}>최근 6개월에 공개된 지출이 없습니다.</p>
-        : !major ? <p className={ui.status}>대분류 하나를 선택하면 하위 소분류를 볼 수 있습니다.</p>
+        ? <p className={ui.status}>최근 6개월에 공개된 지출이 없어요.</p>
+        : !major ? <p className={ui.status}>대분류 하나를 선택하면 하위 소분류를 볼 수 있어요.</p>
         : <>
-          {positiveTotal === 0 && <p className={ui.status}>이 달에 비율로 표시할 지출이 없습니다.</p>}
+          {positiveTotal === 0 && <p className={ui.status}>이 달에 비율로 표시할 지출이 없어요.</p>}
           {view === 'chart' ? positiveTotal > 0 && <div className={breakdown.content}>
             <DonutChart formatValue={formatWon} compact={compact} slices={slices} centerLabel="총지출" centerValue={formatWon(positiveTotal)}
               activeId={activeId} onActiveChange={setActiveId} onSelect={showTransactions} className={breakdown.chart} />
