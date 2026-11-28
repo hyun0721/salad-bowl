@@ -32,7 +32,7 @@ Preconditions:
 - **Delete.** Delete v2 from its row (one centered confirmation at `mobile`). The list keeps v3 and v1. Creating another draft gives v4, not v2.
 - **Apply.** Apply v3 at `mobile`: the dialog is centered and says `다른 초안은 초안으로 남아요.`. After applying, v3 reads `현재 적용` and v1 reads `적용`; v4 stays a draft.
 - **Help.** Tap `세법 수치 도움말`, tap again, tap outside, press Esc: it closes each time, focus returns to `?`, and no request is sent.
-- **Font sizes.** In the browser, read computed sizes: version name 13px (`--text-body`), history line 12px (`--text-sub`), card titles 16px, section buttons 13px (`--text-button`), field labels 12px (`--text-sub`), input text 16px at `mobile`.
+- **Font sizes.** In the browser, read computed sizes: version name and section buttons use `--text-body` and `--text-button`; history line and field labels use `--text-sub`; card titles use `--text-title`; input text uses `--text-input` at `mobile`. Confirm expected values against `apps/web/src/styles/tokens.css`.
 - **States.** Stop the stack's API briefly: the page shows `세법 버전을 불러오지 못했어요.` with `[다시 시도]`. Saving while it is down shows the network message and keeps the input.
 
 ## Gotchas
