@@ -37,19 +37,14 @@
   --space-8: 20px;
 
   --text-xs: 11px;
-  --text-sm: 12px;
-  --text-base: 12px;
-  --line-height-base: 18px;
-  --text-label: 12px;
-  --text-md: 13px;
-  --text-lg: 15px;
-  --text-xl: 16px;
-  --text-2xl: 18px;
+  --text-sub: 12px;
+  --text-body: 13px;
+  --text-button: 13px;
+  --text-emphasis: 15px;
+  --text-title: 16px;
+  --text-page-title: 18px;
   --text-input: 16px;
-  --text-card-action: 14px;
-  --text-tag: 12px;
-  --text-transaction: var(--text-base);
-  --text-transaction-meta: var(--text-sm);
+  --line-height-body: 19px;
   --control-height: 40px;
   --row-height: 32px;
   --touch-target: 44px;
@@ -120,5 +115,5 @@
 }
 
 @media (max-width: 820px) {
-  :root { --control-height: var(--touch-target); --row-height: var(--control-height); --tab-height: var(--segment-height); --text-base: 13px; --line-height-base: 19px; --text-label: 13px; }
+  :root { --control-height: var(--touch-target); --row-height: var(--control-height); --tab-height: var(--segment-height); }
 }

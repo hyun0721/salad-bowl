@@ -14,11 +14,13 @@ function cssFiles(dir: string): string[] {
 
 describe('design tokens', () => {
   it('defines the shared spacing and type scale once in the root theme', () => {
-    const tokens = read('styles/tokens.css');
+    const tokens = read('styles/tokens.css').replace(/\/\*[\s\S]*?\*\//g, '');
     for (const [name, value] of Object.entries({
-      'space-1': 3, 'text-xs': 11, 'text-sm': 12, 'text-base': 12,
-      'text-md': 13, 'text-lg': 15, 'text-xl': 16, 'text-2xl': 18, 'text-input': 16,
+      'space-1': 3, 'text-xs': 11, 'text-sub': 12, 'text-body': 13,
+      'text-button': 13, 'text-emphasis': 15, 'text-title': 16,
+      'text-page-title': 18, 'text-input': 16, 'line-height-body': 19,
     })) {
+      expect(tokens.match(new RegExp(`--${name}\\s*:`, 'g')), name).toHaveLength(1);
       expect(tokens.match(new RegExp(`--${name}: ${value}px;`, 'g'))).toHaveLength(1);
     }
   });

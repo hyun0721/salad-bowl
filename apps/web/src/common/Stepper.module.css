@@ -4,6 +4,6 @@
 .stepper .step:first-child { border-right: 1px solid var(--line); }
 .stepper .step:last-of-type { border-left: 1px solid var(--line); }
 .value { position: relative; display: flex; align-items: center; justify-content: center; height: var(--control-height); padding-inline: var(--space-2); }
-.stepper .text { text-align: center; font-variant-numeric: tabular-nums; font-size: var(--text-xl); font-weight: 600; color: var(--ink); white-space: nowrap; }
+.stepper .text { text-align: center; font-variant-numeric: tabular-nums; font-size: var(--text-title); font-weight: 600; color: var(--ink); white-space: nowrap; }
 .year { min-width: 72px; }
 .stepper .step[aria-disabled="true"] { color: var(--ink-muted); cursor: not-allowed; }

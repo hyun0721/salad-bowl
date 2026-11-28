@@ -3,8 +3,8 @@
  * 모든 폭에서 1단(TAX-73)이고, 넓은 화면은 가운데에 두고 최대 폭을 720px로 제한한다.
  */
 .page { width: 100%; max-width: 720px; margin-inline: auto; }
-.facts { color: var(--ink-muted); font-size: var(--text-md); overflow-wrap: anywhere; }
-.notice { color: var(--pending); font-size: var(--text-md); overflow-wrap: anywhere; }
+.facts { color: var(--ink-muted); font-size: var(--text-sub); overflow-wrap: anywhere; }
+.notice { color: var(--pending); font-size: var(--text-sub); overflow-wrap: anywhere; }
 .badge { display: inline-block; margin-right: var(--space-1); padding: 0 var(--space-1); border: 1px solid currentColor; border-radius: var(--radius-sm); font-weight: 500; }
 
 /* 단계 탭은 페이지 탭 높이 대신 같은 줄 버튼 높이를 따른다. */
@@ -14,17 +14,17 @@
 }
 .panel { display: flex; flex-direction: column; gap: var(--space-3); padding-top: var(--space-3); }
 .stepNav { display: flex; gap: var(--space-2); }
-.stepNav button { min-height: var(--control-height); font-size: var(--text-card-action); }
+.stepNav button { min-height: var(--control-height); font-size: var(--text-button); }
 .next { margin-left: auto; }
 
 /* ① 현황 */
 .inlineBadge { margin: 0 0 0 var(--space-1); }
 .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 9.5rem), 1fr)); gap: var(--space-3); margin: 0; }
 .summary > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.summary dt { color: var(--ink-muted); font-size: var(--text-md); }
+.summary dt { color: var(--ink-muted); font-size: var(--text-sub); }
 .summary dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
-.big { font-size: var(--text-xl); font-weight: 700; font-variant-numeric: tabular-nums; }
-.sub { color: var(--ink-muted); font-size: var(--text-md); font-variant-numeric: tabular-nums; }
+.big { font-size: var(--text-title); font-weight: 700; font-variant-numeric: tabular-nums; }
+.sub { color: var(--ink-muted); font-size: var(--text-sub); font-variant-numeric: tabular-nums; }
 .shares { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
 .shares caption { caption-side: top; padding-bottom: var(--space-1); text-align: left; font-weight: 500; }
 .shares th { width: 6.5rem; padding: var(--space-1) 0; text-align: left; font-weight: 400; }
@@ -34,7 +34,7 @@
 .bar > span { display: block; height: 100%; background: var(--brand); }
 .calc { display: flex; flex-direction: column; gap: var(--space-3); }
 .calc ol { display: flex; flex-direction: column; gap: var(--space-3); margin: 0; padding: 0; list-style: none; }
-.calc h3 { margin: 0 0 var(--space-1); font-size: var(--text-lg); }
+.calc h3 { margin: 0 0 var(--space-1); font-size: var(--text-body); }
 .calc ul { margin: 0 0 var(--space-1); padding-left: var(--space-4); }
 .calc dl { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-1) var(--space-3); margin: 0; }
 .calc dt { min-width: 0; overflow-wrap: anywhere; }
@@ -44,18 +44,18 @@
 /* ② 지출계획. 칸이 10rem보다 좁으면(375px) 소비구분마다 라벨 + 입력 3줄 + 합계로 쌓고, 넓으면 한 줄에 3칸이다. */
 .planGroup { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr)); gap: var(--space-2) var(--space-3); margin: 0; padding: 0; border: 0; min-width: 0; }
 .planGroup legend { padding: 0; margin-bottom: var(--space-1); font-weight: 500; }
-.planSum { grid-column: 1 / -1; color: var(--ink-muted); font-size: var(--text-md); text-align: right; font-variant-numeric: tabular-nums; }
+.planSum { grid-column: 1 / -1; color: var(--ink-muted); font-size: var(--text-sub); text-align: right; font-variant-numeric: tabular-nums; }
 .planTotal { font-weight: 700; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 
 /* ③ 추천. 결제수단마다 한 줄씩 쓴다. 넘치는 표만 내부에서 스크롤한다. */
 .allocation { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
-.allocation caption { caption-side: top; padding-bottom: var(--space-2); text-align: left; color: var(--ink-muted); font-size: var(--text-md); }
+.allocation caption { caption-side: top; padding-bottom: var(--space-2); text-align: left; color: var(--ink-muted); font-size: var(--text-sub); }
 .allocation th, .allocation td { padding: var(--space-2) var(--space-1); border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; overflow-wrap: anywhere; }
-.allocation thead th { color: var(--ink-muted); font-size: var(--text-md); font-weight: 500; }
+.allocation thead th { color: var(--ink-muted); font-size: var(--text-sub); font-weight: 500; }
 .allocation tbody th, .allocation tfoot th { font-weight: 500; }
 .allocation tfoot th, .allocation tfoot td { font-weight: 700; border-bottom: 0; }
 .line { display: block; }
 .subsection { display: flex; flex-direction: column; gap: var(--space-1); }
-.subsection h3 { margin: 0; font-size: var(--text-lg); }
+.subsection h3 { margin: 0; font-size: var(--text-body); }
 .subsection ul { margin: 0; padding-left: var(--space-4); }
-.assumptions { color: var(--ink-muted); font-size: var(--text-md); }
+.assumptions { color: var(--ink-muted); font-size: var(--text-sub); }

@@ -1,5 +1,5 @@
 /*
- * 연도별 세법 관리 화면. 화면 뿌리 글자 토큰·.split·.facts는 입력자료의 inputs.module.css를 같이 쓴다.
+ * 연도별 세법 관리 화면. 앱 공통 글자 토큰을 쓰고, .page·.split·.facts는 입력자료의 inputs.module.css를 같이 쓴다.
  * 넓은 화면(1100px 이상)은 버전 목록(1) | 상세(2) 2단, 그보다 좁으면 목록 → 상세 순으로 쌓는다.
  */
 .columns { display: grid; gap: var(--space-3); align-items: start; min-width: 0; }
@@ -7,11 +7,11 @@
   .columns { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); }
 }
 
-/* 버전 행 전체가 선택 버튼이다. `.page section button`(14px)보다 구체적으로 써서 이름 15px·보조 13px를 지킨다. */
+/* 버전 행 전체가 선택 버튼이므로 이름은 본문, 보조 정보는 보조 글자 토큰을 쓴다. */
 .versions .version {
   display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-height: var(--touch-target); padding: var(--space-1) var(--space-2);
   border: 1px solid transparent; border-radius: var(--radius-sm); background: transparent; color: var(--ink);
-  font-size: var(--text-base); text-align: left; cursor: pointer;
+  font-size: var(--text-body); text-align: left; cursor: pointer;
 }
 .versions .version[aria-current='true'] { border-color: var(--brand); background: var(--surface-100); }
 .versions .version:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
